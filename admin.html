@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Teacher Admin Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background: #f0f2f5; }
+        .box { background: white; padding: 20px; border-radius: 8px; max-width: 500px; margin: 0 auto 20px auto; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        input, button { display: block; width: 100%; margin: 10px 0; padding: 10px; box-sizing: border-box; }
+        button { background: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; }
+        .logout-btn { background: #dc3545; width: auto; float: right; padding: 5px 15px; }
+        .regen-btn { background: #ffc107; color: black; width: auto; display: inline-block; padding: 5px 10px; }
+        table { width: 100%; background: white; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #007bff; color: white; }
+        .hidden { display: none; }
+        .header-container { max-width: 1000px; margin: 0 auto; overflow: hidden; }
+    </style>
+</head>
+<body>
+
+    <div id="loginScreen" class="box">
+        <h2>Teacher Login</h2>
+        <input type="email" id="loginEmail" placeholder="Teacher Email">
+        <input type="password" id="loginPassword" placeholder="Password">
+        <button id="loginBtn" style="background: #007bff;">Sign In</button>
+    </div>
+
+    <div id="adminDashboard" class="hidden">
+        <div class="header-container">
+            <button id="logoutBtn" class="logout-btn">Logout</button>
+            <h2>Teacher Dashboard - Input Scores</h2>
+        </div>
+        
+        <div class="box">
+            <h3>Add New Student Score</h3>
+            <input type="text" id="examName" placeholder="Exam Name (e.g. Midterm 2026)">
+            <input type="text" id="studentName" placeholder="Student Name">
+            <input type="number" id="score" placeholder="Score">
+            <button id="saveBtn">Save Student & Generate Code</button>
+        </div>
+
+        <div class="header-container">
+            <h3>Current Students & Codes</h3>
+            <table id="adminTable">
+                <thead>
+                    <tr>
+                        <th>Exam</th>
+                        <th>Student Name</th>
+                        <th>Score</th>
+                        <th>Unique Code</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script type="module" src="admin.js"></script>
+</body>
+</html>
