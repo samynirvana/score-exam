@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <meta charset="UTF-8">
     <title>Teacher Admin Dashboard</title>
     <style>
@@ -38,6 +39,14 @@
             <input type="text" id="studentName" placeholder="Student Name">
             <input type="number" id="score" placeholder="Score">
             <button id="saveBtn">Save Student & Generate Code</button>
+        
+        </div>
+
+        <div class="box">
+        <h3>Bulk Upload Students (Excel)</h3>
+        <p style="font-size: 12px; color: #555; margin-top: 0;">Required columns: <strong>Exam Name</strong>, <strong>Student Name</strong>, <strong>Score</strong></p>
+        <input type="file" id="excelFile" accept=".xlsx, .xls, .csv">
+        <button id="uploadExcelBtn" style="background: #17a2b8;">Upload & Process Excel</button>
         </div>
 
         <div class="header-container">

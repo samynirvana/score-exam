@@ -145,10 +145,83 @@ async function loadAdminTable() {
     }
 }
 
+async function processExcel() {
+    const fileInput = document.getElementById('excelFile');
+    const file = fileInput.files[0];
+
+    if (!file) {
+        alert("Please select an Excel file first!");
+        return;
+    }
+
+    const uploadBtn = document.getElementById('uploadExcelBtn');
+    uploadBtn.disabled = true;
+    uploadBtn.innerText = "Processing...";
+
+    const reader = new FileReader();
+
+    reader.onload = async (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            // Parse the Excel file
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            // Convert to Array of Objects
+            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+            if (jsonData.length === 0) {
+                alert("The uploaded file is empty or formatted incorrectly.");
+                uploadBtn.disabled = false;
+                uploadBtn.innerText = "Upload & Process Excel";
+                return;
+            }
+
+            let successCount = 0;
+
+            // Process each row
+            for (const row of jsonData) {
+                // Adjusting to common column name variations
+                const examName = row["Exam Name"] || row["Exam"] || row["examName"];
+                const studentName = row["Student Name"] || row["Student"] || row["studentName"];
+                const score = parseInt(row["Score"] || row["score"]);
+
+                // Ensure data is valid before uploading
+                if (examName && studentName && !isNaN(score)) {
+                    const uniqueCode = await generateUniqueCode();
+                    
+                    await setDoc(doc(db, "exam_scores", uniqueCode), {
+                        examName: String(examName),
+                        studentName: String(studentName),
+                        score: score
+                    });
+                    successCount++;
+                } else {
+                    console.warn("Skipping invalid row, missing data:", row);
+                }
+            }
+
+            alert(`Successfully imported ${successCount} student records!`);
+            fileInput.value = ""; // Clear the file input
+            loadAdminTable();     // Refresh the table UI
+            
+        } catch (error) {
+            alert("Error processing file: " + error.message);
+        } finally {
+            uploadBtn.disabled = false;
+            uploadBtn.innerText = "Upload & Process Excel";
+        }
+    };
+
+    // Trigger the file read
+    reader.readAsArrayBuffer(file);
+}
 // Event Listeners
 document.getElementById('loginBtn').addEventListener('click', loginAdmin);
 document.getElementById('logoutBtn').addEventListener('click', logoutAdmin);
 document.getElementById('saveBtn').addEventListener('click', addStudentScore);
+document.getElementById('uploadExcelBtn').addEventListener('click', processExcel);
 
 // Keeps regenerateCode accessible to the dynamic table buttons
 window.regenerateCode = regenerateCode;
