@@ -7,12 +7,12 @@
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 40px; background: #f0f2f5; color: #333; }
         .box { background: white; padding: 20px; border-radius: 8px; max-width: 1000px; margin: 0 auto 20px auto; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .form-group { margin-bottom: 15px; }
         input, button, select { display: block; width: 100%; margin: 8px 0; padding: 10px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; }
         button { background: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
         button:hover { opacity: 0.9; }
         .logout-btn { background: #dc3545; width: auto; float: right; padding: 5px 15px; margin: 0; }
-        .delete-btn { background: #dc3545; color: white; width: auto; display: inline-block; padding: 5px 10px; font-size: 12px; margin: 0; border-radius: 4px; }
+        .delete-btn { background: #dc3545; color: white; width: auto; display: inline-block; padding: 5px 10px; font-size: 12px; margin: 2px; border-radius: 4px; border: none; cursor: pointer; }
+        .edit-btn { background: #007bff; color: white; width: auto; display: inline-block; padding: 5px 10px; font-size: 12px; margin: 2px; border-radius: 4px; border: none; cursor: pointer; }
         table { width: 100%; background: white; border-collapse: collapse; margin-top: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
         th { background-color: #007bff; color: white; font-weight: 600; }
@@ -56,13 +56,14 @@
 
                 <div class="box">
                     <h3 style="margin-top: 0;">Student Master Directory</h3>
-                    <div style="max-height: 250px; overflow-y: auto;">
+                    <div style="max-height: 300px; overflow-y: auto;">
                         <table id="studentsTable">
                             <thead>
                                 <tr>
                                     <th>Code</th>
                                     <th>Student Name</th>
                                     <th>Class</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -75,7 +76,7 @@
                 <div class="box">
                     <h3 style="margin-top: 0; color: #28a745;">Record Student Score</h3>
                     <input type="text" id="scoreStudentCode" placeholder="5-Character Student Code" maxlength="5" style="text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">
-                    <input type="text" id="examName" placeholder="Exam Instance Description (e.g., Midterm 2026)">
+                    <input type="text" id="examName" placeholder="Exam Description (e.g., Midterm 2026)">
                     <input type="text" id="subject" placeholder="Subject Name">
                     <input type="number" id="score" placeholder="Numeric Grade Score (0-100)">
                     <button id="saveScoreBtn">Commit Score Entry</button>
@@ -83,7 +84,7 @@
 
                 <div class="box">
                     <h3 style="margin-top: 0; color: #17a2b8;">Bulk Upload Dataset (Excel)</h3>
-                    <p style="font-size: 12px; color: #666; margin-top: 0;">Formatting checklist headers must contain: <strong>Student Code</strong>, <strong>Exam Name</strong>, <strong>Subject</strong>, and <strong>Score</strong></p>
+                    <p style="font-size: 12px; color: #666; margin-top: 0;">Required formatting columns: <strong>Student Code</strong>, <strong>Exam Name</strong>, <strong>Subject</strong>, and <strong>Score</strong></p>
                     <input type="file" id="excelFile" accept=".xlsx, .xls, .csv">
                     <button id="uploadExcelBtn" style="background: #17a2b8;">Parse & Upload Document Rows</button>
                 </div>

@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, doc, collection, getDocs, getDoc, deleteDoc, query, where, addDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, doc, collection, getDocs, getDoc, deleteDoc, query, where, addDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -16,7 +16,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-// Secondary configuration mapping to handle background user creation
+// Secondary background authorization loop configuration context
 const secondaryApp = initializeApp(firebaseConfig, "SecondaryAuthApp");
 const secondaryAuth = getAuth(secondaryApp);
 
@@ -58,13 +58,13 @@ onAuthStateChanged(auth, async (user) => {
                 adminOnlySection.classList.add('hidden');
                 subjectInput.value = teacherSubject;
                 subjectInput.disabled = true; 
-                tableTitle.innerText = `Departmental Tracking Performance Ledger: ${teacherSubject}`;
+                tableTitle.innerText = `Departmental Performance Ledger: ${teacherSubject}`;
                 welcomeTitle.innerText = `Teacher Portal Workspace (${teacherSubject})`;
             }
 
             loadAdminTable();
         } catch (err) {
-            alert("Error querying credential verification parameters: " + err.message);
+            alert("Error querying identity permissions: " + err.message);
         }
     } else {
         loginScreen.classList.remove('hidden');
@@ -78,7 +78,7 @@ async function loginAdmin() {
     try {
         await signInWithEmailAndPassword(auth, email, password);
     } catch (error) {
-        alert("Authentication Denied: " + error.message);
+        alert("Authentication Failed: " + error.message);
     }
 }
 
@@ -103,13 +103,13 @@ async function createTeacherAccount() {
             role: "teacher",
             subject: subject
         });
-        alert(`Account Provisioned!\nUser: ${email}\nAssigned Subject: ${subject}`);
+        alert(`Teacher Registered Successfully!\nEmail: ${email}\nSubject: ${subject}`);
         document.getElementById('newTeacherEmail').value = "";
         document.getElementById('newTeacherPassword').value = "";
         document.getElementById('newTeacherSubject').value = "";
         await secondaryAuth.signOut();
     } catch (e) {
-        alert("Registration sequence failed: " + e.message);
+        alert("Registration operation rejected: " + e.message);
     }
 }
 
@@ -143,7 +143,7 @@ async function registerStudent() {
         const dupSnap = await getDocs(dupQuery);
 
         if (!dupSnap.empty) {
-            alert(`Duplicate Denied!\nA student named "${name}" is already registered in "${studentClass}" under Access Code: ${dupSnap.docs[0].id}`);
+            alert(`Profile collision! This student is already registered with code: ${dupSnap.docs[0].id}`);
             return;
         }
 
@@ -153,15 +153,16 @@ async function registerStudent() {
             studentClass: studentClass
         });
         
-        alert(`Registration Complete!\nName: ${name}\nClass: ${studentClass}\nCode: ${uniqueCode}`);
+        alert(`Profile Confirmed!\nName: ${name}\nClass: ${studentClass}\nCode: ${uniqueCode}`);
         document.getElementById('newStudentName').value = "";
         document.getElementById('newStudentClass').value = "";
         loadStudentsDirectory();
     } catch (e) {
-        alert("System error saving record: " + e.message);
+        alert("System error tracking record: " + e.message);
     }
 }
 
+// Render directory collection with Edit and Delete hooks
 async function loadStudentsDirectory() {
     try {
         const snap = await getDocs(collection(db, "students"));
@@ -169,14 +170,66 @@ async function loadStudentsDirectory() {
         tbody.innerHTML = "";
         snap.forEach((doc) => {
             const data = doc.data();
+            const retrievedClass = data.studentClass || data.Class || data.class || "N/A";
             tbody.innerHTML += `<tr>
                 <td><strong>${doc.id}</strong></td>
-                <td>${data.studentName}</td>
-                <td>${data.studentClass || 'N/A'}</td>
+                <td>${data.studentName || 'N/A'}</td>
+                <td><span style="color:#007bff; font-weight:bold;">${retrievedClass}</span></td>
+                <td>
+                    <button class="edit-btn" onclick="editStudentProfile('${doc.id}')">Edit</button>
+                    <button class="delete-btn" onclick="deleteStudentProfile('${doc.id}')">Delete</button>
+                </td>
             </tr>`;
         });
     } catch (e) {
         console.error(e);
+    }
+}
+
+// Inline Student Directory Modification Handler
+async function editStudentProfile(studentCode) {
+    try {
+        const docRef = doc(db, "students", studentCode);
+        const docSnap = await getDoc(docRef);
+        if (!docSnap.exists()) return alert("Student record missing.");
+
+        const currentData = docSnap.data();
+        const currentClass = currentData.studentClass || currentData.Class || currentData.class || "";
+
+        const newName = prompt("Modify Student Full Name:", currentData.studentName || "");
+        if (newName === null) return; // User cancelled
+        
+        const newClass = prompt("Modify Student Class (e.g., Grade 7A):", currentClass);
+        if (newClass === null) return; // User cancelled
+
+        if (!newName.trim() || !newClass.trim()) {
+            alert("Values cannot be saved empty.");
+            return;
+        }
+
+        await updateDoc(docRef, {
+            studentName: newName.trim(),
+            studentClass: newClass.trim()
+        });
+
+        alert("Profile updated successfully!");
+        loadStudentsDirectory();
+        loadAdminTable(); // Refresh the performance table to cascade naming visual updates
+    } catch (e) {
+        alert("Error modifying dataset: " + e.message);
+    }
+}
+
+// Student Directory Wiping Handler
+async function deleteStudentProfile(studentCode) {
+    if (confirm(`Are you sure you want to permanently delete student registration code ${studentCode} from the directory?\n(This actions does not clear recorded exam score blocks).`)) {
+        try {
+            await deleteDoc(doc(db, "students", studentCode));
+            alert("Directory signature removed.");
+            loadStudentsDirectory();
+        } catch (e) {
+            alert("Error removing directory entry: " + e.message);
+        }
     }
 }
 
@@ -187,38 +240,40 @@ async function addStudentScore() {
     const score = parseInt(document.getElementById('score').value);
 
     if (!code || !examName || !subject || isNaN(score)) {
-        alert("Please complete all scorecard configuration fields values.");
+        alert("Please complete all entry fields.");
         return;
     }
 
     try {
         const studentSnap = await getDoc(doc(db, "students", code));
         if (!studentSnap.exists()) {
-            alert(`Lookup Error: Student code "${code}" does not exist in the active directory system registry.`);
+            alert(`Lookup Error: Student code "${code}" does not exist in the active directory registration system.`);
             return;
         }
 
         const sData = studentSnap.data();
+        const targetClass = sData.studentClass || sData.Class || sData.class || 'N/A';
+
         await addDoc(collection(db, "exam_scores"), {
             studentCode: code,
             studentName: sData.studentName,
-            studentClass: sData.studentClass || 'N/A',
+            studentClass: targetClass,
             examName: examName,
             subject: subject,
             score: score
         });
 
-        alert("Score instance successfully logged!");
+        alert("Score logged successfully!");
         document.getElementById('scoreStudentCode').value = "";
         document.getElementById('score').value = "";
         loadAdminTable();
     } catch (e) {
-        alert("Error logging document transaction: " + e.message);
+        alert("Error logging exam document transaction: " + e.message);
     }
 }
 
 async function deleteStudentScore(docId) {
-    if (confirm("Permanently wipe this test performance instance from the database?")) {
+    if (confirm("Permanently wipe this score entry from the ledger?")) {
         try {
             await deleteDoc(doc(db, "exam_scores", docId));
             loadAdminTable();
@@ -228,7 +283,7 @@ async function deleteStudentScore(docId) {
     }
 }
 
-// EXACT MATCH 7-COLUMN DATA LAYOUT INTERACTION RENDERING CORRECTION
+// CORRECTED TABLE RENDERING METHOD WITH NO-SHIFT FAILSAFE CELL DESIGNATIONS
 async function loadAdminTable() {
     const user = auth.currentUser;
     if (!user) return;
@@ -245,26 +300,37 @@ async function loadAdminTable() {
         querySnapshot.forEach((doc) => {
             const data = doc.data();
             
-            // EXACTLY 7 DATA CELLS LINKING IN EXACT VERTICAL SEQUENTIAL ORDER
+            // Extract attributes with sequential fallbacks to keep columns completely uniform
+            const exam = data.examName || 'N/A';
+            const sub = data.subject || 'N/A';
+            const sName = data.studentName || 'N/A';
+            const sClass = data.studentClass || data.Class || data.class || 'N/A';
+            
+            // If the document data doesn't have an explicit studentCode attribute, 
+            // check if the document ID is a 5-char user-defined alphanumeric string
+            const sCode = data.studentCode || (doc.id.length === 5 ? doc.id : 'N/A');
+            const numScore = data.score !== undefined ? data.score : 'N/A';
+
+            // EXACTLY 7 <td> PAIRS MAPS LINE-BY-LINE PER ROW
             tbody.innerHTML += `<tr>
-                <td>${data.examName || 'N/A'}</td>
-                <td>${data.subject || 'N/A'}</td>
-                <td>${data.studentName || 'N/A'}</td>
-                <td>${data.studentClass || 'N/A'}</td>
-                <td><strong>${data.studentCode || doc.id}</strong></td>
-                <td><strong style="color: #28a745;">${data.score}</strong></td>
+                <td>${exam}</td>
+                <td>${sub}</td>
+                <td>${sName}</td>
+                <td><strong>${sClass}</strong></td>
+                <td><strong>${sCode}</strong></td>
+                <td><strong style="color: #28a745;">${numScore}</strong></td>
                 <td><button class="delete-btn" onclick="deleteStudentScore('${doc.id}')">Delete</button></td>
             </tr>`;
         });
     } catch (e) {
-        console.error(e);
+        console.error("Table processing crash encountered: ", e);
     }
 }
 
 async function processExcel() {
     const fileInput = document.getElementById('excelFile');
     const file = fileInput.files[0];
-    if (!file) return alert("Select an Excel file first.");
+    if (!file) return alert("Select an Excel workbook document first.");
 
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -289,10 +355,11 @@ async function processExcel() {
                     const studentDoc = await getDoc(doc(db, "students", code));
                     if (studentDoc.exists()) {
                         const sData = studentDoc.data();
+                        const sClass = sData.studentClass || sData.Class || sData.class || 'N/A';
                         await addDoc(collection(db, "exam_scores"), {
                             studentCode: code,
                             studentName: sData.studentName,
-                            studentClass: sData.studentClass || 'N/A',
+                            studentClass: sClass,
                             examName: String(examName),
                             subject: String(subject),
                             score: score
@@ -301,11 +368,11 @@ async function processExcel() {
                     }
                 }
             }
-            alert(`Excel execution completed! ${successCount} records generated.`);
+            alert(`Excel execution complete! Processed ${successCount} entries into records.`);
             fileInput.value = "";
             loadAdminTable();
         } catch (err) {
-            alert("Error parsing document rows: " + err.message);
+            alert("Error parsing document mapping properties: " + err.message);
         }
     };
     reader.readAsArrayBuffer(file);
@@ -318,4 +385,7 @@ document.getElementById('registerStudentBtn').addEventListener('click', register
 document.getElementById('saveScoreBtn').addEventListener('click', addStudentScore);
 document.getElementById('uploadExcelBtn').addEventListener('click', processExcel);
 
+// Window binding parameters
 window.deleteStudentScore = deleteStudentScore;
+window.editStudentProfile = editStudentProfile;
+window.deleteStudentProfile = deleteStudentProfile;
