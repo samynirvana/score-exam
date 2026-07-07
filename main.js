@@ -33,6 +33,7 @@ async function searchScore() {
             
             document.getElementById('studentName').innerText = studentData.studentName;
             document.getElementById('examName').innerText = studentData.examName;
+            document.getElementById('subjectName').innerText = studentData.subject || "N/A"; // Display subject
             document.getElementById('examScore').innerText = studentData.score;
             
             resultCard.classList.remove('hidden');

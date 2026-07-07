@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -69,12 +69,13 @@ async function generateUniqueCode() {
 // Input Data & Save
 async function addStudentScore() {
     const examName = document.getElementById('examName').value;
+    const subject = document.getElementById('subject').value;
     const studentName = document.getElementById('studentName').value;
     const score = parseInt(document.getElementById('score').value);
     const saveBtn = document.getElementById('saveBtn');
 
-    if (!examName || !studentName || isNaN(score)) {
-        alert("Please fill out Exam Name, Student Name, and Score!");
+    if (!examName || !subject || !studentName || isNaN(score)) {
+        alert("Please fill out Exam Name, Subject, Student Name, and Score!");
         return;
     }
 
@@ -83,11 +84,13 @@ async function addStudentScore() {
     try {
         const uniqueCode = await generateUniqueCode();
 
-        // Save cleanly to Firestore
+        // Save cleanly to Firestore with teacherUid
         await setDoc(doc(db, "exam_scores", uniqueCode), {
             examName,
+            subject,
             studentName,
-            score
+            score,
+            teacherUid: auth.currentUser.uid
         });
 
         alert(`Successfully saved!\nStudent: ${studentName}\nCode: ${uniqueCode}`);
@@ -122,10 +125,16 @@ async function regenerateCode(oldCode) {
     }
 }
 
-// Load scores to Admin View
+// Load scores to Admin View (Filtered by Logged-in Teacher)
 async function loadAdminTable() {
+    const user = auth.currentUser;
+    if (!user) return;
+
     try {
-        const querySnapshot = await getDocs(collection(db, "exam_scores"));
+        // Query only data belongs to this specific teacher
+        const q = query(collection(db, "exam_scores"), where("teacherUid", "==", user.uid));
+        const querySnapshot = await getDocs(q);
+        
         const tbody = document.querySelector("#adminTable tbody");
         tbody.innerHTML = "";
 
@@ -133,6 +142,7 @@ async function loadAdminTable() {
             const data = doc.data();
             const row = `<tr>
                 <td>${data.examName}</td>
+                <td>${data.subject || 'N/A'}</td>
                 <td>${data.studentName}</td>
                 <td>${data.score}</td>
                 <td><strong>${doc.id}</strong></td>
@@ -163,12 +173,10 @@ async function processExcel() {
     reader.onload = async (e) => {
         try {
             const data = new Uint8Array(e.target.result);
-            // Parse the Excel file
             const workbook = XLSX.read(data, { type: 'array' });
             const firstSheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[firstSheetName];
             
-            // Convert to Array of Objects
             const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
             if (jsonData.length === 0) {
@@ -180,21 +188,21 @@ async function processExcel() {
 
             let successCount = 0;
 
-            // Process each row
             for (const row of jsonData) {
-                // Adjusting to common column name variations
                 const examName = row["Exam Name"] || row["Exam"] || row["examName"];
+                const subject = row["Subject"] || row["subject"] || row["Subject Name"];
                 const studentName = row["Student Name"] || row["Student"] || row["studentName"];
                 const score = parseInt(row["Score"] || row["score"]);
 
-                // Ensure data is valid before uploading
-                if (examName && studentName && !isNaN(score)) {
+                if (examName && subject && studentName && !isNaN(score)) {
                     const uniqueCode = await generateUniqueCode();
                     
                     await setDoc(doc(db, "exam_scores", uniqueCode), {
                         examName: String(examName),
+                        subject: String(subject),
                         studentName: String(studentName),
-                        score: score
+                        score: score,
+                        teacherUid: auth.currentUser.uid
                     });
                     successCount++;
                 } else {
@@ -203,8 +211,8 @@ async function processExcel() {
             }
 
             alert(`Successfully imported ${successCount} student records!`);
-            fileInput.value = ""; // Clear the file input
-            loadAdminTable();     // Refresh the table UI
+            fileInput.value = ""; 
+            loadAdminTable();     
             
         } catch (error) {
             alert("Error processing file: " + error.message);
@@ -214,14 +222,13 @@ async function processExcel() {
         }
     };
 
-    // Trigger the file read
     reader.readAsArrayBuffer(file);
 }
+
 // Event Listeners
 document.getElementById('loginBtn').addEventListener('click', loginAdmin);
 document.getElementById('logoutBtn').addEventListener('click', logoutAdmin);
 document.getElementById('saveBtn').addEventListener('click', addStudentScore);
 document.getElementById('uploadExcelBtn').addEventListener('click', processExcel);
 
-// Keeps regenerateCode accessible to the dynamic table buttons
 window.regenerateCode = regenerateCode;
