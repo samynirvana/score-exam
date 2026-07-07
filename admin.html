@@ -15,7 +15,7 @@
         th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
         th { background-color: #007bff; color: white; }
         .hidden { display: none !important; }
-        .header-container { max-width: 1000px; margin: 0 auto; overflow: hidden; }
+        .header-container { max-width: 1200px; margin: 0 auto; overflow: hidden; }
         .two-col { display: flex; gap: 20px; max-width: 1200px; margin: 0 auto; }
         .col { flex: 1; }
     </style>
@@ -39,9 +39,18 @@
             <div class="col hidden" id="adminOnlySection">
                 <div class="box">
                     <h3>1. Register New Student Profile</h3>
-                    <p style="font-size: 13px; color: #666;">Creates a permanent unique code for a student.</p>
                     <input type="text" id="newStudentName" placeholder="Full Student Name">
+                    <input type="text" id="newStudentClass" placeholder="Class (e.g., Grade 7A, Grade 7B)">
                     <button id="registerStudentBtn" style="background: #007bff;">Register Student & Get Code</button>
+                </div>
+
+                <div class="box">
+                    <h3>2. Create Teacher Account</h3>
+                    <p style="font-size: 12px; color: #666; margin-top:0;">Creates a login and assigns a locked subject role.</p>
+                    <input type="email" id="newTeacherEmail" placeholder="Teacher Email Address">
+                    <input type="password" id="newTeacherPassword" placeholder="Password (min 6 chars)">
+                    <input type="text" id="newTeacherSubject" placeholder="Assigned Subject (e.g., English)">
+                    <button id="createTeacherBtn" style="background: #ffc107; color: black;">Register New Teacher</button>
                 </div>
 
                 <div class="box">
@@ -51,6 +60,7 @@
                             <tr>
                                 <th>Code</th>
                                 <th>Student Name</th>
+                                <th>Class</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -60,7 +70,7 @@
 
             <div class="col">
                 <div class="box">
-                    <h3>2. Input Test Score</h3>
+                    <h3>Input Test Score</h3>
                     <p style="font-size: 13px; color: #666;">Link an exam score to an existing code.</p>
                     <input type="text" id="scoreStudentCode" placeholder="Student Code (5-chars)" maxlength="5" style="text-transform: uppercase;">
                     <input type="text" id="examName" placeholder="Exam Name (e.g., Midterm 2026)">
@@ -86,6 +96,7 @@
                         <th>Exam</th>
                         <th>Subject</th>
                         <th>Student Name</th>
+                        <th>Class</th>
                         <th>Student Code</th>
                         <th>Score</th>
                         <th>Action</th>

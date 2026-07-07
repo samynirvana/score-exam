@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, doc, collection, getDocs, getDoc, deleteDoc, query, where, addDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyD3oiOHwHUfMhTPjEp8Ku8-qlbRKlGX0Gg",
@@ -12,11 +12,15 @@ const firebaseConfig = {
     measurementId: "G-97WSSH0BNE",
 };
 
+// Initialize Primary App Configuration
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-// Role Memory Cache Storage
+// Initialize Secondary App Configuration to register new accounts without logging out admin
+const secondaryApp = initializeApp(firebaseConfig, "SecondaryAuthApp");
+const secondaryAuth = getAuth(secondaryApp);
+
 let userRole = null;
 let teacherSubject = null;
 
@@ -29,14 +33,12 @@ onAuthStateChanged(auth, async (user) => {
 
     if (user) {
         try {
-            // Fetch system authorization clearance profile assignment
             const userDoc = await getDoc(doc(db, "users", user.uid));
             if (userDoc.exists()) {
                 const userData = userDoc.data();
-                userRole = userData.role; // "admin" or "teacher"
+                userRole = userData.role; 
                 teacherSubject = userData.subject || ""; 
             } else {
-                // Default fallback protocol safety
                 userRole = "teacher";
                 teacherSubject = "Unknown";
             }
@@ -51,16 +53,15 @@ onAuthStateChanged(auth, async (user) => {
                 tableTitle.innerText = "Master Registry - All Exam Scores";
                 loadStudentsDirectory();
             } else {
-                // Restricted Teacher Setup Profile
                 adminOnlySection.classList.add('hidden');
                 subjectInput.value = teacherSubject;
-                subjectInput.disabled = true; // Lock field input modifications
+                subjectInput.disabled = true; 
                 tableTitle.innerText = `Exam Scores tracking for: ${teacherSubject}`;
             }
 
             loadAdminTable();
         } catch (err) {
-            alert("Error parsing identity authorization profile permissions: " + err.message);
+            alert("Error reading user credentials: " + err.message);
         }
     } else {
         loginScreen.classList.remove('hidden');
@@ -82,6 +83,42 @@ async function logoutAdmin() {
     await signOut(auth);
 }
 
+// ADMIN FUNCTION: Create a secondary teacher account completely via UI
+async function createTeacherAccount() {
+    const email = document.getElementById('newTeacherEmail').value.trim();
+    const password = document.getElementById('newTeacherPassword').value.trim();
+    const subject = document.getElementById('newTeacherSubject').value.trim();
+
+    if (!email || !password || !subject) {
+        alert("Please fill out all teacher generation fields.");
+        return;
+    }
+
+    try {
+        // Create user entry against the secondary Auth context pipeline
+        const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+        const newTeacherUid = userCredential.user.uid;
+
+        // Assign access configuration inside Firestore database paths
+        await setDoc(doc(db, "users", newTeacherUid), {
+            email: email,
+            role: "teacher",
+            subject: subject
+        });
+
+        alert(`Success! Teacher account created for: ${email}\nAssigned Subject: ${subject}`);
+        
+        document.getElementById('newTeacherEmail').value = "";
+        document.getElementById('newTeacherPassword').value = "";
+        document.getElementById('newTeacherSubject').value = "";
+
+        // Sign out secondary instance clear memory footprint
+        await secondaryAuth.signOut();
+    } catch (error) {
+        alert("Failed to create teacher account: " + error.message);
+    }
+}
+
 async function generateUniqueStudentCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code;
@@ -98,30 +135,35 @@ async function generateUniqueStudentCode() {
     return code;
 }
 
-// 1. Create permanent student identity registration WITH DUPLICATE PROTECTION
+// Register student profile tracking class data parameters
 async function registerStudent() {
     const nameInput = document.getElementById('newStudentName').value.trim();
-    if (!nameInput) {
-        alert("Please provide a student name.");
+    const classInput = document.getElementById('newStudentClass').value.trim();
+
+    if (!nameInput || !classInput) {
+        alert("Please provide both student name and class designation.");
         return;
     }
 
     try {
-        // Query to check if this exact student name is already registered
-        const dupQuery = query(collection(db, "students"), where("studentName", "==", nameInput));
+        // Check if a student with the exact same name and class already exists
+        const dupQuery = query(collection(db, "students"), where("studentName", "==", nameInput), where("studentClass", "==", classInput));
         const dupSnap = await getDocs(dupQuery);
 
         if (!dupSnap.empty) {
-            alert(`Registration Stopped!\nA student named "${nameInput}" already exists with Code: ${dupSnap.docs[0].id}`);
+            alert(`Registration Stopped!\nA student named "${nameInput}" inside "${classInput}" already exists with Code: ${dupSnap.docs[0].id}`);
             return;
         }
 
         const uniqueCode = await generateUniqueStudentCode();
         await setDoc(doc(db, "students", uniqueCode), {
-            studentName: nameInput
+            studentName: nameInput,
+            studentClass: classInput
         });
-        alert(`Registered successfully!\n${nameInput} Code is: ${uniqueCode}`);
+        
+        alert(`Registered successfully!\n${nameInput} (${classInput}) Code is: ${uniqueCode}`);
         document.getElementById('newStudentName').value = "";
+        document.getElementById('newStudentClass').value = "";
         loadStudentsDirectory();
     } catch (e) {
         alert("Registration failed: " + e.message);
@@ -134,9 +176,11 @@ async function loadStudentsDirectory() {
         const tbody = document.querySelector("#studentsTable tbody");
         tbody.innerHTML = "";
         querySnapshot.forEach((doc) => {
+            const data = doc.data();
             tbody.innerHTML += `<tr>
                 <td><strong>${doc.id}</strong></td>
-                <td>${doc.data().studentName}</td>
+                <td>${data.studentName}</td>
+                <td>${data.studentClass || 'N/A'}</td>
             </tr>`;
         });
     } catch (e) {
@@ -144,29 +188,30 @@ async function loadStudentsDirectory() {
     }
 }
 
-// 2. Add single test performance logs linked to registry items
 async function addStudentScore() {
     const code = document.getElementById('scoreStudentCode').value.toUpperCase().trim();
     const examName = document.getElementById('examName').value.trim();
-    // Use forced user memory field value properties if teacher role criteria is active
     const subject = userRole === "admin" ? document.getElementById('subject').value.trim() : teacherSubject;
     const score = parseInt(document.getElementById('score').value);
 
     if (!code || !examName || !subject || isNaN(score)) {
-        alert("Please fill out all fields!");
+        alert("Please fill out all score entry fields!");
         return;
     }
 
     try {
         const studentDoc = await getDoc(doc(db, "students", code));
         if (!studentDoc.exists()) {
-            alert(`Error: Student Code "${code}" does not exist in the database directory registry!`);
+            alert(`Error: Student Code "${code}" does not exist in the database!`);
             return;
         }
 
+        const studentData = studentDoc.data();
+
         await addDoc(collection(db, "exam_scores"), {
             studentCode: code,
-            studentName: studentDoc.data().studentName, 
+            studentName: studentData.studentName, 
+            studentClass: studentData.studentClass || 'N/A', // Denormalize class data parameters 
             examName,
             subject,
             score,
@@ -193,20 +238,14 @@ async function deleteStudentScore(docId) {
     }
 }
 
-// Load logs to interface layout view filtering based on role structure variables
 async function loadAdminTable() {
     const user = auth.currentUser;
     if (!user) return;
 
     try {
-        let q;
-        if (userRole === "admin") {
-            // Admins can pull everything unconditionally
-            q = query(collection(db, "exam_scores"));
-        } else {
-            // Teachers can only view matching subject records
-            q = query(collection(db, "exam_scores"), where("subject", "==", teacherSubject));
-        }
+        let q = (userRole === "admin") 
+            ? query(collection(db, "exam_scores")) 
+            : query(collection(db, "exam_scores"), where("subject", "==", teacherSubject));
 
         const querySnapshot = await getDocs(q);
         const tbody = document.querySelector("#adminTable tbody");
@@ -218,6 +257,7 @@ async function loadAdminTable() {
                 <td>${data.examName}</td>
                 <td>${data.subject || 'N/A'}</td>
                 <td>${data.studentName}</td>
+                <td>${data.studentClass || 'N/A'}</td>
                 <td><strong>${data.studentCode}</strong></td>
                 <td>${data.score}</td>
                 <td><button class="delete-btn" onclick="deleteStudentScore('${doc.id}')">Delete</button></td>
@@ -245,11 +285,9 @@ async function processExcel() {
                 const code = String(row["Student Code"] || row["Code"] || "").toUpperCase().trim();
                 const examName = row["Exam Name"] || row["Exam"];
                 const fileSubject = row["Subject"];
-                // Enforce teacher subject lock during processing
                 const subject = userRole === "admin" ? fileSubject : teacherSubject;
                 const score = parseInt(row["Score"] || row["score"]);
 
-                // Skip entries if a teacher uploads rows matching another subject
                 if (userRole !== "admin" && String(fileSubject).toLowerCase() !== teacherSubject.toLowerCase()) {
                     continue; 
                 }
@@ -257,9 +295,11 @@ async function processExcel() {
                 if (code && examName && subject && !isNaN(score)) {
                     const studentDoc = await getDoc(doc(db, "students", code));
                     if (studentDoc.exists()) {
+                        const sData = studentDoc.data();
                         await addDoc(collection(db, "exam_scores"), {
                             studentCode: code,
-                            studentName: studentDoc.data().studentName,
+                            studentName: sData.studentName,
+                            studentClass: sData.studentClass || 'N/A',
                             examName: String(examName),
                             subject: String(subject),
                             score: score,
@@ -269,7 +309,7 @@ async function processExcel() {
                     }
                 }
             }
-            alert(`Successfully imported ${successCount} exam logs lines.`);
+            alert(`Successfully imported ${successCount} exam logs.`);
             fileInput.value = "";
             loadAdminTable();
         } catch (err) {
@@ -281,6 +321,7 @@ async function processExcel() {
 
 document.getElementById('loginBtn').addEventListener('click', loginAdmin);
 document.getElementById('logoutBtn').addEventListener('click', logoutAdmin);
+document.getElementById('createTeacherBtn').addEventListener('click', createTeacherAccount);
 document.getElementById('registerStudentBtn').addEventListener('click', registerStudent);
 document.getElementById('saveScoreBtn').addEventListener('click', addStudentScore);
 document.getElementById('uploadExcelBtn').addEventListener('click', processExcel);

@@ -37,6 +37,8 @@ async function searchScore() {
             });
 
             document.getElementById('studentNameDisplay').innerText = loadedScores[0].studentName;
+            document.getElementById('studentClassDisplay').innerText = loadedScores[0].studentClass || 'Unassigned Class';
+            
             buildSubjectDropdown();
             renderScoresTable("all");
             resultCard.classList.remove('hidden');
