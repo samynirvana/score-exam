@@ -10,14 +10,15 @@
         input, button { display: block; width: 100%; margin: 10px 0; padding: 10px; box-sizing: border-box; }
         button { background: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; }
         .logout-btn { background: #dc3545; width: auto; float: right; padding: 5px 15px; }
-        .regen-btn { background: #ffc107; color: black; width: auto; display: inline-block; padding: 5px 10px; }
-        /* Added styling for the new Delete button */
-        .delete-btn { background: #dc3545; color: white; width: auto; display: inline-block; padding: 5px 10px; margin-left: 5px; }
+        .inline-btn { background: #007bff; width: auto; display: inline-block; padding: 10px; margin: 0 0 10px 0; font-size: 13px; }
+        .delete-btn { background: #dc3545; color: white; width: auto; display: inline-block; padding: 5px 10px; }
         table { width: 100%; background: white; border-collapse: collapse; margin-top: 20px; }
         th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
         th { background-color: #007bff; color: white; }
         .hidden { display: none; }
         .header-container { max-width: 1000px; margin: 0 auto; overflow: hidden; }
+        .code-row { display: flex; gap: 10px; align-items: center; }
+        .code-row input { flex: 1; }
     </style>
 </head>
 <body>
@@ -40,13 +41,19 @@
             <input type="text" id="examName" placeholder="Exam Name (e.g. Midterm 2026)">
             <input type="text" id="subject" placeholder="Subject (e.g. Mathematics)">
             <input type="text" id="studentName" placeholder="Student Name">
+            
+            <div class="code-row">
+                <input type="text" id="studentCode" placeholder="Student Code (5-chars)" maxlength="5" style="text-transform: uppercase;">
+                <button id="genCodeBtn" class="inline-btn" type="button">Generate New Code</button>
+            </div>
+
             <input type="number" id="score" placeholder="Score">
-            <button id="saveBtn">Save Student & Generate Code</button>
+            <button id="saveBtn">Save Student Score</button>
         </div>
 
         <div class="box">
             <h3>Bulk Upload Students (Excel)</h3>
-            <p style="font-size: 12px; color: #555; margin-top: 0;">Required columns: <strong>Exam Name</strong>, <strong>Subject</strong>, <strong>Student Name</strong>, <strong>Score</strong></p>
+            <p style="font-size: 12px; color: #555; margin-top: 0;">Required columns: <strong>Exam Name</strong>, <strong>Subject</strong>, <strong>Student Name</strong>, <strong>Student Code</strong>, <strong>Score</strong></p>
             <input type="file" id="excelFile" accept=".xlsx, .xls, .csv">
             <button id="uploadExcelBtn" style="background: #17a2b8;">Upload & Process Excel</button>
         </div>
@@ -59,8 +66,8 @@
                         <th>Exam</th>
                         <th>Subject</th>
                         <th>Student Name</th>
+                        <th>Student Code</th>
                         <th>Score</th>
-                        <th>Unique Code</th>
                         <th>Action</th>
                     </tr>
                 </thead>

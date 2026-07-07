@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, doc, collection, getDocs, deleteDoc, query, where, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -16,7 +16,6 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-// Monitor Authentication State
 onAuthStateChanged(auth, (user) => {
     const loginScreen = document.getElementById('loginScreen');
     const adminDashboard = document.getElementById('adminDashboard');
@@ -32,7 +31,6 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
-// Login Function
 async function loginAdmin() {
     const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
@@ -43,58 +41,52 @@ async function loginAdmin() {
     }
 }
 
-// Logout Function
 async function logoutAdmin() {
     await signOut(auth);
 }
 
-// Helper: Generate Unique 5-char code
-async function generateUniqueCode() {
+// Generates a random 5-character string
+function generateRandomCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let code;
-    let isUnique = false;
-    
-    while (!isUnique) {
-        code = '';
-        for (let i = 0; i < 5; i++) {
-            code += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        const docRef = doc(db, "exam_scores", code);
-        const docSnap = await getDoc(docRef);
-        if (!docSnap.exists()) isUnique = true; 
+    let code = '';
+    for (let i = 0; i < 5; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return code;
 }
 
-// Input Data & Save
+// Click listener to fill the input box with a brand new code
+document.getElementById('genCodeBtn').addEventListener('click', () => {
+    document.getElementById('studentCode').value = generateRandomCode();
+});
+
 async function addStudentScore() {
     const examName = document.getElementById('examName').value;
     const subject = document.getElementById('subject').value;
     const studentName = document.getElementById('studentName').value;
+    const studentCode = document.getElementById('studentCode').value.toUpperCase().trim();
     const score = parseInt(document.getElementById('score').value);
     const saveBtn = document.getElementById('saveBtn');
 
-    if (!examName || !subject || !studentName || isNaN(score)) {
-        alert("Please fill out Exam Name, Subject, Student Name, and Score!");
+    if (!examName || !subject || !studentName || !studentCode || isNaN(score)) {
+        alert("Please fill out all fields including the Student Code!");
         return;
     }
 
     saveBtn.disabled = true;
 
     try {
-        const uniqueCode = await generateUniqueCode();
-
-        // Save cleanly to Firestore with teacherUid
-        await setDoc(doc(db, "exam_scores", uniqueCode), {
+        // Save to collection with an auto-generated row ID
+        await addDoc(collection(db, "exam_scores"), {
             examName,
             subject,
             studentName,
+            studentCode,
             score,
             teacherUid: auth.currentUser.uid
         });
 
-        alert(`Successfully saved!\nStudent: ${studentName}\nCode: ${uniqueCode}`);
-        
+        alert(`Successfully saved score for ${studentName}!`);
         document.getElementById('studentName').value = "";
         document.getElementById('score').value = "";
         loadAdminTable();
@@ -105,40 +97,18 @@ async function addStudentScore() {
     }
 }
 
-// Regenerate Code logic
-async function regenerateCode(oldCode) {
-    const docRef = doc(db, "exam_scores", oldCode);
-    const docSnap = await getDoc(docRef);
-
-    if (docSnap.exists()) {
-        const currentData = docSnap.data();
-        const newCode = await generateUniqueCode();
-
+async function deleteStudentScore(docId) {
+    if (confirm("Are you sure you want to permanently delete this score record?")) {
         try {
-            await setDoc(doc(db, "exam_scores", newCode), currentData);
-            await deleteDoc(docRef);
-            alert(`Code updated from ${oldCode} to ${newCode}`);
+            await deleteDoc(doc(db, "exam_scores", docId));
+            alert("Record successfully deleted.");
             loadAdminTable();
-        } catch (e) {
-            alert("Error updating code: " + e.message);
-        }
-    }
-}
-
-// New Delete Score Function
-async function deleteStudentScore(code) {
-    if (confirm(`Are you sure you want to permanently delete the score record for code: ${code}?`)) {
-        try {
-            await deleteDoc(doc(db, "exam_scores", code));
-            alert(`Record ${code} successfully deleted.`);
-            loadAdminTable(); // Refresh UI layout
         } catch (e) {
             alert("Error deleting record: " + e.message);
         }
     }
 }
 
-// Load scores to Admin View (Filtered by Logged-in Teacher)
 async function loadAdminTable() {
     const user = auth.currentUser;
     if (!user) return;
@@ -152,15 +122,13 @@ async function loadAdminTable() {
 
         querySnapshot.forEach((doc) => {
             const data = doc.data();
-            // Appended the Delete button alongside Regenerate inside the action column
             const row = `<tr>
                 <td>${data.examName}</td>
                 <td>${data.subject || 'N/A'}</td>
                 <td>${data.studentName}</td>
+                <td><strong>${data.studentCode || 'N/A'}</strong></td>
                 <td>${data.score}</td>
-                <td><strong>${doc.id}</strong></td>
                 <td>
-                    <button class="regen-btn" onclick="regenerateCode('${doc.id}')">Regenerate</button>
                     <button class="delete-btn" onclick="deleteStudentScore('${doc.id}')">Delete</button>
                 </td>
             </tr>`;
@@ -192,11 +160,10 @@ async function processExcel() {
             const workbook = XLSX.read(data, { type: 'array' });
             const firstSheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[firstSheetName];
-            
             const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
             if (jsonData.length === 0) {
-                alert("The uploaded file is empty or formatted incorrectly.");
+                alert("The uploaded file is empty.");
                 uploadBtn.disabled = false;
                 uploadBtn.innerText = "Upload & Process Excel";
                 return;
@@ -208,28 +175,25 @@ async function processExcel() {
                 const examName = row["Exam Name"] || row["Exam"] || row["examName"];
                 const subject = row["Subject"] || row["subject"] || row["Subject Name"];
                 const studentName = row["Student Name"] || row["Student"] || row["studentName"];
+                const studentCode = row["Student Code"] || row["Code"] || row["studentCode"];
                 const score = parseInt(row["Score"] || row["score"]);
 
-                if (examName && subject && studentName && !isNaN(score)) {
-                    const uniqueCode = await generateUniqueCode();
-                    
-                    await setDoc(doc(db, "exam_scores", uniqueCode), {
+                if (examName && subject && studentName && studentCode && !isNaN(score)) {
+                    await addDoc(collection(db, "exam_scores"), {
                         examName: String(examName),
                         subject: String(subject),
                         studentName: String(studentName),
+                        studentCode: String(studentCode).toUpperCase().trim(),
                         score: score,
                         teacherUid: auth.currentUser.uid
                     });
                     successCount++;
-                } else {
-                    console.warn("Skipping invalid row, missing data:", row);
                 }
             }
 
             alert(`Successfully imported ${successCount} student records!`);
             fileInput.value = ""; 
             loadAdminTable();     
-            
         } catch (error) {
             alert("Error processing file: " + error.message);
         } finally {
@@ -237,16 +201,12 @@ async function processExcel() {
             uploadBtn.innerText = "Upload & Process Excel";
         }
     };
-
     reader.readAsArrayBuffer(file);
 }
 
-// Event Listeners
 document.getElementById('loginBtn').addEventListener('click', loginAdmin);
 document.getElementById('logoutBtn').addEventListener('click', logoutAdmin);
 document.getElementById('saveBtn').addEventListener('click', addStudentScore);
 document.getElementById('uploadExcelBtn').addEventListener('click', processExcel);
 
-// Make functions globally accessible to the dynamic table buttons
-window.regenerateCode = regenerateCode;
 window.deleteStudentScore = deleteStudentScore;
