@@ -16,15 +16,52 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-onAuthStateChanged(auth, (user) => {
+// Role Memory Cache Storage
+let userRole = null;
+let teacherSubject = null;
+
+onAuthStateChanged(auth, async (user) => {
     const loginScreen = document.getElementById('loginScreen');
     const adminDashboard = document.getElementById('adminDashboard');
+    const adminOnlySection = document.getElementById('adminOnlySection');
+    const subjectInput = document.getElementById('subject');
+    const tableTitle = document.getElementById('tableTitle');
 
     if (user) {
-        loginScreen.classList.add('hidden');
-        adminDashboard.classList.remove('hidden');
-        loadStudentsDirectory();
-        loadAdminTable();
+        try {
+            // Fetch system authorization clearance profile assignment
+            const userDoc = await getDoc(doc(db, "users", user.uid));
+            if (userDoc.exists()) {
+                const userData = userDoc.data();
+                userRole = userData.role; // "admin" or "teacher"
+                teacherSubject = userData.subject || ""; 
+            } else {
+                // Default fallback protocol safety
+                userRole = "teacher";
+                teacherSubject = "Unknown";
+            }
+
+            loginScreen.classList.add('hidden');
+            adminDashboard.classList.remove('hidden');
+
+            if (userRole === "admin") {
+                adminOnlySection.classList.remove('hidden');
+                subjectInput.disabled = false;
+                subjectInput.placeholder = "Subject (e.g., English)";
+                tableTitle.innerText = "Master Registry - All Exam Scores";
+                loadStudentsDirectory();
+            } else {
+                // Restricted Teacher Setup Profile
+                adminOnlySection.classList.add('hidden');
+                subjectInput.value = teacherSubject;
+                subjectInput.disabled = true; // Lock field input modifications
+                tableTitle.innerText = `Exam Scores tracking for: ${teacherSubject}`;
+            }
+
+            loadAdminTable();
+        } catch (err) {
+            alert("Error parsing identity authorization profile permissions: " + err.message);
+        }
     } else {
         loginScreen.classList.remove('hidden');
         adminDashboard.classList.add('hidden');
@@ -45,12 +82,10 @@ async function logoutAdmin() {
     await signOut(auth);
 }
 
-// Generate unique 5-char code for global master registry
 async function generateUniqueStudentCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code;
     let isUnique = false;
-    
     while (!isUnique) {
         code = '';
         for (let i = 0; i < 5; i++) {
@@ -63,7 +98,7 @@ async function generateUniqueStudentCode() {
     return code;
 }
 
-// 1. Create permanent student identity registration
+// 1. Create permanent student identity registration WITH DUPLICATE PROTECTION
 async function registerStudent() {
     const nameInput = document.getElementById('newStudentName').value.trim();
     if (!nameInput) {
@@ -72,6 +107,15 @@ async function registerStudent() {
     }
 
     try {
+        // Query to check if this exact student name is already registered
+        const dupQuery = query(collection(db, "students"), where("studentName", "==", nameInput));
+        const dupSnap = await getDocs(dupQuery);
+
+        if (!dupSnap.empty) {
+            alert(`Registration Stopped!\nA student named "${nameInput}" already exists with Code: ${dupSnap.docs[0].id}`);
+            return;
+        }
+
         const uniqueCode = await generateUniqueStudentCode();
         await setDoc(doc(db, "students", uniqueCode), {
             studentName: nameInput
@@ -84,7 +128,6 @@ async function registerStudent() {
     }
 }
 
-// Load global directory registry list
 async function loadStudentsDirectory() {
     try {
         const querySnapshot = await getDocs(collection(db, "students"));
@@ -105,27 +148,25 @@ async function loadStudentsDirectory() {
 async function addStudentScore() {
     const code = document.getElementById('scoreStudentCode').value.toUpperCase().trim();
     const examName = document.getElementById('examName').value.trim();
-    const subject = document.getElementById('subject').value.trim();
+    // Use forced user memory field value properties if teacher role criteria is active
+    const subject = userRole === "admin" ? document.getElementById('subject').value.trim() : teacherSubject;
     const score = parseInt(document.getElementById('score').value);
 
     if (!code || !examName || !subject || isNaN(score)) {
-        alert("Please fill out all grade tracking inputs!");
+        alert("Please fill out all fields!");
         return;
     }
 
     try {
-        // Validate student directory profile matching presence verification lookup
         const studentDoc = await getDoc(doc(db, "students", code));
         if (!studentDoc.exists()) {
-            alert(`Error: Student Code "${code}" does not exist in the database profile registry directory! Please register them first.`);
+            alert(`Error: Student Code "${code}" does not exist in the database directory registry!`);
             return;
         }
 
-        const studentName = studentDoc.data().studentName;
-
         await addDoc(collection(db, "exam_scores"), {
             studentCode: code,
-            studentName: studentName, // Denormalized entry property component optimization
+            studentName: studentDoc.data().studentName, 
             examName,
             subject,
             score,
@@ -134,6 +175,7 @@ async function addStudentScore() {
 
         alert("Score added successfully!");
         document.getElementById('score').value = "";
+        document.getElementById('scoreStudentCode').value = "";
         loadAdminTable();
     } catch (e) {
         alert("Error saving score entry: " + e.message);
@@ -141,7 +183,7 @@ async function addStudentScore() {
 }
 
 async function deleteStudentScore(docId) {
-    if (confirm("Permanently delete this exam score logging instance item entry row?")) {
+    if (confirm("Permanently delete this exam score instance?")) {
         try {
             await deleteDoc(doc(db, "exam_scores", docId));
             loadAdminTable();
@@ -151,20 +193,27 @@ async function deleteStudentScore(docId) {
     }
 }
 
-// Load logs to interface layout view safely matching header array rows order index
+// Load logs to interface layout view filtering based on role structure variables
 async function loadAdminTable() {
     const user = auth.currentUser;
     if (!user) return;
 
     try {
-        const q = query(collection(db, "exam_scores"), where("teacherUid", "==", user.uid));
+        let q;
+        if (userRole === "admin") {
+            // Admins can pull everything unconditionally
+            q = query(collection(db, "exam_scores"));
+        } else {
+            // Teachers can only view matching subject records
+            q = query(collection(db, "exam_scores"), where("subject", "==", teacherSubject));
+        }
+
         const querySnapshot = await getDocs(q);
         const tbody = document.querySelector("#adminTable tbody");
         tbody.innerHTML = "";
 
         querySnapshot.forEach((doc) => {
             const data = doc.data();
-            // Perfectly aligned data cells strings rows layout block output
             tbody.innerHTML += `<tr>
                 <td>${data.examName}</td>
                 <td>${data.subject || 'N/A'}</td>
@@ -195,8 +244,15 @@ async function processExcel() {
             for (const row of jsonData) {
                 const code = String(row["Student Code"] || row["Code"] || "").toUpperCase().trim();
                 const examName = row["Exam Name"] || row["Exam"];
-                const subject = row["Subject"];
+                const fileSubject = row["Subject"];
+                // Enforce teacher subject lock during processing
+                const subject = userRole === "admin" ? fileSubject : teacherSubject;
                 const score = parseInt(row["Score"] || row["score"]);
+
+                // Skip entries if a teacher uploads rows matching another subject
+                if (userRole !== "admin" && String(fileSubject).toLowerCase() !== teacherSubject.toLowerCase()) {
+                    continue; 
+                }
 
                 if (code && examName && subject && !isNaN(score)) {
                     const studentDoc = await getDoc(doc(db, "students", code));

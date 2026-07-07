@@ -14,7 +14,7 @@
         table { width: 100%; background: white; border-collapse: collapse; margin-top: 20px; margin-bottom: 40px; }
         th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
         th { background-color: #007bff; color: white; }
-        .hidden { display: none; }
+        .hidden { display: none !important; }
         .header-container { max-width: 1000px; margin: 0 auto; overflow: hidden; }
         .two-col { display: flex; gap: 20px; max-width: 1200px; margin: 0 auto; }
         .col { flex: 1; }
@@ -32,11 +32,11 @@
     <div id="adminDashboard" class="hidden">
         <div class="header-container">
             <button id="logoutBtn" class="logout-btn">Logout</button>
-            <h2>Teacher Dashboard - System Management</h2>
+            <h2>Dashboard - Score Management System</h2>
         </div>
         
         <div class="two-col">
-            <div class="col">
+            <div class="col hidden" id="adminOnlySection">
                 <div class="box">
                     <h3>1. Register New Student Profile</h3>
                     <p style="font-size: 13px; color: #666;">Creates a permanent unique code for a student.</p>
@@ -79,7 +79,7 @@
         </div>
 
         <div class="header-container">
-            <h3>Your Uploaded Exam Scores</h3>
+            <h3 id="tableTitle">Your Uploaded Exam Scores</h3>
             <table id="adminTable">
                 <thead>
                     <tr>
