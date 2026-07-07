@@ -125,13 +125,25 @@ async function regenerateCode(oldCode) {
     }
 }
 
+// New Delete Score Function
+async function deleteStudentScore(code) {
+    if (confirm(`Are you sure you want to permanently delete the score record for code: ${code}?`)) {
+        try {
+            await deleteDoc(doc(db, "exam_scores", code));
+            alert(`Record ${code} successfully deleted.`);
+            loadAdminTable(); // Refresh UI layout
+        } catch (e) {
+            alert("Error deleting record: " + e.message);
+        }
+    }
+}
+
 // Load scores to Admin View (Filtered by Logged-in Teacher)
 async function loadAdminTable() {
     const user = auth.currentUser;
     if (!user) return;
 
     try {
-        // Query only data belongs to this specific teacher
         const q = query(collection(db, "exam_scores"), where("teacherUid", "==", user.uid));
         const querySnapshot = await getDocs(q);
         
@@ -140,13 +152,17 @@ async function loadAdminTable() {
 
         querySnapshot.forEach((doc) => {
             const data = doc.data();
+            // Appended the Delete button alongside Regenerate inside the action column
             const row = `<tr>
                 <td>${data.examName}</td>
                 <td>${data.subject || 'N/A'}</td>
                 <td>${data.studentName}</td>
                 <td>${data.score}</td>
                 <td><strong>${doc.id}</strong></td>
-                <td><button class="regen-btn" onclick="regenerateCode('${doc.id}')">Regenerate</button></td>
+                <td>
+                    <button class="regen-btn" onclick="regenerateCode('${doc.id}')">Regenerate</button>
+                    <button class="delete-btn" onclick="deleteStudentScore('${doc.id}')">Delete</button>
+                </td>
             </tr>`;
             tbody.innerHTML += row;
         });
@@ -231,4 +247,6 @@ document.getElementById('logoutBtn').addEventListener('click', logoutAdmin);
 document.getElementById('saveBtn').addEventListener('click', addStudentScore);
 document.getElementById('uploadExcelBtn').addEventListener('click', processExcel);
 
+// Make functions globally accessible to the dynamic table buttons
 window.regenerateCode = regenerateCode;
+window.deleteStudentScore = deleteStudentScore;
