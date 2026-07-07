@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, doc, collection, getDocs, deleteDoc, query, where, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, doc, collection, getDocs, getDoc, deleteDoc, query, where, addDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -23,11 +23,11 @@ onAuthStateChanged(auth, (user) => {
     if (user) {
         loginScreen.classList.add('hidden');
         adminDashboard.classList.remove('hidden');
+        loadStudentsDirectory();
         loadAdminTable();
     } else {
         loginScreen.classList.remove('hidden');
         adminDashboard.classList.add('hidden');
-        document.querySelector("#adminTable tbody").innerHTML = "";
     }
 });
 
@@ -45,70 +45,113 @@ async function logoutAdmin() {
     await signOut(auth);
 }
 
-// Generates a random 5-character string
-function generateRandomCode() {
+// Generate unique 5-char code for global master registry
+async function generateUniqueStudentCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let code = '';
-    for (let i = 0; i < 5; i++) {
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    let code;
+    let isUnique = false;
+    
+    while (!isUnique) {
+        code = '';
+        for (let i = 0; i < 5; i++) {
+            code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        const docRef = doc(db, "students", code);
+        const docSnap = await getDoc(docRef);
+        if (!docSnap.exists()) isUnique = true; 
     }
     return code;
 }
 
-// Click listener to fill the input box with a brand new code
-document.getElementById('genCodeBtn').addEventListener('click', () => {
-    document.getElementById('studentCode').value = generateRandomCode();
-});
-
-async function addStudentScore() {
-    const examName = document.getElementById('examName').value;
-    const subject = document.getElementById('subject').value;
-    const studentName = document.getElementById('studentName').value;
-    const studentCode = document.getElementById('studentCode').value.toUpperCase().trim();
-    const score = parseInt(document.getElementById('score').value);
-    const saveBtn = document.getElementById('saveBtn');
-
-    if (!examName || !subject || !studentName || !studentCode || isNaN(score)) {
-        alert("Please fill out all fields including the Student Code!");
+// 1. Create permanent student identity registration
+async function registerStudent() {
+    const nameInput = document.getElementById('newStudentName').value.trim();
+    if (!nameInput) {
+        alert("Please provide a student name.");
         return;
     }
 
-    saveBtn.disabled = true;
+    try {
+        const uniqueCode = await generateUniqueStudentCode();
+        await setDoc(doc(db, "students", uniqueCode), {
+            studentName: nameInput
+        });
+        alert(`Registered successfully!\n${nameInput} Code is: ${uniqueCode}`);
+        document.getElementById('newStudentName').value = "";
+        loadStudentsDirectory();
+    } catch (e) {
+        alert("Registration failed: " + e.message);
+    }
+}
+
+// Load global directory registry list
+async function loadStudentsDirectory() {
+    try {
+        const querySnapshot = await getDocs(collection(db, "students"));
+        const tbody = document.querySelector("#studentsTable tbody");
+        tbody.innerHTML = "";
+        querySnapshot.forEach((doc) => {
+            tbody.innerHTML += `<tr>
+                <td><strong>${doc.id}</strong></td>
+                <td>${doc.data().studentName}</td>
+            </tr>`;
+        });
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+// 2. Add single test performance logs linked to registry items
+async function addStudentScore() {
+    const code = document.getElementById('scoreStudentCode').value.toUpperCase().trim();
+    const examName = document.getElementById('examName').value.trim();
+    const subject = document.getElementById('subject').value.trim();
+    const score = parseInt(document.getElementById('score').value);
+
+    if (!code || !examName || !subject || isNaN(score)) {
+        alert("Please fill out all grade tracking inputs!");
+        return;
+    }
 
     try {
-        // Save to collection with an auto-generated row ID
+        // Validate student directory profile matching presence verification lookup
+        const studentDoc = await getDoc(doc(db, "students", code));
+        if (!studentDoc.exists()) {
+            alert(`Error: Student Code "${code}" does not exist in the database profile registry directory! Please register them first.`);
+            return;
+        }
+
+        const studentName = studentDoc.data().studentName;
+
         await addDoc(collection(db, "exam_scores"), {
+            studentCode: code,
+            studentName: studentName, // Denormalized entry property component optimization
             examName,
             subject,
-            studentName,
-            studentCode,
             score,
             teacherUid: auth.currentUser.uid
         });
 
-        alert(`Successfully saved score for ${studentName}!`);
-        document.getElementById('studentName').value = "";
+        alert("Score added successfully!");
         document.getElementById('score').value = "";
         loadAdminTable();
     } catch (e) {
-        alert("Error saving: " + e.message);
-    } finally {
-        saveBtn.disabled = false;
+        alert("Error saving score entry: " + e.message);
     }
 }
 
 async function deleteStudentScore(docId) {
-    if (confirm("Are you sure you want to permanently delete this score record?")) {
+    if (confirm("Permanently delete this exam score logging instance item entry row?")) {
         try {
             await deleteDoc(doc(db, "exam_scores", docId));
-            alert("Record successfully deleted.");
             loadAdminTable();
         } catch (e) {
-            alert("Error deleting record: " + e.message);
+            alert("Error: " + e.message);
         }
     }
 }
 
+// Load logs to interface layout view safely matching header array rows order index
 async function loadAdminTable() {
     const user = auth.currentUser;
     if (!user) return;
@@ -116,89 +159,65 @@ async function loadAdminTable() {
     try {
         const q = query(collection(db, "exam_scores"), where("teacherUid", "==", user.uid));
         const querySnapshot = await getDocs(q);
-        
         const tbody = document.querySelector("#adminTable tbody");
         tbody.innerHTML = "";
 
         querySnapshot.forEach((doc) => {
             const data = doc.data();
-            const row = `<tr>
+            // Perfectly aligned data cells strings rows layout block output
+            tbody.innerHTML += `<tr>
                 <td>${data.examName}</td>
                 <td>${data.subject || 'N/A'}</td>
                 <td>${data.studentName}</td>
-                <td><strong>${data.studentCode || 'N/A'}</strong></td>
+                <td><strong>${data.studentCode}</strong></td>
                 <td>${data.score}</td>
-                <td>
-                    <button class="delete-btn" onclick="deleteStudentScore('${doc.id}')">Delete</button>
-                </td>
+                <td><button class="delete-btn" onclick="deleteStudentScore('${doc.id}')">Delete</button></td>
             </tr>`;
-            tbody.innerHTML += row;
         });
     } catch (e) {
-        console.error("Error loading table: ", e);
+        console.error(e);
     }
 }
 
 async function processExcel() {
     const fileInput = document.getElementById('excelFile');
     const file = fileInput.files[0];
-
-    if (!file) {
-        alert("Please select an Excel file first!");
-        return;
-    }
-
-    const uploadBtn = document.getElementById('uploadExcelBtn');
-    uploadBtn.disabled = true;
-    uploadBtn.innerText = "Processing...";
+    if (!file) return alert("Select an Excel file.");
 
     const reader = new FileReader();
-
     reader.onload = async (e) => {
         try {
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
-            const jsonData = XLSX.utils.sheet_to_json(worksheet);
-
-            if (jsonData.length === 0) {
-                alert("The uploaded file is empty.");
-                uploadBtn.disabled = false;
-                uploadBtn.innerText = "Upload & Process Excel";
-                return;
-            }
+            const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
 
             let successCount = 0;
-
             for (const row of jsonData) {
-                const examName = row["Exam Name"] || row["Exam"] || row["examName"];
-                const subject = row["Subject"] || row["subject"] || row["Subject Name"];
-                const studentName = row["Student Name"] || row["Student"] || row["studentName"];
-                const studentCode = row["Student Code"] || row["Code"] || row["studentCode"];
+                const code = String(row["Student Code"] || row["Code"] || "").toUpperCase().trim();
+                const examName = row["Exam Name"] || row["Exam"];
+                const subject = row["Subject"];
                 const score = parseInt(row["Score"] || row["score"]);
 
-                if (examName && subject && studentName && studentCode && !isNaN(score)) {
-                    await addDoc(collection(db, "exam_scores"), {
-                        examName: String(examName),
-                        subject: String(subject),
-                        studentName: String(studentName),
-                        studentCode: String(studentCode).toUpperCase().trim(),
-                        score: score,
-                        teacherUid: auth.currentUser.uid
-                    });
-                    successCount++;
+                if (code && examName && subject && !isNaN(score)) {
+                    const studentDoc = await getDoc(doc(db, "students", code));
+                    if (studentDoc.exists()) {
+                        await addDoc(collection(db, "exam_scores"), {
+                            studentCode: code,
+                            studentName: studentDoc.data().studentName,
+                            examName: String(examName),
+                            subject: String(subject),
+                            score: score,
+                            teacherUid: auth.currentUser.uid
+                        });
+                        successCount++;
+                    }
                 }
             }
-
-            alert(`Successfully imported ${successCount} student records!`);
-            fileInput.value = ""; 
-            loadAdminTable();     
-        } catch (error) {
-            alert("Error processing file: " + error.message);
-        } finally {
-            uploadBtn.disabled = false;
-            uploadBtn.innerText = "Upload & Process Excel";
+            alert(`Successfully imported ${successCount} exam logs lines.`);
+            fileInput.value = "";
+            loadAdminTable();
+        } catch (err) {
+            alert("Excel Error: " + err.message);
         }
     };
     reader.readAsArrayBuffer(file);
@@ -206,7 +225,8 @@ async function processExcel() {
 
 document.getElementById('loginBtn').addEventListener('click', loginAdmin);
 document.getElementById('logoutBtn').addEventListener('click', logoutAdmin);
-document.getElementById('saveBtn').addEventListener('click', addStudentScore);
+document.getElementById('registerStudentBtn').addEventListener('click', registerStudent);
+document.getElementById('saveScoreBtn').addEventListener('click', addStudentScore);
 document.getElementById('uploadExcelBtn').addEventListener('click', processExcel);
 
 window.deleteStudentScore = deleteStudentScore;

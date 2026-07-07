@@ -14,7 +14,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Global array memory storage cache to prevent duplicate Firestore network calls on filter change
 let loadedScores = [];
 
 async function searchScore() {
@@ -29,7 +28,6 @@ async function searchScore() {
     if (!codeInput) return;
 
     try {
-        // Query database looking for entries matching this code value
         const q = query(collection(db, "exam_scores"), where("studentCode", "==", codeInput));
         const querySnapshot = await getDocs(q);
 
@@ -38,15 +36,9 @@ async function searchScore() {
                 loadedScores.push(doc.data());
             });
 
-            // Set student display text name safely from the first record found
             document.getElementById('studentNameDisplay').innerText = loadedScores[0].studentName;
-
-            // Render dropdown menu subjects items list dynamically
             buildSubjectDropdown();
-
-            // Populate table views
             renderScoresTable("all");
-
             resultCard.classList.remove('hidden');
         } else {
             errorMessage.classList.remove('hidden');
@@ -61,9 +53,7 @@ function buildSubjectDropdown() {
     const dropdown = document.getElementById('subjectFilter');
     dropdown.innerHTML = '<option value="all">-- All Subjects --</option>';
 
-    // Find and isolate unique names of available subjects
     const uniqueSubjects = [...new Set(loadedScores.map(item => item.subject))];
-
     uniqueSubjects.forEach(subject => {
         if (subject) {
             const option = document.createElement('option');
@@ -78,22 +68,19 @@ function renderScoresTable(selectedSubject) {
     const tbody = document.querySelector("#scoresTable tbody");
     tbody.innerHTML = "";
 
-    // Filter array memory lists based on selected subject dropdown option
     const filteredScores = selectedSubject === "all" 
         ? loadedScores 
         : loadedScores.filter(item => item.subject === selectedSubject);
 
     filteredScores.forEach(item => {
-        const row = `<tr>
+        tbody.innerHTML += `<tr>
             <td>${item.examName}</td>
             <td>${item.subject || 'N/A'}</td>
             <td><span class="score-badge">${item.score}</span></td>
         </tr>`;
-        tbody.innerHTML += row;
     });
 }
 
-// Watch dropdown changes to apply selection filters
 document.getElementById('subjectFilter').addEventListener('change', (e) => {
     renderScoresTable(e.target.value);
 });
