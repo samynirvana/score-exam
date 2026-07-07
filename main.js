@@ -14,8 +14,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let loadedScores = [];
-
 async function searchScore() {
     const codeInput = document.getElementById('studentCode').value.toUpperCase().trim();
     const resultCard = document.getElementById('resultCard');
@@ -23,7 +21,6 @@ async function searchScore() {
 
     resultCard.classList.add('hidden');
     errorMessage.classList.add('hidden');
-    loadedScores = []; 
 
     if (!codeInput) return;
 
@@ -32,59 +29,38 @@ async function searchScore() {
         const querySnapshot = await getDocs(q);
 
         if (!querySnapshot.empty) {
+            // Find container, clear previous rows out cleanly
+            let scoreContainer = document.getElementById('scoreContainer');
+            if(!scoreContainer) {
+                // If container doesn't exist yet, insert a clean template placeholder block element
+                const infoBox = document.querySelector('.result-info');
+                infoBox.innerHTML = `<h3 id="studentName"></h3><p id="studentClassInfo" style="color:#666; font-weight:bold; margin-top:-10px;"></p><div id="scoreContainer"></div>`;
+                scoreContainer = document.getElementById('scoreContainer');
+            }
+            
+            scoreContainer.innerHTML = "";
+            let dataSample = null;
+
             querySnapshot.forEach((doc) => {
-                loadedScores.push(doc.data());
+                const data = doc.data();
+                dataSample = data;
+                scoreContainer.innerHTML += `
+                    <div style="padding:10px 0; border-bottom:1px solid #eee; text-align:left;">
+                        <strong>${data.examName}</strong> (${data.subject || 'N/A'}): 
+                        <span style="float:right; font-weight:bold; color:#28a745;">${data.score}</span>
+                    </div>`;
             });
 
-            document.getElementById('studentNameDisplay').innerText = loadedScores[0].studentName;
-            document.getElementById('studentClassDisplay').innerText = loadedScores[0].studentClass || 'Unassigned Class';
-            
-            buildSubjectDropdown();
-            renderScoresTable("all");
+            document.getElementById('studentName').innerText = dataSample.studentName;
+            document.getElementById('studentClassInfo').innerText = `Classroom Assignment: ${dataSample.studentClass || 'N/A'}`;
             resultCard.classList.remove('hidden');
         } else {
             errorMessage.classList.remove('hidden');
         }
     } catch (error) {
-        console.error("Error fetching data: ", error);
-        alert("An error occurred. Please try again later.");
+        console.error("Data error: ", error);
+        alert("An error occurred during lookups processing.");
     }
 }
-
-function buildSubjectDropdown() {
-    const dropdown = document.getElementById('subjectFilter');
-    dropdown.innerHTML = '<option value="all">-- All Subjects --</option>';
-
-    const uniqueSubjects = [...new Set(loadedScores.map(item => item.subject))];
-    uniqueSubjects.forEach(subject => {
-        if (subject) {
-            const option = document.createElement('option');
-            option.value = subject;
-            option.innerText = subject;
-            dropdown.appendChild(option);
-        }
-    });
-}
-
-function renderScoresTable(selectedSubject) {
-    const tbody = document.querySelector("#scoresTable tbody");
-    tbody.innerHTML = "";
-
-    const filteredScores = selectedSubject === "all" 
-        ? loadedScores 
-        : loadedScores.filter(item => item.subject === selectedSubject);
-
-    filteredScores.forEach(item => {
-        tbody.innerHTML += `<tr>
-            <td>${item.examName}</td>
-            <td>${item.subject || 'N/A'}</td>
-            <td><span class="score-badge">${item.score}</span></td>
-        </tr>`;
-    });
-}
-
-document.getElementById('subjectFilter').addEventListener('change', (e) => {
-    renderScoresTable(e.target.value);
-});
 
 document.getElementById('searchBtn').addEventListener('click', searchScore);

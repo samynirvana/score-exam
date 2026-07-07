@@ -12,12 +12,11 @@ const firebaseConfig = {
     measurementId: "G-97WSSH0BNE",
 };
 
-// Initialize Primary App Configuration
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-// Initialize Secondary App Configuration to register new accounts without logging out admin
+// Secondary configuration mapping to handle background user creation
 const secondaryApp = initializeApp(firebaseConfig, "SecondaryAuthApp");
 const secondaryAuth = getAuth(secondaryApp);
 
@@ -30,6 +29,7 @@ onAuthStateChanged(auth, async (user) => {
     const adminOnlySection = document.getElementById('adminOnlySection');
     const subjectInput = document.getElementById('subject');
     const tableTitle = document.getElementById('tableTitle');
+    const welcomeTitle = document.getElementById('welcomeTitle');
 
     if (user) {
         try {
@@ -40,7 +40,7 @@ onAuthStateChanged(auth, async (user) => {
                 teacherSubject = userData.subject || ""; 
             } else {
                 userRole = "teacher";
-                teacherSubject = "Unknown";
+                teacherSubject = "Unassigned";
             }
 
             loginScreen.classList.add('hidden');
@@ -49,19 +49,22 @@ onAuthStateChanged(auth, async (user) => {
             if (userRole === "admin") {
                 adminOnlySection.classList.remove('hidden');
                 subjectInput.disabled = false;
-                subjectInput.placeholder = "Subject (e.g., English)";
-                tableTitle.innerText = "Master Registry - All Exam Scores";
+                subjectInput.value = "";
+                subjectInput.placeholder = "Subject Name (e.g. English)";
+                tableTitle.innerText = "Master Registry Ledger - All Subjects & Classes";
+                welcomeTitle.innerText = "Administrator Master System Workspace";
                 loadStudentsDirectory();
             } else {
                 adminOnlySection.classList.add('hidden');
                 subjectInput.value = teacherSubject;
                 subjectInput.disabled = true; 
-                tableTitle.innerText = `Exam Scores tracking for: ${teacherSubject}`;
+                tableTitle.innerText = `Departmental Tracking Performance Ledger: ${teacherSubject}`;
+                welcomeTitle.innerText = `Teacher Portal Workspace (${teacherSubject})`;
             }
 
             loadAdminTable();
         } catch (err) {
-            alert("Error reading user credentials: " + err.message);
+            alert("Error querying credential verification parameters: " + err.message);
         }
     } else {
         loginScreen.classList.remove('hidden');
@@ -70,12 +73,12 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 async function loginAdmin() {
-    const email = document.getElementById('loginEmail').value;
+    const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
     try {
         await signInWithEmailAndPassword(auth, email, password);
     } catch (error) {
-        alert("Login Failed: " + error.message);
+        alert("Authentication Denied: " + error.message);
     }
 }
 
@@ -83,39 +86,30 @@ async function logoutAdmin() {
     await signOut(auth);
 }
 
-// ADMIN FUNCTION: Create a secondary teacher account completely via UI
 async function createTeacherAccount() {
     const email = document.getElementById('newTeacherEmail').value.trim();
     const password = document.getElementById('newTeacherPassword').value.trim();
     const subject = document.getElementById('newTeacherSubject').value.trim();
 
     if (!email || !password || !subject) {
-        alert("Please fill out all teacher generation fields.");
+        alert("All fields are required to register a teacher.");
         return;
     }
 
     try {
-        // Create user entry against the secondary Auth context pipeline
-        const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
-        const newTeacherUid = userCredential.user.uid;
-
-        // Assign access configuration inside Firestore database paths
-        await setDoc(doc(db, "users", newTeacherUid), {
+        const credential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+        await setDoc(doc(db, "users", credential.user.uid), {
             email: email,
             role: "teacher",
             subject: subject
         });
-
-        alert(`Success! Teacher account created for: ${email}\nAssigned Subject: ${subject}`);
-        
+        alert(`Account Provisioned!\nUser: ${email}\nAssigned Subject: ${subject}`);
         document.getElementById('newTeacherEmail').value = "";
         document.getElementById('newTeacherPassword').value = "";
         document.getElementById('newTeacherSubject').value = "";
-
-        // Sign out secondary instance clear memory footprint
         await secondaryAuth.signOut();
-    } catch (error) {
-        alert("Failed to create teacher account: " + error.message);
+    } catch (e) {
+        alert("Registration sequence failed: " + e.message);
     }
 }
 
@@ -135,47 +129,45 @@ async function generateUniqueStudentCode() {
     return code;
 }
 
-// Register student profile tracking class data parameters
 async function registerStudent() {
-    const nameInput = document.getElementById('newStudentName').value.trim();
-    const classInput = document.getElementById('newStudentClass').value.trim();
+    const name = document.getElementById('newStudentName').value.trim();
+    const studentClass = document.getElementById('newStudentClass').value.trim();
 
-    if (!nameInput || !classInput) {
-        alert("Please provide both student name and class designation.");
+    if (!name || !studentClass) {
+        alert("Please provide both Student Name and Class assignment.");
         return;
     }
 
     try {
-        // Check if a student with the exact same name and class already exists
-        const dupQuery = query(collection(db, "students"), where("studentName", "==", nameInput), where("studentClass", "==", classInput));
+        const dupQuery = query(collection(db, "students"), where("studentName", "==", name), where("studentClass", "==", studentClass));
         const dupSnap = await getDocs(dupQuery);
 
         if (!dupSnap.empty) {
-            alert(`Registration Stopped!\nA student named "${nameInput}" inside "${classInput}" already exists with Code: ${dupSnap.docs[0].id}`);
+            alert(`Duplicate Denied!\nA student named "${name}" is already registered in "${studentClass}" under Access Code: ${dupSnap.docs[0].id}`);
             return;
         }
 
         const uniqueCode = await generateUniqueStudentCode();
         await setDoc(doc(db, "students", uniqueCode), {
-            studentName: nameInput,
-            studentClass: classInput
+            studentName: name,
+            studentClass: studentClass
         });
         
-        alert(`Registered successfully!\n${nameInput} (${classInput}) Code is: ${uniqueCode}`);
+        alert(`Registration Complete!\nName: ${name}\nClass: ${studentClass}\nCode: ${uniqueCode}`);
         document.getElementById('newStudentName').value = "";
         document.getElementById('newStudentClass').value = "";
         loadStudentsDirectory();
     } catch (e) {
-        alert("Registration failed: " + e.message);
+        alert("System error saving record: " + e.message);
     }
 }
 
 async function loadStudentsDirectory() {
     try {
-        const querySnapshot = await getDocs(collection(db, "students"));
+        const snap = await getDocs(collection(db, "students"));
         const tbody = document.querySelector("#studentsTable tbody");
         tbody.innerHTML = "";
-        querySnapshot.forEach((doc) => {
+        snap.forEach((doc) => {
             const data = doc.data();
             tbody.innerHTML += `<tr>
                 <td><strong>${doc.id}</strong></td>
@@ -195,49 +187,48 @@ async function addStudentScore() {
     const score = parseInt(document.getElementById('score').value);
 
     if (!code || !examName || !subject || isNaN(score)) {
-        alert("Please fill out all score entry fields!");
+        alert("Please complete all scorecard configuration fields values.");
         return;
     }
 
     try {
-        const studentDoc = await getDoc(doc(db, "students", code));
-        if (!studentDoc.exists()) {
-            alert(`Error: Student Code "${code}" does not exist in the database!`);
+        const studentSnap = await getDoc(doc(db, "students", code));
+        if (!studentSnap.exists()) {
+            alert(`Lookup Error: Student code "${code}" does not exist in the active directory system registry.`);
             return;
         }
 
-        const studentData = studentDoc.data();
-
+        const sData = studentSnap.data();
         await addDoc(collection(db, "exam_scores"), {
             studentCode: code,
-            studentName: studentData.studentName, 
-            studentClass: studentData.studentClass || 'N/A', // Denormalize class data parameters 
-            examName,
-            subject,
-            score,
-            teacherUid: auth.currentUser.uid
+            studentName: sData.studentName,
+            studentClass: sData.studentClass || 'N/A',
+            examName: examName,
+            subject: subject,
+            score: score
         });
 
-        alert("Score added successfully!");
-        document.getElementById('score').value = "";
+        alert("Score instance successfully logged!");
         document.getElementById('scoreStudentCode').value = "";
+        document.getElementById('score').value = "";
         loadAdminTable();
     } catch (e) {
-        alert("Error saving score entry: " + e.message);
+        alert("Error logging document transaction: " + e.message);
     }
 }
 
 async function deleteStudentScore(docId) {
-    if (confirm("Permanently delete this exam score instance?")) {
+    if (confirm("Permanently wipe this test performance instance from the database?")) {
         try {
             await deleteDoc(doc(db, "exam_scores", docId));
             loadAdminTable();
         } catch (e) {
-            alert("Error: " + e.message);
+            alert("Transaction error: " + e.message);
         }
     }
 }
 
+// EXACT MATCH 7-COLUMN DATA LAYOUT INTERACTION RENDERING CORRECTION
 async function loadAdminTable() {
     const user = auth.currentUser;
     if (!user) return;
@@ -253,13 +244,15 @@ async function loadAdminTable() {
 
         querySnapshot.forEach((doc) => {
             const data = doc.data();
+            
+            // EXACTLY 7 DATA CELLS LINKING IN EXACT VERTICAL SEQUENTIAL ORDER
             tbody.innerHTML += `<tr>
-                <td>${data.examName}</td>
+                <td>${data.examName || 'N/A'}</td>
                 <td>${data.subject || 'N/A'}</td>
-                <td>${data.studentName}</td>
+                <td>${data.studentName || 'N/A'}</td>
                 <td>${data.studentClass || 'N/A'}</td>
-                <td><strong>${data.studentCode}</strong></td>
-                <td>${data.score}</td>
+                <td><strong>${data.studentCode || doc.id}</strong></td>
+                <td><strong style="color: #28a745;">${data.score}</strong></td>
                 <td><button class="delete-btn" onclick="deleteStudentScore('${doc.id}')">Delete</button></td>
             </tr>`;
         });
@@ -271,7 +264,7 @@ async function loadAdminTable() {
 async function processExcel() {
     const fileInput = document.getElementById('excelFile');
     const file = fileInput.files[0];
-    if (!file) return alert("Select an Excel file.");
+    if (!file) return alert("Select an Excel file first.");
 
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -302,18 +295,17 @@ async function processExcel() {
                             studentClass: sData.studentClass || 'N/A',
                             examName: String(examName),
                             subject: String(subject),
-                            score: score,
-                            teacherUid: auth.currentUser.uid
+                            score: score
                         });
                         successCount++;
                     }
                 }
             }
-            alert(`Successfully imported ${successCount} exam logs.`);
+            alert(`Excel execution completed! ${successCount} records generated.`);
             fileInput.value = "";
             loadAdminTable();
         } catch (err) {
-            alert("Excel Error: " + err.message);
+            alert("Error parsing document rows: " + err.message);
         }
     };
     reader.readAsArrayBuffer(file);
