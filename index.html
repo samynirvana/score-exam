@@ -20,7 +20,10 @@
     <div class="container" style="max-width: 500px;">
         <h2>Check Your Exam Scores</h2>
         <p>Enter your fixed 5-character student code below:</p>
-        
+        <div class="tabs" style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <button id="scoreTab" style="flex: 1; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Exam Scores</button>
+            <button id="pointTab" style="flex: 1; padding: 10px; background: #ddd; color: #333; border: none; border-radius: 4px; cursor: pointer;">Behavior Points</button>
+        </div>
         <div class="search-box">
             <input type="text" id="studentCode" placeholder="e.g. GWBFX" maxlength="5">
             <button id="searchBtn">🔍</button>

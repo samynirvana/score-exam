@@ -63,6 +63,7 @@ onAuthStateChanged(auth, async (user) => {
             }
 
             loadAdminTable();
+            loadPointsTable(); // Loads the points table upon successful login
         } catch (err) {
             alert("Error querying identity permissions: " + err.message);
         }
@@ -157,6 +158,7 @@ async function registerStudent() {
         document.getElementById('newStudentName').value = "";
         document.getElementById('newStudentClass').value = "";
         loadStudentsDirectory();
+        loadPointsTable(); // Refresh points table to include new student
     } catch (e) {
         alert("System error tracking record: " + e.message);
     }
@@ -167,6 +169,7 @@ async function loadStudentsDirectory() {
     try {
         const snap = await getDocs(collection(db, "students"));
         const tbody = document.querySelector("#studentsTable tbody");
+        if (!tbody) return;
         tbody.innerHTML = "";
         snap.forEach((doc) => {
             const data = doc.data();
@@ -197,10 +200,10 @@ async function editStudentProfile(studentCode) {
         const currentClass = currentData.studentClass || currentData.Class || currentData.class || "";
 
         const newName = prompt("Modify Student Full Name:", currentData.studentName || "");
-        if (newName === null) return; // User cancelled
+        if (newName === null) return; 
         
         const newClass = prompt("Modify Student Class (e.g., Grade 7A):", currentClass);
-        if (newClass === null) return; // User cancelled
+        if (newClass === null) return; 
 
         if (!newName.trim() || !newClass.trim()) {
             alert("Values cannot be saved empty.");
@@ -214,7 +217,8 @@ async function editStudentProfile(studentCode) {
 
         alert("Profile updated successfully!");
         loadStudentsDirectory();
-        loadAdminTable(); // Refresh the performance table to cascade naming visual updates
+        loadAdminTable(); 
+        loadPointsTable(); // Refresh points table with new name
     } catch (e) {
         alert("Error modifying dataset: " + e.message);
     }
@@ -227,6 +231,7 @@ async function deleteStudentProfile(studentCode) {
             await deleteDoc(doc(db, "students", studentCode));
             alert("Directory signature removed.");
             loadStudentsDirectory();
+            loadPointsTable();
         } catch (e) {
             alert("Error removing directory entry: " + e.message);
         }
@@ -295,23 +300,20 @@ async function loadAdminTable() {
 
         const querySnapshot = await getDocs(q);
         const tbody = document.querySelector("#adminTable tbody");
+        if (!tbody) return;
         tbody.innerHTML = "";
 
         querySnapshot.forEach((doc) => {
             const data = doc.data();
             
-            // Extract attributes with sequential fallbacks to keep columns completely uniform
             const exam = data.examName || 'N/A';
             const sub = data.subject || 'N/A';
             const sName = data.studentName || 'N/A';
             const sClass = data.studentClass || data.Class || data.class || 'N/A';
             
-            // If the document data doesn't have an explicit studentCode attribute, 
-            // check if the document ID is a 5-char user-defined alphanumeric string
             const sCode = data.studentCode || (doc.id.length === 5 ? doc.id : 'N/A');
             const numScore = data.score !== undefined ? data.score : 'N/A';
 
-            // EXACTLY 7 <td> PAIRS MAPS LINE-BY-LINE PER ROW
             tbody.innerHTML += `<tr>
                 <td>${exam}</td>
                 <td>${sub}</td>
@@ -378,12 +380,123 @@ async function processExcel() {
     reader.readAsArrayBuffer(file);
 }
 
+// Function to handle saving point transactions
+async function processStudentPoint(pointValue) {
+    const code = document.getElementById('pointStudentCode').value.toUpperCase().trim();
+    const reason = document.getElementById('pointReason').value.trim();
+
+    if (!code || !reason || isNaN(pointValue)) {
+        alert("Please ensure Student Code, Reason, and a valid point value are provided.");
+        return;
+    }
+
+    try {
+        const studentSnap = await getDoc(doc(db, "students", code));
+        if (!studentSnap.exists()) {
+            alert(`Lookup Error: Student code "${code}" does not exist in the directory.`);
+            return;
+        }
+
+        const sData = studentSnap.data();
+        const targetClass = sData.studentClass || sData.Class || sData.class || 'N/A';
+
+        await addDoc(collection(db, "student_points"), {
+            studentCode: code,
+            studentName: sData.studentName,
+            studentClass: targetClass,
+            reason: reason,
+            points: parseInt(pointValue),
+            timestamp: new Date()
+        });
+
+        const sign = pointValue > 0 ? '+' : '';
+        alert(`Successfully recorded ${sign}${pointValue} points for ${sData.studentName}.`);
+        
+        // Reset the form inputs
+        document.getElementById('pointReason').value = "";
+        document.getElementById('customPointValue').value = "";
+        
+        // Refresh the ledger automatically
+        loadPointsTable(); 
+        
+    } catch (e) {
+        alert("Error logging point transaction: " + e.message);
+    }
+}
+
+// Function to calculate and render the points ledger
+async function loadPointsTable() {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    try {
+        // 1. Fetch all students to ensure everyone is on the board
+        const studentsSnap = await getDocs(collection(db, "students"));
+        const studentsMap = {};
+        
+        studentsSnap.forEach(doc => {
+            const data = doc.data();
+            studentsMap[doc.id] = {
+                name: data.studentName || 'N/A',
+                sClass: data.studentClass || data.Class || data.class || 'N/A',
+                total: 0 // Default starting score
+            };
+        });
+
+        // 2. Fetch all point transactions and tally them up
+        const pointsSnap = await getDocs(collection(db, "student_points"));
+        pointsSnap.forEach(doc => {
+            const data = doc.data();
+            const code = data.studentCode;
+            // If the student exists in our map, add the points to their total
+            if (studentsMap[code]) {
+                studentsMap[code].total += (data.points || 0);
+            }
+        });
+
+        // 3. Render the compiled data into the new table
+        const tbody = document.querySelector("#pointsTable tbody");
+        if(tbody) {
+            tbody.innerHTML = "";
+            for (const [code, info] of Object.entries(studentsMap)) {
+                // Color code the text: Green for positive, Red for negative, standard for 0
+                const color = info.total > 0 ? '#28a745' : (info.total < 0 ? '#dc3545' : '#333');
+                const sign = info.total > 0 ? '+' : '';
+                
+                tbody.innerHTML += `<tr>
+                    <td><strong>${code}</strong></td>
+                    <td>${info.name}</td>
+                    <td><strong>${info.sClass}</strong></td>
+                    <td><strong style="color: ${color}; font-size: 16px;">${sign}${info.total}</strong></td>
+                </tr>`;
+            }
+        }
+    } catch (e) {
+        console.error("Error loading points table:", e);
+    }
+}
+
+// Bind basic events
 document.getElementById('loginBtn').addEventListener('click', loginAdmin);
 document.getElementById('logoutBtn').addEventListener('click', logoutAdmin);
 document.getElementById('createTeacherBtn').addEventListener('click', createTeacherAccount);
 document.getElementById('registerStudentBtn').addEventListener('click', registerStudent);
 document.getElementById('saveScoreBtn').addEventListener('click', addStudentScore);
 document.getElementById('uploadExcelBtn').addEventListener('click', processExcel);
+
+// Bind quick point buttons
+document.querySelectorAll('.quick-point-btn').forEach(button => {
+    button.addEventListener('click', (e) => {
+        const value = parseInt(e.target.getAttribute('data-val'));
+        processStudentPoint(value);
+    });
+});
+
+// Bind custom point button
+document.getElementById('saveCustomPointBtn').addEventListener('click', () => {
+    const customValue = parseInt(document.getElementById('customPointValue').value);
+    processStudentPoint(customValue);
+});
 
 // Window binding parameters
 window.deleteStudentScore = deleteStudentScore;

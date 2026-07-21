@@ -74,6 +74,28 @@
 
             <div class="col">
                 <div class="box">
+                    <h3 style="margin-top: 0; color: #6f42c1;">Manage Behavior Points</h3>
+                    <p style="font-size: 12px; color: #666; margin-top: 0;">Add or subtract points based on student conduct.</p>
+    
+                    <input type="text" id="pointStudentCode" placeholder="5-Character Student Code" maxlength="5" style="text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">
+                    <input type="text" id="pointReason" placeholder="Reason (e.g., Helping classmate, Late to class)">
+    
+                    <div style="display: flex; gap: 10px; margin: 15px 0;">
+                     <button type="button" class="quick-point-btn" data-val="1" style="background: #28a745;">+1</button>
+                    <button type="button" class="quick-point-btn" data-val="5" style="background: #28a745;">+5</button>
+                    <button type="button" class="quick-point-btn" data-val="-1" style="background: #dc3545;">-1</button>
+                    <button type="button" class="quick-point-btn" data-val="-5" style="background: #dc3545;">-5</button>
+                    </div>
+
+    <div style="display: flex; gap: 10px;">
+        <input type="number" id="customPointValue" placeholder="Custom +/-" style="flex: 1;">
+        <button id="saveCustomPointBtn" style="background: #6f42c1; flex: 2;">Commit Custom Point</button>
+    </div>
+</div>
+
+
+
+                <div class="box">
                     <h3 style="margin-top: 0; color: #28a745;">Record Student Score</h3>
                     <input type="text" id="scoreStudentCode" placeholder="5-Character Student Code" maxlength="5" style="text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">
                     <input type="text" id="examName" placeholder="Exam Description (e.g., Midterm 2026)">
@@ -103,6 +125,20 @@
                         <th>Student Code</th>
                         <th>Score</th>
                         <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <div class="header-container" style="margin-top: 40px; margin-bottom: 40px;">
+            <h3 style="margin-bottom: 10px; color: #6f42c1;">Student Behavior Points Ledger</h3>
+            <table id="pointsTable">
+                <thead style="background-color: #6f42c1; color: white;">
+                    <tr>
+                        <th style="background-color: #6f42c1;">Student Code</th>
+                        <th style="background-color: #6f42c1;">Student Name</th>
+                        <th style="background-color: #6f42c1;">Class</th>
+                        <th style="background-color: #6f42c1;">Total Points</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
