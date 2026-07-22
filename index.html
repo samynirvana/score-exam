@@ -13,13 +13,33 @@
         .scores-table th { background: #f8f9fa; color: #333; }
         .score-badge { font-weight: bold; color: #007bff; }
         .class-badge { font-size: 14px; color: #666; font-weight: normal; margin-top: -5px; display: block; }
+        @media (max-width: 768px) {
+            body { 
+                margin: 15px; /* Reduces the large 40px margin on mobile */
+            }
+            .two-col { 
+                flex-direction: column; /* Stacks the two columns vertically on iPhones */
+            }
+            .logout-btn { 
+                margin-bottom: 10px; 
+            }
+            /* Make tables horizontally scrollable so they don't break the screen width */
+            .header-container, div[style*="overflow-y: auto"] { 
+                overflow-x: auto !important; 
+                -webkit-overflow-scrolling: touch; /* Smooth scrolling for iOS */
+            }
+            table { 
+                min-width: 600px; /* Forces table to maintain shape, user can swipe left/right */
+            }
+        }
     </style>
 </head>
 <body>
 
+    
     <div class="container" style="max-width: 500px;">
-        <h2>Check Your Exam Scores</h2>
-        <p>Enter your fixed 5-character student code below:</p>
+        <h2>Check Your Scores and Points</h2>
+        <p>Enter your student code below:</p>
         <div class="tabs" style="display: flex; gap: 10px; margin-bottom: 15px;">
             <button id="scoreTab" style="flex: 1; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Exam Scores</button>
             <button id="pointTab" style="flex: 1; padding: 10px; background: #ddd; color: #333; border: none; border-radius: 4px; cursor: pointer;">Behavior Points</button>

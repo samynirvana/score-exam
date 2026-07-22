@@ -26,7 +26,7 @@ let teacherSubject = null;
 onAuthStateChanged(auth, async (user) => {
     const loginScreen = document.getElementById('loginScreen');
     const adminDashboard = document.getElementById('adminDashboard');
-    const adminOnlySection = document.getElementById('adminOnlySection');
+    // REMOVED: const adminOnlySection = document.getElementById('adminOnlySection');
     const subjectInput = document.getElementById('subject');
     const tableTitle = document.getElementById('tableTitle');
     const welcomeTitle = document.getElementById('welcomeTitle');
@@ -47,7 +47,10 @@ onAuthStateChanged(auth, async (user) => {
             adminDashboard.classList.remove('hidden');
 
             if (userRole === "admin") {
-                adminOnlySection.classList.remove('hidden');
+                // NEW: Use the class-based toggle for admin views
+                document.querySelectorAll('.admin-only-view').forEach(el => el.classList.remove('hidden'));
+                document.getElementById('menuAdminOnly').style.display = "block";
+                
                 subjectInput.disabled = false;
                 subjectInput.value = "";
                 subjectInput.placeholder = "Subject Name (e.g. English)";
@@ -55,7 +58,11 @@ onAuthStateChanged(auth, async (user) => {
                 welcomeTitle.innerText = "Administrator Master System Workspace";
                 loadStudentsDirectory();
             } else {
-                adminOnlySection.classList.add('hidden');
+                // NEW: Hide admin views for teachers
+                document.querySelectorAll('.admin-only-view').forEach(el => el.classList.add('hidden'));
+                document.getElementById('menuAdminOnly').style.display = "none";
+                document.querySelector('[data-tab="tab-manage-scores"]').click(); // Force teacher to scores tab
+                
                 subjectInput.value = teacherSubject;
                 subjectInput.disabled = true; 
                 tableTitle.innerText = `Departmental Performance Ledger: ${teacherSubject}`;
@@ -63,7 +70,7 @@ onAuthStateChanged(auth, async (user) => {
             }
 
             loadAdminTable();
-            loadPointsTable(); // Loads the points table upon successful login
+            loadPointsTable(); 
         } catch (err) {
             alert("Error querying identity permissions: " + err.message);
         }
@@ -170,17 +177,34 @@ async function loadStudentsDirectory() {
         const snap = await getDocs(collection(db, "students"));
         const tbody = document.querySelector("#studentsTable tbody");
         if (!tbody) return;
-        tbody.innerHTML = "";
+        
+        let studentsList = [];
         snap.forEach((doc) => {
             const data = doc.data();
-            const retrievedClass = data.studentClass || data.Class || data.class || "N/A";
+            studentsList.push({
+                id: doc.id,
+                name: data.studentName || 'N/A',
+                studentClass: data.studentClass || data.Class || data.class || "N/A"
+            });
+        });
+
+        // Apply Sorting
+        const sortVal = document.getElementById('sortStudents')?.value || 'code';
+        studentsList.sort((a, b) => {
+            if (sortVal === 'name') return a.name.localeCompare(b.name);
+            if (sortVal === 'class') return a.studentClass.localeCompare(b.studentClass);
+            return a.id.localeCompare(b.id);
+        });
+
+        tbody.innerHTML = "";
+        studentsList.forEach((s) => {
             tbody.innerHTML += `<tr>
-                <td><strong>${doc.id}</strong></td>
-                <td>${data.studentName || 'N/A'}</td>
-                <td><span style="color:#007bff; font-weight:bold;">${retrievedClass}</span></td>
+                <td><strong>${s.id}</strong></td>
+                <td>${s.name}</td>
+                <td><span style="color:#007bff; font-weight:bold;">${s.studentClass}</span></td>
                 <td>
-                    <button class="edit-btn" onclick="editStudentProfile('${doc.id}')">Edit</button>
-                    <button class="delete-btn" onclick="deleteStudentProfile('${doc.id}')">Delete</button>
+                    <button class="edit-btn" onclick="editStudentProfile('${s.id}')">Edit</button>
+                    <button class="delete-btn" onclick="deleteStudentProfile('${s.id}')">Delete</button>
                 </td>
             </tr>`;
         });
@@ -301,27 +325,41 @@ async function loadAdminTable() {
         const querySnapshot = await getDocs(q);
         const tbody = document.querySelector("#adminTable tbody");
         if (!tbody) return;
-        tbody.innerHTML = "";
 
+        let scoresList = [];
         querySnapshot.forEach((doc) => {
             const data = doc.data();
-            
-            const exam = data.examName || 'N/A';
-            const sub = data.subject || 'N/A';
-            const sName = data.studentName || 'N/A';
-            const sClass = data.studentClass || data.Class || data.class || 'N/A';
-            
-            const sCode = data.studentCode || (doc.id.length === 5 ? doc.id : 'N/A');
-            const numScore = data.score !== undefined ? data.score : 'N/A';
+            scoresList.push({
+                docId: doc.id,
+                exam: data.examName || 'N/A',
+                sub: data.subject || 'N/A',
+                sName: data.studentName || 'N/A',
+                sClass: data.studentClass || data.Class || data.class || 'N/A',
+                sCode: data.studentCode || (doc.id.length === 5 ? doc.id : 'N/A'),
+                score: data.score !== undefined ? data.score : 0
+            });
+        });
 
+        // Apply Sorting
+        const sortVal = document.getElementById('sortScores')?.value || 'default';
+        scoresList.sort((a, b) => {
+            if (sortVal === 'name') return a.sName.localeCompare(b.sName);
+            if (sortVal === 'class') return a.sClass.localeCompare(b.sClass);
+            if (sortVal === 'scoreDesc') return b.score - a.score;
+            if (sortVal === 'scoreAsc') return a.score - b.score;
+            return 0;
+        });
+
+        tbody.innerHTML = "";
+        scoresList.forEach((data) => {
             tbody.innerHTML += `<tr>
-                <td>${exam}</td>
-                <td>${sub}</td>
-                <td>${sName}</td>
-                <td><strong>${sClass}</strong></td>
-                <td><strong>${sCode}</strong></td>
-                <td><strong style="color: #28a745;">${numScore}</strong></td>
-                <td><button class="delete-btn" onclick="deleteStudentScore('${doc.id}')">Delete</button></td>
+                <td>${data.exam}</td>
+                <td>${data.sub}</td>
+                <td>${data.sName}</td>
+                <td><strong>${data.sClass}</strong></td>
+                <td><strong>${data.sCode}</strong></td>
+                <td><strong style="color: #28a745;">${data.score}</strong></td>
+                <td><button class="delete-btn" onclick="deleteStudentScore('${data.docId}')">Delete</button></td>
             </tr>`;
         });
     } catch (e) {
@@ -405,7 +443,7 @@ async function processStudentPoint(pointValue) {
             studentName: sData.studentName,
             studentClass: targetClass,
             reason: reason,
-            points: parseInt(pointValue),
+            points: parseFloat(pointValue),
             timestamp: new Date()
         });
 
@@ -430,46 +468,56 @@ async function loadPointsTable() {
     if (!user) return;
 
     try {
-        // 1. Fetch all students to ensure everyone is on the board
         const studentsSnap = await getDocs(collection(db, "students"));
         const studentsMap = {};
         
         studentsSnap.forEach(doc => {
             const data = doc.data();
             studentsMap[doc.id] = {
+                code: doc.id,
                 name: data.studentName || 'N/A',
                 sClass: data.studentClass || data.Class || data.class || 'N/A',
-                total: 0 // Default starting score
+                total: 0
             };
         });
 
-        // 2. Fetch all point transactions and tally them up
         const pointsSnap = await getDocs(collection(db, "student_points"));
         pointsSnap.forEach(doc => {
             const data = doc.data();
             const code = data.studentCode;
-            // If the student exists in our map, add the points to their total
             if (studentsMap[code]) {
-                studentsMap[code].total += (data.points || 0);
+                studentsMap[code].total += (parseFloat(data.points) || 0);
             }
         });
 
-        // 3. Render the compiled data into the new table
+        let pointsList = Object.values(studentsMap);
+
+        // Apply Sorting
+        const sortVal = document.getElementById('sortPoints')?.value || 'default';
+        pointsList.sort((a, b) => {
+            if (sortVal === 'name') return a.name.localeCompare(b.name);
+            if (sortVal === 'class') return a.sClass.localeCompare(b.sClass);
+            if (sortVal === 'pointsDesc') return b.total - a.total;
+            if (sortVal === 'pointsAsc') return a.total - b.total;
+            return 0;
+        });
+
         const tbody = document.querySelector("#pointsTable tbody");
         if(tbody) {
             tbody.innerHTML = "";
-            for (const [code, info] of Object.entries(studentsMap)) {
-                // Color code the text: Green for positive, Red for negative, standard for 0
+            pointsList.forEach(info => {
                 const color = info.total > 0 ? '#28a745' : (info.total < 0 ? '#dc3545' : '#333');
                 const sign = info.total > 0 ? '+' : '';
                 
+                // Added the 5th <td> with the reset button
                 tbody.innerHTML += `<tr>
-                    <td><strong>${code}</strong></td>
+                    <td><strong>${info.code}</strong></td>
                     <td>${info.name}</td>
                     <td><strong>${info.sClass}</strong></td>
                     <td><strong style="color: ${color}; font-size: 16px;">${sign}${info.total}</strong></td>
+                    <td><button class="delete-btn" style="background: #dc3545;" onclick="resetStudentPoints('${info.code}')">Reset</button></td>
                 </tr>`;
-            }
+            });
         }
     } catch (e) {
         console.error("Error loading points table:", e);
@@ -487,14 +535,14 @@ document.getElementById('uploadExcelBtn').addEventListener('click', processExcel
 // Bind quick point buttons
 document.querySelectorAll('.quick-point-btn').forEach(button => {
     button.addEventListener('click', (e) => {
-        const value = parseInt(e.target.getAttribute('data-val'));
+        const value = parseFloat(e.target.getAttribute('data-val'));
         processStudentPoint(value);
     });
 });
 
 // Bind custom point button
 document.getElementById('saveCustomPointBtn').addEventListener('click', () => {
-    const customValue = parseInt(document.getElementById('customPointValue').value);
+    const customValue = parseFloat(document.getElementById('customPointValue').value);
     processStudentPoint(customValue);
 });
 
@@ -502,3 +550,145 @@ document.getElementById('saveCustomPointBtn').addEventListener('click', () => {
 window.deleteStudentScore = deleteStudentScore;
 window.editStudentProfile = editStudentProfile;
 window.deleteStudentProfile = deleteStudentProfile;
+window.resetStudentPoints = resetStudentPoints;
+
+// --- TAB NAVIGATION LOGIC ---
+document.querySelectorAll('.menu-btn').forEach(button => {
+    button.addEventListener('click', () => {
+        // Remove active class from all buttons and hide all tabs
+        document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        
+        // Activate clicked button and corresponding tab
+        button.classList.add('active');
+        const tabId = button.getAttribute('data-tab');
+        document.getElementById(tabId).classList.add('active');
+    });
+});
+
+// Hide Admin tabs if user is just a teacher
+onAuthStateChanged(auth, async (user) => {
+    // ... [Inside your existing onAuthStateChanged logic, where it checks userRole === "admin"]
+    // Add this to the "admin" check:
+    if (userRole === "admin") {
+        document.querySelectorAll('.admin-only-view').forEach(el => el.classList.remove('hidden'));
+        document.getElementById('menuAdminOnly').style.display = "block";
+    } else {
+        document.querySelectorAll('.admin-only-view').forEach(el => el.classList.add('hidden'));
+        document.getElementById('menuAdminOnly').style.display = "none";
+        // Force non-admins to the scores tab default
+        document.querySelector('[data-tab="tab-manage-scores"]').click(); 
+    }
+});
+
+
+// --- BULK UPLOAD STUDENTS LOGIC ---
+async function processBulkStudents() {
+    const fileInput = document.getElementById('bulkStudentsFile');
+    const file = fileInput.files[0];
+    if (!file) return alert("Select an Excel file containing Student Name and Class.");
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+
+            let successCount = 0;
+            for (const row of jsonData) {
+                const name = row["Student Name"] || row["Name"];
+                const sClass = row["Class"] || row["Class Room"];
+
+                if (name && sClass) {
+                    const uniqueCode = await generateUniqueStudentCode(); // Reusing your existing function
+                    await setDoc(doc(db, "students", uniqueCode), {
+                        studentName: String(name).trim(),
+                        studentClass: String(sClass).trim()
+                    });
+                    successCount++;
+                }
+            }
+            alert(`Bulk Student Upload Complete! Created ${successCount} new profiles.`);
+            fileInput.value = "";
+            loadStudentsDirectory();
+            loadPointsTable();
+        } catch (err) {
+            alert("Error parsing student document: " + err.message);
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+// --- BULK UPLOAD TEACHERS LOGIC ---
+async function processBulkTeachers() {
+    const fileInput = document.getElementById('bulkTeachersFile');
+    const file = fileInput.files[0];
+    if (!file) return alert("Select an Excel file containing Email, Password, and Subject.");
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+
+            let successCount = 0;
+            let failCount = 0;
+
+            for (const row of jsonData) {
+                const email = String(row["Email"]).trim();
+                const password = String(row["Password"]).trim();
+                const subject = String(row["Subject"]).trim();
+
+                if (email && password && subject) {
+                    try {
+                        const credential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+                        await setDoc(doc(db, "users", credential.user.uid), {
+                            email: email,
+                            role: "teacher",
+                            subject: subject
+                        });
+                        await secondaryAuth.signOut();
+                        successCount++;
+                    } catch (authErr) {
+                        console.error(`Failed to create ${email}:`, authErr);
+                        failCount++;
+                    }
+                }
+            }
+            alert(`Teacher Upload Finished!\nSuccess: ${successCount}\nFailed (Skipped): ${failCount}`);
+            fileInput.value = "";
+        } catch (err) {
+            alert("Error parsing teacher document: " + err.message);
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+async function resetStudentPoints(studentCode) {
+    if (confirm(`Are you sure you want to reset all behavior points for student ${studentCode} to 0? This will permanently delete their point history.`)) {
+        try {
+            // Find all point records for this specific student
+            const q = query(collection(db, "student_points"), where("studentCode", "==", studentCode));
+            const snap = await getDocs(q);
+            
+            // Delete them all
+            const deletePromises = [];
+            snap.forEach(docSnap => {
+                deletePromises.push(deleteDoc(doc(db, "student_points", docSnap.id)));
+            });
+            await Promise.all(deletePromises);
+            
+            alert("Points successfully reset to 0.");
+            loadPointsTable(); // Refresh the ledger immediately
+        } catch (e) {
+            alert("Error resetting points: " + e.message);
+        }
+    }
+}
+// Bind the new bulk upload buttons
+document.getElementById('uploadBulkStudentsBtn').addEventListener('click', processBulkStudents);
+document.getElementById('uploadBulkTeachersBtn').addEventListener('click', processBulkTeachers);
+document.getElementById('sortStudents')?.addEventListener('change', loadStudentsDirectory);
+document.getElementById('sortScores')?.addEventListener('change', loadAdminTable);
+document.getElementById('sortPoints')?.addEventListener('change', loadPointsTable);

@@ -3,23 +3,42 @@
 <head>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teacher Admin Dashboard</title>
     <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 40px; background: #f0f2f5; color: #333; }
-        .box { background: white; padding: 20px; border-radius: 8px; max-width: 1000px; margin: 0 auto 20px auto; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        input, button, select { display: block; width: 100%; margin: 8px 0; padding: 10px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; }
-        button { background: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        button:hover { opacity: 0.9; }
-        .logout-btn { background: #dc3545; width: auto; float: right; padding: 5px 15px; margin: 0; }
-        .delete-btn { background: #dc3545; color: white; width: auto; display: inline-block; padding: 5px 10px; font-size: 12px; margin: 2px; border-radius: 4px; border: none; cursor: pointer; }
-        .edit-btn { background: #007bff; color: white; width: auto; display: inline-block; padding: 5px 10px; font-size: 12px; margin: 2px; border-radius: 4px; border: none; cursor: pointer; }
-        table { width: 100%; background: white; border-collapse: collapse; margin-top: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-        th { background-color: #007bff; color: white; font-weight: 600; }
-        .hidden { display: none !important; }
-        .header-container { max-width: 1200px; margin: 0 auto; overflow: hidden; margin-bottom: 10px; }
-        .two-col { display: flex; gap: 20px; max-width: 1200px; margin: 0 auto; }
-        .col { flex: 1; min-width: 0; }
+       body { font-family: 'Segoe UI', Arial, sans-serif; margin: 40px; background: #f0f2f5; color: #333; }
+    /* Increased border-radius for the rounded rectangle look */
+    .box { background: white; padding: 25px; border-radius: 16px; max-width: 1000px; margin: 0 auto 20px auto; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    input, button, select { display: block; width: 100%; margin: 8px 0; padding: 12px; box-sizing: border-box; border-radius: 10px; border: 1px solid #ccc; font-size: 14px; }
+    button { background: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    button:hover { opacity: 0.9; transform: translateY(-1px); }
+    
+    /* Menu / Tab Styling */
+    .menu-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 25px; justify-content: center; }
+    .menu-btn { background: #e9ecef; color: #495057; width: auto; padding: 10px 20px; border-radius: 20px; transition: 0.3s; }
+    .menu-btn.active { background: #007bff; color: white; box-shadow: 0 4px 8px rgba(0,123,255,0.3); }
+    .tab-content { display: none; animation: fadeIn 0.3s ease-in-out; }
+    .tab-content.active { display: block; }
+    
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+    .logout-btn { background: #dc3545; width: auto; float: right; padding: 8px 20px; margin: 0; border-radius: 20px; }
+    .delete-btn { background: #dc3545; color: white; width: auto; display: inline-block; padding: 6px 12px; font-size: 12px; margin: 2px; border-radius: 6px; border: none; cursor: pointer; }
+    .edit-btn { background: #007bff; color: white; width: auto; display: inline-block; padding: 6px 12px; font-size: 12px; margin: 2px; border-radius: 6px; border: none; cursor: pointer; }
+    table { width: 100%; background: white; border-collapse: collapse; margin-top: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-radius: 12px; overflow: hidden; }
+    th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+    th { background-color: #007bff; color: white; font-weight: 600; }
+    .hidden { display: none !important; }
+    .header-container { max-width: 1200px; margin: 0 auto; overflow: hidden; margin-bottom: 15px; }
+    .two-col { display: flex; gap: 20px; max-width: 1200px; margin: 0 auto; }
+    .col { flex: 1; min-width: 0; }
+
+    @media (max-width: 768px) {
+        body { margin: 15px; }
+        .two-col { flex-direction: column; }
+        .header-container, div[style*="overflow-y: auto"] { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+        table { min-width: 600px; }
+    }
     </style>
 </head>
 <body>
@@ -33,119 +52,185 @@
 
     <div id="adminDashboard" class="hidden">
         <div class="header-container">
-            <button id="logoutBtn" class="logout-btn">Logout</button>
-            <h2 style="margin: 0;" id="welcomeTitle">Dashboard - Score Management System</h2>
-        </div>
-        
-        <div class="two-col">
-            <div class="col hidden" id="adminOnlySection">
-                <div class="box">
-                    <h3 style="margin-top: 0; color: #007bff;">1. Register New Student Profile</h3>
-                    <input type="text" id="newStudentName" placeholder="Full Student Name">
-                    <input type="text" id="newStudentClass" placeholder="Class Room (e.g., Grade 7A, Grade 7B)">
-                    <button id="registerStudentBtn" style="background: #007bff;">Generate Student Access Code</button>
-                </div>
+        <button id="logoutBtn" class="logout-btn">Logout</button>
+        <h2 style="margin: 0; padding-bottom: 15px;" id="welcomeTitle">Dashboard - Score Management System</h2>
+    </div>
 
+    <!-- Navigation Menu -->
+    <div class="menu-bar">
+        <button class="menu-btn active" data-tab="tab-manage-students" id="menuAdminOnly">Manage Users</button>
+        <button class="menu-btn" data-tab="tab-manage-scores">Manage Scores</button>
+        <button class="menu-btn" data-tab="tab-manage-behavior">Behavior Points</button>
+        <button class="menu-btn" data-tab="tab-view-ledgers">View Ledgers</button>
+    </div>
+    
+    <!-- TAB 1: User Management (Admin Only) -->
+    <div id="tab-manage-students" class="tab-content active admin-only-view">
+        <div class="two-col">
+            <div class="col">
+                <div class="box">
+                    <h3 style="margin-top: 0; color: #007bff;">1. Register Single Student</h3>
+                    <input type="text" id="newStudentName" placeholder="Full Student Name">
+                    <input type="text" id="newStudentClass" placeholder="Class Room (e.g., Grade 7A)">
+                    <button id="registerStudentBtn" style="background: #007bff;">Generate Student Code</button>
+                </div>
+                
+                <div class="box">
+                    <h3 style="margin-top: 0; color: #17a2b8;">Bulk Upload Students (Excel)</h3>
+                    <p style="font-size: 12px; color: #666;">Required Columns: <strong>Student Name</strong>, <strong>Class</strong></p>
+                    <input type="file" id="bulkStudentsFile" accept=".xlsx, .xls, .csv">
+                    <button id="uploadBulkStudentsBtn" style="background: #17a2b8;">Parse & Upload Students</button>
+                </div>
+            </div>
+            <div class="col">
                 <div class="box">
                     <h3 style="margin-top: 0; color: #ffc107;">2. Provision Teacher Account</h3>
                     <input type="email" id="newTeacherEmail" placeholder="Teacher Email Address">
                     <input type="password" id="newTeacherPassword" placeholder="Login Password (min 6 chars)">
                     <input type="text" id="newTeacherSubject" placeholder="Assigned Subject Specialty (e.g., Math)">
-                    <button id="createTeacherBtn" style="background: #ffc107; color: black;">Register Teacher Account</button>
+                    <button id="createTeacherBtn" style="background: #ffc107; color: black;">Register Teacher</button>
                 </div>
 
                 <div class="box">
-                    <h3 style="margin-top: 0;">Student Master Directory</h3>
-                    <div style="max-height: 300px; overflow-y: auto;">
-                        <table id="studentsTable">
-                            <thead>
-                                <tr>
-                                    <th>Code</th>
-                                    <th>Student Name</th>
-                                    <th>Class</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
+                    <h3 style="margin-top: 0; color: #fd7e14;">Bulk Upload Teachers (Excel)</h3>
+                    <p style="font-size: 12px; color: #666;">Required Columns: <strong>Email</strong>, <strong>Password</strong>, <strong>Subject</strong></p>
+                    <input type="file" id="bulkTeachersFile" accept=".xlsx, .xls, .csv">
+                    <button id="uploadBulkTeachersBtn" style="background: #fd7e14; color: white;">Parse & Upload Teachers</button>
                 </div>
             </div>
+        </div>
+    </div>
 
+    <!-- TAB 2: Manage Scores -->
+    <div id="tab-manage-scores" class="tab-content">
+        <div class="two-col">
             <div class="col">
                 <div class="box">
-                    <h3 style="margin-top: 0; color: #6f42c1;">Manage Behavior Points</h3>
-                    <p style="font-size: 12px; color: #666; margin-top: 0;">Add or subtract points based on student conduct.</p>
-    
-                    <input type="text" id="pointStudentCode" placeholder="5-Character Student Code" maxlength="5" style="text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">
-                    <input type="text" id="pointReason" placeholder="Reason (e.g., Helping classmate, Late to class)">
-    
-                    <div style="display: flex; gap: 10px; margin: 15px 0;">
-                     <button type="button" class="quick-point-btn" data-val="1" style="background: #28a745;">+1</button>
-                    <button type="button" class="quick-point-btn" data-val="5" style="background: #28a745;">+5</button>
-                    <button type="button" class="quick-point-btn" data-val="-1" style="background: #dc3545;">-1</button>
-                    <button type="button" class="quick-point-btn" data-val="-5" style="background: #dc3545;">-5</button>
-                    </div>
-
-    <div style="display: flex; gap: 10px;">
-        <input type="number" id="customPointValue" placeholder="Custom +/-" style="flex: 1;">
-        <button id="saveCustomPointBtn" style="background: #6f42c1; flex: 2;">Commit Custom Point</button>
-    </div>
-</div>
-
-
-
-                <div class="box">
                     <h3 style="margin-top: 0; color: #28a745;">Record Student Score</h3>
-                    <input type="text" id="scoreStudentCode" placeholder="5-Character Student Code" maxlength="5" style="text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">
+                    <input type="text" id="scoreStudentCode" placeholder="5-Character Student Code" maxlength="5" style="text-transform: uppercase;">
                     <input type="text" id="examName" placeholder="Exam Description (e.g., Midterm 2026)">
                     <input type="text" id="subject" placeholder="Subject Name">
                     <input type="number" id="score" placeholder="Numeric Grade Score (0-100)">
                     <button id="saveScoreBtn">Commit Score Entry</button>
                 </div>
-
+            </div>
+            <div class="col">
                 <div class="box">
-                    <h3 style="margin-top: 0; color: #17a2b8;">Bulk Upload Dataset (Excel)</h3>
-                    <p style="font-size: 12px; color: #666; margin-top: 0;">Required formatting columns: <strong>Student Code</strong>, <strong>Exam Name</strong>, <strong>Subject</strong>, and <strong>Score</strong></p>
+                    <h3 style="margin-top: 0; color: #17a2b8;">Bulk Upload Scores (Excel)</h3>
+                    <p style="font-size: 12px; color: #666;">Required Columns: <strong>Student Code</strong>, <strong>Exam Name</strong>, <strong>Subject</strong>, <strong>Score</strong></p>
                     <input type="file" id="excelFile" accept=".xlsx, .xls, .csv">
-                    <button id="uploadExcelBtn" style="background: #17a2b8;">Parse & Upload Document Rows</button>
+                    <button id="uploadExcelBtn" style="background: #17a2b8;">Parse & Upload Scores</button>
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="header-container" style="margin-top: 20px;">
-            <h3 id="tableTitle" style="margin-bottom: 10px;">Exam Performance Ledger Records</h3>
-            <table id="adminTable">
+    <!-- TAB 3: Behavior Points -->
+    <div id="tab-manage-behavior" class="tab-content">
+        <div class="box" style="max-width: 600px;">
+            <h3 style="margin-top: 0; color: #6f42c1;">Manage Behavior Points</h3>
+            <p style="font-size: 12px; color: #666; margin-top: 0;">Add or subtract points based on student conduct.</p>
+
+            <input type="text" id="pointStudentCode" placeholder="5-Character Student Code" maxlength="5" style="text-transform: uppercase;">
+            <input type="text" id="pointReason" placeholder="Reason (e.g., Helping classmate)">
+
+            <div style="display: flex; gap: 10px; margin: 15px 0;">
+                <button type="button" class="quick-point-btn" data-val="1" style="background: #28a745;">+1</button>
+                <button type="button" class="quick-point-btn" data-val="5" style="background: #28a745;">+5</button>
+                <button type="button" class="quick-point-btn" data-val="-1" style="background: #dc3545;">-1</button>
+                <button type="button" class="quick-point-btn" data-val="-5" style="background: #dc3545;">-5</button>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <input type="number" id="customPointValue" placeholder="Custom +/-" style="flex: 1;" step="0.1">
+                <button id="saveCustomPointBtn" style="background: #6f42c1; flex: 2;">Commit Custom Point</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: Ledgers & Directories -->
+    <div id="tab-view-ledgers" class="tab-content">
+    
+    <!-- Student Master Directory -->
+    <div class="box admin-only-view">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <h3 style="margin: 0;">Student Master Directory</h3>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <label for="sortStudents" style="font-size: 13px; font-weight: bold;">Sort by:</label>
+                <select id="sortStudents" style="width: auto; margin: 0; padding: 6px 10px;">
+                    <option value="code">Code (Default)</option>
+                    <option value="name">Student Name (A-Z)</option>
+                    <option value="class">Class (A-Z)</option>
+                </select>
+            </div>
+        </div>
+        <div style="max-height: 300px; overflow-y: auto; margin-top: 10px;">
+            <table id="studentsTable">
                 <thead>
-                    <tr>
-                        <th>Exam</th>
-                        <th>Subject</th>
-                        <th>Student Name</th>
-                        <th>Class</th>
-                        <th>Student Code</th>
-                        <th>Score</th>
-                        <th>Action</th>
-                    </tr>
+                    <tr><th>Code</th><th>Student Name</th><th>Class</th><th>Actions</th></tr>
                 </thead>
                 <tbody></tbody>
             </table>
         </div>
-        <div class="header-container" style="margin-top: 40px; margin-bottom: 40px;">
-            <h3 style="margin-bottom: 10px; color: #6f42c1;">Student Behavior Points Ledger</h3>
-            <table id="pointsTable">
-                <thead style="background-color: #6f42c1; color: white;">
-                    <tr>
-                        <th style="background-color: #6f42c1;">Student Code</th>
-                        <th style="background-color: #6f42c1;">Student Name</th>
-                        <th style="background-color: #6f42c1;">Class</th>
-                        <th style="background-color: #6f42c1;">Total Points</th>
-                    </tr>
+    </div>
+    
+    <!-- Exam Performance Ledger -->
+    <div class="box">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <h3 id="tableTitle" style="margin: 0;">Exam Performance Ledger Records</h3>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <label for="sortScores" style="font-size: 13px; font-weight: bold;">Sort by:</label>
+                <select id="sortScores" style="width: auto; margin: 0; padding: 6px 10px;">
+                    <option value="default">Default</option>
+                    <option value="name">Student Name (A-Z)</option>
+                    <option value="class">Class (A-Z)</option>
+                    <option value="scoreDesc">Score (Highest First)</option>
+                    <option value="scoreAsc">Score (Lowest First)</option>
+                </select>
+            </div>
+        </div>
+        <div style="max-height: 400px; overflow-y: auto; margin-top: 10px;">
+            <table id="adminTable">
+                <thead>
+                    <tr><th>Exam</th><th>Subject</th><th>Student Name</th><th>Class</th><th>Student Code</th><th>Score</th><th>Action</th></tr>
                 </thead>
                 <tbody></tbody>
             </table>
         </div>
     </div>
 
+    <!-- Student Behavior Points Ledger -->
+    <div class="box">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <h3 style="margin: 0; color: #6f42c1;">Student Behavior Points Ledger</h3>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <label for="sortPoints" style="font-size: 13px; font-weight: bold;">Sort by:</label>
+                <select id="sortPoints" style="width: auto; margin: 0; padding: 6px 10px;">
+                    <option value="default">Default</option>
+                    <option value="name">Student Name (A-Z)</option>
+                    <option value="class">Class (A-Z)</option>
+                    <option value="pointsDesc">Total Points (Highest First)</option>
+                    <option value="pointsAsc">Total Points (Lowest First)</option>
+                </select>
+            </div>
+        </div>
+        <div style="max-height: 400px; overflow-y: auto; margin-top: 10px;">
+            <table id="pointsTable">
+               <thead style="background-color: #6f42c1; color: white;">
+        <tr>
+            <th style="background-color: #6f42c1;">Student Code</th>
+            <th style="background-color: #6f42c1;">Student Name</th>
+            <th style="background-color: #6f42c1;">Class</th>
+            <th style="background-color: #6f42c1;">Total Points</th>
+            <!-- Add the new Action column here -->
+            <th style="background-color: #6f42c1;">Action</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
     <script type="module" src="admin.js"></script>
 </body>
 </html>
