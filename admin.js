@@ -686,9 +686,77 @@ async function resetStudentPoints(studentCode) {
         }
     }
 }
+
+// --- NEWS & NOTICE MANAGEMENT LOGIC ---
+
+async function addNewsUpdate() {
+    const title = document.getElementById('newsTitle').value.trim();
+    const content = document.getElementById('newsContent').value.trim();
+
+    if (!title || !content) {
+        alert("Please provide both a title and content for the notice.");
+        return;
+    }
+
+    try {
+        await addDoc(collection(db, "news_updates"), {
+            title: title,
+            content: content,
+            timestamp: new Date().toISOString()
+        });
+        alert("News notice posted successfully!");
+        document.getElementById('newsTitle').value = "";
+        document.getElementById('newsContent').value = "";
+        loadNewsTable();
+    } catch (e) {
+        alert("Error posting news: " + e.message);
+    }
+}
+
+async function loadNewsTable() {
+    try {
+        const querySnapshot = await getDocs(collection(db, "news_updates"));
+        const tbody = document.querySelector("#newsTable tbody");
+        if (!tbody) return;
+
+        let newsList = [];
+        querySnapshot.forEach((doc) => {
+            newsList.push({ id: doc.id, ...doc.data() });
+        });
+
+        // Sort by newest first
+        newsList.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        tbody.innerHTML = "";
+        newsList.forEach((news) => {
+            const dateStr = new Date(news.timestamp).toLocaleDateString();
+            tbody.innerHTML += `<tr>
+                <td>${dateStr}</td>
+                <td><strong>${news.title}</strong></td>
+                <td><button class="delete-btn" onclick="deleteNewsUpdate('${news.id}')">Delete</button></td>
+            </tr>`;
+        });
+    } catch (e) {
+        console.error("Error loading news table: ", e);
+    }
+}
+
+async function deleteNewsUpdate(docId) {
+    if (confirm("Are you sure you want to permanently delete this notice?")) {
+        try {
+            await deleteDoc(doc(db, "news_updates", docId));
+            loadNewsTable();
+        } catch (e) {
+            alert("Error deleting notice: " + e.message);
+        }
+    }
+}
+
 // Bind the new bulk upload buttons
 document.getElementById('uploadBulkStudentsBtn').addEventListener('click', processBulkStudents);
 document.getElementById('uploadBulkTeachersBtn').addEventListener('click', processBulkTeachers);
 document.getElementById('sortStudents')?.addEventListener('change', loadStudentsDirectory);
 document.getElementById('sortScores')?.addEventListener('change', loadAdminTable);
 document.getElementById('sortPoints')?.addEventListener('change', loadPointsTable);
+document.getElementById('postNewsBtn').addEventListener('click', addNewsUpdate);
+window.deleteNewsUpdate = deleteNewsUpdate;

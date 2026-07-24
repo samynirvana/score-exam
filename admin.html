@@ -62,6 +62,7 @@
         <button class="menu-btn" data-tab="tab-manage-scores">Manage Scores</button>
         <button class="menu-btn" data-tab="tab-manage-behavior">Behavior Points</button>
         <button class="menu-btn" data-tab="tab-view-ledgers">View Ledgers</button>
+        <button class="menu-btn" data-tab="tab-manage-news" id="menuNewsOnly">Manage News</button>
     </div>
     
     <!-- TAB 1: User Management (Admin Only) -->
@@ -174,6 +175,32 @@
         </div>
     </div>
     
+    <!-- TAB 5: Manage News (Admin Only) -->
+        <div id="tab-manage-news" class="tab-content admin-only-view">
+            <div class="two-col">
+             <div class="col">
+             <div class="box">
+                <h3 style="margin-top: 0; color: #17a2b8;">Post News / Notice</h3>
+                <input type="text" id="newsTitle" placeholder="Notice Title (e.g., School Closed on Friday)">
+                <textarea id="newsContent" placeholder="Enter notice details here..." style="width: 100%; height: 100px; padding: 12px; margin: 8px 0; border-radius: 10px; border: 1px solid #ccc; font-family: inherit; font-size: 14px; box-sizing: border-box;"></textarea>
+                <button id="postNewsBtn" style="background: #17a2b8;">Post Notice</button>
+            </div>
+         </div>
+        <div class="col">
+            <div class="box">
+                <h3 style="margin-top: 0;">Active Notices</h3>
+                <div style="max-height: 300px; overflow-y: auto; margin-top: 10px;">
+                    <table id="newsTable">
+                        <thead>
+                            <tr><th>Date</th><th>Title</th><th>Action</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                 </div>
+             </div>
+            </div>
+        </div>
     <!-- Exam Performance Ledger -->
     <div class="box">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
