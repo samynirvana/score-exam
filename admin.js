@@ -339,7 +339,25 @@ async function loadAdminTable() {
                 score: data.score !== undefined ? data.score : 0
             });
         });
-
+        const filterDropdown = document.getElementById('filterScoreClass');
+        if (filterDropdown) {
+            const currentFilter = filterDropdown.value;
+            const uniqueClasses = [...new Set(scoresList.map(item => item.sClass))].filter(c => c !== 'N/A').sort();
+            
+            // Rebuild dropdown options dynamically
+            filterDropdown.innerHTML = '<option value="all">All Classes</option>';
+            uniqueClasses.forEach(c => {
+                filterDropdown.innerHTML += `<option value="${c}">${c}</option>`;
+            });
+            
+            // Restore selection and apply filter
+            if (uniqueClasses.includes(currentFilter)) {
+                filterDropdown.value = currentFilter;
+                scoresList = scoresList.filter(item => item.sClass === currentFilter);
+            } else {
+                filterDropdown.value = 'all';
+            }
+        }
         // Apply Sorting
         const sortVal = document.getElementById('sortScores')?.value || 'default';
         scoresList.sort((a, b) => {
@@ -501,7 +519,23 @@ async function loadPointsTable() {
             if (sortVal === 'pointsAsc') return a.total - b.total;
             return 0;
         });
-
+        const filterDropdown = document.getElementById('filterPointsClass');
+        if (filterDropdown) {
+            const currentFilter = filterDropdown.value;
+            const uniqueClasses = [...new Set(pointsList.map(item => item.sClass))].filter(c => c !== 'N/A').sort();
+            
+            filterDropdown.innerHTML = '<option value="all">All Classes</option>';
+            uniqueClasses.forEach(c => {
+                filterDropdown.innerHTML += `<option value="${c}">${c}</option>`;
+            });
+            
+            if (uniqueClasses.includes(currentFilter)) {
+                filterDropdown.value = currentFilter;
+                pointsList = pointsList.filter(item => item.sClass === currentFilter);
+            } else {
+                filterDropdown.value = 'all';
+            }
+        }
         const tbody = document.querySelector("#pointsTable tbody");
         if(tbody) {
             tbody.innerHTML = "";
@@ -551,6 +585,37 @@ window.deleteStudentScore = deleteStudentScore;
 window.editStudentProfile = editStudentProfile;
 window.deleteStudentProfile = deleteStudentProfile;
 window.resetStudentPoints = resetStudentPoints;
+
+async function inlineAdjustPoint(studentCode, amount) {
+    try {
+        const studentSnap = await getDoc(doc(db, "students", studentCode));
+        if (!studentSnap.exists()) return alert("Student not found.");
+        
+        const sData = studentSnap.data();
+        const targetClass = sData.studentClass || sData.Class || sData.class || 'N/A';
+
+        await addDoc(collection(db, "student_points"), {
+            studentCode: studentCode,
+            studentName: sData.studentName,
+            studentClass: targetClass,
+            reason: "Quick Ledger Adjustment",
+            points: parseFloat(amount),
+            timestamp: new Date()
+        });
+        
+        // Refresh the table immediately to show the new total
+        loadPointsTable(); 
+    } catch (e) {
+        alert("Error adjusting points: " + e.message);
+    }
+}
+
+// Bind new function to window
+window.inlineAdjustPoint = inlineAdjustPoint;
+
+// Bind event listeners for the new Class Dropdowns
+document.getElementById('filterScoreClass')?.addEventListener('change', loadAdminTable);
+document.getElementById('filterPointsClass')?.addEventListener('change', loadPointsTable);
 
 // --- TAB NAVIGATION LOGIC ---
 document.querySelectorAll('.menu-btn').forEach(button => {
