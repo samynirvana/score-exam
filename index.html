@@ -35,18 +35,10 @@
     </style>
 </head>
 <body>
-
-    <div class="container" style="max-width: 500px;">
+<div class="page-wrapper">
     
-    <!-- ADD THIS NEWS TICKER BLOCK -->
-    <div id="newsTicker" style="background: #e9ecef; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: left; display: none;">
-        <h3 style="margin-top: 0; margin-bottom: 10px; color: #17a2b8; font-size: 16px;">Latest School Notices</h3>
-        <div id="newsListContainer" style="max-height: 150px; overflow-y: auto;">
-            <!-- Javascript will inject the news here -->
-        </div>
-    </div>
-    <!-- END NEWS TICKER BLOCK -->
-    <div class="container" style="max-width: 500px;">
+    <!-- LEFT COLUMN: Score & Points Check -->
+    <div class="container score-container">
         <h2>Check Your Scores and Points</h2>
         <p>Enter your student code below:</p>
         <div class="tabs" style="display: flex; gap: 10px; margin-bottom: 15px;">
@@ -84,6 +76,16 @@
         <p id="errorMessage" class="error hidden">Code not found or no scores recorded. Please try again.</p>
     </div>
 
-    <script type="module" src="main.js"></script>
+    <!-- RIGHT COLUMN: News Ticker -->
+    <div id="newsTicker" class="container news-container" style="display: none;">
+        <h3 class="news-title">Latest School Notices</h3>
+        <div id="newsListContainer" class="news-scroll-area">
+            <!-- Javascript will inject the news here -->
+        </div>
+    </div>
+
+</div>
+
+<script type="module" src="main.js"></script>
 </body>
 </html>

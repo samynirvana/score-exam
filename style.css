@@ -3,13 +3,88 @@
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+/* Update your existing body rule */
 body {
     background-color: #f4f7f6;
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
+    min-height: 100vh;
     margin: 0;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+/* Add the new wrapper for the side-by-side layout */
+.page-wrapper {
+    display: flex;
+    gap: 30px; /* Space between the two columns */
+    max-width: 1000px;
+    width: 100%;
+    align-items: flex-start; /* Prevents columns from stretching to equal height unnecessarily */
+}
+
+/* Update your existing container rule */
+.container {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    text-align: center;
+    width: 100%;
+}
+
+/* Specific styling for the left column */
+.score-container {
+    flex: 1.2; /* Takes up slightly more space */
+    max-width: 500px;
+}
+
+/* Specific styling for the right column (News) */
+.news-container {
+    flex: 1;
+    max-width: 400px;
+    text-align: left; 
+    border: 1px solid #e3e6f0;
+}
+
+.news-title {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #17a2b8; 
+    font-size: 18px;
+    border-bottom: 2px solid #f0f2f5;
+    padding-bottom: 12px;
+}
+
+.news-scroll-area {
+    max-height: 400px; 
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+/* Custom, sleek scrollbar for the news section */
+.news-scroll-area::-webkit-scrollbar {
+    width: 6px;
+}
+.news-scroll-area::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+.news-scroll-area::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+/* Make it stack cleanly on mobile phones */
+@media (max-width: 768px) {
+    .page-wrapper {
+        flex-direction: column;
+        align-items: center;
+    }
+    .score-container, .news-container {
+        max-width: 100%;
+    }
 }
 
 .container {
