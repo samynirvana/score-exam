@@ -19,6 +19,7 @@ body {
 .page-wrapper {
     display: flex;
     gap: 30px; /* Space between the two columns */
+    justify-content: center;
     max-width: 1000px;
     width: 100%;
     align-items: flex-start; /* Prevents columns from stretching to equal height unnecessarily */
