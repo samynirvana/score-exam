@@ -543,13 +543,16 @@ async function loadPointsTable() {
                 const color = info.total > 0 ? '#28a745' : (info.total < 0 ? '#dc3545' : '#333');
                 const sign = info.total > 0 ? '+' : '';
                 
-                // Added the 5th <td> with the reset button
                 tbody.innerHTML += `<tr>
                     <td><strong>${info.code}</strong></td>
                     <td>${info.name}</td>
                     <td><strong>${info.sClass}</strong></td>
                     <td><strong style="color: ${color}; font-size: 16px;">${sign}${info.total}</strong></td>
-                    <td><button class="delete-btn" style="background: #dc3545;" onclick="resetStudentPoints('${info.code}')">Reset</button></td>
+                    <td style="white-space: nowrap;">
+                        <button class="edit-btn" style="background: #28a745; margin-right: 4px;" onclick="inlineAdjustPoint('${info.code}', 0.5)">+0.5</button>
+                        <button class="edit-btn" style="background: #ffc107; color: black; margin-right: 4px;" onclick="inlineAdjustPoint('${info.code}', -0.5)">-0.5</button>
+                        <button class="delete-btn" style="background: #dc3545;" onclick="resetStudentPoints('${info.code}')">Reset</button>
+                    </td>
                 </tr>`;
             });
         }
@@ -825,3 +828,31 @@ document.getElementById('sortScores')?.addEventListener('change', loadAdminTable
 document.getElementById('sortPoints')?.addEventListener('change', loadPointsTable);
 document.getElementById('postNewsBtn').addEventListener('click', addNewsUpdate);
 window.deleteNewsUpdate = deleteNewsUpdate;
+
+// --- INLINE POINT ADJUSTMENT LOGIC ---
+async function inlineAdjustPoint(studentCode, amount) {
+    try {
+        const studentSnap = await getDoc(doc(db, "students", studentCode));
+        if (!studentSnap.exists()) return alert("Student not found.");
+        
+        const sData = studentSnap.data();
+        const targetClass = sData.studentClass || sData.Class || sData.class || 'N/A';
+
+        await addDoc(collection(db, "student_points"), {
+            studentCode: studentCode,
+            studentName: sData.studentName,
+            studentClass: targetClass,
+            reason: "Quick Ledger Adjustment", // Default reason for quick clicks
+            points: parseFloat(amount),
+            timestamp: new Date()
+        });
+        
+        // Refresh the table immediately to show the new total
+        loadPointsTable(); 
+    } catch (e) {
+        alert("Error adjusting points: " + e.message);
+    }
+}
+
+// Bind the new function to the window so the HTML buttons can trigger it
+window.inlineAdjustPoint = inlineAdjustPoint;
