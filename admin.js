@@ -634,22 +634,6 @@ document.querySelectorAll('.menu-btn').forEach(button => {
     });
 });
 
-// Hide Admin tabs if user is just a teacher
-onAuthStateChanged(auth, async (user) => {
-    // ... [Inside your existing onAuthStateChanged logic, where it checks userRole === "admin"]
-    // Add this to the "admin" check:
-    if (userRole === "admin") {
-        document.querySelectorAll('.admin-only-view').forEach(el => el.classList.remove('hidden'));
-        document.getElementById('menuAdminOnly').style.display = "block";
-    } else {
-        document.querySelectorAll('.admin-only-view').forEach(el => el.classList.add('hidden'));
-        document.getElementById('menuAdminOnly').style.display = "none";
-        // Force non-admins to the scores tab default
-        document.querySelector('[data-tab="tab-manage-scores"]').click(); 
-    }
-});
-
-
 // --- BULK UPLOAD STUDENTS LOGIC ---
 async function processBulkStudents() {
     const fileInput = document.getElementById('bulkStudentsFile');
