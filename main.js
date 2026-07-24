@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, query, where, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyD3oiOHwHUfMhTPjEp8Ku8-qlbRKlGX0Gg",
@@ -141,42 +142,45 @@ function renderPointResults(querySnapshot) {
 
 document.getElementById('searchBtn').addEventListener('click', searchData);
 
-// --- NEWS TICKER LOGIC ---
-async function loadNewsTicker() {
+function loadNewsTicker() {
     try {
-        const querySnapshot = await getDocs(collection(db, "news_updates"));
-        const newsTicker = document.getElementById('newsTicker');
-        const newsListContainer = document.getElementById('newsListContainer');
+        const newsRef = collection(db, "news_updates");
         
-        // If there is no news, keep the ticker hidden and stop running
-        if (querySnapshot.empty) {
-            newsTicker.style.display = 'none';
-            return;
-        }
+        // onSnapshot actively listens for changes in the database and updates instantly
+        onSnapshot(newsRef, (querySnapshot) => {
+            const newsTicker = document.getElementById('newsTicker');
+            const newsListContainer = document.getElementById('newsListContainer');
+            
+            // If there is no news, keep the ticker hidden
+            if (querySnapshot.empty) {
+                newsTicker.style.display = 'none';
+                return;
+            }
 
-        let newsItems = [];
-        querySnapshot.forEach((doc) => {
-            newsItems.push(doc.data());
+            let newsItems = [];
+            querySnapshot.forEach((doc) => {
+                newsItems.push(doc.data());
+            });
+
+            // Sort by newest first
+            newsItems.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            // Inject the HTML
+            newsListContainer.innerHTML = "";
+            newsItems.forEach(news => {
+                const dateStr = new Date(news.timestamp).toLocaleDateString();
+                newsListContainer.innerHTML += `
+                    <div style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #ccc;">
+                        <div style="font-size: 12px; color: #666; margin-bottom: 4px;">${dateStr}</div>
+                        <strong style="color: #333; font-size: 15px;">${news.title}</strong>
+                        <div style="margin-top: 4px; font-size: 14px; color: #555; white-space: pre-wrap;">${news.content}</div>
+                    </div>
+                `;
+            });
+
+            // Unhide the news block now that it has data
+            newsTicker.style.display = 'block'; 
         });
-
-        // Sort by newest first
-        newsItems.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-        // Inject the HTML
-        newsListContainer.innerHTML = "";
-        newsItems.forEach(news => {
-            const dateStr = new Date(news.timestamp).toLocaleDateString();
-            newsListContainer.innerHTML += `
-                <div style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #ccc;">
-                    <div style="font-size: 12px; color: #666; margin-bottom: 4px;">${dateStr}</div>
-                    <strong style="color: #333; font-size: 15px;">${news.title}</strong>
-                    <div style="margin-top: 4px; font-size: 14px; color: #555; white-space: pre-wrap;">${news.content}</div>
-                </div>
-            `;
-        });
-
-        // Unhide the news block now that it has data
-        newsTicker.style.display = 'block'; 
         
     } catch (error) {
         console.error("Error pulling news ticker data:", error);
