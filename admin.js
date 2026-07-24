@@ -57,6 +57,8 @@ onAuthStateChanged(auth, async (user) => {
                 tableTitle.innerText = "Master Registry Ledger - All Subjects & Classes";
                 welcomeTitle.innerText = "Administrator Master System Workspace";
                 loadStudentsDirectory();
+                loadNewsTable();
+                
             } else {
                 // NEW: Hide admin views for teachers
                 document.querySelectorAll('.admin-only-view').forEach(el => el.classList.add('hidden'));

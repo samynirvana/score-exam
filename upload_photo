@@ -1,0 +1,32 @@
+<?php
+// Tell the browser we are returning JSON data
+header('Content-Type: application/json');
+
+// Check if a file was actually sent via POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['studentPhoto'])) {
+    $uploadDir = 'uploads/';
+    $file = $_FILES['studentPhoto'];
+    
+    // Validate that the uploaded file is an image
+    $allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+    if (!in_array($file['type'], $allowedTypes)) {
+        echo json_encode(['success' => false, 'message' => 'Invalid file type. Only JPG and PNG allowed.']);
+        exit;
+    }
+
+    // Generate a unique filename so photos with the same name don't overwrite each other
+    $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+    $newFileName = uniqid('student_') . '.' . $extension;
+    $destination = $uploadDir . $newFileName;
+
+    // Move the file from the temporary location to your 'uploads' folder
+    if (move_uploaded_file($file['tmp_name'], $destination)) {
+        // Success! Send the file path back to admin.js
+        echo json_encode(['success' => true, 'path' => $destination]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Server failed to save the uploaded file.']);
+    }
+} else {
+    echo json_encode(['success' => false, 'message' => 'No file received.']);
+}
+?>
