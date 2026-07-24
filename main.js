@@ -140,3 +140,48 @@ function renderPointResults(querySnapshot) {
 }
 
 document.getElementById('searchBtn').addEventListener('click', searchData);
+
+// --- NEWS TICKER LOGIC ---
+async function loadNewsTicker() {
+    try {
+        const querySnapshot = await getDocs(collection(db, "news_updates"));
+        const newsTicker = document.getElementById('newsTicker');
+        const newsListContainer = document.getElementById('newsListContainer');
+        
+        // If there is no news, keep the ticker hidden and stop running
+        if (querySnapshot.empty) {
+            newsTicker.style.display = 'none';
+            return;
+        }
+
+        let newsItems = [];
+        querySnapshot.forEach((doc) => {
+            newsItems.push(doc.data());
+        });
+
+        // Sort by newest first
+        newsItems.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        // Inject the HTML
+        newsListContainer.innerHTML = "";
+        newsItems.forEach(news => {
+            const dateStr = new Date(news.timestamp).toLocaleDateString();
+            newsListContainer.innerHTML += `
+                <div style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #ccc;">
+                    <div style="font-size: 12px; color: #666; margin-bottom: 4px;">${dateStr}</div>
+                    <strong style="color: #333; font-size: 15px;">${news.title}</strong>
+                    <div style="margin-top: 4px; font-size: 14px; color: #555; white-space: pre-wrap;">${news.content}</div>
+                </div>
+            `;
+        });
+
+        // Unhide the news block now that it has data
+        newsTicker.style.display = 'block'; 
+        
+    } catch (error) {
+        console.error("Error pulling news ticker data:", error);
+    }
+}
+
+// Execute the function immediately when the script loads
+loadNewsTicker();
