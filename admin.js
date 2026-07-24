@@ -804,31 +804,6 @@ async function deleteNewsUpdate(docId) {
     }
 }
 
-// --- INLINE POINT ADJUSTMENT LOGIC ---
-async function inlineAdjustPoint(studentCode, amount) {
-    try {
-        const studentSnap = await getDoc(doc(db, "students", studentCode));
-        if (!studentSnap.exists()) return alert("Student not found.");
-        
-        const sData = studentSnap.data();
-        const targetClass = sData.studentClass || sData.Class || sData.class || 'N/A';
-
-        await addDoc(collection(db, "student_points"), {
-            studentCode: studentCode,
-            studentName: sData.studentName,
-            studentClass: targetClass,
-            reason: "Quick Ledger Adjustment", // Default reason for quick clicks
-            points: parseFloat(amount),
-            timestamp: new Date()
-        });
-        
-        // Refresh the table immediately to show the new total
-        loadPointsTable(); 
-    } catch (e) {
-        alert("Error adjusting points: " + e.message);
-    }
-}
-
 // Bind the new function to the window so the HTML buttons can trigger it
 window.inlineAdjustPoint = inlineAdjustPoint;
 
