@@ -820,15 +820,6 @@ async function deleteNewsUpdate(docId) {
     }
 }
 
-// Bind the new bulk upload buttons
-document.getElementById('uploadBulkStudentsBtn').addEventListener('click', processBulkStudents);
-document.getElementById('uploadBulkTeachersBtn').addEventListener('click', processBulkTeachers);
-document.getElementById('sortStudents')?.addEventListener('change', loadStudentsDirectory);
-document.getElementById('sortScores')?.addEventListener('change', loadAdminTable);
-document.getElementById('sortPoints')?.addEventListener('change', loadPointsTable);
-document.getElementById('postNewsBtn').addEventListener('click', addNewsUpdate);
-window.deleteNewsUpdate = deleteNewsUpdate;
-
 // --- INLINE POINT ADJUSTMENT LOGIC ---
 async function inlineAdjustPoint(studentCode, amount) {
     try {
@@ -856,3 +847,12 @@ async function inlineAdjustPoint(studentCode, amount) {
 
 // Bind the new function to the window so the HTML buttons can trigger it
 window.inlineAdjustPoint = inlineAdjustPoint;
+
+// Bind the new bulk upload buttons
+document.getElementById('uploadBulkStudentsBtn').addEventListener('click', processBulkStudents);
+document.getElementById('uploadBulkTeachersBtn').addEventListener('click', processBulkTeachers);
+document.getElementById('sortStudents')?.addEventListener('change', loadStudentsDirectory);
+document.getElementById('sortScores')?.addEventListener('change', loadAdminTable);
+document.getElementById('sortPoints')?.addEventListener('change', loadPointsTable);
+document.getElementById('postNewsBtn').addEventListener('click', addNewsUpdate);
+window.deleteNewsUpdate = deleteNewsUpdate;
