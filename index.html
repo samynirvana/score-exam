@@ -14,23 +14,11 @@
         .score-badge { font-weight: bold; color: #007bff; }
         .class-badge { font-size: 14px; color: #666; font-weight: normal; margin-top: -5px; display: block; }
         @media (max-width: 768px) {
-            body { 
-                margin: 15px; /* Reduces the large 40px margin on mobile */
-            }
-            .two-col { 
-                flex-direction: column; /* Stacks the two columns vertically on iPhones */
-            }
-            .logout-btn { 
-                margin-bottom: 10px; 
-            }
-            /* Make tables horizontally scrollable so they don't break the screen width */
-            .header-container, div[style*="overflow-y: auto"] { 
-                overflow-x: auto !important; 
-                -webkit-overflow-scrolling: touch; /* Smooth scrolling for iOS */
-            }
-            table { 
-                min-width: 600px; /* Forces table to maintain shape, user can swipe left/right */
-            }
+            body { margin: 15px; }
+            .two-col { flex-direction: column; }
+            .logout-btn { margin-bottom: 10px; }
+            .header-container, div[style*="overflow-y: auto"] { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+            table { min-width: 600px; }
         }
     </style>
 </head>
@@ -40,6 +28,12 @@
     <!-- LEFT COLUMN: Score & Points Check -->
     <div class="container score-container">
         <img src="imgdb/logo.png" alt="School Logo" style="max-width: 120px; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto;">
+        
+        <!-- NEW TIMELINE BUTTON -->
+        <a href="timeline.html" style="display: block; background: #28a745; color: white; text-align: center; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(40, 167, 69, 0.2);">
+            💬 Open Classroom Timeline
+        </a>
+
         <h2>Check Your Scores and Points</h2>
         <p>Enter your student code below:</p>
         <div class="tabs" style="display: flex; gap: 10px; margin-bottom: 15px;">

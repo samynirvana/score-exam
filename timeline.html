@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classroom Timeline</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .timeline-container { max-width: 700px; margin: 0 auto; width: 100%; text-align: left; }
+        .post-box { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #ddd; }
+        .post-box input, .post-box textarea { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-family: inherit; }
+        .post-box textarea { resize: vertical; min-height: 80px; }
+        .post-box button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; }
+        
+        .timeline-post { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 15px; border: 1px solid #eee; }
+        .post-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .post-header strong { color: #333; font-size: 16px; }
+        .post-header .time { font-size: 12px; color: #888; }
+        .post-body { font-size: 15px; color: #444; margin-bottom: 15px; white-space: pre-wrap; }
+        
+        .comments-section { border-top: 1px solid #f1f1f1; padding-top: 10px; margin-bottom: 10px; }
+        .comment { background: #f8f9fa; padding: 8px 12px; border-radius: 6px; margin-bottom: 8px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
+        .comment strong { color: #007bff; }
+        
+        .reply-box { display: flex; gap: 8px; margin-top: 10px; }
+        .reply-box input[type="text"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; flex: 1; }
+        .reply-box button { background: #28a745; color: white; border: none; border-radius: 4px; padding: 0 15px; cursor: pointer; font-size: 13px; }
+        
+        .staff-badge { display: inline-block; background: #28a745; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; margin-left: 5px; vertical-align: middle; }
+        .delete-btn { background: #dc3545; color: white; border: none; border-radius: 4px; padding: 4px 10px; font-size: 12px; cursor: pointer; font-weight: bold; }
+        .delete-btn:hover { background: #c82333; }
+        .delete-comment-btn { background: #dc3545; color: white; border: none; border-radius: 4px; padding: 2px 6px; font-size: 10px; cursor: pointer; }
+        
+        /* Login Screen specific styles */
+        .login-box { max-width: 400px; margin: 60px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }
+        .login-box input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        .login-box button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        
+        .header-flex { display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 5px; margin-top: 0; }
+        .refresh-btn { background: #17a2b8; color: white; border: none; border-radius: 4px; padding: 6px 12px; font-size: 12px; cursor: pointer; font-weight: bold; }
+        .refresh-btn:hover { background: #138496; }
+    </style>
+</head>
+<body>
+<div class="page-wrapper" style="display: block; width: 100%;">
+    
+    <!-- LOGIN SCREEN -->
+    <div id="loginScreen" class="login-box">
+        <h2 style="color: #007bff; margin-top: 0;">Timeline Access</h2>
+        <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; font-size: 13px; color: #555; margin-bottom: 20px; text-align: left;">
+            <strong>Students:</strong> Enter your 5-Character code as BOTH your Username and Password.<br><br>
+            <strong>Teachers/Admin:</strong> Login with your registered Email and Password.
+        </div>
+        <input type="text" id="loginUsername" placeholder="Username / Code / Email">
+        <input type="password" id="loginPassword" placeholder="Password">
+        <button id="loginBtn">Secure Login</button>
+        <a href="index.html" style="display: block; margin-top: 15px; font-size: 14px; color: #666; text-decoration: none;">&larr; Back to Portal</a>
+    </div>
+
+    <!-- MAIN TIMELINE APP (Hidden until logged in) -->
+    <div id="timelineApp" class="container timeline-container hidden">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <a href="index.html" style="color: #007bff; text-decoration: none; font-size: 14px;">&larr; Back to Portal</a>
+            <button id="logoutBtn" style="background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">Logout</button>
+        </div>
+        
+        <div class="header-flex">
+            <h2 style="color: #007bff; margin: 0;">Classroom Discussion</h2>
+            <button id="refreshBtn" class="refresh-btn">🔄 Refresh</button>
+        </div>
+        
+        <p style="text-align: center; font-size: 13px; color: #28a745; margin-bottom: 20px; font-weight: bold;">
+            Logged in as: <span id="currentUserDisplay"></span>
+        </p>
+        
+        <!-- Create Post Area -->
+        <div class="post-box">
+            <textarea id="postMessage" placeholder="What would you like to share with the class?"></textarea>
+            <button id="submitPostBtn">Post to Timeline</button>
+        </div>
+
+        <!-- Feed Area -->
+        <div id="timelineFeed">
+            <!-- Posts will be injected here via JavaScript -->
+        </div>
+    </div>
+</div>
+
+<script type="module" src="timeline.js"></script>
+</body>
+</html>
