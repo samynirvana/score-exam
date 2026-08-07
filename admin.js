@@ -177,62 +177,35 @@ async function registerStudent() {
 // Global variable to store student data for fast searching/sorting
 let allStudentsData = [];
 
-// 1. Function to fetch data from Firebase
+// 1. Function to fetch data and build the filter dropdown
 async function loadStudentsDirectory() {
     try {
         const querySnapshot = await getDocs(collection(db, "students"));
         allStudentsData = [];
+        const classesSet = new Set(); // To collect unique class names automatically
+
         querySnapshot.forEach((doc) => {
-            allStudentsData.push({ id: doc.id, ...doc.data() });
+            const data = doc.data();
+            allStudentsData.push({ id: doc.id, ...data });
+            
+            // IMPORTANT: Make sure 'data.studentClass' matches your exact Firebase field!
+            if (data.studentClass) { 
+                classesSet.add(data.studentClass);
+            }
         });
-        renderStudentsTable(); // Call the render function
+
+        // Populate the filter dropdown with unique classes
+        const filterDropdown = document.getElementById('filterClass');
+        filterDropdown.innerHTML = '<option value="all">All Classes</option>';
+        
+        Array.from(classesSet).sort().forEach(className => {
+            filterDropdown.innerHTML += `<option value="${className}">${className}</option>`;
+        });
+
+        renderStudentsTable();
     } catch (error) {
         console.error("Error loading students:", error);
     }
-}
-
-// 2. Function to filter, sort, and render the table
-function renderStudentsTable() {
-    const searchTerm = document.getElementById('searchStudents').value.toLowerCase();
-    const sortBy = document.getElementById('sortStudents').value;
-    
-    // Filter data based on search input
-    let filteredStudents = allStudentsData.filter(s => 
-        (s.studentName && s.studentName.toLowerCase().includes(searchTerm)) ||
-        (s.classRoom && s.classRoom.toLowerCase().includes(searchTerm)) ||
-        (s.id && s.id.toLowerCase().includes(searchTerm)) // Search by code
-    );
-
-    // Sort data based on dropdown selection
-    filteredStudents.sort((a, b) => {
-        if (sortBy === 'name') return (a.studentName || '').localeCompare(b.studentName || '');
-        if (sortBy === 'class') return (a.classRoom || '').localeCompare(b.classRoom || '');
-        return (a.id || '').localeCompare(b.id || ''); // Default to Code
-    });
-
-    // Render HTML
-    const tbody = document.querySelector('#studentsTable tbody');
-    tbody.innerHTML = '';
-    
-    filteredStudents.forEach(student => {
-        tbody.innerHTML += `
-            <tr>
-                <td style="font-weight: 600;">${student.id}</td>
-                <td>${student.studentName}</td>
-                <td><span style="color:var(--primary-blue); font-weight:600;">${student.classRoom}</span></td>
-                <td>
-                    <div class="kebab-menu">
-                        <button class="kebab-btn" onclick="toggleMenu(event, '${student.id}')">⋮</button>
-                        <div id="menu-${student.id}" class="dropdown-menu">
-                            <button class="dropdown-item" onclick="editStudent('${student.id}')">Edit Student</button>
-                            <button class="dropdown-item" onclick="generateNewUniqueCode('${student.id}')">Generate New Code</button>
-                            <button class="dropdown-item danger" onclick="deleteStudent('${student.id}')">Delete Student</button>
-                        </div>
-                    </div>
-                </td>
-            </tr>
-        `;
-    });
 }
 
 // Inline Student Directory Modification Handler
@@ -1226,6 +1199,95 @@ async function updateDashboardStats() {
         console.error("Dashboard stats calculation error:", e);
     }
 }
+
+// 2. Function to filter, sort, and render the table with hidden codes
+function renderStudentsTable() {
+    const searchTerm = document.getElementById('searchStudents').value.toLowerCase();
+    const sortBy = document.getElementById('sortStudents').value;
+    const filterByClass = document.getElementById('filterClass').value; // Get filter value
+    
+    // Filter data based on search input AND class filter
+    let filteredStudents = allStudentsData.filter(s => {
+        // IMPORTANT: Make sure 's.class' matches your exact Firebase field!
+        const matchesSearch = (s.studentName && s.studentName.toLowerCase().includes(searchTerm)) ||
+                              (s.studentClass && s.studentClass.toLowerCase().includes(searchTerm)) || 
+                              (s.id && s.id.toLowerCase().includes(searchTerm));
+                              
+        const matchesClass = (filterByClass === 'all') || (s.studentClass === filterByClass);
+
+        return matchesSearch && matchesClass;
+    });
+
+    // Sort data
+    filteredStudents.sort((a, b) => {
+        // IMPORTANT: Make sure 'a.studentClass' and 'b.studentClass' match your exact Firebase field!
+        if (sortBy === 'name') return (a.studentName || '').localeCompare(b.studentName || '');
+        if (sortBy === 'class') return (a.studentClass || '').localeCompare(b.studentClass || '');
+        return (a.id || '').localeCompare(b.id || ''); 
+    });
+
+    // Render HTML
+    const tbody = document.querySelector('#studentsTable tbody');
+    tbody.innerHTML = '';
+    
+    filteredStudents.forEach(student => {
+        tbody.innerHTML += `
+            <tr>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <!-- Code masked by default with letter-spacing for styling -->
+                        <span id="code-${student.id}" style="font-weight: 600; letter-spacing: 2px;">•••••</span>
+                        
+                        <!-- Eye Button SVG -->
+                        <button class="eye-btn" onclick="toggleCodeVisibility('${student.id}')" title="Show/Hide Code">
+                            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0"/>
+                                <path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8m8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7"/>
+                            </svg>
+                        </button>
+                    </div>
+                </td>
+                <td>${student.studentName}</td>
+                
+                <!-- IMPORTANT: Make sure 'student.studentClass' matches your exact Firebase field! -->
+                <td><span style="color:var(--primary-blue); font-weight:600;">${student.studentClass || 'N/A'}</span></td>
+                
+                <td>
+                    <div class="kebab-menu">
+                        <button class="kebab-btn" onclick="toggleMenu(event, '${student.id}')">⋮</button>
+                        <div id="menu-${student.id}" class="dropdown-menu">
+                            <button class="dropdown-item" onclick="editStudent('${student.id}')">Edit Student</button>
+                            <button class="dropdown-item" onclick="generateNewUniqueCode('${student.id}')">Generate New Code</button>
+                            <button class="dropdown-item danger" onclick="deleteStudent('${student.id}')">Delete Student</button>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+// 3. New Event Listener for the Class Filter
+document.getElementById('filterClass').addEventListener('change', renderStudentsTable);
+
+// (Keep your existing search and sort listeners here)
+document.getElementById('searchStudents').addEventListener('input', renderStudentsTable);
+document.getElementById('sortStudents').addEventListener('change', renderStudentsTable);
+
+
+// 4. Function to toggle the code visibility
+window.toggleCodeVisibility = function(studentId) {
+    const span = document.getElementById(`code-${studentId}`);
+    if (!span) return;
+
+    if (span.innerText === '•••••') {
+        span.innerText = studentId; // Show real code
+        span.style.letterSpacing = 'normal'; // Reset spacing
+    } else {
+        span.innerText = '•••••'; // Hide code
+        span.style.letterSpacing = '2px'; // Add spacing for dots
+    }
+};
 
 // 3. Event Listeners for Search and Sort
 document.getElementById('searchStudents').addEventListener('input', renderStudentsTable);

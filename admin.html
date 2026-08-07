@@ -99,20 +99,27 @@
                 <!-- Main Layout Grid mimicking the Image -->
                 <div class="dashboard-grid">
                     
-                    <!-- Left Col: Student Directory -->
+                   <!-- Left Col: Student Directory -->
                         <div class="box">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
                                 <h3 style="margin: 0;">Student Master Directory</h3>
                                 <div style="display: flex; gap: 10px; align-items: center; flex: 1; justify-content: flex-end;">
                                     <!-- Search Input -->
-                                    <input type="text" id="searchStudents" placeholder="Search students..." style="width: 200px; margin: 0; padding: 6px 12px; font-size: 13px;">
+                                    <input type="text" id="searchStudents" placeholder="Search students..." style="width: 170px; margin: 0; padding: 6px 12px; font-size: 13px;">
                                     
+                                    <!-- NEW: Filter Class Dropdown -->
+                                    <label for="filterClass" style="font-size: 12px; white-space: nowrap;">Class:</label>
+                                    <select id="filterClass" style="padding: 6px; margin: 0; width: auto; font-size: 12px;">
+                                        <option value="all">All Classes</option>
+                                        <!-- JS will auto-populate this list based on your database -->
+                                    </select>
+
                                     <!-- Sort Dropdown -->
                                     <label for="sortStudents" style="font-size: 12px; white-space: nowrap;">Sort by:</label>
                                     <select id="sortStudents" style="padding: 6px; margin: 0; width: auto; font-size: 12px;">
                                         <option value="code">Code</option>
                                         <option value="name">Name</option>
-                                        <option value="class">Class</option>
+                                        <option value="studentClass">Class</option>
                                     </select>
                                 </div>
                             </div>

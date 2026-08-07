@@ -268,3 +268,23 @@ td { color: #475569; font-weight: 500; }
 .dropdown-item.danger:hover {
     background: #ffeaea;
 }
+
+.eye-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px;
+    color: #a3aed1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.2s;
+    border-radius: 4px;
+    width: auto;
+    margin: 0;
+}
+.eye-btn:hover {
+    background: #eef2ff;
+    color: var(--primary-blue);
+}
