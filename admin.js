@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, doc, collection, getDocs, getDoc, deleteDoc, query, where, addDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, where, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyD3oiOHwHUfMhTPjEp8Ku8-qlbRKlGX0Gg",
@@ -58,6 +58,7 @@ onAuthStateChanged(auth, async (user) => {
                 welcomeTitle.innerText = "Administrator Master System Workspace";
                 loadStudentsDirectory();
                 loadNewsTable();
+                updateDashboardStats();
                 
             } else {
                 // NEW: Hide admin views for teachers
@@ -173,46 +174,65 @@ async function registerStudent() {
     }
 }
 
-// Render directory collection with Edit and Delete hooks
+// Global variable to store student data for fast searching/sorting
+let allStudentsData = [];
+
+// 1. Function to fetch data from Firebase
 async function loadStudentsDirectory() {
     try {
-        const snap = await getDocs(collection(db, "students"));
-        const tbody = document.querySelector("#studentsTable tbody");
-        if (!tbody) return;
-        
-        let studentsList = [];
-        snap.forEach((doc) => {
-            const data = doc.data();
-            studentsList.push({
-                id: doc.id,
-                name: data.studentName || 'N/A',
-                studentClass: data.studentClass || data.Class || data.class || "N/A"
-            });
+        const querySnapshot = await getDocs(collection(db, "students"));
+        allStudentsData = [];
+        querySnapshot.forEach((doc) => {
+            allStudentsData.push({ id: doc.id, ...doc.data() });
         });
-
-        // Apply Sorting
-        const sortVal = document.getElementById('sortStudents')?.value || 'code';
-        studentsList.sort((a, b) => {
-            if (sortVal === 'name') return a.name.localeCompare(b.name);
-            if (sortVal === 'class') return a.studentClass.localeCompare(b.studentClass);
-            return a.id.localeCompare(b.id);
-        });
-
-        tbody.innerHTML = "";
-        studentsList.forEach((s) => {
-            tbody.innerHTML += `<tr>
-                <td><strong>${s.id}</strong></td>
-                <td>${s.name}</td>
-                <td><span style="color:#007bff; font-weight:bold;">${s.studentClass}</span></td>
-                <td>
-                    <button class="edit-btn" onclick="editStudentProfile('${s.id}')">Edit</button>
-                    <button class="delete-btn" onclick="deleteStudentProfile('${s.id}')">Delete</button>
-                </td>
-            </tr>`;
-        });
-    } catch (e) {
-        console.error(e);
+        renderStudentsTable(); // Call the render function
+    } catch (error) {
+        console.error("Error loading students:", error);
     }
+}
+
+// 2. Function to filter, sort, and render the table
+function renderStudentsTable() {
+    const searchTerm = document.getElementById('searchStudents').value.toLowerCase();
+    const sortBy = document.getElementById('sortStudents').value;
+    
+    // Filter data based on search input
+    let filteredStudents = allStudentsData.filter(s => 
+        (s.studentName && s.studentName.toLowerCase().includes(searchTerm)) ||
+        (s.classRoom && s.classRoom.toLowerCase().includes(searchTerm)) ||
+        (s.id && s.id.toLowerCase().includes(searchTerm)) // Search by code
+    );
+
+    // Sort data based on dropdown selection
+    filteredStudents.sort((a, b) => {
+        if (sortBy === 'name') return (a.studentName || '').localeCompare(b.studentName || '');
+        if (sortBy === 'class') return (a.classRoom || '').localeCompare(b.classRoom || '');
+        return (a.id || '').localeCompare(b.id || ''); // Default to Code
+    });
+
+    // Render HTML
+    const tbody = document.querySelector('#studentsTable tbody');
+    tbody.innerHTML = '';
+    
+    filteredStudents.forEach(student => {
+        tbody.innerHTML += `
+            <tr>
+                <td style="font-weight: 600;">${student.id}</td>
+                <td>${student.studentName}</td>
+                <td><span style="color:var(--primary-blue); font-weight:600;">${student.classRoom}</span></td>
+                <td>
+                    <div class="kebab-menu">
+                        <button class="kebab-btn" onclick="toggleMenu(event, '${student.id}')">⋮</button>
+                        <div id="menu-${student.id}" class="dropdown-menu">
+                            <button class="dropdown-item" onclick="editStudent('${student.id}')">Edit Student</button>
+                            <button class="dropdown-item" onclick="generateNewUniqueCode('${student.id}')">Generate New Code</button>
+                            <button class="dropdown-item danger" onclick="deleteStudent('${student.id}')">Delete Student</button>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
 }
 
 // Inline Student Directory Modification Handler
@@ -806,6 +826,449 @@ async function deleteNewsUpdate(docId) {
     }
 }
 
+// --- QUIZ BUILDER & MANAGEMENT SYSTEM ---
+
+// Helper: Convert Google Drive URLs
+function convertDriveUrl(url) {
+    if (!url) return '';
+    const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    return match && match[1] ? `https://lh3.googleusercontent.com/d/${match[1]}` : url;
+}
+
+let currentEditQuizId = null;
+
+// 1. Dynamic Block Add Function (Exposed Immediately)
+function addBlock(type) {
+    const container = document.getElementById('quizBlocksContainer');
+    if (!container) return;
+
+    const blockDiv = document.createElement('div');
+    blockDiv.className = 'quiz-block';
+    blockDiv.dataset.type = type;
+    blockDiv.style.cssText = "background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #ddd; position: relative;";
+
+    let contentHtml = `<button type="button" onclick="this.parentElement.remove()" style="position: absolute; right: 8px; top: 8px; background:#dc3545; color:white; border:none; padding: 2px 6px; border-radius:4px; cursor:pointer;">X</button>`;
+
+    if (type === 'header') {
+        contentHtml += `
+            <label style="color:#6c757d; font-weight:bold;">📌 Section Instruction / Header</label>
+            <input type="text" class="blk-title" placeholder="e.g. Part A: Reading Comprehension">
+        `;
+    } else if (type === 'passage') {
+        contentHtml += `
+            <label style="color:#17a2b8; font-weight:bold;">📖 Reading Text / Article</label>
+            <input type="text" class="blk-title" placeholder="Article Title (Optional)">
+            <textarea class="blk-body" rows="4" placeholder="Paste full article here..." style="width:100%; margin: 5px 0;"></textarea>
+            <input type="text" class="blk-img" placeholder="Google Drive Image URL (Optional)">
+        `;
+    } else if (type === 'mcq') {
+        contentHtml += `
+            <label style="color:#007bff; font-weight:bold;">❓ Multiple Choice Question</label>
+            <input type="text" class="blk-prompt" placeholder="Question prompt..." required>
+            <input type="text" class="blk-img" placeholder="Google Drive Image URL (Optional)">
+            <input type="text" class="blk-opt0" placeholder="Option A" required>
+            <input type="text" class="blk-opt1" placeholder="Option B" required>
+            <input type="text" class="blk-opt2" placeholder="Option C" required>
+            <input type="text" class="blk-opt3" placeholder="Option D" required>
+            <select class="blk-correct">
+                <option value="0">Correct: Option A</option>
+                <option value="1">Correct: Option B</option>
+                <option value="2">Correct: Option C</option>
+                <option value="3">Correct: Option D</option>
+            </select>
+        `;
+    } else if (type === 'fill') {
+        contentHtml += `
+            <label style="color:#e0a800; font-weight:bold;">✏️ Fill in the Blank</label>
+            <input type="text" class="blk-prompt" placeholder="Prompt (use ___ for blank)..." required>
+            <input type="text" class="blk-img" placeholder="Google Drive Image URL (Optional)">
+            <input type="text" class="blk-answer" placeholder="Accepted answer(s) (comma-separated)" required>
+        `;
+    } else if (type === 'essay') {
+        contentHtml += `
+            <label style="color:#fd7e14; font-weight:bold;">📝 Essay Question</label>
+            <input type="text" class="blk-prompt" placeholder="Essay Prompt..." required>
+            <input type="text" class="blk-img" placeholder="Google Drive Image URL (Optional)">
+        `;
+    } else if (type === 'matching') {
+        contentHtml += `
+            <label style="color:#20c997; font-weight:bold;">🔗 Matching Question</label>
+            <input type="text" class="blk-prompt" placeholder="Instructions..." required>
+            <div class="pairs-container">
+                <div style="display:flex; gap:5px; margin-top:5px;">
+                    <input type="text" class="m-left" placeholder="Item (e.g. Paris)">
+                    <input type="text" class="m-right" placeholder="Match (e.g. France)">
+                </div>
+                <div style="display:flex; gap:5px; margin-top:5px;">
+                    <input type="text" class="m-left" placeholder="Item (e.g. Tokyo)">
+                    <input type="text" class="m-right" placeholder="Match (e.g. Japan)">
+                </div>
+            </div>
+        `;
+    }
+
+    blockDiv.innerHTML = contentHtml;
+    container.appendChild(blockDiv);
+}
+window.addBlock = addBlock;
+
+// 2. Load Quizzes Table
+async function loadQuizzesTable() {
+    try {
+        const snap = await getDocs(collection(db, "quizzes"));
+        const tbody = document.querySelector("#quizTable tbody");
+        if (!tbody) return;
+        tbody.innerHTML = "";
+
+        snap.forEach(docSnap => {
+            const data = docSnap.data();
+            const safeTitle = (data.title || '').replace(/'/g, "\\'");
+            tbody.innerHTML += `<tr>
+                <td><strong>${data.title}</strong></td>
+                <td>${data.subject}</td>
+                <td>${data.targetClass}</td>
+                <td>
+                    <button style="background:#17a2b8; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;" onclick="viewQuizResults('${safeTitle}')">Results</button>
+                    <button style="background:#ffc107; color:black; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;" onclick="editQuiz('${docSnap.id}')">Edit</button>
+                    <button class="delete-btn" onclick="deleteQuiz('${docSnap.id}')">Delete</button>
+                </td>
+            </tr>`;
+        });
+    } catch (e) { console.error("Error loading quizzes:", e); }
+}
+window.loadQuizzesTable = loadQuizzesTable;
+
+// 3. Save or Update Quiz
+async function saveQuiz() {
+    const title = document.getElementById('quizTitle').value.trim();
+    const targetClass = document.getElementById('quizTargetClass').value.trim();
+    const subject = document.getElementById('quizSubject').value.trim();
+    const blocksElements = document.querySelectorAll('.quiz-block');
+
+    if (!title || !targetClass || blocksElements.length === 0) {
+        return alert("Please fill in quiz title, class, and add at least one block.");
+    }
+
+    const items = [];
+    blocksElements.forEach(el => {
+        const type = el.dataset.type;
+        const imgRaw = el.querySelector('.blk-img')?.value.trim() || '';
+        const imgUrl = convertDriveUrl(imgRaw);
+
+        if (type === 'header') {
+            items.push({ type, text: el.querySelector('.blk-title').value.trim() });
+        } else if (type === 'passage') {
+            items.push({ 
+                type, 
+                title: el.querySelector('.blk-title').value.trim(), 
+                text: el.querySelector('.blk-body').value.trim(),
+                imageUrl: imgUrl
+            });
+        } else if (type === 'mcq') {
+            items.push({
+                type,
+                prompt: el.querySelector('.blk-prompt').value.trim(),
+                imageUrl: imgUrl,
+                options: [
+                    el.querySelector('.blk-opt0').value.trim(),
+                    el.querySelector('.blk-opt1').value.trim(),
+                    el.querySelector('.blk-opt2').value.trim(),
+                    el.querySelector('.blk-opt3').value.trim()
+                ],
+                correct: parseInt(el.querySelector('.blk-correct').value)
+            });
+        } else if (type === 'fill') {
+            items.push({
+                type,
+                prompt: el.querySelector('.blk-prompt').value.trim(),
+                imageUrl: imgUrl,
+                answers: el.querySelector('.blk-answer').value.trim().toLowerCase().split(',').map(a => a.trim())
+            });
+        } else if (type === 'essay') {
+            items.push({
+                type,
+                prompt: el.querySelector('.blk-prompt').value.trim(),
+                imageUrl: imgUrl
+            });
+        } else if (type === 'matching') {
+            const lefts = Array.from(el.querySelectorAll('.m-left')).map(i => i.value.trim());
+            const rights = Array.from(el.querySelectorAll('.m-right')).map(i => i.value.trim());
+            items.push({ type, prompt: el.querySelector('.blk-prompt').value.trim(), lefts, rights });
+        }
+    });
+
+    try {
+        if (currentEditQuizId) {
+            await updateDoc(doc(db, "quizzes", currentEditQuizId), {
+                title, targetClass, subject, items, updatedAt: new Date().toISOString()
+            });
+            alert("Quiz updated successfully!");
+            currentEditQuizId = null;
+            const saveBtn = document.getElementById('saveQuizBtn');
+            if (saveBtn) {
+                saveBtn.innerText = "Publish Quiz";
+                saveBtn.style.background = "#28a745";
+            }
+        } else {
+            await addDoc(collection(db, "quizzes"), {
+                title, targetClass, subject, items, createdAt: new Date().toISOString()
+            });
+            alert("Quiz published successfully!");
+        }
+
+        document.getElementById('quizBlocksContainer').innerHTML = "";
+        document.getElementById('quizTitle').value = "";
+        loadQuizzesTable();
+    } catch (e) { alert("Error saving quiz: " + e.message); }
+}
+
+// 4. Edit Quiz
+async function editQuiz(id) {
+    try {
+        const snap = await getDoc(doc(db, "quizzes", id));
+        if (!snap.exists()) return alert("Quiz missing.");
+        const quiz = snap.data();
+
+        currentEditQuizId = id;
+        document.getElementById('quizTitle').value = quiz.title;
+        document.getElementById('quizTargetClass').value = quiz.targetClass;
+        document.getElementById('quizSubject').value = quiz.subject;
+
+        const container = document.getElementById('quizBlocksContainer');
+        container.innerHTML = "";
+
+        (quiz.items || quiz.questions || []).forEach(item => {
+            const type = item.type || 'mcq';
+            addBlock(type);
+            const block = container.lastElementChild;
+
+            if (type === 'header') {
+                block.querySelector('.blk-title').value = item.text || '';
+            } else if (type === 'passage') {
+                block.querySelector('.blk-title').value = item.title || '';
+                block.querySelector('.blk-body').value = item.text || '';
+                if (block.querySelector('.blk-img')) block.querySelector('.blk-img').value = item.imageUrl || '';
+            } else if (type === 'mcq') {
+                block.querySelector('.blk-prompt').value = item.prompt || item.question || '';
+                if (block.querySelector('.blk-img')) block.querySelector('.blk-img').value = item.imageUrl || '';
+                if (item.options) {
+                    block.querySelector('.blk-opt0').value = item.options[0] || '';
+                    block.querySelector('.blk-opt1').value = item.options[1] || '';
+                    block.querySelector('.blk-opt2').value = item.options[2] || '';
+                    block.querySelector('.blk-opt3').value = item.options[3] || '';
+                }
+                if (block.querySelector('.blk-correct')) block.querySelector('.blk-correct').value = item.correct ?? 0;
+            } else if (type === 'fill') {
+                block.querySelector('.blk-prompt').value = item.prompt || '';
+                if (block.querySelector('.blk-img')) block.querySelector('.blk-img').value = item.imageUrl || '';
+                if (item.answers) block.querySelector('.blk-answer').value = item.answers.join(', ');
+            } else if (type === 'essay') {
+                block.querySelector('.blk-prompt').value = item.prompt || '';
+                if (block.querySelector('.blk-img')) block.querySelector('.blk-img').value = item.imageUrl || '';
+            } else if (type === 'matching') {
+                block.querySelector('.blk-prompt').value = item.prompt || '';
+                const leftInputs = block.querySelectorAll('.m-left');
+                const rightInputs = block.querySelectorAll('.m-right');
+                item.lefts?.forEach((l, i) => { if (leftInputs[i]) leftInputs[i].value = l; });
+                item.rights?.forEach((r, i) => { if (rightInputs[i]) rightInputs[i].value = r; });
+            }
+        });
+
+        const saveBtn = document.getElementById('saveQuizBtn');
+        if (saveBtn) {
+            saveBtn.innerText = "Update Quiz";
+            saveBtn.style.background = "#ffc107";
+        }
+        document.getElementById('quizTitle').scrollIntoView({ behavior: 'smooth' });
+    } catch (e) { alert("Error loading quiz: " + e.message); }
+}
+window.editQuiz = editQuiz;
+
+// 5. Delete Quiz
+async function deleteQuiz(id) {
+    if (confirm("Are you sure you want to delete this quiz?")) {
+        try {
+            await deleteDoc(doc(db, "quizzes", id));
+            alert("Quiz deleted successfully!");
+            loadQuizzesTable();
+        } catch (e) { alert("Error deleting quiz: " + e.message); }
+    }
+}
+window.deleteQuiz = deleteQuiz;
+
+// 6. View Results Modal
+async function viewQuizResults(quizTitle) {
+    const modal = document.getElementById('quizResultsModal');
+    const container = document.getElementById('resultsListContainer');
+    document.getElementById('modalQuizTitle').innerText = `Results: ${quizTitle}`;
+    modal.style.display = 'flex';
+    container.innerHTML = "Loading student submissions...";
+
+    try {
+        const q = query(collection(db, "quiz_results"), where("quizTitle", "==", quizTitle));
+        const snap = await getDocs(q);
+
+        if (snap.empty) {
+            container.innerHTML = "<p style='color:#6c757d;'>No students have submitted answers for this quiz yet.</p>";
+            return;
+        }
+
+        let html = "";
+        snap.forEach(docSnap => {
+            const res = docSnap.data();
+            const dateStr = res.submittedAt ? new Date(res.submittedAt).toLocaleString() : 'N/A';
+
+            html += `
+                <div style="background:#f8f9fa; border:1px solid #ddd; padding:12px; margin-bottom:12px; border-radius:6px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:6px; margin-bottom:8px;">
+                        <strong>${res.studentName} (${res.studentCode})</strong>
+                        <span style="background:#28a745; color:white; padding:3px 8px; border-radius:12px; font-weight:bold; font-size:14px;">
+                            Score: ${res.score} / ${res.totalAutoGradable || '?'}
+                        </span>
+                    </div>
+                    <small style="color:#6c757d;">Submitted: ${dateStr}</small>
+                    <details style="margin-top:8px;">
+                        <summary style="cursor:pointer; font-weight:bold; color:#007bff;">View Submitted Answers</summary>
+                        <div style="margin-top:8px; padding-left:10px;">
+            `;
+
+            if (res.responses && res.responses.length > 0) {
+                res.responses.forEach((r, idx) => {
+                    html += `
+                        <div style="margin-bottom:8px;">
+                            <small style="color:#495057;"><strong>Q${idx + 1}:</strong> ${r.prompt}</small><br>
+                            <span style="color:#155724; background:#d4edda; padding:2px 8px; border-radius:4px; font-size:13px; display:inline-block; margin-top:2px;">
+                                Answer: ${r.response || 'No answer provided'}
+                            </span>
+                        </div>
+                    `;
+                });
+            } else {
+                html += `<small>No detailed response data found.</small>`;
+            }
+
+            html += `</div></details></div>`;
+        });
+
+        container.innerHTML = html;
+    } catch (e) { container.innerHTML = "Error loading submissions: " + e.message; }
+}
+function closeResultsModal() {
+    document.getElementById('quizResultsModal').style.display = 'none';
+}
+window.viewQuizResults = viewQuizResults;
+window.closeResultsModal = closeResultsModal;
+
+// Save Button Listener
+document.getElementById('saveQuizBtn')?.addEventListener('click', saveQuiz);
+
+// Auto-load table on initial script boot
+loadQuizzesTable();
+
+
+// --- DASHBOARD STATISTICS CALCULATOR ---
+async function updateDashboardStats() {
+    try {
+        // 1. Total Students
+        const studentsSnap = await getDocs(collection(db, "students"));
+        document.getElementById('stat-total-students').innerText = studentsSnap.size;
+
+        // 2. Total Teachers
+        const usersSnap = await getDocs(collection(db, "users"));
+        let teacherCount = 0;
+        usersSnap.forEach(doc => {
+            if(doc.data().role === 'teacher') teacherCount++;
+        });
+        document.getElementById('stat-total-teachers').innerText = teacherCount;
+
+        // 3 & 4. Highest and Lowest Behavior Points
+        const studentsMap = {};
+        studentsSnap.forEach(doc => {
+            studentsMap[doc.id] = { name: doc.data().studentName || 'N/A', total: 0 };
+        });
+        
+        const pointsSnap = await getDocs(collection(db, "student_points"));
+        pointsSnap.forEach(doc => {
+            const data = doc.data();
+            if (studentsMap[data.studentCode]) {
+                studentsMap[data.studentCode].total += (parseFloat(data.points) || 0);
+            }
+        });
+
+        let highestName = "N/A", highestScore = -Infinity;
+        let lowestName = "N/A", lowestScore = Infinity;
+        let hasStudents = false;
+
+        for (const code in studentsMap) {
+            hasStudents = true;
+            const student = studentsMap[code];
+            if (student.total > highestScore) { highestScore = student.total; highestName = student.name; }
+            if (student.total < lowestScore) { lowestScore = student.total; lowestName = student.name; }
+        }
+
+        if (hasStudents && highestScore !== -Infinity) {
+            document.getElementById('stat-highest-behavior').innerText = `${highestName} (${highestScore > 0 ? '+' : ''}${highestScore})`;
+            document.getElementById('stat-lowest-behavior').innerText = `${lowestName} (${lowestScore > 0 ? '+' : ''}${lowestScore})`;
+        } else {
+            document.getElementById('stat-highest-behavior').innerText = "N/A";
+            document.getElementById('stat-lowest-behavior').innerText = "N/A";
+        }
+
+        // 5. Total News
+        const newsSnap = await getDocs(collection(db, "news_updates"));
+        document.getElementById('stat-total-news').innerText = newsSnap.size;
+
+        // 6. Total Quizzes
+        const quizSnap = await getDocs(collection(db, "quizzes"));
+        document.getElementById('stat-total-quizzes').innerText = quizSnap.size;
+
+    } catch (e) {
+        console.error("Dashboard stats calculation error:", e);
+    }
+}
+
+// 3. Event Listeners for Search and Sort
+document.getElementById('searchStudents').addEventListener('input', renderStudentsTable);
+document.getElementById('sortStudents').addEventListener('change', renderStudentsTable);
+
+// 4. Menu Toggle Logic (Attach to window so inline HTML onclick works)
+window.toggleMenu = function(event, id) {
+    event.stopPropagation(); // Prevents the click from closing the menu immediately
+    
+    // Close all other open menus first
+    document.querySelectorAll('.dropdown-menu').forEach(menu => {
+        if (menu.id !== `menu-${id}`) menu.classList.remove('show');
+    });
+    
+    // Toggle the clicked menu
+    document.getElementById(`menu-${id}`).classList.toggle('show');
+}
+
+// Close dropdowns when clicking anywhere outside of them
+window.addEventListener('click', () => {
+    document.querySelectorAll('.dropdown-menu').forEach(menu => menu.classList.remove('show'));
+});
+
+// 5. Action Functions (Make sure these exist and are attached to window)
+window.generateNewUniqueCode = async function(oldCode) {
+    if(confirm(`Are you sure you want to generate a new code for student ${oldCode}? The old code will be disabled.`)) {
+        // Add your logic here to generate a code, update the Firebase document ID/data, 
+        // and delete the old document if necessary.
+        // After updating Firebase:
+        // loadStudentsDirectory(); 
+    }
+
+// Expose to window object for HTML onclick inline events
+window.deleteQuiz = deleteQuiz;
+window.viewQuizResults = viewQuizResults;
+window.closeResultsModal = closeResultsModal;
+window.editQuiz = editQuiz;
+
+document.getElementById('saveQuizBtn')?.addEventListener('click', saveQuiz);
+window.deleteQuiz = deleteQuiz;
+document.getElementById('addQuestionBtn')?.addEventListener('click', addQuestionField);
+document.getElementById('saveQuizBtn')?.addEventListener('click', saveQuiz);
+
 // Bind the new function to the window so the HTML buttons can trigger it
 window.inlineAdjustPoint = inlineAdjustPoint;
 
@@ -817,3 +1280,4 @@ document.getElementById('sortScores')?.addEventListener('change', loadAdminTable
 document.getElementById('sortPoints')?.addEventListener('change', loadPointsTable);
 document.getElementById('postNewsBtn').addEventListener('click', addNewsUpdate);
 window.deleteNewsUpdate = deleteNewsUpdate;
+}

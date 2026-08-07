@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Take Quiz - Student Portal</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .quiz-card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; text-align: left; border: 1px solid #ddd; }
+        .option-label { display: block; padding: 8px; background: #f8f9fa; border-radius: 6px; margin: 5px 0; cursor: pointer; }
+        .option-label:hover { background: #e9ecef; }
+    </style>
+</head>
+<body>
+<div class="page-wrapper" style="max-width: 600px; display: block;">
+    <div class="container">
+        <a href="index.html" style="color: #007bff; text-decoration: none;">&larr; Back to Main Portal</a>
+        <h2>Student Quiz Center</h2>
+
+        <!-- Step 1: Verification -->
+        <div id="authSection">
+            <input type="text" id="studentCodeInput" placeholder="Enter 5-Char Student Code" maxlength="5" style="width:100%; padding:10px; margin:10px 0;">
+            <button id="verifyBtn" style="width:100%; padding:10px; background:#007bff; color:white; border:none; border-radius:6px; font-weight:bold;">Start Quiz Session</button>
+        </div>
+
+        <!-- Step 2: Quiz Selection -->
+        <div id="quizListSection" class="hidden" style="margin-top: 20px;">
+            <h3>Available Quizzes</h3>
+            <div id="quizList"></div>
+        </div>
+
+        <!-- Step 3: Taking Quiz -->
+        <div id="takeQuizSection" class="hidden">
+            <h3 id="activeQuizTitle"></h3>
+            <form id="quizForm"></form>
+            <button id="submitQuizBtn" style="width:100%; padding:12px; background:#28a745; color:white; border:none; border-radius:6px; font-weight:bold; margin-top:15px;">Submit Answers</button>
+        </div>
+
+        <!-- Step 4: Result -->
+        <div id="resultSection" class="hidden" style="margin-top:20px;">
+            <h2 style="color:#28a745;">Quiz Completed!</h2>
+            <p id="scoreSummary" style="font-size: 18px; font-weight: bold;"></p>
+        </div>
+    </div>
+</div>
+
+<script type="module" src="quiz.js"></script>
+</body>
+</html>
