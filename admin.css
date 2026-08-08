@@ -164,12 +164,30 @@ input:focus, select:focus { outline: none; border-color: var(--primary-blue); ba
 button { background: var(--primary-blue); color: white; border: none; font-weight: 600; cursor: pointer; transition: 0.2s; padding: 12px; border-radius: 10px; width: 100%; }
 button:hover { opacity: 0.9; transform: translateY(-1px); }
 
-/* --- Tables --- */
 .table-responsive { 
-    overflow-x: auto; 
+    display: block;
+    width: 100%;
+    overflow-x: auto !important; 
     overflow-y: auto; 
     border-radius: 12px; 
     border: 1px solid var(--border-color); 
+    min-height: 220px; /* Prevents short tables from cutting off kebab popups */
+    padding-bottom: 50px; /* Extra spacing at bottom for open menus */
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y;
+}
+/* Kebab Dropdown Menu Z-Index & Positioning */
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    background: white;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    border-radius: 8px;
+    z-index: 999; /* Keeps popup above all other table rows */
+    min-width: 170px;
+    border: 1px solid var(--border-color);
 }
 table { width: 100%; border-collapse: collapse; background: white; white-space: nowrap; }
 th, td { border-bottom: 1px solid var(--border-color); padding: 16px; text-align: left; font-size: 14px; }
@@ -178,7 +196,7 @@ th, td { border-bottom: 1px solid var(--border-color); padding: 16px; text-align
 #pointsTable th { background-color: var(--purple-header); color: white; font-weight: 500; }
 td { color: #475569; font-weight: 500; }
 
-.edit-btn, .delete-btn, .quick-point-btn {
+edit-btn, .delete-btn {
     width: auto; padding: 6px 12px; font-size: 12px; border-radius: 6px; margin: 2px;
 }
 .edit-btn { background: transparent; border: 1px solid var(--primary-blue); color: var(--primary-blue); }
@@ -699,11 +717,100 @@ div.gform-q-input:empty:before { content: attr(data-placeholder); color: #70757a
     .gform-type-select {
         width: 100%;
     }
-
-    .table-responsive { 
-    overflow-x: auto; 
-    overflow-y: auto; 
-    border-radius: 12px; 
-    border: 1px solid var(--border-color); 
+        /* Forces table width on mobile so horizontal dragging works */
+    .table-responsive table {
+        width: 100%;
+        min-width: 550px; /* Guarantees overflow for touch scrolling */
+        border-collapse: collapse; 
+        white-space: nowrap; 
+        
     }
+}
+
+/* ======================================================
+   DARK MODE STYLES
+   ====================================================== */
+body.dark-theme {
+    --bg-body: #0b1437;
+    --card-bg: #111c44;
+    --text-dark: #f4f7fe;
+    --text-gray: #a3aed1;
+    --border-color: #1b254b;
+    --sidebar-bg: #080f28;
+    --sidebar-hover: #152046;
+}
+
+/* Dark Mode Overrides */
+body.dark-theme table {
+    background: var(--card-bg);
+}
+
+body.dark-theme td {
+    color: #cbd5e1;
+    border-bottom-color: var(--border-color);
+}
+
+body.dark-theme input, 
+body.dark-theme select, 
+body.dark-theme textarea {
+    background: #1b254b;
+    color: #ffffff;
+    border-color: #2b3674;
+}
+
+body.dark-theme input:focus, 
+body.dark-theme select:focus {
+    background: #24305e;
+}
+
+body.dark-theme .dropdown-menu {
+    background: #111c44;
+    border-color: #1b254b;
+}
+
+body.dark-theme .dropdown-item {
+    color: #f4f7fe;
+    border-bottom-color: #1b254b;
+}
+
+body.dark-theme .dropdown-item:hover {
+    background: #1b254b;
+}
+
+body.dark-theme .topbar {
+    background: var(--bg-body);
+}
+
+/* Theme Toggle Button Styling */
+.theme-toggle-btn {
+    background: transparent;
+    color: var(--text-dark);
+    border: 1px solid var(--border-color);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+    width: auto;
+}
+
+.theme-toggle-btn:hover {
+    background: var(--border-color);
+}
+
+/* Autocomplete Dropdown Dark Mode Overrides */
+body.dark-theme .autocomplete-items {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+body.dark-theme .autocomplete-items div {
+    background-color: var(--card-bg);
+    color: var(--text-dark);
+    border-bottom-color: var(--border-color);
+}
+
+body.dark-theme .autocomplete-items div:hover {
+    background-color: #1b254b;
+    color: #60a5fa;
 }

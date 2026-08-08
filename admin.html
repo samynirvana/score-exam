@@ -60,6 +60,7 @@
                     <p>Welcome back, Administrator</p>
                 </div>
                 <div class="topbar-actions">
+                    <button id="themeToggleBtn" class="theme-toggle-btn">🌙 Dark Mode</button>
                     <button id="logoutBtn" class="logout-btn">Logout</button>
                 </div>
             </header>
@@ -329,12 +330,6 @@
                                     <div id="reasonAutocompleteList" class="autocomplete-items hidden"></div>
                                 </div>
                                 
-                                <div style="display: flex; gap: 10px; margin: 15px 0;">
-                                    <button type="button" class="quick-point-btn" data-val="1" style="background: #10b981;">+1</button>
-                                    <button type="button" class="quick-point-btn" data-val="5" style="background: #10b981;">+5</button>
-                                    <button type="button" class="quick-point-btn" data-val="-1" style="background: #e02d2d;">-1</button>
-                                    <button type="button" class="quick-point-btn" data-val="-5" style="background: #e02d2d;">-5</button>
-                                </div>
                                 <div style="display: flex; gap: 10px;">
                                     <input type="number" id="customPointValue" placeholder="Custom +/-" style="flex: 1;" step="0.1">
                                     <button id="saveCustomPointBtn" style="background: var(--purple-header); flex: 2;">Commit Custom Point</button>
@@ -490,7 +485,7 @@
     <!-- STEP 1: LANDING VIEW -->
     <div id="quiz-landing-view">
         <!-- Create Action Box -->
-        <div class="box" style="text-align: center; padding: 40px 20px; margin-bottom: 24px; border: 2px dashed #cbd5e1; background: #f8fafc;">
+        <div class="box" style="text-align: center; padding: 40px 20px; margin-bottom: 24px; border: 2px dashed #cbd5e1;">
             <h3 style="margin-top: 0; color: #1e5eff; font-size: 20px;">Create a New Quiz</h3>
             <p style="color: #707eae; font-size: 14px; margin-bottom: 20px;">Design interactive quizzes, worksheets, and functional writing tasks.</p>
             <button onclick="openQuizBuilder(true)" style="background: #1e5eff; width: auto; padding: 12px 32px; font-size: 16px; border-radius: 8px;">+ Create New Quiz</button>

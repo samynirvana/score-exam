@@ -598,13 +598,6 @@ document.getElementById('registerStudentBtn').addEventListener('click', register
 document.getElementById('saveScoreBtn')?.addEventListener('click', addStudentScore);
 document.getElementById('uploadExcelBtn')?.addEventListener('click', processExcel);
 
-// Bind quick point buttons
-document.querySelectorAll('.quick-point-btn').forEach(button => {
-    button.addEventListener('click', (e) => {
-        const value = parseFloat(e.target.getAttribute('data-val'));
-        processStudentPoint(value);
-    });
-});
 
 // Bind custom point button
 document.getElementById('saveCustomPointBtn').addEventListener('click', () => {
@@ -839,9 +832,13 @@ async function loadNewsTable() {
             const month = dateObj.toLocaleString('default', { month: 'short' }).toUpperCase();
             const day = dateObj.getDate();
             const dateStr = dateObj.toLocaleDateString();
-            const status = news.status || 'active'; // Default to active for older entries
+            const status = news.status || 'active';
 
-            // 1. Populate Manage News Table (Shows all notices)
+            // Escape single and double quotes safely for inline HTML handlers
+            const safeTitle = (news.title || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const safeContent = (news.content || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+            // 1. Populate Manage News Table (Shows kebab menu)
             if (manageTbody) {
                 const badgeBg = status === 'active' ? '#ecfdf5' : '#f1f5f9';
                 const badgeText = status === 'active' ? '#10b981' : '#64748b';
@@ -851,14 +848,19 @@ async function loadNewsTable() {
                     <td><strong>${news.title}</strong></td>
                     <td><span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; background: ${badgeBg}; color: ${badgeText};">${status.toUpperCase()}</span></td>
                     <td>
-                        <button class="edit-btn" onclick="editNewsUpdate('${news.id}', '${news.title.replace(/'/g, "\\'")}', '${news.content.replace(/'/g, "\\'")}')">Edit</button>
-                        <button class="edit-btn" style="color: #f59e0b; border-color: #f59e0b;" onclick="toggleArchiveNews('${news.id}', '${status}')">${status === 'active' ? 'Archive' : 'Unarchive'}</button>
-                        <button class="delete-btn" onclick="deleteNewsUpdate('${news.id}')">Delete</button>
+                        <div class="kebab-menu">
+                            <button class="kebab-btn" onclick="toggleMenu(event, 'news-${news.id}')">⋮</button>
+                            <div id="menu-news-${news.id}" class="dropdown-menu">
+                                <button class="dropdown-item" onclick="editNewsUpdate('${news.id}', '${safeTitle}', '${safeContent}')">Edit Notice</button>
+                                <button class="dropdown-item" onclick="toggleArchiveNews('${news.id}', '${status}')">${status === 'active' ? 'Archive' : 'Unarchive'}</button>
+                                <button class="dropdown-item danger" onclick="deleteNewsUpdate('${news.id}')">Delete Notice</button>
+                            </div>
+                        </div>
                     </td>
                 </tr>`;
             }
 
-            // 2. Populate Dashboard (Shows only active notices, maximum 3)
+            // 2. Populate Dashboard (Shows active notices)
             if (dashboardContainer && status === 'active' && activeCount < 3) {
                 dashboardContainer.innerHTML += `
                     <div class="notice-item">
@@ -2320,6 +2322,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Hook into tab click to refresh data
     document.querySelector('[data-tab="tab-manage-behavior"]')?.addEventListener("click", refreshBehaviorTabLedgers);
+});
+
+const themeToggleBtn = document.getElementById('themeToggleBtn');
+const savedTheme = localStorage.getItem('appTheme') || 'light';
+
+// Apply saved theme preference on page load
+if (savedTheme === 'dark') {
+    document.body.classList.add('dark-theme');
+    if (themeToggleBtn) themeToggleBtn.innerText = '☀️ Light Mode';
+}
+
+// Toggle theme on button click
+themeToggleBtn?.addEventListener('click', () => {
+    document.body.classList.toggle('dark-theme');
+    const isDark = document.body.classList.contains('dark-theme');
+    
+    localStorage.setItem('appTheme', isDark ? 'dark' : 'light');
+    themeToggleBtn.innerText = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
 });
 
 // Expose functions globally for HTML button clicks
