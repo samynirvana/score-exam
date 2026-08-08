@@ -165,7 +165,12 @@ button { background: var(--primary-blue); color: white; border: none; font-weigh
 button:hover { opacity: 0.9; transform: translateY(-1px); }
 
 /* --- Tables --- */
-.table-responsive { overflow-x: visible; border-radius: 12px; border: 1px solid var(--border-color); }
+.table-responsive { 
+    overflow-x: auto; 
+    overflow-y: auto; 
+    border-radius: 12px; 
+    border: 1px solid var(--border-color); 
+}
 table { width: 100%; border-collapse: collapse; background: white; white-space: nowrap; }
 th, td { border-bottom: 1px solid var(--border-color); padding: 16px; text-align: left; font-size: 14px; }
 
