@@ -51,25 +51,41 @@ onAuthStateChanged(auth, async (user) => {
                 document.querySelectorAll('.admin-only-view').forEach(el => el.classList.remove('hidden'));
                 document.getElementById('menuAdminOnly').style.display = "block";
                 
-                subjectInput.disabled = false;
-                subjectInput.value = "";
-                subjectInput.placeholder = "Subject Name (e.g. English)";
-                tableTitle.innerText = "Master Registry Ledger - All Subjects & Classes";
-                welcomeTitle.innerText = "Administrator Master System Workspace";
+                if (subjectInput) {
+                    subjectInput.disabled = false;
+                    subjectInput.value = "";
+                    subjectInput.placeholder = "Subject Name (e.g. English)";
+                }
+                if (tableTitle) {
+                    tableTitle.innerText = "Master Registry Ledger - All Subjects & Classes";
+                }
+                if (welcomeTitle) {
+                    welcomeTitle.innerText = "Administrator Master System Workspace";
+                }
                 loadStudentsDirectory();
                 loadNewsTable();
                 updateDashboardStats();
-                
+
+                if (typeof window.loadSystemDatabases === "function") {
+                    window.loadSystemDatabases();
+                }
+
             } else {
                 // NEW: Hide admin views for teachers
                 document.querySelectorAll('.admin-only-view').forEach(el => el.classList.add('hidden'));
                 document.getElementById('menuAdminOnly').style.display = "none";
                 document.querySelector('[data-tab="tab-manage-scores"]').click(); // Force teacher to scores tab
                 
-                subjectInput.value = teacherSubject;
-                subjectInput.disabled = true; 
-                tableTitle.innerText = `Departmental Performance Ledger: ${teacherSubject}`;
-                welcomeTitle.innerText = `Teacher Portal Workspace (${teacherSubject})`;
+                if (subjectInput) {
+                        subjectInput.value = teacherSubject;
+                        subjectInput.disabled = true; 
+                    }
+                if (tableTitle) {
+                    tableTitle.innerText = `Departmental Performance Ledger: ${teacherSubject}`;
+                }
+                if (welcomeTitle) {
+                    welcomeTitle.innerText = `Teacher Portal Workspace (${teacherSubject})`;
+                }
             }
 
             loadAdminTable();
@@ -433,27 +449,29 @@ async function processExcel() {
 
 // Function to handle saving point transactions
 async function processStudentPoint(pointValue) {
-    const code = document.getElementById('pointStudentCode').value.toUpperCase().trim();
+    const studentNameInput = document.getElementById('pointStudentName').value.trim();
     const reason = document.getElementById('pointReason').value.trim();
 
-    if (!code || !reason || isNaN(pointValue)) {
-        alert("Please ensure Student Code, Reason, and a valid point value are provided.");
+    if (!studentNameInput || !reason || isNaN(pointValue)) {
+        alert("Please ensure Student Name, Reason, and a valid point value are provided.");
         return;
     }
 
     try {
-        const studentSnap = await getDoc(doc(db, "students", code));
-        if (!studentSnap.exists()) {
-            alert(`Lookup Error: Student code "${code}" does not exist in the directory.`);
+        // Find the student code based on the typed name
+        const studentMatch = allStudentsData.find(s => s.studentName.toLowerCase() === studentNameInput.toLowerCase());
+        
+        if (!studentMatch) {
+            alert(`Lookup Error: Student "${studentNameInput}" does not exist in the directory. Please use the autocomplete dropdown.`);
             return;
         }
 
-        const sData = studentSnap.data();
-        const targetClass = sData.studentClass || sData.Class || sData.class || 'N/A';
+        const code = studentMatch.id;
+        const targetClass = studentMatch.studentClass || studentMatch.Class || studentMatch.class || 'N/A';
 
         await addDoc(collection(db, "student_points"), {
             studentCode: code,
-            studentName: sData.studentName,
+            studentName: studentMatch.studentName,
             studentClass: targetClass,
             reason: reason,
             points: parseFloat(pointValue),
@@ -461,14 +479,16 @@ async function processStudentPoint(pointValue) {
         });
 
         const sign = pointValue > 0 ? '+' : '';
-        alert(`Successfully recorded ${sign}${pointValue} points for ${sData.studentName}.`);
+        alert(`Successfully recorded ${sign}${pointValue} points for ${studentMatch.studentName}.`);
         
         // Reset the form inputs
+        document.getElementById('pointStudentName').value = "";
         document.getElementById('pointReason').value = "";
         document.getElementById('customPointValue').value = "";
         
-        // Refresh the ledger automatically
+        // Refresh ledgers
         loadPointsTable(); 
+        refreshBehaviorTabLedgers();
         
     } catch (e) {
         alert("Error logging point transaction: " + e.message);
@@ -539,14 +559,28 @@ async function loadPointsTable() {
                 const sign = info.total > 0 ? '+' : '';
                 
                 tbody.innerHTML += `<tr>
-                    <td><strong>${info.code}</strong></td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span id="pt-code-${info.code}" style="font-weight: 600; letter-spacing: 2px;">•••••</span>
+                            <button class="eye-btn" onclick="togglePtCodeVisibility('${info.code}')" title="Show/Hide Code">
+                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0"/>
+                                    <path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8m8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </td>
                     <td>${info.name}</td>
                     <td><strong>${info.sClass}</strong></td>
                     <td><strong style="color: ${color}; font-size: 16px;">${sign}${info.total}</strong></td>
-                    <td style="white-space: nowrap;">
-                        <button class="edit-btn" style="background: #28a745; margin-right: 4px;" onclick="inlineAdjustPoint('${info.code}', 0.5)">+0.5</button>
-                        <button class="edit-btn" style="background: #ffc107; color: black; margin-right: 4px;" onclick="inlineAdjustPoint('${info.code}', -0.5)">-0.5</button>
-                        <button class="delete-btn" style="background: #dc3545;" onclick="resetStudentPoints('${info.code}')">Reset</button>
+                    <td>
+                        <div class="kebab-menu">
+                            <button class="kebab-btn" onclick="toggleMenu(event, 'pt-${info.code}')">⋮</button>
+                            <div id="menu-pt-${info.code}" class="dropdown-menu">
+                                <button class="dropdown-item" onclick="openPointModal('${info.code}', '${info.name.replace(/'/g, "\\'")}')">Add / Subtract Point</button>
+                                <button class="dropdown-item danger" onclick="resetStudentPoints('${info.code}')">Reset Points</button>
+                            </div>
+                        </div>
                     </td>
                 </tr>`;
             });
@@ -561,8 +595,8 @@ document.getElementById('loginBtn').addEventListener('click', loginAdmin);
 document.getElementById('logoutBtn').addEventListener('click', logoutAdmin);
 document.getElementById('createTeacherBtn').addEventListener('click', createTeacherAccount);
 document.getElementById('registerStudentBtn').addEventListener('click', registerStudent);
-document.getElementById('saveScoreBtn').addEventListener('click', addStudentScore);
-document.getElementById('uploadExcelBtn').addEventListener('click', processExcel);
+document.getElementById('saveScoreBtn')?.addEventListener('click', addStudentScore);
+document.getElementById('uploadExcelBtn')?.addEventListener('click', processExcel);
 
 // Bind quick point buttons
 document.querySelectorAll('.quick-point-btn').forEach(button => {
@@ -735,6 +769,7 @@ async function resetStudentPoints(studentCode) {
 }
 
 // --- NEWS & NOTICE MANAGEMENT LOGIC ---
+let currentEditNewsId = null;
 
 async function addNewsUpdate() {
     const title = document.getElementById('newsTitle').value.trim();
@@ -746,25 +781,48 @@ async function addNewsUpdate() {
     }
 
     try {
-        await addDoc(collection(db, "news_updates"), {
-            title: title,
-            content: content,
-            timestamp: new Date().toISOString()
-        });
-        alert("News notice posted successfully!");
+        if (currentEditNewsId) {
+            // Update existing notice
+            await updateDoc(doc(db, "news_updates", currentEditNewsId), {
+                title: title,
+                content: content
+            });
+            alert("Notice updated successfully!");
+            
+            // Reset form UI
+            currentEditNewsId = null;
+            document.getElementById('postNewsBtn').innerText = "Post Notice";
+            document.getElementById('postNewsBtn').style.background = "var(--primary-blue)";
+            document.getElementById('newsFormTitle').innerText = "Post News / Notice";
+        } else {
+            // Create new notice
+            await addDoc(collection(db, "news_updates"), {
+                title: title,
+                content: content,
+                status: 'active', // Added status tracker
+                timestamp: new Date().toISOString()
+            });
+            alert("News notice posted successfully!");
+        }
+        
         document.getElementById('newsTitle').value = "";
         document.getElementById('newsContent').value = "";
         loadNewsTable();
+        updateDashboardStats();
     } catch (e) {
-        alert("Error posting news: " + e.message);
+        alert("Error saving news: " + e.message);
     }
 }
 
 async function loadNewsTable() {
     try {
         const querySnapshot = await getDocs(collection(db, "news_updates"));
-        const tbody = document.querySelector("#newsTable tbody");
-        if (!tbody) return;
+        
+        const dashboardContainer = document.getElementById("dashboard-news-container");
+        const manageTbody = document.querySelector("#manageNewsTable tbody");
+        
+        if (dashboardContainer) dashboardContainer.innerHTML = "";
+        if (manageTbody) manageTbody.innerHTML = "";
 
         let newsList = [];
         querySnapshot.forEach((doc) => {
@@ -774,17 +832,53 @@ async function loadNewsTable() {
         // Sort by newest first
         newsList.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-        tbody.innerHTML = "";
+        let activeCount = 0;
+
         newsList.forEach((news) => {
-            const dateStr = new Date(news.timestamp).toLocaleDateString();
-            tbody.innerHTML += `<tr>
-                <td>${dateStr}</td>
-                <td><strong>${news.title}</strong></td>
-                <td><button class="delete-btn" onclick="deleteNewsUpdate('${news.id}')">Delete</button></td>
-            </tr>`;
+            const dateObj = new Date(news.timestamp);
+            const month = dateObj.toLocaleString('default', { month: 'short' }).toUpperCase();
+            const day = dateObj.getDate();
+            const dateStr = dateObj.toLocaleDateString();
+            const status = news.status || 'active'; // Default to active for older entries
+
+            // 1. Populate Manage News Table (Shows all notices)
+            if (manageTbody) {
+                const badgeBg = status === 'active' ? '#ecfdf5' : '#f1f5f9';
+                const badgeText = status === 'active' ? '#10b981' : '#64748b';
+                
+                manageTbody.innerHTML += `<tr>
+                    <td>${dateStr}</td>
+                    <td><strong>${news.title}</strong></td>
+                    <td><span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; background: ${badgeBg}; color: ${badgeText};">${status.toUpperCase()}</span></td>
+                    <td>
+                        <button class="edit-btn" onclick="editNewsUpdate('${news.id}', '${news.title.replace(/'/g, "\\'")}', '${news.content.replace(/'/g, "\\'")}')">Edit</button>
+                        <button class="edit-btn" style="color: #f59e0b; border-color: #f59e0b;" onclick="toggleArchiveNews('${news.id}', '${status}')">${status === 'active' ? 'Archive' : 'Unarchive'}</button>
+                        <button class="delete-btn" onclick="deleteNewsUpdate('${news.id}')">Delete</button>
+                    </td>
+                </tr>`;
+            }
+
+            // 2. Populate Dashboard (Shows only active notices, maximum 3)
+            if (dashboardContainer && status === 'active' && activeCount < 3) {
+                dashboardContainer.innerHTML += `
+                    <div class="notice-item">
+                        <div class="notice-date">${month}<br>${day}</div>
+                        <div class="notice-content">
+                            <h4>${news.title}</h4>
+                            <p>${news.content}</p>
+                        </div>
+                    </div>
+                `;
+                activeCount++;
+            }
         });
+        
+        if (dashboardContainer && dashboardContainer.innerHTML === "") {
+            dashboardContainer.innerHTML = "<p style='color: var(--text-gray); font-size: 13px; text-align: center; padding: 20px 0;'>No active notices at the moment.</p>";
+        }
+
     } catch (e) {
-        console.error("Error loading news table: ", e);
+        console.error("Error loading news: ", e);
     }
 }
 
@@ -793,11 +887,39 @@ async function deleteNewsUpdate(docId) {
         try {
             await deleteDoc(doc(db, "news_updates", docId));
             loadNewsTable();
+            updateDashboardStats(); 
         } catch (e) {
             alert("Error deleting notice: " + e.message);
         }
     }
 }
+
+async function toggleArchiveNews(docId, currentStatus) {
+    try {
+        const newStatus = currentStatus === 'active' ? 'archived' : 'active';
+        await updateDoc(doc(db, "news_updates", docId), {
+            status: newStatus
+        });
+        loadNewsTable();
+    } catch (e) {
+        alert("Error updating status: " + e.message);
+    }
+}
+
+// Window bindings for inline HTML clicks
+window.editNewsUpdate = function(id, title, content) {
+    currentEditNewsId = id;
+    document.getElementById('newsTitle').value = title;
+    document.getElementById('newsContent').value = content;
+    
+    document.getElementById('newsFormTitle').innerText = "Edit Notice";
+    const btn = document.getElementById('postNewsBtn');
+    btn.innerText = "Update Notice";
+    btn.style.background = "#f59e0b"; 
+};
+
+window.toggleArchiveNews = toggleArchiveNews;
+window.deleteNewsUpdate = deleteNewsUpdate;
 
 // --- QUIZ BUILDER & MANAGEMENT SYSTEM ---
 
@@ -810,79 +932,169 @@ function convertDriveUrl(url) {
 
 let currentEditQuizId = null;
 
-// 1. Dynamic Block Add Function (Exposed Immediately)
+document.getElementById('gform-main-title')?.addEventListener('input', function(e) {
+    document.getElementById('quizTitle').value = e.target.value;
+});
+document.getElementById('quizTitle')?.addEventListener('input', function(e) {
+    document.getElementById('gform-main-title').value = e.target.value;
+});
+
+// Updated addBlock function to generate Google Form styled cards
 function addBlock(type) {
     const container = document.getElementById('quizBlocksContainer');
     if (!container) return;
 
     const blockDiv = document.createElement('div');
-    blockDiv.className = 'quiz-block';
+    blockDiv.className = 'gform-card quiz-block'; 
     blockDiv.dataset.type = type;
-    blockDiv.style.cssText = "background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #ddd; position: relative;";
+    blockDiv.setAttribute('onclick', 'activateCard(this)');
 
-    let contentHtml = `<button type="button" onclick="this.parentElement.remove()" style="position: absolute; right: 8px; top: 8px; background:#dc3545; color:white; border:none; padding: 2px 6px; border-radius:4px; cursor:pointer;">X</button>`;
+    let contentHtml = '';
 
-    if (type === 'header') {
-        contentHtml += `
-            <label style="color:#6c757d; font-weight:bold;">📌 Section Instruction / Header</label>
-            <input type="text" class="blk-title" placeholder="e.g. Part A: Reading Comprehension">
+    if (type === 'mcq') {
+        contentHtml = `
+            <div style="text-align: center; color: #dadce0; cursor: grab; margin-top: -15px; margin-bottom: 5px;">⋮⋮</div>
+            
+            <div class="rt-toolbar-container"></div> <!-- Toolbar injects here -->
+
+            <div class="gform-question-header">
+                <!-- Changed to div with contenteditable -->
+                <div class="gform-q-input blk-prompt" contenteditable="true" data-placeholder="Question"></div>
+                <select class="gform-type-select">
+                    <option>🔘 Multiple choice</option>
+                </select>
+            </div>
+            
+            <div class="options-container">
+                ${[1, 2, 3, 4].map((num, i) => `
+                    <div class="gform-opt-row">
+                        <input type="radio">
+                        <input type="text" class="gform-opt-input blk-opt${i}" placeholder="Option ${num}" required>
+                        <button class="icon-btn delete" onclick="this.closest('.gform-opt-row').remove()">✖</button>
+                    </div>
+                `).join('')}
+                <input type="hidden" class="blk-correct" value="0">
+            </div>
+
+            <div class="gform-opt-row" style="margin-top: 8px;">
+                <input type="radio" disabled>
+                <span class="gform-add-opt">Add option or <span style="color: #1a73e8; cursor:pointer;">add "Other"</span></span>
+            </div>
+
+            <div class="gform-card-footer">
+                <button class="icon-btn delete" title="Delete" onclick="this.closest('.gform-card').remove()">🗑️</button>
+            </div>
         `;
-    } else if (type === 'passage') {
-        contentHtml += `
-            <label style="color:#17a2b8; font-weight:bold;">📖 Reading Text / Article</label>
-            <input type="text" class="blk-title" placeholder="Article Title (Optional)">
-            <textarea class="blk-body" rows="4" placeholder="Paste full article here..." style="width:100%; margin: 5px 0;"></textarea>
-            <input type="text" class="blk-img" placeholder="Google Drive Image URL (Optional)">
+    } else if (type === 'header') {
+        contentHtml = `
+            <div style="text-align: center; color: #dadce0; cursor: grab; margin-top: -15px; margin-bottom: 5px;">⋮⋮</div>
+            
+            <div class="rt-toolbar-container"></div> <!-- Toolbar injects here -->
+
+            <div class="gform-question-header">
+                <div class="gform-q-input blk-prompt" contenteditable="true" data-placeholder="Header / Section Title" style="font-size: 20px; font-weight: 500; background: transparent; border-bottom: 2px solid #673ab7;"></div>
+            </div>
+            <div class="gform-question-header">
+                <div class="gform-desc-input blk-desc" contenteditable="true" data-placeholder="Description (Optional)" style="font-size: 14px; width: 100%;"></div>
+            </div>
+            
+            <div class="gform-card-footer">
+                <button class="icon-btn delete" title="Delete" onclick="this.closest('.gform-card').remove()">🗑️</button>
+            </div>
         `;
-    } else if (type === 'mcq') {
-        contentHtml += `
-            <label style="color:#007bff; font-weight:bold;">❓ Multiple Choice Question</label>
-            <input type="text" class="blk-prompt" placeholder="Question prompt..." required>
-            <input type="text" class="blk-img" placeholder="Google Drive Image URL (Optional)">
-            <input type="text" class="blk-opt0" placeholder="Option A" required>
-            <input type="text" class="blk-opt1" placeholder="Option B" required>
-            <input type="text" class="blk-opt2" placeholder="Option C" required>
-            <input type="text" class="blk-opt3" placeholder="Option D" required>
-            <select class="blk-correct">
-                <option value="0">Correct: Option A</option>
-                <option value="1">Correct: Option B</option>
-                <option value="2">Correct: Option C</option>
-                <option value="3">Correct: Option D</option>
-            </select>
-        `;
-    } else if (type === 'fill') {
-        contentHtml += `
-            <label style="color:#e0a800; font-weight:bold;">✏️ Fill in the Blank</label>
-            <input type="text" class="blk-prompt" placeholder="Prompt (use ___ for blank)..." required>
-            <input type="text" class="blk-img" placeholder="Google Drive Image URL (Optional)">
-            <input type="text" class="blk-answer" placeholder="Accepted answer(s) (comma-separated)" required>
-        `;
-    } else if (type === 'essay') {
-        contentHtml += `
-            <label style="color:#fd7e14; font-weight:bold;">📝 Essay Question</label>
-            <input type="text" class="blk-prompt" placeholder="Essay Prompt..." required>
-            <input type="text" class="blk-img" placeholder="Google Drive Image URL (Optional)">
-        `;
-    } else if (type === 'matching') {
-        contentHtml += `
-            <label style="color:#20c997; font-weight:bold;">🔗 Matching Question</label>
-            <input type="text" class="blk-prompt" placeholder="Instructions..." required>
-            <div class="pairs-container">
-                <div style="display:flex; gap:5px; margin-top:5px;">
-                    <input type="text" class="m-left" placeholder="Item (e.g. Paris)">
-                    <input type="text" class="m-right" placeholder="Match (e.g. France)">
-                </div>
-                <div style="display:flex; gap:5px; margin-top:5px;">
-                    <input type="text" class="m-left" placeholder="Item (e.g. Tokyo)">
-                    <input type="text" class="m-right" placeholder="Match (e.g. Japan)">
-                </div>
+    } else {
+        contentHtml = `
+            <div style="text-align: center; color: #dadce0; cursor: grab; margin-top: -15px; margin-bottom: 5px;">⋮⋮</div>
+            
+            <div class="rt-toolbar-container"></div> <!-- Toolbar injects here -->
+            
+            <div class="gform-question-header">
+                <div class="gform-q-input blk-prompt" contenteditable="true" data-placeholder="${type.toUpperCase()} Prompt..."></div>
+            </div>
+            <div class="gform-card-footer">
+                <button class="icon-btn delete" title="Delete" onclick="this.closest('.gform-card').remove()">🗑️</button>
             </div>
         `;
     }
 
     blockDiv.innerHTML = contentHtml;
     container.appendChild(blockDiv);
+    
+    // Automatically activate the new block so the toolbars move to it
+    activateCard(blockDiv);
 }
+
+// Execute Rich Text Formatting on the selected text
+window.formatText = function(command, value = null) {
+    document.execCommand(command, false, value);
+};
+
+window.activateCard = function(element) {
+    // Remove active class from all cards
+    document.querySelectorAll('.gform-card').forEach(c => c.classList.remove('active-card'));
+    element.classList.add('active-card');
+    
+    // Move floating sidebar toolbar
+    const toolbar = document.getElementById('floatingToolbar');
+    if (toolbar) toolbar.style.top = element.offsetTop + 'px';
+
+    // Move the Rich Text formatting toolbar inside the active card
+    const rtContainer = element.querySelector('.rt-toolbar-container');
+    const rtToolbar = document.getElementById('globalRichTextToolbar');
+    if (rtContainer && rtToolbar) {
+        rtContainer.appendChild(rtToolbar);
+    }
+};
+
+// Sync Title logic (updated for innerText instead of value)
+document.getElementById('gform-main-title')?.addEventListener('input', function(e) {
+    document.getElementById('quizTitle').value = e.target.innerText;
+});
+document.getElementById('quizTitle')?.addEventListener('input', function(e) {
+    document.getElementById('gform-main-title').innerText = e.target.value;
+});
+
+// --- Quiz UI Toggles (Landing vs Builder) ---
+window.openQuizBuilder = function(isNew = true) {
+    document.getElementById('quiz-landing-view').classList.add('hidden');
+    document.getElementById('quiz-builder-view').classList.remove('hidden');
+    
+    if (isNew) {
+        currentEditQuizId = null; 
+        document.getElementById('quizTitle').value = "Untitled Quiz";
+        document.getElementById('quizTargetClass').value = "";
+        document.getElementById('quizSubject').value = "";
+        document.getElementById('quizBlocksContainer').innerHTML = "";
+        addBlock('mcq');
+        
+        const mainTitle = document.getElementById('gform-main-title');
+        if (mainTitle) mainTitle.innerText = "Untitled Quiz";
+        
+        const saveBtn = document.getElementById('saveQuizBtn');
+        if (saveBtn) {
+            saveBtn.innerText = "Publish";
+        }
+
+        // Initialize toolbar position
+        const titleCard = document.querySelector('.title-card');
+        if(titleCard) activateCard(titleCard);
+    }
+}
+
+window.closeQuizBuilder = function() {
+    document.getElementById('quiz-builder-view').classList.add('hidden');
+    document.getElementById('quiz-landing-view').classList.remove('hidden');
+    loadQuizzesTable(); // Refresh the table when going back
+}
+
+// Dynamically update the header title as you type the quiz name
+document.getElementById('quizTitle')?.addEventListener('input', function(e) {
+    const display = document.getElementById('displayQuizTitle');
+    if(display) {
+        display.innerText = e.target.value || "New Untitled Quiz";
+    }
+});
+
 window.addBlock = addBlock;
 
 // 2. Load Quizzes Table
@@ -896,20 +1108,28 @@ async function loadQuizzesTable() {
         snap.forEach(docSnap => {
             const data = docSnap.data();
             const safeTitle = (data.title || '').replace(/'/g, "\\'");
+            
+            // Replaced the inline buttons with the kebab menu structure
             tbody.innerHTML += `<tr>
                 <td><strong>${data.title}</strong></td>
                 <td>${data.subject}</td>
                 <td>${data.targetClass}</td>
                 <td>
-                    <button style="background:#17a2b8; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;" onclick="viewQuizResults('${safeTitle}')">Results</button>
-                    <button style="background:#ffc107; color:black; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;" onclick="editQuiz('${docSnap.id}')">Edit</button>
-                    <button class="delete-btn" onclick="deleteQuiz('${docSnap.id}')">Delete</button>
+                    <div class="kebab-menu">
+                        <button class="kebab-btn" onclick="toggleMenu(event, 'quiz-${docSnap.id}')">⋮</button>
+                        <div id="menu-quiz-${docSnap.id}" class="dropdown-menu">
+                            <button class="dropdown-item" onclick="viewQuizResults('${safeTitle}')">View Results</button>
+                            <button class="dropdown-item" onclick="editQuiz('${docSnap.id}')">Edit Quiz</button>
+                            <button class="dropdown-item danger" onclick="deleteQuiz('${docSnap.id}')">Delete Quiz</button>
+                        </div>
+                    </div>
                 </td>
             </tr>`;
         });
     } catch (e) { console.error("Error loading quizzes:", e); }
 }
 window.loadQuizzesTable = loadQuizzesTable;
+
 
 // 3. Save or Update Quiz
 async function saveQuiz() {
@@ -989,6 +1209,7 @@ async function saveQuiz() {
             alert("Quiz published successfully!");
         }
 
+        closeQuizBuilder();
         document.getElementById('quizBlocksContainer').innerHTML = "";
         document.getElementById('quizTitle').value = "";
         loadQuizzesTable();
@@ -1002,7 +1223,11 @@ async function editQuiz(id) {
         if (!snap.exists()) return alert("Quiz missing.");
         const quiz = snap.data();
 
+        openQuizBuilder(false); // Open the builder for editing
+        document.getElementById('displayQuizTitle').innerText = quiz.title || "Untitled";
+
         currentEditQuizId = id;
+
         document.getElementById('quizTitle').value = quiz.title;
         document.getElementById('quizTargetClass').value = quiz.targetClass;
         document.getElementById('quizSubject').value = quiz.subject;
@@ -1319,27 +1544,693 @@ window.generateNewUniqueCode = async function(oldCode) {
         // After updating Firebase:
         // loadStudentsDirectory(); 
     }
+};
 
+// --- MANAGE SCORE LEDGER LOGIC ---
+
+function showScoreLedger() {
+    const selectedQuiz = document.getElementById('ledgerQuizSelect').value;
+    const ledgerContainer = document.getElementById('scoreLedgerContainer');
+    const ledgerTitle = document.getElementById('activeLedgerTitle');
+    const tbody = document.getElementById('manageScoreTbody');
+
+    // 1. Validation check
+    if (!selectedQuiz) {
+        alert("Please select a Quiz or Review from the dropdown first.");
+        ledgerContainer.style.display = "none"; // Keep hidden
+        return;
+    }
+
+    // 2. Unhide the table container
+    ledgerContainer.style.display = "block";
+    
+    // 3. Update the title based on selection
+    const selectedText = document.getElementById('ledgerQuizSelect').options[document.getElementById('ledgerQuizSelect').selectedIndex].text;
+    ledgerTitle.innerText = `Ledger Results: ${selectedText}`;
+
+    // 4. Fetch the data (Replace this with your actual Firebase/Database fetch function)
+    fetchAndRenderScores(selectedQuiz, tbody);
+}
+
+// Dummy function to represent your data fetching
+async function fetchAndRenderScores(quizId, tbodyElement) {
+    // Clear previous rows
+    tbodyElement.innerHTML = "<tr><td colspan='7' style='text-align:center;'>Loading scores...</td></tr>";
+
+    try {
+        // TODO: Replace with your actual database query for the selected quizId
+        /* 
+        const q = query(collection(db, "scores"), where("examId", "==", quizId));
+        const querySnapshot = await getDocs(q);
+        */
+       
+        // Simulated rendering after data fetch:
+        tbodyElement.innerHTML = ""; // Clear loading text
+        
+        // Example Row Injection (You will loop through your querySnapshot here)
+        tbodyElement.innerHTML += `
+            <tr>
+                <td>${quizId}</td>
+                <td>Sample Subject</td>
+                <td>John Doe</td>
+                <td>Class A</td>
+                <td>STU-001</td>
+                <td><strong>85/100</strong></td>
+                <td>
+                    <button class="edit-btn">Edit</button>
+                </td>
+            </tr>
+        `;
+    } catch (e) {
+        console.error("Error fetching ledger: ", e);
+        tbodyElement.innerHTML = "<tr><td colspan='7' style='text-align:center; color: red;'>Error loading data.</td></tr>";
+    }
+}
+
+// Placeholder function for your bulk upload tool
+function processBulkScoreUpload() {
+    const fileInput = document.getElementById('bulkScoreUpload');
+    if (!fileInput.files.length) {
+        alert("Please select a file to upload.");
+        return;
+    }
+    
+    // Add your Excel/CSV parsing logic here (e.g., using SheetJS / PapaParse)
+    alert(`Processing file: ${fileInput.files[0].name}. Please wait...`);
+}
+
+window.loadSystemDatabases = async function() {
+    try {
+        console.log("--- STARTING DATABASE LOAD ---");
+        
+        // --- A. Extract Subjects from Teachers ---
+        const usersSnap = await getDocs(collection(db, "users"));
+        const uniqueSubjects = new Set();
+        
+        usersSnap.forEach(doc => {
+            const data = doc.data();
+            const teacherSubject = data.subject || data.Subject || data.course; 
+            if (data.role === 'teacher' && teacherSubject && teacherSubject !== "Unassigned") {
+                uniqueSubjects.add(teacherSubject);
+            
+            }
+        
+
+            
+        });
+
+        const subjTbody = document.querySelector("#subjectsTable tbody");
+        const subjSelect = document.getElementById("directSubjectSelect");
+        const quizSubjSelect = document.getElementById("quizSubject"); // ADD THIS
+
+        if(subjTbody) subjTbody.innerHTML = "";
+        if(subjSelect) subjSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+        if(subjSelect) subjSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+        if(quizSubjSelect) quizSubjSelect.innerHTML = '<option value="">-- Select Subject --</option>'; // ADD THIS
+
+        Array.from(uniqueSubjects).sort().forEach(name => {
+            if(subjTbody) subjTbody.innerHTML += `<tr><td><strong>${name}</strong></td><td><span style="background: #eef2ff; color: var(--primary-blue); padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Teacher Linked</span></td></tr>`;
+            if(subjSelect) subjSelect.innerHTML += `<option value="${name}">${name}</option>`;
+            if(quizSubjSelect) quizSubjSelect.innerHTML += `<option value="${name}">${name}</option>`; // ADD THIS
+        });
+
+
+            // --- B. Extract Classes from Students ---
+            const studentsSnap = await getDocs(collection(db, "students"));
+            const uniqueClasses = new Set();
+            studentsSnap.forEach(doc => {
+                const data = doc.data();
+                const studentClass = data.studentClass || data.class || data.className || data.Class;
+                if (studentClass) uniqueClasses.add(studentClass);
+                
+            });
+
+            const classTbody = document.querySelector("#classesTable tbody");
+            const classSelect = document.getElementById("directClassSelect");
+            const ledgerClassSelect = document.getElementById("ledgerClassSelect"); // NEW
+            const quizClassSelect = document.getElementById("quizTargetClass"); // ADD THIS
+
+            if(classTbody) classTbody.innerHTML = "";
+            if(classSelect) classSelect.innerHTML = '<option value="">-- Select Class --</option>';
+            if(ledgerClassSelect) ledgerClassSelect.innerHTML = '<option value="">-- Choose a Class --</option>'; // NEW
+            if(quizClassSelect) quizClassSelect.innerHTML = '<option value="">-- Select Target Class --</option>'; // ADD THIS
+
+            Array.from(uniqueClasses).sort().forEach(name => {
+                if(classTbody) classTbody.innerHTML += `<tr><td><strong>${name}</strong></td><td><span style="background: #ecfdf5; color: #10b981; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Student Linked</span></td></tr>`;
+                if(classSelect) classSelect.innerHTML += `<option value="${name}">${name}</option>`;
+                if(ledgerClassSelect) ledgerClassSelect.innerHTML += `<option value="${name}">${name}</option>`; // NEW
+                if(quizClassSelect) quizClassSelect.innerHTML += `<option value="${name}">${name}</option>`; // ADD THIS
+            });
+
+
+            // --- C. Extract Quizzes (Digital + Offline) ---
+            const quizSelect = document.getElementById("directQuizSelect");
+            const ledgerQuizSelect = document.getElementById("ledgerQuizSelect"); // NEW
+            const quizTbody = document.querySelector("#quizzesDatabaseTable tbody");
+
+            if(quizSelect) quizSelect.innerHTML = '<option value="">-- Select Quiz --</option>';
+            if(ledgerQuizSelect) ledgerQuizSelect.innerHTML = '<option value="">-- Choose a Quiz / Review --</option>'; // NEW
+            if(quizTbody) quizTbody.innerHTML = "";
+
+            // 1. Get Digital Quizzes
+            const digitalSnap = await getDocs(collection(db, "quizzes"));
+            digitalSnap.forEach(docSnap => {
+                const title = docSnap.data().title || docSnap.data().quizName;
+                if(quizTbody && title) quizTbody.innerHTML += `<tr><td><strong>${title}</strong></td><td><span style="background: #fffbeb; color: #f59e0b; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Quiz Builder</span></td><td>-</td></tr>`;
+                if(quizSelect && title) quizSelect.innerHTML += `<option value="${title}">${title} (Digital)</option>`;
+                if(ledgerQuizSelect && title) ledgerQuizSelect.innerHTML += `<option value="${title}">${title} (Digital)</option>`; // NEW
+            });
+
+            // 2. Get Manual/Offline Quizzes
+            const manualSnap = await getDocs(collection(db, "system_quizzes"));
+            manualSnap.forEach(docSnap => {
+                const title = docSnap.data().name;
+                if(quizTbody && title) quizTbody.innerHTML += `<tr><td><strong>${title}</strong></td><td><span style="background: #f1f5f9; color: #64748b; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Offline Exam</span></td><td><button class="delete-btn" onclick="deleteSystemRecord('system_quizzes', '${docSnap.id}')">Delete</button></td></tr>`;
+                if(quizSelect && title) quizSelect.innerHTML += `<option value="${title}">${title} (Offline)</option>`;
+                if(ledgerQuizSelect && title) ledgerQuizSelect.innerHTML += `<option value="${title}">${title} (Offline)</option>`; // NEW
+            });
+        
+        console.log("--- DATABASE LOAD COMPLETE ---");
+
+    } catch(e) {
+        console.error("Error loading linked databases:", e);
+    }
+};
+
+// 2. Safely call the function when the page loads
+document.addEventListener("DOMContentLoaded", () => {
+    if (typeof window.loadSystemDatabases === "function") {
+        window.loadSystemDatabases();
+    }
+    const manageDatabasesTab = document.getElementById('tab-view-ledgers'); 
+    if (manageDatabasesTab) {
+        manageDatabasesTab.addEventListener('click', () => {
+            if (typeof window.loadSystemDatabases === "function") {
+                window.loadSystemDatabases();
+            }
+        });
+    }
+});
+
+async function addManualQuiz() {
+    const input = document.getElementById('newManualQuiz');
+    const examName = input.value.trim();
+
+    if (!examName) {
+        alert("Please enter an exam or quiz name.");
+        return;
+    }
+
+    try {
+        await addDoc(collection(db, "system_quizzes"), {
+            name: examName,
+            createdAt: new Date().toISOString()
+        });
+        alert(`Offline exam "${examName}" added successfully!`);
+        input.value = "";
+        
+        // Refresh active databases list
+        if (typeof window.loadSystemDatabases === "function") {
+            window.loadSystemDatabases();
+        }
+    } catch (e) {
+        alert("Error adding offline exam: " + e.message);
+    }
+}
+
+async function deleteSystemRecord(collectionName, docId) {
+    if (confirm("Are you sure you want to delete this record?")) {
+        try {
+            await deleteDoc(doc(db, collectionName, docId));
+            alert("Record deleted successfully.");
+            
+            if (typeof window.loadSystemDatabases === "function") {
+                window.loadSystemDatabases();
+            }
+        } catch (e) {
+            alert("Error deleting record: " + e.message);
+        }
+    }
+}
+
+async function loadClassRoster() {
+    const subject = document.getElementById('directSubjectSelect').value;
+    const selectedClass = document.getElementById('directClassSelect').value;
+    const quiz = document.getElementById('directQuizSelect').value;
+
+    if (!subject || !selectedClass || !quiz) {
+        alert("Please select Subject, Class, and Quiz first.");
+        return;
+    }
+
+    try {
+        document.getElementById('directScoreContainer').classList.remove('hidden');
+        const tbody = document.querySelector('#directScoreTable tbody');
+        tbody.innerHTML = "<tr><td colspan='3' style='text-align:center;'>Loading students and scores...</td></tr>";
+
+        // 1. Fetch all students in the class
+        const studentsQuery = query(collection(db, "students"), where("studentClass", "==", selectedClass));
+        const studentsSnap = await getDocs(studentsQuery);
+
+        if (studentsSnap.empty) {
+            tbody.innerHTML = "<tr><td colspan='3' style='text-align:center; color: red;'>No students found in this class.</td></tr>";
+            return;
+        }
+
+        // 2. Fetch existing scores for this specific Subject + Class + Quiz combination
+        const scoresQuery = query(
+            collection(db, "scores"),
+            where("studentClass", "==", selectedClass),
+            where("subject", "==", subject),
+            where("quizName", "==", quiz)
+        );
+        const scoresSnap = await getDocs(scoresQuery);
+
+        // Map existing scores by student code for quick lookup
+        const existingScores = {};
+        scoresSnap.forEach(docSnap => {
+            const data = docSnap.data();
+            existingScores[data.studentCode] = data.score;
+        });
+
+        tbody.innerHTML = "";
+
+        // 3. Render table and pre-fill input values if a score exists
+        studentsSnap.forEach(docSnap => {
+            const data = docSnap.data();
+            const studentCode = docSnap.id;
+            const currentScore = existingScores[studentCode] !== undefined ? existingScores[studentCode] : "";
+
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${studentCode}</strong></td>
+                    <td>${data.studentName}</td>
+                    <td>
+                        <input type="number" 
+                               class="direct-score-input" 
+                               data-code="${studentCode}" 
+                               data-name="${data.studentName}" 
+                               value="${currentScore}" 
+                               placeholder="Score" 
+                               style="width: 100px; margin: 0; padding: 6px;">
+                    </td>
+                </tr>
+            `;
+        });
+    } catch (e) {
+        console.error("Error loading roster:", e);
+        alert("Error loading class roster: " + e.message);
+    }
+}
+
+async function saveDirectScores() {
+    const subject = document.getElementById('directSubjectSelect').value; 
+    const studentClass = document.getElementById('directClassSelect').value;
+    const quiz = document.getElementById('directQuizSelect').value;
+
+    if (!subject || !studentClass || !quiz) {
+        alert("Please select a Subject, Class, and Quiz before saving.");
+        return;
+    }
+
+    const scoreInputs = document.querySelectorAll('.direct-score-input');
+    const saveBtn = document.getElementById('saveDirectScoresBtn');
+    const originalText = saveBtn ? saveBtn.innerText : "Save All Scores to Ledger";
+    let savedCount = 0;
+
+    try {
+        if (saveBtn) {
+            saveBtn.innerText = "Saving to Ledger...";
+            saveBtn.disabled = true;
+        }
+
+        for (const input of scoreInputs) {
+            const scoreValue = input.value;
+            
+            if (scoreValue !== "") {
+                const studentCode = input.getAttribute('data-code');
+                const studentName = input.getAttribute('data-name');
+
+                // Create a unique document ID based on Student + Subject + Quiz
+                const customDocId = `${studentCode}_${subject}_${quiz}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+
+                // setDoc with { merge: true } creates the document if missing or updates it if present
+                await setDoc(doc(db, "scores", customDocId), {
+                    studentCode: studentCode,
+                    studentName: studentName,
+                    subject: subject,
+                    studentClass: studentClass,
+                    quizName: quiz,
+                    score: Number(scoreValue),
+                    updatedAt: new Date()
+                }, { merge: true });
+
+                savedCount++;
+            }
+        }
+
+        alert(`Successfully saved/updated ${savedCount} score(s)!`);
+
+    } catch (error) {
+        console.error("Error saving scores: ", error);
+        alert("An error occurred while saving: " + error.message);
+    } finally {
+        if (saveBtn) {
+            saveBtn.innerText = originalText;
+            saveBtn.disabled = false;
+        }
+    }
+}
+
+async function viewScoreLedger() {
+    const selectedClass = document.getElementById('ledgerClassSelect')?.value || document.getElementById('directClassSelect').value;
+    const selectedQuiz = document.getElementById('ledgerQuizSelect').value;
+    const sortOption = document.getElementById('ledgerSortSelect')?.value || 'name_asc'; // Get sort choice
+
+    if (!selectedClass || !selectedQuiz) {
+        alert("Please select both a Class and a Quiz/Review to view the ledger.");
+        return;
+    }
+
+    const viewBtn = document.getElementById('viewLedgerBtn'); 
+
+    try {
+        viewBtn.innerText = "Loading...";
+        viewBtn.disabled = true;
+
+        // 1. Target the correct container ID from your HTML and show it
+        const tableContainer = document.getElementById('scoreLedgerContainer');
+        if (tableContainer) tableContainer.style.display = 'block';
+
+        // 2. Target the exact tbody ID from your HTML
+        const tbody = document.getElementById('manageScoreTbody');
+        tbody.innerHTML = "<tr><td colspan='7' style='text-align:center;'>Fetching scores...</td></tr>";
+
+        // 3. Query Firebase
+        const q = query(collection(db, "scores"), 
+            where("studentClass", "==", selectedClass),
+            where("quizName", "==", selectedQuiz)
+        );
+        
+        const snap = await getDocs(q);
+        tbody.innerHTML = ""; 
+
+        if (snap.empty) {
+            tbody.innerHTML = "<tr><td colspan='7' style='text-align:center; color: red;'>No scores found for this Class and Quiz combination.</td></tr>";
+            return;
+        }
+
+        // --- NEW: Convert to array and apply sorting logic ---
+        let ledgerResults = [];
+        snap.forEach(docSnap => {
+            ledgerResults.push({ id: docSnap.id, ...docSnap.data() });
+        });
+
+        ledgerResults.sort((a, b) => {
+            if (sortOption === 'score_desc') return (b.score || 0) - (a.score || 0); // Highest first
+            if (sortOption === 'score_asc') return (a.score || 0) - (b.score || 0); // Lowest first
+            return (a.studentName || '').localeCompare(b.studentName || ''); // Default Name A-Z
+        });
+
+        // 4. Populate table using the sorted array
+        ledgerResults.forEach(data => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${data.quizName || selectedQuiz}</td>
+                    <td>${data.subject || '-'}</td>
+                    <td>${data.studentName}</td>
+                    <td><strong>${data.studentClass}</strong></td>
+                    <td><strong>${data.studentCode}</strong></td>
+                    <td><strong style="color: #28a745;">${data.score}</strong></td>
+                    <td>
+                        <button class="delete-btn" onclick="deleteStudentScore('${data.id}')">Delete</button>
+                    </td>
+                </tr>
+            `;
+        });
+
+    } catch (error) {
+        console.error("Error loading ledger: ", error);
+        alert("An error occurred while loading the ledger: " + error.message);
+    } finally {
+        // Force the button text back to normal to prevent it getting stuck
+        if (viewBtn) {
+            viewBtn.innerText = "View Table";
+            viewBtn.disabled = false;
+        }
+    }
+}
+
+// --- POINTS MODAL LOGIC ---
+window.openPointModal = function(code, name) {
+    document.getElementById('modalStudentCode').value = code;
+    document.getElementById('pointModalStudent').innerText = `Student: ${name} (${code})`;
+    document.getElementById('modalPointValue').value = '';
+    document.getElementById('modalPointReason').value = '';
+    
+    const modal = document.getElementById('pointModal');
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex'; 
+};
+
+window.closePointModal = function() {
+    const modal = document.getElementById('pointModal');
+    modal.classList.add('hidden');
+    modal.style.display = 'none';
+};
+
+window.submitModalPoint = async function() {
+    const code = document.getElementById('modalStudentCode').value;
+    const amount = parseFloat(document.getElementById('modalPointValue').value);
+    const reason = document.getElementById('modalPointReason').value.trim();
+
+    if (!code || isNaN(amount) || !reason) {
+        alert("Please provide both a point amount and a reason.");
+        return;
+    }
+
+    try {
+        const studentSnap = await getDoc(doc(db, "students", code));
+        let targetClass = 'N/A';
+        let studentName = code;
+        
+        if (studentSnap.exists()) {
+            const sData = studentSnap.data();
+            targetClass = sData.studentClass || sData.Class || sData.class || 'N/A';
+            studentName = sData.studentName || code;
+        }
+
+        await addDoc(collection(db, "student_points"), {
+            studentCode: code,
+            studentName: studentName,
+            studentClass: targetClass,
+            reason: reason,
+            points: amount,
+            timestamp: new Date()
+        });
+        
+        const sign = amount > 0 ? '+' : '';
+        alert(`Successfully recorded ${sign}${amount} points.`);
+        
+        closePointModal();
+        loadPointsTable(); // Refresh the ledger immediately
+    } catch (e) {
+        alert("Error adjusting points: " + e.message);
+    }
+};
+
+
+// Function to toggle code visibility in the Points Ledger
+window.togglePtCodeVisibility = function(studentId) {
+    const span = document.getElementById(`pt-code-${studentId}`);
+    if (!span) return;
+
+    if (span.innerText === '•••••') {
+        span.innerText = studentId; // Show real code
+        span.style.letterSpacing = 'normal'; // Reset spacing
+    } else {
+        span.innerText = '•••••'; // Hide code
+        span.style.letterSpacing = '2px'; // Add spacing for dots
+    }
+};
+
+let uniquePastReasons = [];
+
+// 1. Core Data Aggregator for Behavior Tab
+async function refreshBehaviorTabLedgers() {
+    try {
+        const pointsSnap = await getDocs(collection(db, "student_points"));
+        
+        // Variables for tables
+        const studentTotals = {};
+        const reasonStats = {};
+        const reasonsSet = new Set();
+
+        pointsSnap.forEach(doc => {
+            const data = doc.data();
+            const pt = parseFloat(data.points) || 0;
+            const reasonRaw = (data.reason || "Unknown").trim();
+            const rKey = reasonRaw.toLowerCase();
+            
+            // Build student totals for the full ledger
+            if(!studentTotals[data.studentCode]) {
+                studentTotals[data.studentCode] = { 
+                    code: data.studentCode, 
+                    name: data.studentName, 
+                    sClass: data.studentClass, 
+                    total: 0 
+                };
+            }
+            studentTotals[data.studentCode].total += pt;
+
+            // Build reason statistics
+            if(reasonRaw) {
+                reasonsSet.add(reasonRaw); // For autocomplete
+                if(!reasonStats[rKey]) {
+                    reasonStats[rKey] = { text: reasonRaw, posPts: 0, negPts: 0, count: 0 };
+                }
+                reasonStats[rKey].count++;
+                if (pt > 0) reasonStats[rKey].posPts += pt;
+                if (pt < 0) reasonStats[rKey].negPts += Math.abs(pt);
+            }
+        });
+
+        uniquePastReasons = Array.from(reasonsSet);
+
+        // --- Render Full Ledger in Behavior Tab ---
+        const ledgerTbody = document.querySelector("#behaviorTabPointsTable tbody");
+        if(ledgerTbody) {
+            ledgerTbody.innerHTML = "";
+            Object.values(studentTotals)
+                .sort((a,b) => b.total - a.total)
+                .forEach(info => {
+                    const color = info.total > 0 ? '#28a745' : (info.total < 0 ? '#dc3545' : '#333');
+                    const sign = info.total > 0 ? '+' : '';
+                    ledgerTbody.innerHTML += `<tr>
+                        <td><strong>${info.code}</strong></td>
+                        <td>${info.name}</td>
+                        <td>${info.sClass}</td>
+                        <td><strong style="color: ${color};">${sign}${info.total}</strong></td>
+                    </tr>`;
+                });
+        }
+
+        // --- Render Top 10 Positive Reasons ---
+        const posTbody = document.querySelector("#topPositiveTable tbody");
+        if (posTbody) {
+            const topPos = Object.values(reasonStats)
+                .filter(r => r.posPts > 0)
+                .sort((a, b) => b.posPts - a.posPts)
+                .slice(0, 10);
+            
+            posTbody.innerHTML = topPos.length === 0 ? "<tr><td colspan='3'>No data</td></tr>" : "";
+            topPos.forEach(r => {
+                posTbody.innerHTML += `<tr><td>${r.text}</td><td>${r.count}x</td><td style="color:#10b981; font-weight:bold;">+${r.posPts}</td></tr>`;
+            });
+        }
+
+        // --- Render Top 10 Negative Reasons ---
+        const negTbody = document.querySelector("#topNegativeTable tbody");
+        if (negTbody) {
+            const topNeg = Object.values(reasonStats)
+                .filter(r => r.negPts > 0)
+                .sort((a, b) => b.negPts - a.negPts)
+                .slice(0, 10);
+                
+            negTbody.innerHTML = topNeg.length === 0 ? "<tr><td colspan='3'>No data</td></tr>" : "";
+            topNeg.forEach(r => {
+                negTbody.innerHTML += `<tr><td>${r.text}</td><td>${r.count}x</td><td style="color:#e02d2d; font-weight:bold;">-${r.negPts}</td></tr>`;
+            });
+        }
+
+    } catch(e) {
+        console.error("Error generating behavior stats: ", e);
+    }
+}
+
+// 2. Autocomplete Filter Logic
+function setupAutocomplete(inputElement, listElement, dataProvider) {
+    inputElement.addEventListener("input", function() {
+        const val = this.value;
+        listElement.innerHTML = "";
+        if (!val) {
+            listElement.classList.add("hidden");
+            return;
+        }
+        
+        // dataProvider is a function that returns the array we want to search through
+        const dataArray = dataProvider(); 
+        const matches = dataArray.filter(item => item.toLowerCase().includes(val.toLowerCase())).slice(0, 8); // Max 8 results
+        
+        if (matches.length > 0) {
+            listElement.classList.remove("hidden");
+            matches.forEach(match => {
+                const div = document.createElement("DIV");
+                div.innerHTML = match;
+                div.addEventListener("click", function() {
+                    inputElement.value = match;
+                    listElement.innerHTML = "";
+                    listElement.classList.add("hidden");
+                });
+                listElement.appendChild(div);
+            });
+        } else {
+            listElement.classList.add("hidden");
+        }
+    });
+}
+
+// 3. Initialize the Listeners
+document.addEventListener("DOMContentLoaded", () => {
+    // Setup Name Autocomplete (Pulling from allStudentsData loaded globally)
+    const nameInput = document.getElementById("pointStudentName");
+    const nameList = document.getElementById("nameAutocompleteList");
+    if(nameInput) {
+        setupAutocomplete(nameInput, nameList, () => allStudentsData.map(s => s.studentName));
+    }
+
+    // Setup Reason Autocomplete
+    const reasonInput = document.getElementById("pointReason");
+    const reasonList = document.getElementById("reasonAutocompleteList");
+    if(reasonInput) {
+        setupAutocomplete(reasonInput, reasonList, () => uniquePastReasons);
+    }
+
+    // Close dropdowns when clicking outside
+    document.addEventListener("click", function (e) {
+        if(nameInput && e.target !== nameInput) nameList.classList.add("hidden");
+        if(reasonInput && e.target !== reasonInput) reasonList.classList.add("hidden");
+    });
+
+    // Hook into tab click to refresh data
+    document.querySelector('[data-tab="tab-manage-behavior"]')?.addEventListener("click", refreshBehaviorTabLedgers);
+});
+
+// Expose functions globally for HTML button clicks
+window.addManualQuiz = addManualQuiz;
+window.deleteSystemRecord = deleteSystemRecord;
 // Expose to window object for HTML onclick inline events
 window.deleteQuiz = deleteQuiz;
 window.viewQuizResults = viewQuizResults;
 window.closeResultsModal = closeResultsModal;
 window.editQuiz = editQuiz;
 
-document.getElementById('saveQuizBtn')?.addEventListener('click', saveQuiz);
+
 window.deleteQuiz = deleteQuiz;
-document.getElementById('addQuestionBtn')?.addEventListener('click', addQuestionField);
 document.getElementById('saveQuizBtn')?.addEventListener('click', saveQuiz);
+document.getElementById('loadDirectStudentsBtn')?.addEventListener('click', loadClassRoster);
+document.getElementById('saveDirectScoresBtn')?.addEventListener('click', saveDirectScores);
+document.getElementById('viewLedgerBtn')?.addEventListener('click', viewScoreLedger);
+window.viewScoreLedger = viewScoreLedger;
 
 // Bind the new function to the window so the HTML buttons can trigger it
 window.inlineAdjustPoint = inlineAdjustPoint;
 
 // Bind the new bulk upload buttons
-document.getElementById('uploadBulkStudentsBtn').addEventListener('click', processBulkStudents);
-document.getElementById('uploadBulkTeachersBtn').addEventListener('click', processBulkTeachers);
+document.getElementById('uploadBulkStudentsBtn')?.addEventListener('click', processBulkStudents);
+document.getElementById('uploadBulkTeachersBtn')?.addEventListener('click', processBulkTeachers);
 document.getElementById('sortStudents')?.addEventListener('change', loadStudentsDirectory);
 document.getElementById('sortScores')?.addEventListener('change', loadAdminTable);
 document.getElementById('sortPoints')?.addEventListener('change', loadPointsTable);
-document.getElementById('postNewsBtn').addEventListener('click', addNewsUpdate);
+document.getElementById('postNewsBtn')?.addEventListener('click', addNewsUpdate);
 window.deleteNewsUpdate = deleteNewsUpdate;
-}
