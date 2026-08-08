@@ -1,38 +1,55 @@
 /* ======================================================
-   STUDENT PORTAL SPECIFIC STYLES & RESPONSIVE LAYOUT
+   STUDENT PORTAL SPECIFIC STYLES & MOBILE OVERRIDES
    ====================================================== */
 
-/* --- Document Base & Scroll Overrides --- */
+/* --- Full Document Scroll Reset (Fixes iOS Touch Lock) --- */
+*, *::before, *::after {
+    box-sizing: border-box !important;
+}
+
 html, body {
     height: auto !important;
-    min-height: 100vh;
+    min-height: 100% !important;
+    max-width: 100vw !important;
     overflow-x: hidden !important;
     overflow-y: auto !important;
     display: block !important;
-    -webkit-text-size-adjust: 100%;
+    position: relative !important;
+    -webkit-overflow-scrolling: touch !important;
 }
 
 .app-container {
     height: auto !important;
-    min-height: 100vh;
+    min-height: 100vh !important;
     display: block !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
 }
 
 .main-wrapper {
     height: auto !important;
+    min-height: 0 !important;
     overflow: visible !important;
-    padding: 24px 32px 48px !important;
-    max-width: 1400px;
-    margin: 0 auto;
-    width: 100%;
-    box-sizing: border-box;
+    padding: 20px 24px 40px !important;
+    max-width: 1200px !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
 }
 
 /* --- Header & Branding --- */
 .student-header {
-    padding: 16px 32px;
+    padding: 12px 20px !important;
     border-bottom: 1px solid var(--border-color);
     background: var(--card-bg);
+    width: 100% !important;
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
 }
 
 .student-brand {
@@ -52,10 +69,11 @@ html, body {
 
 /* --- Quick Links Grid --- */
 .quick-links-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-    margin-bottom: 24px;
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 16px !important;
+    margin-bottom: 20px !important;
+    width: 100% !important;
 }
 
 .quick-link-anchor {
@@ -67,12 +85,6 @@ html, body {
     border: 1px solid var(--border-color);
     transition: transform 0.2s, box-shadow 0.2s;
     height: 100%;
-    box-sizing: border-box;
-}
-
-.quick-link-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 /* --- Search Bar Container --- */
@@ -89,11 +101,11 @@ html, body {
     font-size: 16px;
     letter-spacing: 1px;
     margin: 0;
-    height: 48px; /* Touch friendly size */
+    height: 48px;
 }
 
 .search-btn-custom {
-    width: 110px;
+    width: 100px;
     font-weight: 700;
     font-size: 15px;
     margin: 0;
@@ -112,17 +124,19 @@ html, body {
     font-weight: 500;
 }
 
-/* --- Hero Profile & Behavior Point Banner --- */
+/* --- Hero Profile & Behavior Banner --- */
 .hero-point-card {
     background: linear-gradient(135deg, #1e5eff 0%, #0b1437 100%);
     color: white;
     border-radius: 16px;
-    padding: 24px;
+    padding: 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
     box-shadow: 0 10px 25px rgba(30, 94, 255, 0.15);
+    width: 100% !important;
+    box-sizing: border-box !important;
 }
 
 .hero-label {
@@ -135,7 +149,7 @@ html, body {
 
 .student-name-heading {
     margin: 4px 0 2px 0;
-    font-size: clamp(20px, 4vw, 26px);
+    font-size: clamp(18px, 5vw, 24px);
     font-weight: 800;
     word-break: break-word;
 }
@@ -151,18 +165,59 @@ html, body {
 }
 
 .hero-point-badge {
-    font-size: clamp(2.4rem, 6vw, 3.2rem);
+    font-size: clamp(2.2rem, 7vw, 3rem);
     font-weight: 800;
     line-height: 1;
     letter-spacing: -1px;
-    text-align: right;
 }
 
-/* --- Profile Split Grid --- */
+/* --- Dashboard Grid & Cards --- */
+.dashboard-grid {
+    display: grid !important;
+    grid-template-columns: 2fr 1fr !important;
+    gap: 20px !important;
+    width: 100% !important;
+}
+
+.box {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important; /* Clips wide children inside card */
+    padding: 20px !important;
+    margin-bottom: 20px !important;
+}
+
 .profile-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 16px !important;
+    width: 100% !important;
+}
+
+/* --- Table Overrides (Fixes 550px Min-Width Bug) --- */
+.table-responsive {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    min-height: 0 !important;
+    border-radius: 8px !important;
+    -webkit-overflow-scrolling: touch !important;
+    display: block !important;
+}
+
+.table-responsive table {
+    width: 100% !important;
+    min-width: 0 !important; /* CRITICAL FIX: Removes admin.css 550px min-width */
+    table-layout: auto !important;
+    white-space: normal !important;
+}
+
+th, td {
+    padding: 10px 12px !important;
+    font-size: 13px !important;
+    word-break: break-word !important;
 }
 
 .live-updates-tag {
@@ -175,75 +230,61 @@ html, body {
 }
 
 /* ======================================================
-   IPAD & TABLET RESPONSIVE RULES (Up to 1024px)
+   MOBILE & TABLET RESPONSIVE BREAKPOINTS (iPhone 13 / iPads)
    ====================================================== */
-@media screen and (max-width: 1024px) {
-    .main-wrapper {
-        padding: 20px 20px 40px !important;
-    }
-
-    /* Stack main dashboard so student profile gets full width on iPads */
+@media screen and (max-width: 992px) {
     .dashboard-grid {
         grid-template-columns: 1fr !important;
-        gap: 20px !important;
-    }
-
-    .hero-point-card {
-        padding: 20px;
     }
 }
 
-/* ======================================================
-   MOBILE PHONE RESPONSIVE RULES (Up to 768px)
-   ====================================================== */
 @media screen and (max-width: 768px) {
-    .student-header {
-        padding: 12px 16px;
-    }
-
     .main-wrapper {
-        padding: 16px 12px 32px !important;
+        padding: 12px 12px 32px !important;
     }
 
-    /* Stack Quick Link Cards */
-    .quick-links-grid {
-        grid-template-columns: 1fr;
-        gap: 12px;
+    .student-header {
+        padding: 12px 16px !important;
     }
 
-    /* Hero Banner Stacking */
+    .quick-links-grid, 
+    .profile-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+
     .hero-point-card {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 16px;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 12px !important;
+        padding: 16px !important;
+    }
+
+    .hero-point-card > div:last-child {
+        text-align: left !important;
     }
 
     .hero-point-badge {
-        text-align: left;
+        text-align: left !important;
     }
 
-    /* Stack Profile Tables (Scores on top, Behavior below) */
-    .profile-grid {
-        grid-template-columns: 1fr;
-        gap: 16px;
+    .box {
+        padding: 14px !important;
     }
 
-    /* Adjust inputs and buttons for small screens */
     .search-wrapper {
-        flex-direction: row;
+        flex-direction: row !important;
+        gap: 8px !important;
     }
 
     .search-input-code {
-        font-size: 14px;
+        height: 44px !important;
+        font-size: 14px !important;
     }
 
     .search-btn-custom {
-        width: 90px;
-        font-size: 14px;
-    }
-
-    /* Ensure tables allow horizontal swipe if extra wide */
-    .table-responsive {
-        -webkit-overflow-scrolling: touch;
+        height: 44px !important;
+        width: 80px !important;
+        font-size: 14px !important;
     }
 }
