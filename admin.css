@@ -140,14 +140,15 @@ body {
     grid-template-columns: 2fr 1fr;
     gap: 24px;
     margin-bottom: 24px;
+    align-items: start; /* Prevents boxes from stretching vertically */
 }
-
 .box { 
     background: var(--card-bg); 
-    padding: 100px; 
+    padding: 24px; 
     border-radius: 20px; 
     box-shadow: 0 4px 15px rgba(0,0,0,0.03); 
     margin-bottom: 24px;
+    height: fit-content; /* Hugs the internal content height strictly */
 }
 
 .box h3 { margin-top: 0; font-size: 18px; color: var(--text-dark); font-weight: 700; margin-bottom: 16px;}
