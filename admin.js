@@ -939,111 +939,207 @@ document.getElementById('quizTitle')?.addEventListener('input', function(e) {
     document.getElementById('gform-main-title').value = e.target.value;
 });
 
-// Updated addBlock function to generate Google Form styled cards
+// Global card activation function for inline HTML clicks and module calls
+window.activateCard = function(element) {
+    if (!element) return;
+    
+    // Remove active state from all cards
+    document.querySelectorAll('.gform-card').forEach(c => c.classList.remove('active-card'));
+    
+    // Add active state to selected card
+    element.classList.add('active-card');
+    
+    // Move floating sidebar toolbar next to active card
+    const toolbar = document.getElementById('floatingToolbar');
+    if (toolbar) toolbar.style.top = element.offsetTop + 'px';
+
+    // Relocate the Rich Text formatting toolbar inside the active card container
+    const rtContainer = element.querySelector('.rt-toolbar-container');
+    const rtToolbar = document.getElementById('globalRichTextToolbar');
+    if (rtContainer && rtToolbar) {
+        rtContainer.appendChild(rtToolbar);
+    }
+};
+
+// Internal reference for admin.js function calls
+const activateCard = window.activateCard;
+// Main function to create new blocks
 function addBlock(type) {
     const container = document.getElementById('quizBlocksContainer');
     if (!container) return;
 
+    blockCounter++;
+    const blockId = 'block_' + blockCounter;
+
     const blockDiv = document.createElement('div');
     blockDiv.className = 'gform-card quiz-block'; 
     blockDiv.dataset.type = type;
+    blockDiv.dataset.blockId = blockId;
     blockDiv.setAttribute('onclick', 'activateCard(this)');
 
-    let contentHtml = '';
+    blockDiv.innerHTML = getBlockInnerHtml(type, blockId);
+    container.appendChild(blockDiv);
+    activateCard(blockDiv);
+    return blockDiv;
+}
+
+let blockCounter = 0; // Tracks unique IDs for radio buttons
+
+// Helper to generate the dynamic type select menu
+function getTypeSelectHtml(currentType) {
+    return `
+        <select class="gform-type-select" onchange="switchBlockType(this)">
+            <option value="mcq" ${currentType === 'mcq' ? 'selected' : ''}>🔘 Multiple choice</option>
+            <option value="fill" ${currentType === 'fill' ? 'selected' : ''}>📝 Fill in the blank</option>
+            <option value="essay" ${currentType === 'essay' ? 'selected' : ''}>📄 Essay / Paragraph</option>
+        </select>
+    `;
+}
+
+// Generates the inner HTML template for a given block type
+function getBlockInnerHtml(type, blockId) {
+    const mediaAndPointsHtml = `
+        <div style="display: flex; gap: 10px; margin-top: 15px; margin-bottom: 15px;">
+            <input type="text" class="gform-opt-input blk-img" placeholder="Optional: Google Drive Image URL" style="flex: 1; border: 1px solid #dadce0; padding: 8px; border-radius: 4px; font-size: 13px;">
+            <div style="display: flex; align-items: center; gap: 8px; background: #f8fafc; padding: 0 10px; border-radius: 4px; border: 1px solid #dadce0;">
+                <label style="font-size: 13px; font-weight: bold; color: #5f6368; margin: 0;">Points:</label>
+                <input type="number" class="blk-points" value="1" min="0" style="width: 50px; border: none; background: transparent; font-size: 14px; text-align: center; outline: none;">
+            </div>
+        </div>
+    `;
 
     if (type === 'mcq') {
-        contentHtml = `
+        return `
             <div style="text-align: center; color: #dadce0; cursor: grab; margin-top: -15px; margin-bottom: 5px;">⋮⋮</div>
+            <div class="rt-toolbar-container"></div>
             
-            <div class="rt-toolbar-container"></div> <!-- Toolbar injects here -->
-
             <div class="gform-question-header">
-                <!-- Changed to div with contenteditable -->
                 <div class="gform-q-input blk-prompt" contenteditable="true" data-placeholder="Question"></div>
-                <select class="gform-type-select">
-                    <option>Multiple choice</option>
-                </select>
+                ${getTypeSelectHtml('mcq')}
             </div>
+            
+            ${mediaAndPointsHtml}
             
             <div class="options-container">
                 ${[1, 2, 3, 4].map((num, i) => `
                     <div class="gform-opt-row">
-                        <input type="radio">
+                        <input type="radio" name="${blockId}_correct" value="${i}" onchange="this.closest('.quiz-block').querySelector('.blk-correct').value = this.value" ${i === 0 ? 'checked' : ''} title="Mark as correct answer">
                         <input type="text" class="gform-opt-input blk-opt${i}" placeholder="Option ${num}" required>
                         <button class="icon-btn delete" onclick="this.closest('.gform-opt-row').remove()">✖</button>
                     </div>
                 `).join('')}
-                <input type="hidden" class="blk-correct" value="0">
             </div>
-
+            
+            <input type="hidden" class="blk-correct" value="0">
+            
             <div class="gform-opt-row" style="margin-top: 8px;">
                 <input type="radio" disabled>
-                <span class="gform-add-opt">Add option or <span style="color: #1a73e8; cursor:pointer;">add "Other"</span></span>
+                <span class="gform-add-opt" onclick="addOptionToMCQ(this, '${blockId}')" style="color: #1a73e8; cursor:pointer; font-weight: 500;">Add option</span>
             </div>
 
             <div class="gform-card-footer">
                 <button class="icon-btn delete" title="Delete" onclick="this.closest('.gform-card').remove()">🗑️</button>
             </div>
         `;
-    } else if (type === 'header') {
-        contentHtml = `
+    } else if (type === 'fill') {
+        return `
             <div style="text-align: center; color: #dadce0; cursor: grab; margin-top: -15px; margin-bottom: 5px;">⋮⋮</div>
+            <div class="rt-toolbar-container"></div>
             
-            <div class="rt-toolbar-container"></div> <!-- Toolbar injects here -->
-
+            <div class="gform-question-header">
+                <div class="gform-q-input blk-prompt" contenteditable="true" data-placeholder="Question (e.g., The capital of France is ___)"></div>
+                ${getTypeSelectHtml('fill')}
+            </div>
+            
+            ${mediaAndPointsHtml}
+            
+            <div style="margin-top: 15px;">
+                <input type="text" class="gform-opt-input blk-answer" placeholder="Correct Answer(s) separated by commas" style="width: 100%; border: 1px solid #dadce0; padding: 10px; border-radius: 4px; box-sizing: border-box;">
+                <small style="color: #70757a; display: block; margin-top: 5px;">Separate multiple acceptable variations with commas (e.g., Paris, paris)</small>
+            </div>
+            
+            <div class="gform-card-footer">
+                <button class="icon-btn delete" title="Delete" onclick="this.closest('.gform-card').remove()">🗑️</button>
+            </div>
+        `;
+    } else if (type === 'essay') {
+        return `
+            <div style="text-align: center; color: #dadce0; cursor: grab; margin-top: -15px; margin-bottom: 5px;">⋮⋮</div>
+            <div class="rt-toolbar-container"></div>
+            
+            <div class="gform-question-header">
+                <div class="gform-q-input blk-prompt" contenteditable="true" data-placeholder="Essay Question Prompt"></div>
+                ${getTypeSelectHtml('essay')}
+            </div>
+            
+            ${mediaAndPointsHtml}
+            
+            <div style="margin-top: 15px;">
+                <textarea disabled placeholder="Long answer text will be written here by the student" style="width: 100%; border: 1px dotted #dadce0; padding: 10px; border-radius: 4px; background: #f8fafc; resize: none; box-sizing: border-box;"></textarea>
+            </div>
+            
+            <div class="gform-card-footer">
+                <button class="icon-btn delete" title="Delete" onclick="this.closest('.gform-card').remove()">🗑️</button>
+            </div>
+        `;
+    } else if (type === 'header') {
+        return `
+            <div style="text-align: center; color: #dadce0; cursor: grab; margin-top: -15px; margin-bottom: 5px;">⋮⋮</div>
+            <div class="rt-toolbar-container"></div>
             <div class="gform-question-header">
                 <div class="gform-q-input blk-prompt" contenteditable="true" data-placeholder="Header / Section Title" style="font-size: 20px; font-weight: 500; background: transparent; border-bottom: 2px solid #673ab7;"></div>
             </div>
             <div class="gform-question-header">
                 <div class="gform-desc-input blk-desc" contenteditable="true" data-placeholder="Description (Optional)" style="font-size: 14px; width: 100%;"></div>
             </div>
-            
-            <div class="gform-card-footer">
-                <button class="icon-btn delete" title="Delete" onclick="this.closest('.gform-card').remove()">🗑️</button>
-            </div>
-        `;
-    } else {
-        contentHtml = `
-            <div style="text-align: center; color: #dadce0; cursor: grab; margin-top: -15px; margin-bottom: 5px;">⋮⋮</div>
-            
-            <div class="rt-toolbar-container"></div> <!-- Toolbar injects here -->
-            
-            <div class="gform-question-header">
-                <div class="gform-q-input blk-prompt" contenteditable="true" data-placeholder="${type.toUpperCase()} Prompt..."></div>
-            </div>
             <div class="gform-card-footer">
                 <button class="icon-btn delete" title="Delete" onclick="this.closest('.gform-card').remove()">🗑️</button>
             </div>
         `;
     }
-
-    blockDiv.innerHTML = contentHtml;
-    container.appendChild(blockDiv);
-    
-    // Automatically activate the new block so the toolbars move to it
-    activateCard(blockDiv);
 }
 
-// Execute Rich Text Formatting on the selected text
-window.formatText = function(command, value = null) {
-    document.execCommand(command, false, value);
-};
+// Function triggered when changing the dropdown option on a card
+window.switchBlockType = function(selectElement) {
+    const newType = selectElement.value;
+    const blockDiv = selectElement.closest('.quiz-block');
+    if (!blockDiv) return;
 
-window.activateCard = function(element) {
-    // Remove active class from all cards
-    document.querySelectorAll('.gform-card').forEach(c => c.classList.remove('active-card'));
-    element.classList.add('active-card');
+    // Save current user-typed values before switching layout
+    const promptNode = blockDiv.querySelector('.blk-prompt');
+    const savedPrompt = promptNode ? promptNode.innerText : '';
     
-    // Move floating sidebar toolbar
-    const toolbar = document.getElementById('floatingToolbar');
-    if (toolbar) toolbar.style.top = element.offsetTop + 'px';
+    const imgNode = blockDiv.querySelector('.blk-img');
+    const savedImg = imgNode ? imgNode.value : '';
 
-    // Move the Rich Text formatting toolbar inside the active card
-    const rtContainer = element.querySelector('.rt-toolbar-container');
-    const rtToolbar = document.getElementById('globalRichTextToolbar');
-    if (rtContainer && rtToolbar) {
-        rtContainer.appendChild(rtToolbar);
+    const pointsNode = blockDiv.querySelector('.blk-points');
+    const savedPoints = pointsNode ? pointsNode.value : '1';
+
+    let blockId = blockDiv.dataset.blockId;
+    if (!blockId) {
+        blockCounter++;
+        blockId = 'block_' + blockCounter;
+        blockDiv.dataset.blockId = blockId;
     }
+
+    // Update block type metadata
+    blockDiv.dataset.type = newType;
+
+    // Re-render block internal HTML
+    blockDiv.innerHTML = getBlockInnerHtml(newType, blockId);
+
+    // Restore saved question text, image URL, and points
+    const newPromptNode = blockDiv.querySelector('.blk-prompt');
+    if (newPromptNode) newPromptNode.innerText = savedPrompt;
+
+    const newImgNode = blockDiv.querySelector('.blk-img');
+    if (newImgNode) newImgNode.value = savedImg;
+
+    const newPointsNode = blockDiv.querySelector('.blk-points');
+    if (newPointsNode) newPointsNode.value = savedPoints;
+
+    // Re-attach rich text toolbar
+    activateCard(blockDiv);
 };
 
 // Sync Title logic (updated for innerText instead of value)
@@ -1132,6 +1228,7 @@ window.loadQuizzesTable = loadQuizzesTable;
 
 
 // 3. Save or Update Quiz
+// --- UPDATED SAVE QUIZ ---
 async function saveQuiz() {
     const title = document.getElementById('quizTitle').value.trim();
     const targetClass = document.getElementById('quizTargetClass').value.trim();
@@ -1142,59 +1239,54 @@ async function saveQuiz() {
         return alert("Please fill in quiz title, class, and add at least one block.");
     }
 
-const items = [];
+    const items = [];
     blocksElements.forEach(el => {
         const type = el.dataset.type;
         
-        // FIX 1: Safely check if the image node exists before trying to read/trim its value
         const imgNode = el.querySelector('.blk-img');
         const imgRaw = imgNode ? imgNode.value.trim() : '';
         const imgUrl = convertDriveUrl(imgRaw);
+        
+        const pointsNode = el.querySelector('.blk-points');
+        const points = pointsNode ? parseInt(pointsNode.value) || 1 : 0;
 
         if (type === 'header') {
-            // Updated to look for .blk-prompt and .blk-desc which match your new HTML structure
             const titleText = el.querySelector('.blk-prompt') ? el.querySelector('.blk-prompt').innerText.trim() : '';
             const descText = el.querySelector('.blk-desc') ? el.querySelector('.blk-desc').innerText.trim() : '';
             items.push({ type, text: titleText, description: descText });
             
-        } else if (type === 'passage') {
-            items.push({ 
-                type, 
-                title: el.querySelector('.blk-title').value.trim(), 
-                text: el.querySelector('.blk-body').value.trim(),
-                imageUrl: imgUrl
-            });
         } else if (type === 'mcq') {
+            const options = [];
+            // Dynamically grab all options inside the options container
+            el.querySelectorAll('.options-container .gform-opt-input').forEach(opt => {
+                if (opt.value.trim() !== '') options.push(opt.value.trim());
+            });
+            
             items.push({
                 type,
-                // FIX 2: Use .innerText instead of .value for contenteditable divs
                 prompt: el.querySelector('.blk-prompt').innerText.trim(),
                 imageUrl: imgUrl,
-                options: [
-                    el.querySelector('.blk-opt0').value.trim(),
-                    el.querySelector('.blk-opt1').value.trim(),
-                    el.querySelector('.blk-opt2').value.trim(),
-                    el.querySelector('.blk-opt3').value.trim()
-                ],
-                correct: parseInt(el.querySelector('.blk-correct').value)
+                points: points,
+                options: options,
+                correct: parseInt(el.querySelector('.blk-correct').value) || 0
             });
+            
         } else if (type === 'fill') {
             items.push({
                 type,
                 prompt: el.querySelector('.blk-prompt').innerText.trim(),
                 imageUrl: imgUrl,
+                points: points,
                 answers: el.querySelector('.blk-answer').value.trim().toLowerCase().split(',').map(a => a.trim())
             });
+            
         } else if (type === 'essay') {
             items.push({
                 type,
                 prompt: el.querySelector('.blk-prompt').innerText.trim(),
-                imageUrl: imgUrl
+                imageUrl: imgUrl,
+                points: points
             });
-        } else if (type === 'matching') {
-            const lefts = Array.from(el.querySelectorAll('.m-left')).map(i => i.value.trim());
-            const rights = Array.from(el.querySelectorAll('.m-right')).map(i => i.value.trim());
-            items.push({ type, prompt: el.querySelector('.blk-prompt').innerText.trim(), lefts, rights });
         }
     });
 
@@ -1224,27 +1316,22 @@ const items = [];
     } catch (e) { alert("Error saving quiz: " + e.message); }
 }
 
+// --- UPDATED EDIT QUIZ ---
 async function editQuiz(id) {
     try {
         const snap = await getDoc(doc(db, "quizzes", id));
         if (!snap.exists()) return alert("Quiz missing.");
         const quiz = snap.data();
 
-        openQuizBuilder(false); // Open the builder for editing
+        openQuizBuilder(false); 
         
-        // FIX 1: Safely check if the old title element exists, and update the new title element
         const displayQuizTitle = document.getElementById('displayQuizTitle');
-        if (displayQuizTitle) {
-            displayQuizTitle.innerText = quiz.title || "Untitled";
-        }
+        if (displayQuizTitle) displayQuizTitle.innerText = quiz.title || "Untitled";
         
         const mainTitle = document.getElementById('gform-main-title');
-        if (mainTitle) {
-            mainTitle.innerText = quiz.title || "Untitled";
-        }
+        if (mainTitle) mainTitle.innerText = quiz.title || "Untitled";
 
         currentEditQuizId = id;
-
         document.getElementById('quizTitle').value = quiz.title || "";
         document.getElementById('quizTargetClass').value = quiz.targetClass || "";
         document.getElementById('quizSubject').value = quiz.subject || "";
@@ -1252,52 +1339,52 @@ async function editQuiz(id) {
         const container = document.getElementById('quizBlocksContainer');
         container.innerHTML = "";
 
-        (quiz.items || quiz.questions || []).forEach(item => {
+        (quiz.items || quiz.questions || []).forEach((item, index) => {
             const type = item.type || 'mcq';
-            addBlock(type);
-            const block = container.lastElementChild;
+            const block = addBlock(type); // addBlock now returns the block element
 
-            // FIX 2: Use .innerText to populate contenteditable divs instead of .value
             if (type === 'header') {
                 const promptNode = block.querySelector('.blk-prompt');
                 const descNode = block.querySelector('.blk-desc');
                 if (promptNode) promptNode.innerText = item.text || '';
                 if (descNode) descNode.innerText = item.description || '';
-            } else if (type === 'passage') {
-                if (block.querySelector('.blk-title')) block.querySelector('.blk-title').value = item.title || '';
-                if (block.querySelector('.blk-body')) block.querySelector('.blk-body').value = item.text || '';
-                if (block.querySelector('.blk-img')) block.querySelector('.blk-img').value = item.imageUrl || '';
+                
             } else if (type === 'mcq') {
                 const promptNode = block.querySelector('.blk-prompt');
                 if (promptNode) promptNode.innerText = item.prompt || item.question || '';
-                
                 if (block.querySelector('.blk-img')) block.querySelector('.blk-img').value = item.imageUrl || '';
-                if (item.options) {
-                    if (block.querySelector('.blk-opt0')) block.querySelector('.blk-opt0').value = item.options[0] || '';
-                    if (block.querySelector('.blk-opt1')) block.querySelector('.blk-opt1').value = item.options[1] || '';
-                    if (block.querySelector('.blk-opt2')) block.querySelector('.blk-opt2').value = item.options[2] || '';
-                    if (block.querySelector('.blk-opt3')) block.querySelector('.blk-opt3').value = item.options[3] || '';
+                if (block.querySelector('.blk-points')) block.querySelector('.blk-points').value = item.points || 1;
+                
+                // Clear the default options and rebuild based on saved data
+                const optionsContainer = block.querySelector('.options-container');
+                if (optionsContainer) {
+                    optionsContainer.innerHTML = '';
+                    (item.options || []).forEach((optText, i) => {
+                        const newRow = document.createElement('div');
+                        newRow.className = 'gform-opt-row';
+                        const isChecked = item.correct == i ? 'checked' : '';
+                        newRow.innerHTML = `
+                            <input type="radio" name="edit_block_${index}_correct" value="${i}" onchange="this.closest('.quiz-block').querySelector('.blk-correct').value = this.value" ${isChecked}>
+                            <input type="text" class="gform-opt-input" value="${optText}" required>
+                            <button class="icon-btn delete" onclick="this.closest('.gform-opt-row').remove()">✖</button>
+                        `;
+                        optionsContainer.appendChild(newRow);
+                    });
                 }
                 if (block.querySelector('.blk-correct')) block.querySelector('.blk-correct').value = item.correct ?? 0;
+                
             } else if (type === 'fill') {
                 const promptNode = block.querySelector('.blk-prompt');
                 if (promptNode) promptNode.innerText = item.prompt || '';
-                
                 if (block.querySelector('.blk-img')) block.querySelector('.blk-img').value = item.imageUrl || '';
+                if (block.querySelector('.blk-points')) block.querySelector('.blk-points').value = item.points || 1;
                 if (item.answers && block.querySelector('.blk-answer')) block.querySelector('.blk-answer').value = item.answers.join(', ');
+                
             } else if (type === 'essay') {
                 const promptNode = block.querySelector('.blk-prompt');
                 if (promptNode) promptNode.innerText = item.prompt || '';
-                
                 if (block.querySelector('.blk-img')) block.querySelector('.blk-img').value = item.imageUrl || '';
-            } else if (type === 'matching') {
-                const promptNode = block.querySelector('.blk-prompt');
-                if (promptNode) promptNode.innerText = item.prompt || '';
-                
-                const leftInputs = block.querySelectorAll('.m-left');
-                const rightInputs = block.querySelectorAll('.m-right');
-                item.lefts?.forEach((l, i) => { if (leftInputs[i]) leftInputs[i].value = l; });
-                item.rights?.forEach((r, i) => { if (rightInputs[i]) rightInputs[i].value = r; });
+                if (block.querySelector('.blk-points')) block.querySelector('.blk-points').value = item.points || 1;
             }
         });
 
@@ -1702,13 +1789,13 @@ window.loadSystemDatabases = async function() {
             if(classTbody) classTbody.innerHTML = "";
             if(classSelect) classSelect.innerHTML = '<option value="">-- Select Class --</option>';
             if(ledgerClassSelect) ledgerClassSelect.innerHTML = '<option value="">-- Choose a Class --</option>'; // NEW
-            if(quizClassSelect) quizClassSelect.innerHTML = '<option value="">-- Select Target Class --</option>'; // ADD THIS
+            if(quizClassSelect) quizClassSelect.innerHTML = '<option value="">-- Select Target Class --</option><option value="All Classes">All Classes</option>';
 
             Array.from(uniqueClasses).sort().forEach(name => {
                 if(classTbody) classTbody.innerHTML += `<tr><td><strong>${name}</strong></td><td><span style="background: #ecfdf5; color: #10b981; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Student Linked</span></td></tr>`;
                 if(classSelect) classSelect.innerHTML += `<option value="${name}">${name}</option>`;
                 if(ledgerClassSelect) ledgerClassSelect.innerHTML += `<option value="${name}">${name}</option>`; // NEW
-                if(quizClassSelect) quizClassSelect.innerHTML += `<option value="${name}">${name}</option>`; // ADD THIS
+                if(quizClassSelect) quizClassSelect.innerHTML = '<option value="">-- Select Target Class --</option><option value="All Classes">All Classes</option>';
             });
 
 

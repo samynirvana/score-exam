@@ -195,7 +195,7 @@ td { color: #475569; font-weight: 500; }
 /* Login Screen Override */
 #loginScreen { 
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-    z-index: 100; width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    z-index: 100; width: 90%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);
 }
 .kebab-menu {
     position: relative;
@@ -535,4 +535,132 @@ div.gform-q-input:empty:before { content: attr(data-placeholder); color: #70757a
 .blk-prompt, .blk-desc {
     min-height: 24px; /* Prevents the div from completely collapsing */
     outline: none;
+}
+
+/* ======================================================
+   RESPONSIVE LAYOUT BREAKPOINTS (TABLETS & PHONES)
+   ====================================================== */
+
+/* --- Tablets & Laptops (1024px and smaller) --- */
+@media screen and (max-width: 1024px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .gform-content-wrapper {
+        max-width: 90%;
+    }
+}
+
+/* --- Mobile Devices & iPads Vertical (768px and smaller) --- */
+@media screen and (max-width: 768px) {
+    body {
+        height: auto;
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
+    .app-container {
+        flex-direction: column;
+        height: auto;
+    }
+
+    /* Horizontal scrolling navigation bar on mobile */
+    .sidebar {
+        width: 100%;
+        padding: 12px 0;
+    }
+
+    .brand {
+        padding: 0 16px 12px;
+        margin-bottom: 12px;
+    }
+
+    .menu-bar {
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 0 12px;
+        gap: 8px;
+        white-space: nowrap;
+    }
+
+    .menu-btn {
+        padding: 8px 14px;
+        font-size: 13px;
+        margin-bottom: 0;
+    }
+
+    .user-profile-bottom {
+        display: none;
+    }
+
+    /* Main wrapper padding */
+    .main-wrapper {
+        padding: 0 16px 24px;
+    }
+
+    .topbar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 16px 0;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .box {
+        padding: 16px;
+    }
+
+    /* --- Quiz Builder Mobile Overrides --- */
+    .gform-body {
+        padding: 16px 12px 100px 12px;
+    }
+
+    .gform-content-wrapper {
+        max-width: 100%;
+    }
+
+    /* Moves the quiz floating toolbar to a fixed bottom dock on mobile */
+    .gform-floating-toolbar {
+        position: fixed;
+        right: 16px;
+        bottom: 20px;
+        top: auto !important;
+        flex-direction: row;
+        padding: 6px 12px;
+        z-index: 300;
+        background: #ffffff;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    .gform-header {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+        padding: 12px 16px;
+    }
+
+    .gform-header-center {
+        position: static;
+        transform: none;
+    }
+
+    .gform-title-input {
+        width: 100%;
+    }
+
+    .gform-question-header {
+        flex-direction: column;
+    }
+
+    .gform-type-select {
+        width: 100%;
+    }
 }
