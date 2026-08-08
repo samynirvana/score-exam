@@ -544,38 +544,24 @@ div.gform-q-input:empty:before { content: attr(data-placeholder); color: #70757a
 }
 
 /* ======================================================
-   RESPONSIVE LAYOUT BREAKPOINTS (TABLETS & PHONES)
+   RESPONSIVE MOBILE OVERFLOW FIX (PHONES & SMALL TABLETS)
    ====================================================== */
-
-/* --- Tablets & Laptops (1024px and smaller) --- */
-@media screen and (max-width: 1024px) {
-    .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
-    .dashboard-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .gform-content-wrapper {
-        max-width: 90%;
-    }
-}
-
-/* --- Mobile Devices & iPads Vertical (768px and smaller) --- */
 @media screen and (max-width: 768px) {
-    body {
-        height: auto;
+    /* 1. Prevent the root page canvas from stretching horizontally */
+    html, body {
+        width: 100%;
+        max-width: 100vw;
         overflow-x: hidden;
-        overflow-y: auto;
     }
 
-    .app-container {
-        flex-direction: column;
-        height: auto;
+    .app-container, .main-wrapper {
+        width: 100%;
+        max-width: 100vw;
+        box-sizing: border-box;
+        overflow-x: hidden;
     }
 
-    /* Horizontal scrolling navigation bar on mobile */
+    /* 2. Convert sidebar into a swipeable mobile top bar */
     .sidebar {
         width: 100%;
         padding: 12px 0;
@@ -592,6 +578,8 @@ div.gform-q-input:empty:before { content: attr(data-placeholder); color: #70757a
         padding: 0 12px;
         gap: 8px;
         white-space: nowrap;
+        max-width: 100vw;
+        box-sizing: border-box;
     }
 
     .menu-btn {
@@ -604,9 +592,8 @@ div.gform-q-input:empty:before { content: attr(data-placeholder); color: #70757a
         display: none;
     }
 
-    /* Main wrapper padding */
     .main-wrapper {
-        padding: 0 16px 24px;
+        padding: 0 12px 24px;
     }
 
     .topbar {
@@ -616,30 +603,66 @@ div.gform-q-input:empty:before { content: attr(data-placeholder); color: #70757a
         padding: 16px 0;
     }
 
-    .stats-grid {
-        grid-template-columns: 1fr;
+    /* 3. Force all grid layouts to single column on mobile */
+    .stats-grid, 
+    .dashboard-grid {
+        grid-template-columns: 1fr !important;
+        width: 100%;
     }
 
+    /* Fix inline 2-column grids (like Active Subjects / Active Classes) */
+    .box div[style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+        gap: 16px !important;
+    }
+
+    /* 4. Fix cards & forms so they stay inside the screen */
     .box {
         padding: 16px;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
     }
 
-    /* --- Quiz Builder Mobile Overrides --- */
+    /* Force side-by-side button/input wrappers (like Custom Points) to stack vertically */
+    .box div[style*="display: flex"] {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+    }
+
+    /* Exceptions for quick point (+1, +5, -1, -5) row so they stay horizontal */
+    .box div[style*="display: flex"]:has(.quick-point-btn) {
+        flex-direction: row !important;
+    }
+
+    /* Keep table action row horizontal */
+    .box div[style*="display: flex"]:has(#searchStudents) {
+        flex-direction: column !important;
+    }
+
+    /* Ensure all input elements, buttons, and text wrap properly */
+    input, select, button, textarea {
+        max-width: 100%;
+        box-sizing: border-box;
+        white-space: normal;
+    }
+
+    /* 5. Mobile Quiz Builder adjustments */
     .gform-body {
-        padding: 16px 12px 100px 12px;
+        padding: 12px 8px 100px 8px;
     }
 
     .gform-content-wrapper {
         max-width: 100%;
     }
 
-    /* Moves the quiz floating toolbar to a fixed bottom dock on mobile */
     .gform-floating-toolbar {
         position: fixed;
-        right: 16px;
-        bottom: 20px;
+        right: 12px;
+        bottom: 16px;
         top: auto !important;
-        flex-direction: row;
+        flex-direction: row !important;
         padding: 6px 12px;
         z-index: 300;
         background: #ffffff;
@@ -650,7 +673,7 @@ div.gform-q-input:empty:before { content: attr(data-placeholder); color: #70757a
         flex-direction: column;
         gap: 10px;
         align-items: flex-start;
-        padding: 12px 16px;
+        padding: 12px;
     }
 
     .gform-header-center {
@@ -663,7 +686,7 @@ div.gform-q-input:empty:before { content: attr(data-placeholder); color: #70757a
     }
 
     .gform-question-header {
-        flex-direction: column;
+        flex-direction: column !important;
     }
 
     .gform-type-select {
