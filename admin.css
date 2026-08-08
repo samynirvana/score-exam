@@ -144,7 +144,7 @@ body {
 
 .box { 
     background: var(--card-bg); 
-    padding: 24px; 
+    padding: 100px; 
     border-radius: 20px; 
     box-shadow: 0 4px 15px rgba(0,0,0,0.03); 
     margin-bottom: 24px;
@@ -164,7 +164,7 @@ button { background: var(--primary-blue); color: white; border: none; font-weigh
 button:hover { opacity: 0.9; transform: translateY(-1px); }
 
 /* --- Tables --- */
-.table-responsive { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border-color); }
+.table-responsive { overflow-x: visible; border-radius: 12px; border: 1px solid var(--border-color); }
 table { width: 100%; border-collapse: collapse; background: white; white-space: nowrap; }
 th, td { border-bottom: 1px solid var(--border-color); padding: 16px; text-align: left; font-size: 14px; }
 
@@ -492,7 +492,7 @@ td { color: #475569; font-weight: 500; }
     margin-bottom: 15px; opacity: 0; transition: opacity 0.2s; 
 }
 /* Only show the toolbar when the card is actively selected */
-.title-card.active-card .rich-text-toolbar { opacity: 1; }
+.active-card .rich-text-toolbar { opacity: 1; }
 
 .rich-text-toolbar button, .rich-text-toolbar select { 
     background: white; border: 1px solid #dadce0; border-radius: 4px; 

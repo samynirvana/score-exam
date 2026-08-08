@@ -961,7 +961,7 @@ function addBlock(type) {
                 <!-- Changed to div with contenteditable -->
                 <div class="gform-q-input blk-prompt" contenteditable="true" data-placeholder="Question"></div>
                 <select class="gform-type-select">
-                    <option>🔘 Multiple choice</option>
+                    <option>Multiple choice</option>
                 </select>
             </div>
             
@@ -1142,14 +1142,21 @@ async function saveQuiz() {
         return alert("Please fill in quiz title, class, and add at least one block.");
     }
 
-    const items = [];
+const items = [];
     blocksElements.forEach(el => {
         const type = el.dataset.type;
-        const imgRaw = el.querySelector('.blk-img')?.value.trim() || '';
+        
+        // FIX 1: Safely check if the image node exists before trying to read/trim its value
+        const imgNode = el.querySelector('.blk-img');
+        const imgRaw = imgNode ? imgNode.value.trim() : '';
         const imgUrl = convertDriveUrl(imgRaw);
 
         if (type === 'header') {
-            items.push({ type, text: el.querySelector('.blk-title').value.trim() });
+            // Updated to look for .blk-prompt and .blk-desc which match your new HTML structure
+            const titleText = el.querySelector('.blk-prompt') ? el.querySelector('.blk-prompt').innerText.trim() : '';
+            const descText = el.querySelector('.blk-desc') ? el.querySelector('.blk-desc').innerText.trim() : '';
+            items.push({ type, text: titleText, description: descText });
+            
         } else if (type === 'passage') {
             items.push({ 
                 type, 
@@ -1160,7 +1167,8 @@ async function saveQuiz() {
         } else if (type === 'mcq') {
             items.push({
                 type,
-                prompt: el.querySelector('.blk-prompt').value.trim(),
+                // FIX 2: Use .innerText instead of .value for contenteditable divs
+                prompt: el.querySelector('.blk-prompt').innerText.trim(),
                 imageUrl: imgUrl,
                 options: [
                     el.querySelector('.blk-opt0').value.trim(),
@@ -1173,20 +1181,20 @@ async function saveQuiz() {
         } else if (type === 'fill') {
             items.push({
                 type,
-                prompt: el.querySelector('.blk-prompt').value.trim(),
+                prompt: el.querySelector('.blk-prompt').innerText.trim(),
                 imageUrl: imgUrl,
                 answers: el.querySelector('.blk-answer').value.trim().toLowerCase().split(',').map(a => a.trim())
             });
         } else if (type === 'essay') {
             items.push({
                 type,
-                prompt: el.querySelector('.blk-prompt').value.trim(),
+                prompt: el.querySelector('.blk-prompt').innerText.trim(),
                 imageUrl: imgUrl
             });
         } else if (type === 'matching') {
             const lefts = Array.from(el.querySelectorAll('.m-left')).map(i => i.value.trim());
             const rights = Array.from(el.querySelectorAll('.m-right')).map(i => i.value.trim());
-            items.push({ type, prompt: el.querySelector('.blk-prompt').value.trim(), lefts, rights });
+            items.push({ type, prompt: el.querySelector('.blk-prompt').innerText.trim(), lefts, rights });
         }
     });
 
@@ -1216,7 +1224,6 @@ async function saveQuiz() {
     } catch (e) { alert("Error saving quiz: " + e.message); }
 }
 
-// 4. Edit Quiz
 async function editQuiz(id) {
     try {
         const snap = await getDoc(doc(db, "quizzes", id));
@@ -1224,13 +1231,23 @@ async function editQuiz(id) {
         const quiz = snap.data();
 
         openQuizBuilder(false); // Open the builder for editing
-        document.getElementById('displayQuizTitle').innerText = quiz.title || "Untitled";
+        
+        // FIX 1: Safely check if the old title element exists, and update the new title element
+        const displayQuizTitle = document.getElementById('displayQuizTitle');
+        if (displayQuizTitle) {
+            displayQuizTitle.innerText = quiz.title || "Untitled";
+        }
+        
+        const mainTitle = document.getElementById('gform-main-title');
+        if (mainTitle) {
+            mainTitle.innerText = quiz.title || "Untitled";
+        }
 
         currentEditQuizId = id;
 
-        document.getElementById('quizTitle').value = quiz.title;
-        document.getElementById('quizTargetClass').value = quiz.targetClass;
-        document.getElementById('quizSubject').value = quiz.subject;
+        document.getElementById('quizTitle').value = quiz.title || "";
+        document.getElementById('quizTargetClass').value = quiz.targetClass || "";
+        document.getElementById('quizSubject').value = quiz.subject || "";
 
         const container = document.getElementById('quizBlocksContainer');
         container.innerHTML = "";
@@ -1240,31 +1257,43 @@ async function editQuiz(id) {
             addBlock(type);
             const block = container.lastElementChild;
 
+            // FIX 2: Use .innerText to populate contenteditable divs instead of .value
             if (type === 'header') {
-                block.querySelector('.blk-title').value = item.text || '';
+                const promptNode = block.querySelector('.blk-prompt');
+                const descNode = block.querySelector('.blk-desc');
+                if (promptNode) promptNode.innerText = item.text || '';
+                if (descNode) descNode.innerText = item.description || '';
             } else if (type === 'passage') {
-                block.querySelector('.blk-title').value = item.title || '';
-                block.querySelector('.blk-body').value = item.text || '';
+                if (block.querySelector('.blk-title')) block.querySelector('.blk-title').value = item.title || '';
+                if (block.querySelector('.blk-body')) block.querySelector('.blk-body').value = item.text || '';
                 if (block.querySelector('.blk-img')) block.querySelector('.blk-img').value = item.imageUrl || '';
             } else if (type === 'mcq') {
-                block.querySelector('.blk-prompt').value = item.prompt || item.question || '';
+                const promptNode = block.querySelector('.blk-prompt');
+                if (promptNode) promptNode.innerText = item.prompt || item.question || '';
+                
                 if (block.querySelector('.blk-img')) block.querySelector('.blk-img').value = item.imageUrl || '';
                 if (item.options) {
-                    block.querySelector('.blk-opt0').value = item.options[0] || '';
-                    block.querySelector('.blk-opt1').value = item.options[1] || '';
-                    block.querySelector('.blk-opt2').value = item.options[2] || '';
-                    block.querySelector('.blk-opt3').value = item.options[3] || '';
+                    if (block.querySelector('.blk-opt0')) block.querySelector('.blk-opt0').value = item.options[0] || '';
+                    if (block.querySelector('.blk-opt1')) block.querySelector('.blk-opt1').value = item.options[1] || '';
+                    if (block.querySelector('.blk-opt2')) block.querySelector('.blk-opt2').value = item.options[2] || '';
+                    if (block.querySelector('.blk-opt3')) block.querySelector('.blk-opt3').value = item.options[3] || '';
                 }
                 if (block.querySelector('.blk-correct')) block.querySelector('.blk-correct').value = item.correct ?? 0;
             } else if (type === 'fill') {
-                block.querySelector('.blk-prompt').value = item.prompt || '';
+                const promptNode = block.querySelector('.blk-prompt');
+                if (promptNode) promptNode.innerText = item.prompt || '';
+                
                 if (block.querySelector('.blk-img')) block.querySelector('.blk-img').value = item.imageUrl || '';
-                if (item.answers) block.querySelector('.blk-answer').value = item.answers.join(', ');
+                if (item.answers && block.querySelector('.blk-answer')) block.querySelector('.blk-answer').value = item.answers.join(', ');
             } else if (type === 'essay') {
-                block.querySelector('.blk-prompt').value = item.prompt || '';
+                const promptNode = block.querySelector('.blk-prompt');
+                if (promptNode) promptNode.innerText = item.prompt || '';
+                
                 if (block.querySelector('.blk-img')) block.querySelector('.blk-img').value = item.imageUrl || '';
             } else if (type === 'matching') {
-                block.querySelector('.blk-prompt').value = item.prompt || '';
+                const promptNode = block.querySelector('.blk-prompt');
+                if (promptNode) promptNode.innerText = item.prompt || '';
+                
                 const leftInputs = block.querySelectorAll('.m-left');
                 const rightInputs = block.querySelectorAll('.m-right');
                 item.lefts?.forEach((l, i) => { if (leftInputs[i]) leftInputs[i].value = l; });
@@ -1280,7 +1309,7 @@ async function editQuiz(id) {
         document.getElementById('quizTitle').scrollIntoView({ behavior: 'smooth' });
     } catch (e) { alert("Error loading quiz: " + e.message); }
 }
-window.editQuiz = editQuiz;
+
 
 // 5. Delete Quiz
 async function deleteQuiz(id) {
