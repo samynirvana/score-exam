@@ -699,4 +699,11 @@ div.gform-q-input:empty:before { content: attr(data-placeholder); color: #70757a
     .gform-type-select {
         width: 100%;
     }
+
+    .table-responsive { 
+    overflow-x: auto; 
+    overflow-y: auto; 
+    border-radius: 12px; 
+    border: 1px solid var(--border-color); 
+    }
 }
