@@ -2,89 +2,165 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Score Portal</title>
-    <link rel="stylesheet" href="style.css">
-    <style>
-        .filter-section { margin: 15px 0; text-align: left; }
-        .filter-section select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ddd; font-size: 15px; }
-        .scores-table { width: 100%; border-collapse: collapse; margin-top: 15px; text-align: left; font-size: 14px; }
-        .scores-table th, .scores-table td { padding: 10px; border-bottom: 1px solid #eee; }
-        .scores-table th { background: #f8f9fa; color: #333; }
-        .score-badge { font-weight: bold; color: #007bff; }
-        .class-badge { font-size: 14px; color: #666; font-weight: normal; margin-top: -5px; display: block; }
-        @media (max-width: 768px) {
-            body { margin: 15px; }
-            .two-col { flex-direction: column; }
-            .logout-btn { margin-bottom: 10px; }
-            .header-container, div[style*="overflow-y: auto"] { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
-            table { min-width: 600px; }
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MKS School - Student Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="admin.css">
+    <link rel="stylesheet" href="student.css">
 </head>
 <body>
-<div class="page-wrapper">
-    
-    <!-- LEFT COLUMN: Score & Points Check -->
-    <div class="container score-container">
-        <img src="imgdb/logo.png" alt="School Logo" style="max-width: 120px; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto;">
+
+    <div class="app-container">
         
-        <!-- NEW TIMELINE BUTTON -->
-        <a href="timeline.html" style="display: block; background: #28a745; color: white; text-align: center; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(40, 167, 69, 0.2);">
-            💬 Open Classroom Timeline
-        </a>
+        <!-- TOP NAVIGATION BAR -->
+        <header class="topbar student-header">
+            <div class="brand student-brand">
+                <div class="brand-badge">MKS</div>
+                <div>
+                    <h2 style="margin: 0; font-size: 18px;">MKS SCHOOL</h2>
+                    <p style="margin: 0; font-size: 12px; color: var(--text-gray);">Student Portal</p>
+                </div>
+            </div>
 
-        <a href="quiz.html" style="display: block; background: #007bff; color: white; text-align: center; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; margin-bottom: 20px;">
-    📝 Take Online Quiz
-        </a>
+            <div class="topbar-actions">
+                <button id="themeToggleBtn" class="theme-toggle-btn">🌙 Dark Mode</button>
+            </div>
+        </header>
 
-        <h2>Check Your Scores and Points</h2>
-        <p>Enter your student code below:</p>
-        <div class="tabs" style="display: flex; gap: 10px; margin-bottom: 15px;">
-            <button id="scoreTab" style="flex: 1; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Exam Scores</button>
-            <button id="pointTab" style="flex: 1; padding: 10px; background: #ddd; color: #333; border: none; border-radius: 4px; cursor: pointer;">Behavior Points</button>
-        </div>
-        <div class="search-box">
-            <input type="text" id="studentCode" placeholder="e.g. GWBFX" maxlength="5">
-            <button id="searchBtn">🔍</button>
-        </div>
+        <!-- MAIN CONTENT WRAPPER -->
+        <main class="main-wrapper">
+            
+            <!-- QUICK LINKS GRID -->
+            <div class="quick-links-grid">
+                <a href="quiz.html" class="quick-link-anchor">
+                    <div class="stat-card quick-link-card">
+                        <div class="stat-icon" style="background: #eef2ff; color: var(--primary-blue);">📝</div>
+                        <div class="stat-info">
+                            <h3 style="font-size: 16px; margin: 0; color: var(--primary-blue);">Take Online Quiz</h3>
+                            <p style="margin-top: 2px;">Access online worksheets and tests</p>
+                        </div>
+                    </div>
+                </a>
 
-        <div id="resultCard" class="result-card hidden">
-            <div class="result-info">
-                <h3 id="studentNameDisplay" style="margin-bottom: 2px;">Student Name</h3>
-                <span id="studentClassDisplay" class="class-badge">Grade 7A</span>
+                <a href="timeline.html" class="quick-link-anchor">
+                    <div class="stat-card quick-link-card">
+                        <div class="stat-icon" style="background: #ecfdf5; color: #10b981;">💬</div>
+                        <div class="stat-info">
+                            <h3 style="font-size: 16px; margin: 0; color: #10b981;">Classroom Timeline</h3>
+                            <p style="margin-top: 2px;">Join classroom discussions & announcements</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- MAIN PORTAL LAYOUT -->
+            <div class="dashboard-grid">
                 
-                <div class="filter-section">
-                    <label for="subjectFilter" style="font-size: 12px; color:#666; font-weight:bold;">Filter By Subject:</label>
-                    <select id="subjectFilter"></select>
+                <!-- LEFT COLUMN: SEARCH & UNIFIED PROFILE -->
+                <div>
+                    <!-- SEARCH INPUT CARD -->
+                    <div class="box" style="margin-bottom: 24px;">
+                        <h3 style="margin-top: 0; margin-bottom: 6px;">Student Portal Search</h3>
+                        <p style="font-size: 13px; color: var(--text-gray); margin-bottom: 16px;">Enter your 5-character student code to load your unified profile.</p>
+                        
+                        <div class="search-wrapper">
+                            <input type="text" id="studentCode" class="search-input-code" placeholder="Enter Code (e.g. 5ELAD)" maxlength="5">
+                            <button id="searchBtn" class="search-btn-custom">Search</button>
+                        </div>
+
+                        <!-- ERROR MESSAGE -->
+                        <div id="errorMessage" class="error-box hidden">
+                            Code not found. Please double-check your code.
+                        </div>
+                    </div>
+
+                    <!-- UNIFIED PROFILE DISPLAY CARD -->
+                    <div id="profileResultCard" class="hidden">
+                        
+                        <!-- HERO BEHAVIOR BANNER -->
+                        <div class="hero-point-card">
+                            <div>
+                                <span class="hero-label">Student Profile</span>
+                                <h2 id="studentNameDisplay" class="student-name-heading">Student Name</h2>
+                                <span id="studentClassDisplay" class="student-class-badge">Classroom</span>
+                            </div>
+
+                            <div>
+                                <span style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.85; display: block; font-weight: 600; margin-bottom: 4px;">Total Behavior Points</span>
+                                <div id="heroTotalPoints" class="hero-point-badge">+0</div>
+                            </div>
+                        </div>
+
+                        <!-- SCORES & BEHAVIOR SPLIT GRID -->
+                        <div class="profile-grid">
+                            
+                            <!-- EXAM SCORES WITH DROPDOWN FILTER -->
+                            <div class="box" style="margin-bottom: 0;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                                    <h3 style="margin: 0; font-size: 16px;">Exam Scores</h3>
+                                    
+                                    <select id="examScoreDropdown" style="width: auto; padding: 6px 12px; margin: 0; font-size: 12px; font-weight: 600;">
+                                        <option value="ALL">All Subjects / Exams</option>
+                                    </select>
+                                </div>
+
+                                <div class="table-responsive" style="max-height: 320px;">
+                                    <table id="scoresTable">
+                                        <thead>
+                                            <tr>
+                                                <th>Exam / Test</th>
+                                                <th>Subject</th>
+                                                <th style="text-align: right;">Score</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="scoresTbody">
+                                            <!-- JS will inject scores here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- BEHAVIOR POINT HISTORY -->
+                            <div class="box" style="margin-bottom: 0;">
+                                <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 16px;">Behavior History</h3>
+                                
+                                <div class="table-responsive" style="max-height: 320px;">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Reason / Event</th>
+                                                <th style="text-align: right;">Points</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="behaviorTbody">
+                                            <!-- JS will inject behavior points here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
                 </div>
 
-                <table class="scores-table" id="scoresTable">
-                    <thead>
-                        <tr>
-                            <th>Test / Exam</th>
-                            <th>Subject</th>
-                            <th>Score</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+                <!-- RIGHT COLUMN: SCHOOL NOTICES -->
+                <div class="box" id="newsTicker">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3 style="margin: 0;">Active School Notices</h3>
+                        <span class="live-updates-tag">Live Updates</span>
+                    </div>
+
+                    <div id="newsListContainer" style="max-height: 520px; overflow-y: auto;">
+                        <!-- JS will inject active news notices here -->
+                    </div>
+                </div>
+
             </div>
-        </div>
 
-        <p id="errorMessage" class="error hidden">Code not found or no scores recorded. Please try again.</p>
+        </main>
     </div>
 
-    <!-- RIGHT COLUMN: News Ticker -->
-    <div id="newsTicker" class="container news-container" style="display: none;">
-        <h3 class="news-title">Latest School Notices</h3>
-        <div id="newsListContainer" class="news-scroll-area">
-            <!-- Javascript will inject the news here -->
-        </div>
-    </div>
-
-</div>
-
-<script type="module" src="main.js"></script>
+    <script type="module" src="main.js"></script>
 </body>
 </html>

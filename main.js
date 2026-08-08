@@ -13,178 +13,215 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-let currentMode = 'scores';
 
-// Tab Switching Logic
-document.getElementById('scoreTab').addEventListener('click', (e) => {
-    currentMode = 'scores';
-    e.target.style.background = '#007bff';
-    e.target.style.color = 'white';
-    document.getElementById('pointTab').style.background = '#ddd';
-    document.getElementById('pointTab').style.color = '#333';
+let cachedExamScores = [];
+
+// --- THEME TOGGLE SYSTEM ---
+const themeToggleBtn = document.getElementById('themeToggleBtn');
+const savedTheme = localStorage.getItem('appTheme') || 'light';
+
+if (savedTheme === 'dark') {
+    document.body.classList.add('dark-theme');
+    if (themeToggleBtn) themeToggleBtn.innerText = 'Light Mode';
+}
+
+themeToggleBtn?.addEventListener('click', () => {
+    document.body.classList.toggle('dark-theme');
+    const isDark = document.body.classList.contains('dark-theme');
+    localStorage.setItem('appTheme', isDark ? 'dark' : 'light');
+    themeToggleBtn.innerText = isDark ? 'Light Mode' : 'Dark Mode';
 });
 
-document.getElementById('pointTab').addEventListener('click', (e) => {
-    currentMode = 'points';
-    e.target.style.background = '#007bff';
-    e.target.style.color = 'white';
-    document.getElementById('scoreTab').style.background = '#ddd';
-    document.getElementById('scoreTab').style.color = '#333';
-});
-
-async function searchData() {
+// --- UNIFIED SEARCH FUNCTIONALITY ---
+async function searchUnifiedStudentData() {
     const codeInput = document.getElementById('studentCode').value.toUpperCase().trim();
-    const resultCard = document.getElementById('resultCard');
+    const profileCard = document.getElementById('profileResultCard');
     const errorMessage = document.getElementById('errorMessage');
 
-    resultCard.classList.add('hidden');
+    profileCard.classList.add('hidden');
     errorMessage.classList.add('hidden');
 
     if (!codeInput) return;
 
     try {
-        if (currentMode === 'scores') {
-            // Existing Exam Scores Query
-            const q = query(collection(db, "exam_scores"), where("studentCode", "==", codeInput));
-            const querySnapshot = await getDocs(q);
+        // Query both Exam Scores and Behavior Points simultaneously
+        const scoreQuery = query(collection(db, "exam_scores"), where("studentCode", "==", codeInput));
+        const pointQuery = query(collection(db, "student_points"), where("studentCode", "==", codeInput));
 
-            if (!querySnapshot.empty) {
-                renderScoreResults(querySnapshot);
-            } else {
-                errorMessage.classList.remove('hidden');
-            }
-        } else {
-            // New Behavior Points Query
-            const q = query(collection(db, "student_points"), where("studentCode", "==", codeInput));
-            const querySnapshot = await getDocs(q);
+        const [scoreSnap, pointSnap] = await Promise.all([
+            getDocs(scoreQuery),
+            getDocs(pointQuery)
+        ]);
 
-            if (!querySnapshot.empty) {
-                renderPointResults(querySnapshot);
-            } else {
-                errorMessage.innerText = "No point records found for this student.";
-                errorMessage.classList.remove('hidden');
-            }
+        if (scoreSnap.empty && pointSnap.empty) {
+            errorMessage.innerText = `No records found for student code "${codeInput}".`;
+            errorMessage.classList.remove('hidden');
+            return;
         }
+
+        renderUnifiedProfile(scoreSnap, pointSnap);
+
     } catch (error) {
-        console.error("Data error: ", error);
-        alert("An error occurred during lookup processing.");
+        console.error("Profile lookup error:", error);
+        errorMessage.innerText = "An error occurred during lookup processing.";
+        errorMessage.classList.remove('hidden');
     }
 }
 
-function renderScoreResults(querySnapshot) {
-    let scoreContainer = document.getElementById('scoreContainer');
-    if(!scoreContainer) {
-        const infoBox = document.querySelector('.result-info');
-        infoBox.innerHTML = `<h3 id="studentName"></h3><p id="studentClassInfo" style="color:#666; font-weight:bold; margin-top:-10px;"></p><div id="scoreContainer"></div>`;
-        scoreContainer = document.getElementById('scoreContainer');
-    }
-    
-    scoreContainer.innerHTML = "";
-    let dataSample = null;
+// --- RENDER UNIFIED PROFILE CARD ---
+function renderUnifiedProfile(scoreSnap, pointSnap) {
+    let studentName = "";
+    let studentClass = "";
+    let totalBehaviorPoints = 0;
 
-    querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        dataSample = data;
-        scoreContainer.innerHTML += `
-            <div style="padding:10px 0; border-bottom:1px solid #eee; text-align:left;">
-                <strong>${data.examName}</strong> (${data.subject || 'N/A'}): 
-                <span style="float:right; font-weight:bold; color:#28a745;">${data.score}</span>
-            </div>`;
+    // 1. Process Behavior Points & Calculate Total
+    const behaviorTbody = document.getElementById('behaviorTbody');
+    behaviorTbody.innerHTML = "";
+
+    if (!pointSnap.empty) {
+        pointSnap.forEach((doc) => {
+            const data = doc.data();
+            if (!studentName && data.studentName) studentName = data.studentName;
+            if (!studentClass && data.studentClass) studentClass = data.studentClass;
+
+            const pts = parseFloat(data.points) || 0;
+            totalBehaviorPoints += pts;
+
+            const color = pts > 0 ? '#10b981' : (pts < 0 ? '#e02d2d' : 'var(--text-dark)');
+            const sign = pts > 0 ? '+' : '';
+
+            behaviorTbody.innerHTML += `
+                <tr>
+                    <td><strong>${data.reason || 'Point Adjustment'}</strong></td>
+                    <td style="text-align: right;"><strong style="color: ${color}; font-size: 14px;">${sign}${pts}</strong></td>
+                </tr>
+            `;
+        });
+    } else {
+        behaviorTbody.innerHTML = `<tr><td colspan="2" style="text-align:center; color:var(--text-gray);">No behavior points logged.</td></tr>`;
+    }
+
+    // 2. Process Exam Scores & Build Dropdown Filter Options
+    cachedExamScores = [];
+    const filterDropdown = document.getElementById('examScoreDropdown');
+    const examOrSubjectSet = new Set();
+
+    if (!scoreSnap.empty) {
+        scoreSnap.forEach((doc) => {
+            const data = doc.data();
+            if (!studentName && data.studentName) studentName = data.studentName;
+            if (!studentClass && data.studentClass) studentClass = data.studentClass;
+
+            cachedExamScores.push(data);
+            if (data.subject) examOrSubjectSet.add(data.subject);
+        });
+
+        // Rebuild the Dropdown Menu Options
+        filterDropdown.innerHTML = '<option value="ALL">All Subjects / Exams</option>';
+        Array.from(examOrSubjectSet).sort().forEach(item => {
+            filterDropdown.innerHTML += `<option value="${item}">${item}</option>`;
+        });
+
+        renderExamScoresTable("ALL");
+    } else {
+        filterDropdown.innerHTML = '<option value="ALL">All Subjects / Exams</option>';
+        document.getElementById('scoresTbody').innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-gray);">No exam scores logged.</td></tr>`;
+    }
+
+    // 3. Update Profile Banner Headers & Hero Points Badge
+    document.getElementById('studentNameDisplay').innerText = studentName || "Student Profile";
+    document.getElementById('studentClassDisplay').innerText = `Class: ${studentClass || 'Unassigned'}`;
+
+    const heroBadge = document.getElementById('heroTotalPoints');
+    heroBadge.innerText = (totalBehaviorPoints > 0 ? '+' : '') + totalBehaviorPoints;
+    heroBadge.style.color = totalBehaviorPoints >= 0 ? '#10b981' : '#f87171';
+
+    // Show Profile Container
+    document.getElementById('profileResultCard').classList.remove('hidden');
+}
+
+// --- FILTER EXAM SCORES BY DROPDOWN SELECTION ---
+function renderExamScoresTable(filterValue) {
+    const scoresTbody = document.getElementById('scoresTbody');
+    scoresTbody.innerHTML = "";
+
+    const filtered = filterValue === "ALL" 
+        ? cachedExamScores 
+        : cachedExamScores.filter(s => s.subject === filterValue || s.examName === filterValue);
+
+    if (filtered.length === 0) {
+        scoresTbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-gray);">No scores available for selected filter.</td></tr>`;
+        return;
+    }
+
+    filtered.forEach(data => {
+        scoresTbody.innerHTML += `
+            <tr>
+                <td><strong>${data.examName || 'N/A'}</strong></td>
+                <td>${data.subject || 'N/A'}</td>
+                <td style="text-align: right;"><strong style="color: #28a745; font-size: 15px;">${data.score}</strong></td>
+            </tr>
+        `;
     });
-
-    document.getElementById('studentName').innerText = dataSample.studentName;
-    document.getElementById('studentClassInfo').innerText = `Classroom Assignment: ${dataSample.studentClass || 'N/A'}`;
-    document.getElementById('resultCard').classList.remove('hidden');
 }
 
-function renderPointResults(querySnapshot) {
-    let scoreContainer = document.getElementById('scoreContainer');
-    if(!scoreContainer) {
-        const infoBox = document.querySelector('.result-info');
-        infoBox.innerHTML = `<h3 id="studentName"></h3><p id="studentClassInfo" style="color:#666; font-weight:bold; margin-top:-10px;"></p><h2 id="totalPointsDisplay" style="color:#6f42c1;"></h2><div id="scoreContainer"></div>`;
-        scoreContainer = document.getElementById('scoreContainer');
-    }
-    
-    scoreContainer.innerHTML = "<h4 style='margin-bottom: 5px;'>Point History:</h4>";
-    let dataSample = null;
-    let totalPoints = 0;
+// Dropdown change listener
+document.getElementById('examScoreDropdown').addEventListener('change', (e) => {
+    renderExamScoresTable(e.target.value);
+});
 
-    querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        dataSample = data;
-        totalPoints += data.points;
-        const color = data.points > 0 ? '#28a745' : '#dc3545';
-        const sign = data.points > 0 ? '+' : '';
-        
-        scoreContainer.innerHTML += `
-            <div style="padding:10px 0; border-bottom:1px solid #eee; text-align:left;">
-                <strong>${data.reason}</strong>: 
-                <span style="float:right; font-weight:bold; color:${color};">${sign}${data.points}</span>
-            </div>`;
-    });
+// Search listeners
+document.getElementById('searchBtn').addEventListener('click', searchUnifiedStudentData);
+document.getElementById('studentCode').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') searchUnifiedStudentData();
+});
 
-    document.getElementById('studentName').innerText = dataSample.studentName;
-    document.getElementById('studentClassInfo').innerText = `Classroom Assignment: ${dataSample.studentClass || 'N/A'}`;
-    
-    // Create or update the total points header
-    let totalHeader = document.getElementById('totalPointsDisplay');
-    if(!totalHeader) {
-        totalHeader = document.createElement('h2');
-        totalHeader.id = 'totalPointsDisplay';
-        totalHeader.style.color = '#6f42c1';
-        scoreContainer.parentNode.insertBefore(totalHeader, scoreContainer);
-    }
-    totalHeader.innerText = `Total Points: ${totalPoints}`;
-    
-    document.getElementById('resultCard').classList.remove('hidden');
-}
-
-document.getElementById('searchBtn').addEventListener('click', searchData);
-
+// --- REAL-TIME SCHOOL NOTICES LISTENER ---
 function loadNewsTicker() {
     try {
         const newsRef = collection(db, "news_updates");
-        
-        // onSnapshot actively listens for changes in the database and updates instantly
+
         onSnapshot(newsRef, (querySnapshot) => {
-            const newsTicker = document.getElementById('newsTicker');
             const newsListContainer = document.getElementById('newsListContainer');
-            
-            // If there is no news, keep the ticker hidden
+            if (!newsListContainer) return;
+
             if (querySnapshot.empty) {
-                newsTicker.style.display = 'none';
+                newsListContainer.innerHTML = "<p style='color: var(--text-gray); font-size: 13px; text-align: center; padding: 20px 0;'>No active school notices available.</p>";
                 return;
             }
 
             let newsItems = [];
             querySnapshot.forEach((doc) => {
-                newsItems.push(doc.data());
+                const data = doc.data();
+                if (!data.status || data.status === 'active') {
+                    newsItems.push(data);
+                }
             });
 
-            // Sort by newest first
             newsItems.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-            // Inject the HTML
             newsListContainer.innerHTML = "";
             newsItems.forEach(news => {
-                const dateStr = new Date(news.timestamp).toLocaleDateString();
+                const dateObj = new Date(news.timestamp);
+                const month = dateObj.toLocaleString('default', { month: 'short' }).toUpperCase();
+                const day = dateObj.getDate();
+
                 newsListContainer.innerHTML += `
-                    <div style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #ccc;">
-                        <div style="font-size: 12px; color: #666; margin-bottom: 4px;">${dateStr}</div>
-                        <strong style="color: #333; font-size: 15px;">${news.title}</strong>
-                        <div style="margin-top: 4px; font-size: 14px; color: #555; white-space: pre-wrap;">${news.content}</div>
+                    <div class="notice-item">
+                        <div class="notice-date">${month}<br>${day}</div>
+                        <div class="notice-content">
+                            <h4>${news.title}</h4>
+                            <p style="white-space: pre-wrap;">${news.content}</p>
+                        </div>
                     </div>
                 `;
             });
-
-            // Unhide the news block now that it has data
-            newsTicker.style.display = 'block'; 
         });
-        
+
     } catch (error) {
         console.error("Error pulling news ticker data:", error);
     }
 }
 
-// Execute the function immediately when the script loads
+// Initialize real-time news on load
 loadNewsTicker();
