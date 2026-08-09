@@ -2,48 +2,183 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Take Quiz - Student Portal</title>
-    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="admin.css">
+    <link rel="stylesheet" href="student.css">
     <style>
-        .quiz-card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; text-align: left; border: 1px solid #ddd; }
-        .option-label { display: block; padding: 8px; background: #f8f9fa; border-radius: 6px; margin: 5px 0; cursor: pointer; }
-        .option-label:hover { background: #e9ecef; }
+        /* Quiz Specific Custom Layout Enhancements */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(11, 20, 55, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 480px;
+            padding: 28px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            animation: modalFadeIn 0.25s ease-out;
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: translateY(10px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .question-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+        }
+
+        .quiz-option-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin: 8px 0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
+            color: var(--text-dark);
+        }
+
+        body.dark-theme .quiz-option-label {
+            background: #1b254b;
+        }
+
+        .quiz-option-label:hover {
+            border-color: var(--primary-blue);
+            background: #eef2ff;
+        }
+
+        body.dark-theme .quiz-option-label:hover {
+            background: #24305e;
+        }
+
+        .quiz-option-label input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            margin: 0;
+            accent-color: var(--primary-blue);
+        }
     </style>
 </head>
 <body>
-<div class="page-wrapper" style="max-width: 600px; display: block;">
-    <div class="container">
-        <a href="index.html" style="color: #007bff; text-decoration: none;">&larr; Back to Main Portal</a>
-        <h2>Student Quiz Center</h2>
 
-        <!-- Step 1: Verification -->
-        <div id="authSection">
-            <input type="text" id="studentCodeInput" placeholder="Enter 5-Char Student Code" maxlength="5" style="width:100%; padding:10px; margin:10px 0;">
-            <button id="verifyBtn" style="width:100%; padding:10px; background:#007bff; color:white; border:none; border-radius:6px; font-weight:bold;">Start Quiz Session</button>
-        </div>
+    <div class="app-container">
+        <!-- TOP NAVIGATION BAR -->
+        <header class="topbar student-header">
+            <div class="brand student-brand">
+                <div class="brand-badge">MKS</div>
+                <div>
+                    <h2 style="margin: 0; font-size: 18px;">MKS SCHOOL</h2>
+                    <p style="margin: 0; font-size: 12px; color: var(--text-gray);">Online Quiz Portal</p>
+                </div>
+            </div>
 
-        <!-- Step 2: Quiz Selection -->
-        <div id="quizListSection" class="hidden" style="margin-top: 20px;">
-            <h3>Available Quizzes</h3>
-            <div id="quizList"></div>
-        </div>
+            <div class="topbar-actions">
+                <button id="themeToggleBtn" class="theme-toggle-btn">Dark Mode</button>
+                <button onclick="window.location.href='index.html'" class="teacher-btn" style="background: #475569;">&larr; Back to Portal</button>
+            </div>
+        </header>
 
-        <!-- Step 3: Taking Quiz -->
-        <div id="takeQuizSection" class="hidden">
-            <h3 id="activeQuizTitle"></h3>
-            <form id="quizForm"></form>
-            <button id="submitQuizBtn" style="width:100%; padding:12px; background:#28a745; color:white; border:none; border-radius:6px; font-weight:bold; margin-top:15px;">Submit Answers</button>
-        </div>
+        <!-- MAIN CONTENT WRAPPER -->
+        <main class="main-wrapper" style="max-width: 800px !important;">
+            
+            <!-- STEP 1: VERIFICATION CARD -->
+            <div id="authSection" class="box" style="margin-top: 20px;">
+                <h3 style="margin-top: 0; margin-bottom: 6px;">Quiz Access Verification</h3>
+                <p style="font-size: 13px; color: var(--text-gray); margin-bottom: 16px;">Enter your 5-character student code to load your registered quizzes.</p>
+                
+                <div class="search-wrapper">
+                    <input type="text" id="studentCodeInput" class="search-input-code" placeholder="ENTER CODE (E.G. BLXVC)" maxlength="5">
+                    <button id="verifyBtn" class="search-btn-custom" style="width: 120px;">Verify</button>
+                </div>
 
-        <!-- Step 4: Result -->
-        <div id="resultSection" class="hidden" style="margin-top:20px;">
-            <h2 style="color:#28a745;">Quiz Completed!</h2>
-            <p id="scoreSummary" style="font-size: 18px; font-weight: bold;"></p>
-        </div>
+                <div id="authErrorMessage" class="error-box hidden">
+                    Invalid student code. Please check your code and try again.
+                </div>
+            </div>
+
+            <!-- STEP 2: POPUP MODAL (STUDENT PROFILE & QUIZ SELECTION) -->
+            <div id="studentQuizModal" class="modal-overlay hidden">
+                <div class="modal-card">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                        <div>
+                            <span style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--primary-blue); font-weight: 700;">Student Verified</span>
+                            <h2 id="modalStudentName" style="margin: 4px 0 0 0; font-size: 20px; color: var(--text-dark);">Student Name</h2>
+                        </div>
+                        <span id="modalStudentClass" class="student-class-badge" style="background: #eef2ff; color: var(--primary-blue); margin: 0;">Classroom</span>
+                    </div>
+
+                    <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 16px 0;">
+
+                    <label style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 8px; display: block;">
+                        Select Available Quiz:
+                    </label>
+                    <select id="quizSelectDropdown" style="margin-bottom: 20px; height: 46px;">
+                        <option value="">-- Loading Quizzes --</option>
+                    </select>
+
+                    <div style="display: flex; gap: 12px;">
+                        <button id="closeModalBtn" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-dark); flex: 1;">Cancel</button>
+                        <button id="startSelectedQuizBtn" style="flex: 2; background: var(--primary-blue);">Start Quiz</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 3: TAKING QUIZ SECTION -->
+            <div id="takeQuizSection" class="hidden" style="margin-top: 20px;">
+                <div class="hero-point-card" style="margin-bottom: 24px; padding: 24px;">
+                    <div>
+                        <span class="hero-label">Active Assessment</span>
+                        <h2 id="activeQuizTitle" class="student-name-heading" style="margin-top: 6px;">Quiz Title</h2>
+                        <span id="activeQuizSubject" class="student-class-badge">Subject</span>
+                    </div>
+                </div>
+
+                <form id="quizForm"></form>
+
+                <button id="submitQuizBtn" style="background: #10b981; padding: 16px; font-size: 16px; font-weight: 700; margin-top: 10px; margin-bottom: 40px;">
+                    Submit Assessment
+                </button>
+            </div>
+
+            <!-- STEP 4: RESULT SECTION -->
+            <div id="resultSection" class="box hidden" style="margin-top: 20px; text-align: center; padding: 40px 20px;">
+                <div style="width: 64px; height: 64px; background: #ecfdf5; color: #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 16px auto;">
+                    ✓
+                </div>
+                <h2 style="margin: 0 0 8px 0; color: var(--text-dark);">Quiz Submitted Successfully!</h2>
+                <p id="scoreSummary" style="font-size: 18px; font-weight: 700; color: var(--primary-blue); margin-bottom: 24px;"></p>
+                <button onclick="window.location.href='index.html'" style="width: auto; padding: 12px 32px; background: var(--primary-blue);">Return to Student Portal</button>
+            </div>
+
+        </main>
     </div>
-</div>
 
-<script type="module" src="quiz.js"></script>
+    <script type="module" src="quiz.js"></script>
 </body>
 </html>

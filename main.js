@@ -67,14 +67,13 @@ async function searchUnifiedStudentData() {
         errorMessage.classList.remove('hidden');
     }
 }
-
-// --- RENDER UNIFIED PROFILE CARD ---
+// --- UPDATED STUDENT PROFILE & DROPDOWN SCORE FILTER LOGIC ---
 function renderUnifiedProfile(scoreSnap, pointSnap) {
     let studentName = "";
     let studentClass = "";
     let totalBehaviorPoints = 0;
 
-    // 1. Process Behavior Points & Calculate Total
+    // 1. Process Behavior Points
     const behaviorTbody = document.getElementById('behaviorTbody');
     behaviorTbody.innerHTML = "";
 
@@ -104,7 +103,7 @@ function renderUnifiedProfile(scoreSnap, pointSnap) {
     // 2. Process Exam Scores & Build Dropdown Filter Options
     cachedExamScores = [];
     const filterDropdown = document.getElementById('examScoreDropdown');
-    const examOrSubjectSet = new Set();
+    const optionsSet = new Set();
 
     if (!scoreSnap.empty) {
         scoreSnap.forEach((doc) => {
@@ -113,22 +112,25 @@ function renderUnifiedProfile(scoreSnap, pointSnap) {
             if (!studentClass && data.studentClass) studentClass = data.studentClass;
 
             cachedExamScores.push(data);
-            if (data.subject) examOrSubjectSet.add(data.subject);
+
+            const title = data.examName || data.quizName;
+            if (title) optionsSet.add(title);
         });
 
-        // Rebuild the Dropdown Menu Options
-        filterDropdown.innerHTML = '<option value="ALL">All Subjects / Exams</option>';
-        Array.from(examOrSubjectSet).sort().forEach(item => {
+        // Set default dropdown prompt (No quiz chosen yet)
+        filterDropdown.innerHTML = '<option value="">-- Choose a Quiz / Exam --</option>';
+        Array.from(optionsSet).sort().forEach(item => {
             filterDropdown.innerHTML += `<option value="${item}">${item}</option>`;
         });
 
-        renderExamScoresTable("ALL");
+        // Load empty prompt state by default
+        renderExamScoresTable("");
     } else {
-        filterDropdown.innerHTML = '<option value="ALL">All Subjects / Exams</option>';
-        document.getElementById('scoresTbody').innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-gray);">No exam scores logged.</td></tr>`;
+        filterDropdown.innerHTML = '<option value="">-- Choose a Quiz / Exam --</option>';
+        document.getElementById('scoresTbody').innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-gray); padding: 20px;">No exam scores logged for this student.</td></tr>`;
     }
 
-    // 3. Update Profile Banner Headers & Hero Points Badge
+    // 3. Update Banner Headers & Behavior Badge
     document.getElementById('studentNameDisplay').innerText = studentName || "Student Profile";
     document.getElementById('studentClassDisplay').innerText = `Class: ${studentClass || 'Unassigned'}`;
 
@@ -136,30 +138,46 @@ function renderUnifiedProfile(scoreSnap, pointSnap) {
     heroBadge.innerText = (totalBehaviorPoints > 0 ? '+' : '') + totalBehaviorPoints;
     heroBadge.style.color = totalBehaviorPoints >= 0 ? '#10b981' : '#f87171';
 
-    // Show Profile Container
     document.getElementById('profileResultCard').classList.remove('hidden');
 }
 
-// --- FILTER EXAM SCORES BY DROPDOWN SELECTION ---
 function renderExamScoresTable(filterValue) {
     const scoresTbody = document.getElementById('scoresTbody');
     scoresTbody.innerHTML = "";
 
-    const filtered = filterValue === "ALL" 
-        ? cachedExamScores 
-        : cachedExamScores.filter(s => s.subject === filterValue || s.examName === filterValue);
-
-    if (filtered.length === 0) {
-        scoresTbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-gray);">No scores available for selected filter.</td></tr>`;
+    // 1. Default State: Prompt student to choose a quiz first
+    if (!filterValue) {
+        scoresTbody.innerHTML = `
+            <tr>
+                <td colspan="3" style="text-align:center; color:var(--text-gray); padding: 24px 12px; font-style: italic;">
+                    Please select a quiz from the dropdown menu above to view your score.
+                </td>
+            </tr>`;
         return;
     }
 
+    // 2. Filter scores by selected quiz title
+    const filtered = cachedExamScores.filter(s => 
+        s.examName === filterValue || 
+        s.quizName === filterValue
+    );
+
+    if (filtered.length === 0) {
+        scoresTbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-gray); padding: 20px;">No score recorded for the selected quiz.</td></tr>`;
+        return;
+    }
+
+    // 3. Render row with enlarged, highlighted score badge
     filtered.forEach(data => {
         scoresTbody.innerHTML += `
             <tr>
-                <td><strong>${data.examName || 'N/A'}</strong></td>
-                <td>${data.subject || 'N/A'}</td>
-                <td style="text-align: right;"><strong style="color: #28a745; font-size: 15px;">${data.score}</strong></td>
+                <td style="vertical-align: middle;"><strong>${data.examName || data.quizName || 'N/A'}</strong></td>
+                <td style="vertical-align: middle; color: var(--text-gray);">${data.subject || 'N/A'}</td>
+                <td style="text-align: right; vertical-align: middle;">
+                    <span style="display: inline-block; background: #ecfdf5; color: #10b981; font-size: 24px; font-weight: 800; padding: 4px 16px; border-radius: 8px; border: 1px solid #a7f3d0;">
+                        ${data.score}
+                    </span>
+                </td>
             </tr>
         `;
     });
@@ -176,7 +194,7 @@ document.getElementById('studentCode').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') searchUnifiedStudentData();
 });
 
-// --- REAL-TIME SCHOOL NOTICES LISTENER ---
+// --- UPDATED REAL-TIME SCHOOL NOTICES LISTENER ---
 function loadNewsTicker() {
     try {
         const newsRef = collection(db, "news_updates");
@@ -205,14 +223,15 @@ function loadNewsTicker() {
                 const dateObj = new Date(news.timestamp);
                 const month = dateObj.toLocaleString('default', { month: 'short' }).toUpperCase();
                 const day = dateObj.getDate();
+                const dateTag = `${month} ${day}`;
 
                 newsListContainer.innerHTML += `
-                    <div class="notice-item">
-                        <div class="notice-date">${month}<br>${day}</div>
-                        <div class="notice-content">
-                            <h4>${news.title}</h4>
-                            <p style="white-space: pre-wrap;">${news.content}</p>
+                    <div class="notice-card">
+                        <div class="notice-header">
+                            <h4 class="notice-title">${news.title}</h4>
+                            <span class="notice-date-tag">${dateTag}</span>
                         </div>
+                        <div class="notice-body">${news.content}</div>
                     </div>
                 `;
             });

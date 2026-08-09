@@ -6,9 +6,15 @@
     --table-blue: #113f9f;
     --purple-header: #9b51e0;
     --text-dark: #2b3674;
-    --text-gray: #a3aed1;
+    --text-gray: #707eae;
     --border-color: #e2e8f0;
     --card-bg: #ffffff;
+    
+    /* Dedicated Input & Box Variables */
+    --input-bg: #f8fafc;
+    --input-text: #2b3674;
+    --input-placeholder: #a3aed1;
+    --quiz-box-bg: #f1f3f4;
 }
 
 body { 
@@ -19,6 +25,137 @@ body {
     display: flex;
     height: 100vh;
     overflow: hidden;
+}
+
+/* ======================================================
+   REINFORCED FORM INPUTS & QUIZ BUILDER LAYOUT FIX
+   ====================================================== */
+
+/* 1. Standard text inputs & textareas (Excludes Radio & Checkboxes) */
+input:not([type="radio"]):not([type="checkbox"]), 
+select, 
+textarea { 
+    box-sizing: border-box !important; 
+    border-radius: 10px !important; 
+    border: 1px solid var(--border-color, #e2e8f0) !important; 
+    font-size: 14px !important; 
+    font-family: inherit !important;
+    background: var(--input-bg, #f8fafc) !important; 
+    color: var(--input-text, #2b3674) !important; 
+    transition: background 0.2s, color 0.2s, border-color 0.2s !important;
+}
+
+/* Apply full-width block layout to standalone form inputs */
+.box > input:not([type="radio"]):not([type="checkbox"]),
+.box > select,
+.box > textarea,
+#loginScreen input {
+    display: block !important;
+    width: 100% !important;
+    margin: 8px 0 !important;
+    padding: 12px 16px !important;
+}
+
+/* 2. Reset Radio & Checkbox buttons to inline sizes */
+input[type="radio"], 
+input[type="checkbox"] {
+    display: inline-block !important;
+    width: 18px !important;
+    height: 18px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    cursor: pointer !important;
+    accent-color: var(--primary-blue, #1e5eff) !important;
+}
+
+/* 3. Quiz Builder Question Header Flex Fix */
+.gform-question-header {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 15px !important;
+    margin-bottom: 16px !important;
+    align-items: flex-start !important;
+    width: 100% !important;
+}
+
+.gform-q-input, 
+.blk-prompt {
+    flex: 1 1 auto !important;
+    min-width: 0 !important; /* Prevents flex item from collapsing */
+    width: 100% !important;
+    background: var(--quiz-box-bg, #f1f3f4) !important;
+    color: var(--text-dark, #2b3674) !important;
+    border: none !important;
+    border-bottom: 1px solid var(--border-color, #70757a) !important;
+    border-radius: 4px 4px 0 0 !important;
+    padding: 16px !important;
+    font-size: 15px !important;
+    box-sizing: border-box !important;
+}
+
+.gform-type-select {
+    width: 200px !important;
+    flex-shrink: 0 !important; /* Prevents select from taking 100% width */
+    margin: 0 !important;
+    padding: 12px !important;
+    background: var(--card-bg, #ffffff) !important;
+    color: var(--text-dark, #202124) !important;
+    border: 1px solid var(--border-color, #dadce0) !important;
+    border-radius: 4px !important;
+}
+
+/* 4. Quiz Builder Option Rows Flex Fix */
+.gform-opt-row {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 12px !important;
+    margin-bottom: 12px !important;
+    width: 100% !important;
+}
+
+.gform-opt-input {
+    flex: 1 !important;
+    width: auto !important;
+    margin: 0 !important;
+    padding: 8px 0 !important;
+    border: none !important;
+    border-bottom: 1px solid transparent !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    color: var(--text-dark, #202124) !important;
+    font-size: 14px !important;
+}
+
+.gform-opt-input:focus {
+    border-bottom: 2px solid var(--purple-header, #673ab7) !important;
+    outline: none !important;
+}
+
+/* Textarea height adjustment */
+textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* Placeholder text color */
+input::placeholder, textarea::placeholder {
+    color: var(--input-placeholder, #a3aed1) !important;
+    opacity: 0.85;
+}
+
+/* Focus outline and border highlighting */
+input:focus, select:focus, textarea:focus { 
+    outline: none !important; 
+    border-color: var(--primary-blue, #1e5eff) !important; 
+    background: var(--card-bg, #ffffff) !important; 
+}
+
+/* Autocomplete wrapper fix */
+.autocomplete-container {
+    position: relative;
+    width: 100% !important;
+    display: block !important;
 }
 
 /* --- Layout Structure --- */
@@ -154,10 +291,19 @@ body {
 .box h3 { margin-top: 0; font-size: 18px; color: var(--text-dark); font-weight: 700; margin-bottom: 16px;}
 
 /* --- Form Elements --- */
+/* Global Form Elements Dark/Light Synchronization */
 input, select, textarea { 
-    display: block; width: 100%; margin: 8px 0; padding: 12px 16px; 
-    box-sizing: border-box; border-radius: 10px; border: 1px solid var(--border-color); 
-    font-size: 14px; background: #f8fafc; transition: 0.2s;
+    display: block; 
+    width: 100%; 
+    margin: 8px 0; 
+    padding: 12px 16px; 
+    box-sizing: border-box; 
+    border-radius: 10px; 
+    border: 1px solid var(--border-color); 
+    font-size: 14px; 
+    background: var(--input-bg); 
+    color: var(--input-text); 
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
 input:focus, select:focus { outline: none; border-color: var(--primary-blue); background: white; }
 
@@ -216,10 +362,73 @@ edit-btn, .delete-btn {
 .quick-action-item { display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
 .quick-action-item:hover { background: #f8fafc; }
 
-/* Login Screen Override */
+/* ======================================================
+   LOGIN SCREEN CONTAINER FIX
+   ====================================================== */
 #loginScreen { 
-    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-    z-index: 100; width: 90%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    position: fixed; 
+    top: 50%; 
+    left: 50%; 
+    transform: translate(-50%, -50%); 
+    z-index: 1000; 
+    width: 90%; 
+    max-width: 400px; 
+    padding: 32px 28px;
+    border-radius: 20px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    display: flex; /* REMOVED !important TO ALLOW HIDING */
+    flex-direction: column;
+    gap: 16px;
+    box-sizing: border-box;
+}
+
+/* Force hiding when JavaScript adds the .hidden class */
+#loginScreen.hidden {
+    display: none !important;
+}
+
+#loginScreen h2 {
+    margin: 0 0 4px 0;
+    color: var(--text-dark);
+    font-size: 22px;
+    font-weight: 700;
+    text-align: center;
+}
+
+#loginScreen input {
+    margin: 0 !important;
+    width: 100% !important;
+    height: 48px;
+    padding: 12px 16px;
+    font-size: 14px;
+    background: var(--input-bg);
+    color: var(--input-text);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    box-sizing: border-box;
+}
+
+#loginScreen input::placeholder {
+    color: var(--input-placeholder);
+    opacity: 0.85;
+}
+
+#loginScreen button {
+    margin-top: 8px !important;
+    height: 48px;
+    font-size: 15px;
+    font-weight: 600;
+    background: var(--primary-blue);
+    color: #ffffff;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+}
+
+#loginScreen button:hover {
+    opacity: 0.9;
 }
 .kebab-menu {
     position: relative;
@@ -504,7 +713,14 @@ edit-btn, .delete-btn {
 .gform-type-select { border: 1px solid #dadce0; border-radius: 4px; padding: 12px; font-size: 14px; background: white; width: 200px; color: #202124; }
 
 .gform-opt-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-.gform-opt-row input[type="radio"] { width: 18px; height: 18px; border: 2px solid #5f6368; pointer-events: none; }
+.gform-opt-row input[type="radio"] { 
+    width: 18px !important; 
+    height: 18px !important; 
+    margin: 0 !important;
+    cursor: pointer !important;
+    pointer-events: auto !important; /* Re-enables mouse clicks */
+    accent-color: var(--primary-blue, #1e5eff) !important;
+}
 .gform-opt-input { flex: 1; border: none; border-bottom: 1px solid transparent; padding: 4px 0; font-size: 14px; }
 .gform-opt-input:focus { border-bottom: 2px solid #673ab7; outline: none; }
 .gform-add-opt { color: #1a73e8; cursor: pointer; font-size: 14px; font-weight: 500; }
@@ -738,6 +954,12 @@ body.dark-theme {
     --border-color: #1b254b;
     --sidebar-bg: #080f28;
     --sidebar-hover: #152046;
+    
+    /* Dedicated Input & Box Variables for Dark Mode */
+    --input-bg: #1b254b;
+    --input-text: #ffffff;
+    --input-placeholder: #707eae;
+    --quiz-box-bg: #1b254b;
 }
 
 /* Dark Mode Overrides */
@@ -813,4 +1035,311 @@ body.dark-theme .autocomplete-items div {
 body.dark-theme .autocomplete-items div:hover {
     background-color: #1b254b;
     color: #60a5fa;
+}
+
+input::placeholder, textarea::placeholder {
+    color: var(--input-placeholder);
+}
+
+input:focus, select:focus, textarea:focus { 
+    outline: none; 
+    border-color: var(--primary-blue); 
+    background: var(--card-bg); 
+}
+
+/* Fix Contenteditable / Question Prompt Containers */
+[contenteditable="true"] {
+    color: var(--text-dark) !important;
+}
+
+.gform-q-input, .blk-prompt {
+    background: var(--quiz-box-bg) !important;
+    color: var(--text-dark) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+/* ======================================================
+   FORM INPUTS & DROPDOWN LAYOUT FIX (SCORES & BEHAVIOR)
+   ====================================================== */
+
+/* Standardize all text inputs, number inputs, and select dropdowns */
+.box input:not([type="radio"]):not([type="checkbox"]),
+.box select {
+    display: block !important;
+    width: 100% !important;
+    height: 42px !important;
+    padding: 8px 14px !important;
+    font-size: 14px !important;
+    font-family: inherit !important;
+    border-radius: 8px !important; /* Restores clean rectangular box with subtle rounded corners */
+    border: 1px solid var(--border-color, #e2e8f0) !important;
+    background: var(--input-bg, #f8fafc) !important;
+    color: var(--input-text, #2b3674) !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+}
+
+/* Custom styling for File Upload Inputs */
+.box input[type="file"] {
+    padding: 4px 8px !important;
+    height: 42px !important;
+    line-height: 32px !important;
+    cursor: pointer !important;
+}
+
+.box input[type="file"]::file-selector-button {
+    background: var(--primary-blue, #1e5eff) !important;
+    color: #ffffff !important;
+    border: none !important;
+    padding: 6px 14px !important;
+    border-radius: 6px !important;
+    margin-right: 12px !important;
+    cursor: pointer !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+    transition: opacity 0.2s ease !important;
+}
+
+.box input[type="file"]::file-selector-button:hover {
+    opacity: 0.9 !important;
+}
+
+/* Structured Form Rows & Groups */
+.form-row {
+    display: flex !important;
+    gap: 16px !important;
+    align-items: flex-end !important;
+    flex-wrap: wrap !important;
+    margin-bottom: 16px !important;
+    width: 100% !important;
+}
+
+.form-group {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+    flex: 1 !important;
+    min-width: 180px !important;
+}
+
+.form-group label {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: var(--text-dark, #2b3674) !important;
+    margin: 0 !important;
+}
+
+/* Consistent Action Button Height */
+.box button {
+    height: 42px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 20px !important;
+    font-size: 14px !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+}
+
+/* ======================================================
+   BEHAVIOR POINT INPUT & BUTTON FLEXBOX FIX
+   ====================================================== */
+
+/* Ensure the flex wrapper spans full width */
+.behavior-action-row {
+    display: flex !important;
+    gap: 12px !important;
+    align-items: center !important;
+    width: 100% !important;
+}
+
+/* Allocate proportional width to the number input */
+#customPointValue {
+    flex: 1 1 180px !important;
+    min-width: 150px !important;
+    height: 44px !important;
+    margin: 0 !important;
+}
+
+/* Allow the button to adjust cleanly alongside the input */
+#saveCustomPointBtn {
+    flex: 1.5 1 auto !important;
+    height: 44px !important;
+    white-space: nowrap !important;
+    margin: 0 !important;
+}
+
+/* ======================================================
+   KEBAB DROPDOWN MENU LAYOUT OVERRIDE
+   ====================================================== */
+
+/* 1. Ensure dropdown container expands vertically to show all options */
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    background: #ffffff !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+    border-radius: 8px !important;
+    z-index: 1000 !important;
+    min-width: 180px !important;
+    height: auto !important;
+    max-height: none !important;
+    border: 1px solid var(--border-color, #e2e8f0) !important;
+    overflow: visible !important;
+    padding: 6px 0 !important;
+}
+
+/* 2. Force items inside the menu to stack in a column when opened */
+.dropdown-menu.show {
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* 3. Override global .box button styles for dropdown items */
+.box .dropdown-menu button.dropdown-item,
+.dropdown-menu .dropdown-item {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 38px !important;
+    padding: 10px 16px !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 1px solid var(--border-color, #f1f5f9) !important;
+    color: var(--text-dark, #2b3674) !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+    border-radius: 0 !important;
+    cursor: pointer !important;
+    box-shadow: none !important;
+    white-space: nowrap !important;
+}
+
+.dropdown-menu .dropdown-item:last-child {
+    border-bottom: none !important;
+}
+
+/* 4. Hover states */
+.dropdown-menu .dropdown-item:hover {
+    background: var(--input-bg, #f8fafc) !important;
+    color: var(--primary-blue, #1e5eff) !important;
+    transform: none !important;
+}
+
+.dropdown-menu .dropdown-item.danger {
+    color: #e02d2d !important;
+}
+
+.dropdown-menu .dropdown-item.danger:hover {
+    background: #ffeaea !important;
+}
+
+/* Dark mode overrides for dropdown items */
+body.dark-theme .dropdown-menu {
+    background: #111c44 !important;
+    border-color: #1b254b !important;
+}
+
+body.dark-theme .dropdown-menu .dropdown-item {
+    color: #f4f7fe !important;
+    border-bottom-color: #1b254b !important;
+}
+
+body.dark-theme .dropdown-menu .dropdown-item:hover {
+    background: #1b254b !important;
+}
+
+/* ======================================================
+   FORM INPUT SPACING & HEADER DROPDOWN WIDTH FIX
+   ====================================================== */
+
+/* 1. Restore vertical spacing between stacked form inputs inside boxes */
+.box input:not([type="radio"]):not([type="checkbox"]) {
+    margin-bottom: 12px !important;
+}
+
+/* Ensure buttons immediately below input groups have top separation */
+.box button {
+    margin-top: 4px !important;
+}
+
+/* 2. Prevent header dropdowns from expanding to 100% full width */
+.box div[style*="display: flex"] select,
+.box header select,
+#sortPoints,
+#sortStudents,
+#filterClass,
+#filterScoreClass,
+#filterPointsClass {
+    width: auto !important;
+    min-width: 130px !important;
+    max-width: 220px !important;
+    display: inline-block !important;
+    margin: 0 !important;
+}
+
+/* 3. Keep inputs inside flex rows (side-by-side forms) aligned without bottom margins */
+.form-row input:not([type="radio"]):not([type="checkbox"]),
+.form-row select,
+.behavior-action-row input {
+    margin-bottom: 0 !important;
+}
+
+/* ======================================================
+   BEHAVIOR POINTS FORM LAYOUT FIX
+   ====================================================== */
+
+/* Form wrapper spanning full card width */
+.behavior-form-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+}
+
+/* Two-column layout for top inputs on desktop */
+.behavior-form-row-split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    width: 100%;
+}
+
+/* Responsive collapse for mobile devices */
+@media screen and (max-width: 768px) {
+    .behavior-form-row-split {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* Universal fix for form inputs in the Quiz Builder workspace */
+input[type="text"],
+input[type="number"],
+input[type="url"],
+textarea,
+select {
+    padding: 10px 14px !important;   /* Internal spacing pushing text away from borders */
+    box-sizing: border-box !important;/* Keeps width consistent with padding included */
+    font-size: 14px;
+    line-height: 1.4;
+    border: 1px solid #cbd5e1;       /* Light border definition */
+    border-radius: 8px;              /* Clean rounded corners */
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Optional focus state for cleaner user feedback when typing */
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="url"]:focus,
+textarea:focus,
+select:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }

@@ -206,175 +206,194 @@
             <!-- Keep your existing tabs hidden securely beneath. When users click sidebar links, these will show -->
             
 
-            <!-- TAB: Manage Score -->
-                <div id="tab-manage-scores" class="tab-content admin-only-view">
-                    <div class="box" style="margin-bottom: 24px;">
-                    <h3>Add Scores Directly</h3>
-                    
-                    <div style="display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap;">
-                        <div style="flex: 1; min-width: 200px;">
-                            <label style="font-size: 13px; font-weight: bold; color: var(--text-dark);">Subject:</label>
-                            <select id="directSubjectSelect"><option value="">-- Select Subject --</option></select>
-                        </div>
-                        <div style="flex: 1; min-width: 200px;">
-                            <label style="font-size: 13px; font-weight: bold; color: var(--text-dark);">Class:</label>
-                            <select id="directClassSelect"><option value="">-- Select Class --</option></select>
-                        </div>
-                        <div style="flex: 1; min-width: 200px;">
-                            <label style="font-size: 13px; font-weight: bold; color: var(--text-dark);">Quiz Name:</label>
-                            <select id="directQuizSelect"><option value="">-- Select Quiz --</option></select>
-                        </div>
+        <!-- TAB: Manage Score -->
+        <div id="tab-manage-scores" class="tab-content admin-only-view">
+            
+            <!-- 1. Add Scores Directly Panel -->
+            <div class="box" style="margin-bottom: 24px;">
+                <h3 style="margin-top:0; margin-bottom: 16px;">Add Scores Directly</h3>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="directSubjectSelect">Subject:</label>
+                        <select id="directSubjectSelect"><option value="">-- Select Subject --</option></select>
                     </div>
-                    <button id="loadDirectStudentsBtn" style="background: var(--primary-blue); width: auto; padding: 10px 20px;">Load Class Roster</button>
-
-                    <div id="directScoreContainer" class="hidden" style="margin-top: 20px;">
-                        <hr style="border: 0; border-top: 1px solid #eee; margin-bottom: 15px;">
-                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                            <table id="directScoreTable">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 20%;">Student Code</th>
-                                        <th>Student Name</th>
-                                        <th style="width: 30%;">Score Input</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- JS will load students here -->
-                                </tbody>
-                            </table>
-                        </div>
-                        <button id="saveDirectScoresBtn" style="background: #10b981; margin-top: 15px;">Save All Scores to Ledger</button>
+                    <div class="form-group">
+                        <label for="directClassSelect">Class:</label>
+                        <select id="directClassSelect"><option value="">-- Select Class --</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="directQuizSelect">Quiz Name:</label>
+                        <select id="directQuizSelect"><option value="">-- Select Quiz --</option></select>
+                    </div>
+                    <div style="flex: 0 0 auto;">
+                        <button id="loadDirectStudentsBtn" style="background: var(--primary-blue);">Load Class Roster</button>
                     </div>
                 </div>
-                    <!-- SECTION 1: Bulk Update Instructions & Upload -->
-                   <div class="bulk-update-section">
-                            <h3>Bulk Update Scores</h3>
-                            <p>To bulk update student scores, please upload an Excel (.xlsx) or CSV file. Your file must strictly follow this column format (from A to F): Student Code, Student Name, Class, Subject, Exam/Quiz Name, and Score. <em style="color: red;">*Note: The first row must be headers. Do not leave blank rows between data.</em></p>
-                            
-                            <input type="file" id="fileInput" />
-                            <!-- Adding display: block and a top margin forces the button to the next line -->
-                            <button id="uploadExcelBtn" style="display: block; margin-top: 15px; width: 100%;">Upload & Process</button>
-                        </div>
 
-                    <!-- SECTION 2: Selectable Score Ledger -->
-                    <div class="box">
-                        <h3>View Score Ledger</h3>
-                        <p style="font-size: 14px; color: var(--text-gray); margin-bottom: 15px;">Select a specific Quiz or Review to view the student score ledger.</p>
-                        
-                        <!-- Selection Controls -->
-                       <div style="display: flex; gap: 15px; margin-bottom: 20px; align-items: center; flex-wrap: wrap;">
-                        <!-- Class Dropdown -->
-                        <select id="ledgerClassSelect" style="padding: 8px; border-radius: 4px; border: 1px solid var(--border-color); min-width: 200px;">
+                <div id="directScoreContainer" class="hidden" style="margin-top: 20px;">
+                    <hr style="border: 0; border-top: 1px solid var(--border-color); margin-bottom: 15px;">
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table id="directScoreTable">
+                            <thead>
+                                <tr>
+                                    <th style="width: 20%;">Student Code</th>
+                                    <th>Student Name</th>
+                                    <th style="width: 30%;">Score Input</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <button id="saveDirectScoresBtn" style="background: #10b981; margin-top: 15px; width: 100%;">Save All Scores to Ledger</button>
+                </div>
+            </div>
+
+            <!-- 2. Bulk Update Scores Panel -->
+            <div class="box" style="margin-bottom: 24px;">
+                <h3 style="margin-top:0; margin-bottom: 8px;">Bulk Update Scores</h3>
+                <p style="font-size: 13px; color: var(--text-gray); margin-bottom: 16px;">
+                    To bulk update student scores, upload an Excel (.xlsx) or CSV file. Columns must follow: Student Code, Student Name, Class, Subject, Exam/Quiz Name, Score.
+                </p>
+                
+                <div class="form-row">
+                    <div class="form-group" style="flex: 2;">
+                        <label for="fileInput">Select Excel / CSV File:</label>
+                        <input type="file" id="fileInput" accept=".xlsx, .xls, .csv">
+                    </div>
+                    <div style="flex: 0 0 auto;">
+                        <button id="uploadExcelBtn" style="background: var(--primary-blue);">Upload & Process</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. View Score Ledger Panel -->
+            <div class="box">
+                <h3 style="margin-top:0; margin-bottom: 8px;">View Score Ledger</h3>
+                <p style="font-size: 14px; color: var(--text-gray); margin-bottom: 16px;">Select a specific Quiz or Review to view the student score ledger.</p>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="ledgerClassSelect">Class:</label>
+                        <select id="ledgerClassSelect">
                             <option value="">-- Choose a Class --</option>
                         </select>
-                        
-                        <!-- Quiz Dropdown -->
-                        <select id="ledgerQuizSelect" style="padding: 8px; border-radius: 4px; border: 1px solid var(--border-color); min-width: 250px;">
+                    </div>
+                    
+                    <div class="form-group" style="flex: 1.5;">
+                        <label for="ledgerQuizSelect">Quiz / Review:</label>
+                        <select id="ledgerQuizSelect">
                             <option value="">-- Choose a Quiz / Review --</option>
                         </select>
+                    </div>
 
-                        <!-- NEW: Sort Dropdown -->
-                        <select id="ledgerSortSelect" style="padding: 8px; border-radius: 4px; border: 1px solid var(--border-color); min-width: 150px;">
+                    <div class="form-group">
+                        <label for="ledgerSortSelect">Sort Order:</label>
+                        <select id="ledgerSortSelect">
                             <option value="name_asc">Name (A-Z)</option>
                             <option value="score_desc">Highest Score</option>
                             <option value="score_asc">Lowest Score</option>
                         </select>
-                        
-                        <!-- View Button -->
-                        <button id="viewLedgerBtn" onclick="viewScoreLedger()" style="width: auto; padding: 10px 20px;">View Table</button>
                     </div>
-
-                        <!-- Ledger Table (Hidden by Default) -->
-                        <div id="scoreLedgerContainer" style="display: none;">
-                            <hr style="border: 0; border-top: 1px solid #eee; margin-bottom: 15px;">
-                            <h4 id="activeLedgerTitle" style="margin-bottom: 15px; color: var(--primary-blue);">Ledger Results</h4>
-                            
-                            <div class="table-responsive">
-                                <table id="manageScoreTable">
-                                    <thead>
-                                        <tr>
-                                            <th>Exam</th>
-                                            <th>Subject</th>
-                                            <th>Student Name</th>
-                                            <th>Class</th>
-                                            <th>Student Code</th>
-                                            <th>Score</th>
-                                            <th>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="manageScoreTbody">
-                                        <!-- JS will inject selected quiz rows here -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                    
+                    <div style="flex: 0 0 auto;">
+                        <button id="viewLedgerBtn" onclick="viewScoreLedger()">View Table</button>
                     </div>
                 </div>
-                    <!-- TAB 3: Behavior Points -->
-                    <div id="tab-manage-behavior" class="tab-content">
-                        <div class="dashboard-grid">
+
+                <div id="scoreLedgerContainer" style="display: none;">
+                    <hr style="border: 0; border-top: 1px solid var(--border-color); margin-bottom: 15px;">
+                    <h4 id="activeLedgerTitle" style="margin-bottom: 15px; color: var(--primary-blue);">Ledger Results</h4>
+                    
+                    <div class="table-responsive">
+                        <table id="manageScoreTable">
+                            <thead>
+                                <tr>
+                                    <th>Exam</th>
+                                    <th>Subject</th>
+                                    <th>Student Name</th>
+                                    <th>Class</th>
+                                    <th>Student Code</th>
+                                    <th>Score</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="manageScoreTbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+           <!-- TAB 3: Behavior Points -->
+            <!-- TAB 3: Behavior Points -->
+            <div id="tab-manage-behavior" class="tab-content">
+                <div class="dashboard-grid">
+                    
+                    <!-- Top Box: Form -->
+                    <div class="box" style="grid-column: 1 / -1;">
+                        <h3 style="margin-top: 0; margin-bottom: 20px;">Manage Behavior Points</h3>
+                        
+                        <div class="behavior-form-container">
                             
-                            <!-- Top Box: The Submission Form -->
-                            <div class="box" style="grid-column: 1 / -1;">
-                                <h3>Manage Behavior Points</h3>
-                                
-                                <!-- Autocomplete Wrapper for Name -->
-                                <div class="autocomplete-container">
-                                    <input type="text" id="pointStudentName" placeholder="Search Student Name..." autocomplete="off">
-                                    <div id="nameAutocompleteList" class="autocomplete-items hidden"></div>
+                            <!-- Side-by-Side Inputs for Student Name & Reason -->
+                            <div class="behavior-form-row-split">
+                                <!-- Student Name Row -->
+                                <div class="form-group">
+                                    <label for="pointStudentName">Student Name:</label>
+                                    <div class="autocomplete-container">
+                                        <input type="text" id="pointStudentName" placeholder="Search Student Name..." autocomplete="off">
+                                        <div id="nameAutocompleteList" class="autocomplete-items hidden"></div>
+                                    </div>
                                 </div>
                                 
-                                <!-- Autocomplete Wrapper for Reason -->
-                                <div class="autocomplete-container" style="margin-top: 8px;">
-                                    <input type="text" id="pointReason" placeholder="Reason (Type to search past reasons...)" autocomplete="off">
-                                    <div id="reasonAutocompleteList" class="autocomplete-items hidden"></div>
-                                </div>
-                                
-                                <div style="display: flex; gap: 10px;">
-                                    <input type="number" id="customPointValue" placeholder="Custom +/-" style="flex: 1;" step="0.1">
-                                    <button id="saveCustomPointBtn" style="background: var(--purple-header); flex: 2;">Commit Custom Point</button>
+                                <!-- Reason Row -->
+                                <div class="form-group">
+                                    <label for="pointReason">Reason / Event:</label>
+                                    <div class="autocomplete-container">
+                                        <input type="text" id="pointReason" placeholder="Reason (Type to search past reasons...)" autocomplete="off">
+                                        <div id="reasonAutocompleteList" class="autocomplete-items hidden"></div>
+                                    </div>
                                 </div>
                             </div>
-
-                            <!-- Middle Full Width Box: Full Behavior Ledger -->
-                            <div class="box" style="grid-column: 1 / -1;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                                    <h3 style="margin: 0;">Full Behavior Points Ledger</h3>
-                                </div>
-                                <div class="table-responsive" style="max-height: 400px;">
-                                    <table id="behaviorTabPointsTable">
-                                        <thead><tr><th>Student Code</th><th>Student Name</th><th>Class</th><th>Total Points</th></tr></thead>
-                                        <tbody></tbody>
-                                    </table>
-                                </div>
-                            </div>
-
-                            <!-- Bottom Left Box: Top 10 Positive Reasons -->
-                            <div class="box">
-                                <h3 style="color: #10b981; margin-top: 0;">Top 10 Plus Point Reasons</h3>
-                                <div class="table-responsive">
-                                    <table id="topPositiveTable">
-                                        <thead><tr><th>Reason</th><th>Usage Count</th><th>Total Pts</th></tr></thead>
-                                        <tbody></tbody>
-                                    </table>
-                                </div>
-                            </div>
-
-                            <!-- Bottom Right Box: Top 10 Negative Reasons -->
-                            <div class="box">
-                                <h3 style="color: #e02d2d; margin-top: 0;">Top 10 Negative Point Reasons</h3>
-                                <div class="table-responsive">
-                                    <table id="topNegativeTable">
-                                        <thead><tr><th>Reason</th><th>Usage Count</th><th>Total Pts</th></tr></thead>
-                                        <tbody></tbody>
-                                    </table>
+                            
+                            <!-- Behavior Points Input and Action Row -->
+                            <div class="form-group">
+                                <label for="customPointValue">Point Amount & Action:</label>
+                                <div class="behavior-action-row">
+                                    <input 
+                                        type="number" 
+                                        id="customPointValue" 
+                                        placeholder="Custom +/- (e.g. 5 or -2)" 
+                                        step="0.1" 
+                                    >
+                                    <button 
+                                        id="saveCustomPointBtn" 
+                                        style="background: var(--purple-header);"
+                                    >
+                                        Commit Custom Point
+                                    </button>
                                 </div>
                             </div>
 
                         </div>
                     </div>
 
-            <!-- TAB 4: Manage Databases -->
+                    <!-- Full Behavior Ledger Table -->
+                    <div class="box" style="grid-column: 1 / -1;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <h3 style="margin: 0;">Full Behavior Points Ledger</h3>
+                        </div>
+                        <div class="table-responsive" style="max-height: 400px;">
+                            <table id="behaviorTabPointsTable">
+                                <thead><tr><th>Student Code</th><th>Student Name</th><th>Class</th><th>Total Points</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
             <!-- TAB 4: Manage Databases (Unified User & Database Management) -->
             <div id="tab-view-ledgers" class="tab-content admin-only-view">
                 <div class="dashboard-grid">
@@ -496,7 +515,7 @@
             <h3>Existing Quizzes</h3>
             <div class="table-responsive">
                 <table id="quizTable">
-                    <thead><tr><th>Title</th><th>Subject</th><th>Class</th><th>Actions</th></tr></thead>
+                    <thead><tr><th>Title</th><th>Subject</th><th>Class</th><th>Status</th><th>Actions</th></tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
@@ -605,12 +624,39 @@
     </div>     
 </div>
 
-            <!-- Modal for Quiz Results -->
+           <!-- Modal for Quiz Results -->
             <div id="quizResultsModal" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; justify-content:center; align-items:center;">
                 <div class="box" style="width: 90%; max-width: 700px; position: relative;">
                     <button onclick="closeResultsModal()" style="position:absolute; right:15px; top:15px; width:auto; background:#e02d2d;">Close</button>
-                    <h3 id="modalQuizTitle">Quiz Submissions</h3>
-                    <div id="resultsListContainer"></div>
+                    <h3 id="quizResultsTitle" style="margin-top:0;">Quiz Submissions</h3>
+                    <div style="max-height: 400px; overflow-y: auto; margin-top: 16px;">
+                        <table id="quizResultsTable" style="width:100%; border-collapse:collapse;">
+                            <thead>
+                                <tr style="text-align:left; border-bottom:2px solid var(--border-color, #e2e8f0);">
+                                    <th style="padding:8px;">Student</th>
+                                    <th style="padding:8px;">Class</th>
+                                    <th style="padding:8px;">Score</th>
+                                    <th style="padding:8px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <!-- Modal for Inspecting Student Quiz Answers -->
+            <div id="studentAnswersModal" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1100; display:flex; justify-content:center; align-items:center;">
+                <div class="box" style="width: 90%; max-width: 650px; position: relative; max-height: 85vh; overflow-y: auto; background: #ffffff; border-radius: 12px; padding: 24px;">
+                    <button onclick="closeAnswersModal()" style="position:absolute; right:15px; top:15px; background:#64748b; color:white; border:none; padding:6px 14px; border-radius:6px; cursor:pointer; font-weight:600;">
+                        ← Back to List
+                    </button>
+                    <h3 id="studentAnswersTitle" style="margin-top:0; color:#1e293b; padding-right: 100px;">Student Answers</h3>
+                    
+                    <!-- Reference Auto Score Display -->
+                    <div id="autoScoreReference" style="margin: 16px 0; padding: 12px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #3b82f6;"></div>
+                    
+                    <!-- Answers Container -->
+                    <div id="answersDetailContainer" style="margin-top: 16px;"></div>
                 </div>
             </div>
                 <!-- Modal for Adjusting Points -->
@@ -635,6 +681,6 @@
     </div>
 
     <!-- Make sure admin.js is imported last -->
-    <script type="module" src="admin.js"></script>
+    <script type="module" src="admin.js?v=100"></script>
 </body>
 </html>

@@ -19,9 +19,47 @@ const auth = getAuth(app);
 let currentUser = null; 
 let unsubscribePosts = null; 
 let unsubscribeNotifs = null; 
-let allUserNames = []; // Stores everyone's names for the @ mentions
+let allUserNames = [];
 
-// --- 1. AUTHENTICATION LOGIC ---
+// --- 1. DARK MODE & GLOBAL CLICK HANDLER ---
+const themeToggleBtn = document.getElementById('darkModeToggle');
+
+if (localStorage.getItem('theme') === 'dark') {
+    document.body.classList.add('dark-mode');
+    if (themeToggleBtn) themeToggleBtn.innerText = '☀️ Light';
+}
+
+if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+        const isDark = document.body.classList.contains('dark-mode');
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        themeToggleBtn.innerText = isDark ? '☀️ Light' : '🌙 Dark';
+    });
+}
+
+// Close open Kebab Menus when clicking outside
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.kebab-wrapper')) {
+        document.querySelectorAll('.kebab-dropdown').forEach(menu => menu.classList.add('hidden'));
+    }
+});
+
+window.toggleKebabMenu = function(event, menuId) {
+    event.stopPropagation();
+    const targetMenu = document.getElementById(menuId);
+    
+    // Close all other open kebab dropdowns first
+    document.querySelectorAll('.kebab-dropdown').forEach(menu => {
+        if (menu.id !== menuId) menu.classList.add('hidden');
+    });
+
+    if (targetMenu) {
+        targetMenu.classList.toggle('hidden');
+    }
+};
+
+// --- 2. AUTHENTICATION LOGIC ---
 
 onAuthStateChanged(auth, async (user) => {
     if (user && !currentUser) {
@@ -32,7 +70,7 @@ onAuthStateChanged(auth, async (user) => {
             
             const rawName = email.split('@')[0];
             const teacherName = rawName.replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-            const displayName = data.role === 'admin' ? 'Administrator' : `${teacherName} (${data.subject || 'Staff'})`;
+            const displayName = data.role === 'admin' ? 'Administrator' : teacherName;
             
             currentUser = { type: 'staff', name: displayName, code: email };
             showTimelineApp();
@@ -94,69 +132,61 @@ function showTimelineApp() {
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('timelineApp').classList.remove('hidden');
     
-    const badgeHTML = currentUser.type === 'staff' ? ` <span class="staff-badge">✓ Staff</span>` : '';
+    const badgeHTML = currentUser.type === 'staff' ? ` <span class="staff-badge">✓</span>` : '';
     document.getElementById('currentUserDisplay').innerHTML = currentUser.name + badgeHTML;
     
-    fetchAllNames(); // Download names for mentions
+    fetchAllNames(); 
     loadPosts();
     loadNotifications();
 }
 
-// --- 2. @MENTION AUTOCOMPLETE SYSTEM ---
+// --- 3. @MENTION AUTOCOMPLETE ---
 
 async function fetchAllNames() {
     try {
         let names = [];
         
-        // 1. Fetch Teachers
         const usersSnap = await getDocs(collection(db, "users"));
         usersSnap.forEach(doc => {
             const data = doc.data();
             if (data.email) {
                 const rawName = data.email.split('@')[0];
                 const teacherName = rawName.replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                names.push(data.role === 'admin' ? 'Administrator' : `${teacherName} (${data.subject || 'Staff'})`);
+                names.push(data.role === 'admin' ? 'Administrator' : teacherName);
             }
         });
         
-        // 2. Fetch Students
         const studentsSnap = await getDocs(collection(db, "students"));
         studentsSnap.forEach(doc => {
             if (doc.data().studentName) names.push(doc.data().studentName);
         });
         
-        allUserNames = [...new Set(names)]; // Remove duplicates
+        allUserNames = [...new Set(names)];
     } catch (e) {
-        console.warn("Could not load user directory for mentions. Ensure Firestore rules allow read access.", e);
+        console.warn("Could not load user directory for mentions.", e);
     }
 }
 
 const mentionPopup = document.getElementById('mentionPopup');
-let activeMentionTarget = null;
 
-// Listen to all typing in TextAreas and Inputs for the "@" symbol
 document.addEventListener('input', (e) => {
-    if (e.target.id === 'loginUsername' || e.target.id === 'loginPassword') {
-        return; 
-    }
+    if (e.target.id === 'loginUsername' || e.target.id === 'loginPassword') return; 
+    
     if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') {
         const val = e.target.value;
         const cursorPos = e.target.selectionStart;
         const textBeforeCursor = val.substring(0, cursorPos);
         const lastAtSign = textBeforeCursor.lastIndexOf('@');
 
-        // If we found an @ and there are no spaces after it yet
         if (lastAtSign !== -1) {
             const textAfterAt = textBeforeCursor.substring(lastAtSign + 1);
             if (!textAfterAt.includes(' ')) {
-                activeMentionTarget = e.target;
                 showMentionPopup(e.target, textAfterAt.toLowerCase());
                 return;
             }
         }
         hideMentionPopup();
     }
-    
 });
 
 function showMentionPopup(targetEl, searchStr) {
@@ -177,16 +207,14 @@ function showMentionPopup(targetEl, searchStr) {
             const textBeforeCursor = val.substring(0, cursorPos);
             const lastAtSign = textBeforeCursor.lastIndexOf('@');
             
-            // Replace the partial name with the full clicked name
             const newText = val.substring(0, lastAtSign) + '@' + match + ' ' + val.substring(cursorPos);
             targetEl.value = newText;
             hideMentionPopup();
-            targetEl.focus(); // Return cursor to typing area
+            targetEl.focus();
         };
         mentionPopup.appendChild(div);
     });
     
-    // Position the popup exactly under the input box
     const rect = targetEl.getBoundingClientRect();
     mentionPopup.style.top = (rect.bottom + window.scrollY) + 'px';
     mentionPopup.style.left = (rect.left + window.scrollX) + 'px';
@@ -196,12 +224,10 @@ function showMentionPopup(targetEl, searchStr) {
 
 function hideMentionPopup() {
     mentionPopup.classList.add('hidden');
-    activeMentionTarget = null;
 }
 
 document.addEventListener('click', (e) => { if (!mentionPopup.contains(e.target)) hideMentionPopup(); });
 
-// Search the final message to see if anyone's exact name was mentioned
 function extractMentions(text) {
     let foundMentions = [];
     allUserNames.forEach(name => {
@@ -212,14 +238,14 @@ function extractMentions(text) {
     return foundMentions;
 }
 
-// --- 3. NOTIFICATIONS LOGIC ---
+// --- 4. NOTIFICATIONS LOGIC ---
 
 async function sendNotification(recipientName, messageText, targetPostId) {
-    if (!recipientName || recipientName === currentUser.name) return; // Don't notify self
+    if (!recipientName || recipientName === currentUser.name) return; 
     
     try {
         await addDoc(collection(db, "timeline_notifications"), {
-            recipientName: recipientName, // Routes using the user's name, not their secret code!
+            recipientName: recipientName,
             message: messageText,
             postId: targetPostId,
             read: false,
@@ -232,7 +258,6 @@ function loadNotifications() {
     if (!currentUser) return;
     if (unsubscribeNotifs) unsubscribeNotifs();
 
-    // Now queries based on the person's name
     const notifQuery = query(collection(db, "timeline_notifications"), where("recipientName", "==", currentUser.name), orderBy("timestamp", "desc"));
 
     unsubscribeNotifs = onSnapshot(notifQuery, (snapshot) => {
@@ -242,7 +267,7 @@ function loadNotifications() {
         dropdown.innerHTML = '';
 
         if (snapshot.empty) {
-            dropdown.innerHTML = `<div style="padding: 10px; text-align: center; font-size: 12px; color: #666;">You have no notifications.</div>`;
+            dropdown.innerHTML = `<div style="padding: 12px; text-align: center; font-size: 13px; color: var(--text-muted);">You have no notifications.</div>`;
             badge.style.display = 'none';
             return;
         }
@@ -255,7 +280,7 @@ function loadNotifications() {
             dropdown.innerHTML += `
                 <div class="notif-item ${readClass}" onclick="openNotification('${docSnap.id}', '${notif.postId}')">
                     ${notif.message}
-                    <div style="font-size: 10px; color: #888; margin-top: 4px;">${new Date(notif.timestamp).toLocaleString()}</div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${new Date(notif.timestamp).toLocaleString()}</div>
                 </div>
             `;
         });
@@ -281,16 +306,14 @@ window.openNotification = async function(notifId, postId) {
     const postEl = document.getElementById('post-' + postId);
     if (postEl) {
         postEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        postEl.style.border = '2px solid #007bff';
-        setTimeout(() => postEl.style.border = '1px solid #eee', 2500); 
+        postEl.style.borderColor = '#2563eb';
+        setTimeout(() => postEl.style.borderColor = 'var(--border-color)', 2500); 
     } else {
         alert("This post may have been deleted.");
     }
 };
 
-// --- 4. POSTING & RENDERING LOGIC ---
-
-document.getElementById('refreshBtn').addEventListener('click', () => { loadPosts(); });
+// --- 5. POSTING & RENDERING (WITH KEBAB MENU) ---
 
 document.getElementById('submitPostBtn').addEventListener('click', async () => {
     if (!currentUser) return; 
@@ -306,7 +329,6 @@ document.getElementById('submitPostBtn').addEventListener('click', async () => {
             timestamp: new Date().toISOString()
         });
         
-        // Scan for mentions and send notifications by Name
         const mentions = extractMentions(message);
         for (let m of mentions) {
             await sendNotification(m, `${currentUser.name} mentioned you in a new post.`, postRef.id);
@@ -331,12 +353,25 @@ function loadPosts() {
         snapshot.forEach((docSnap) => {
             const post = docSnap.data();
             const postId = docSnap.id;
-            const dateStr = new Date(post.timestamp).toLocaleString();
-            const badgeHTML = post.isStaff ? `<span class="staff-badge">✓ Staff</span>` : '';
+            
+            // Format timestamp relative to now (e.g. 12m, 2h, 1d)
+            const dateStr = formatTimeAgo(post.timestamp);
+            const badgeHTML = post.isStaff ? `<span class="staff-badge">✓</span>` : '';
+            const initialLetter = post.authorName ? post.authorName.charAt(0) : '?';
 
-            let deleteButtonHTML = '';
+            // Kebab Menu for Staff Deletion
+            let kebabMenuHTML = '';
             if (currentUser.type === 'staff') {
-                deleteButtonHTML = `<button class="delete-btn" onclick="deletePost('${postId}')">🗑️ Delete</button>`;
+                kebabMenuHTML = `
+                    <div class="kebab-wrapper">
+                        <button class="kebab-btn" onclick="toggleKebabMenu(event, 'kebab-post-${postId}')">⋮</button>
+                        <div id="kebab-post-${postId}" class="kebab-dropdown hidden">
+                            <button class="kebab-item danger" onclick="deletePost('${postId}')">
+                                🗑️ Delete Post
+                            </button>
+                        </div>
+                    </div>
+                `;
             }
 
             const postElement = document.createElement('div');
@@ -344,22 +379,38 @@ function loadPosts() {
             postElement.id = 'post-' + postId; 
             
             postElement.innerHTML = `
-                <div class="post-header">
-                    <div>
-                        <strong>${post.authorName} ${badgeHTML}</strong>
-                        <span class="time" style="margin-left: 10px;">${dateStr}</span>
+                <div class="post-sender-row">
+                    <div class="sender-info-wrapper">
+                        <div class="avatar-circle">${initialLetter}</div>
+                        <div class="sender-details">
+                            <div class="sender-name-line">
+                                <span class="sender-name">${post.authorName}</span>
+                                ${badgeHTML}
+                            </div>
+                            <!-- Store raw ISO timestamp in data-timestamp attribute for auto-updates -->
+                            <span class="post-time" data-timestamp="${post.timestamp}">${dateStr}</span>
+                        </div>
                     </div>
-                    ${deleteButtonHTML}
+                    ${kebabMenuHTML}
                 </div>
+
                 <div class="post-body">${formatMessageMentions(post.message)}</div>
                 
-                <div class="comments-section" id="comments-${postId}">
-                    <!-- Comments injected here -->
+                <div class="post-actions-bar">
+                    <button class="action-btn" onclick="toggleComments('${postId}')">
+                        💬 <span id="comment-count-${postId}">0</span> Comments
+                    </button>
                 </div>
-                
-                <div class="reply-box">
-                    <input type="text" id="reply-msg-${postId}" placeholder="Write a reply...">
-                    <button onclick="submitReply('${postId}', '${post.authorName}')">Reply</button>
+
+                <div class="comments-wrapper hidden" id="comments-wrapper-${postId}">
+                    <div class="comments-list" id="comments-list-${postId}">
+                        <!-- Comments injected dynamically -->
+                    </div>
+                    
+                    <div class="reply-box">
+                        <input type="text" id="reply-msg-${postId}" placeholder="Write a reply... (Type @ to mention)">
+                        <button onclick="submitReply('${postId}', '${post.authorName}')">Reply</button>
+                    </div>
                 </div>
             `;
             
@@ -374,31 +425,60 @@ function loadCommentsForPost(postId) {
     const q = query(commentsRef, where("postId", "==", postId));
 
     onSnapshot(q, (snapshot) => {
-        const commentContainer = document.getElementById(`comments-${postId}`);
-        if (!commentContainer) return;
+        const commentListEl = document.getElementById(`comments-list-${postId}`);
+        const commentCountEl = document.getElementById(`comment-count-${postId}`);
+        if (!commentListEl) return;
         
         let commentsList = [];
         snapshot.forEach(doc => commentsList.push({ id: doc.id, ...doc.data() }));
         commentsList.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
-        commentContainer.innerHTML = '';
+        if (commentCountEl) {
+            commentCountEl.innerText = commentsList.length;
+        }
+
+        commentListEl.innerHTML = '';
+        if (commentsList.length === 0) {
+            commentListEl.innerHTML = `<div style="font-size: 13px; color: var(--text-muted); text-align: center; padding: 6px;">No comments yet. Be the first to reply!</div>`;
+            return;
+        }
+
         commentsList.forEach(comment => {
             const badgeHTML = comment.isStaff ? `<span class="staff-badge">✓</span>` : '';
             
-            let deleteCommentHTML = '';
+            let commentKebabHTML = '';
             if (currentUser.type === 'staff') {
-                deleteCommentHTML = `<button class="delete-comment-btn" onclick="deleteComment('${comment.id}')">X</button>`;
+                commentKebabHTML = `
+                    <div class="kebab-wrapper">
+                        <button class="kebab-btn" style="font-size: 16px; padding: 2px 6px;" onclick="toggleKebabMenu(event, 'kebab-comment-${comment.id}')">⋮</button>
+                        <div id="kebab-comment-${comment.id}" class="kebab-dropdown hidden">
+                            <button class="kebab-item danger" onclick="deleteComment('${comment.id}')">
+                                🗑️ Delete Reply
+                            </button>
+                        </div>
+                    </div>
+                `;
             }
 
-            commentContainer.innerHTML += `
-                <div class="comment">
-                    <div><strong>${comment.authorName} ${badgeHTML}:</strong> ${formatMessageMentions(comment.message)}</div>
-                    ${deleteCommentHTML}
+            commentListEl.innerHTML += `
+                <div class="comment-item">
+                    <div class="comment-content">
+                        <strong>${comment.authorName} ${badgeHTML}:</strong> 
+                        ${formatMessageMentions(comment.message)}
+                    </div>
+                    ${commentKebabHTML}
                 </div>
             `;
         });
     });
 }
+
+window.toggleComments = function(postId) {
+    const wrapper = document.getElementById(`comments-wrapper-${postId}`);
+    if (wrapper) {
+        wrapper.classList.toggle('hidden');
+    }
+};
 
 window.submitReply = async function(postId, postAuthorName) {
     if (!currentUser) return;
@@ -417,10 +497,8 @@ window.submitReply = async function(postId, postAuthorName) {
             timestamp: new Date().toISOString()
         });
         
-        // Notify original poster by their Name
         await sendNotification(postAuthorName, `${currentUser.name} replied to your post.`, postId);
         
-        // Notify anyone explicitly mentioned in the comment by their Name
         const mentions = extractMentions(message);
         for (let m of mentions) {
             await sendNotification(m, `${currentUser.name} mentioned you in a comment.`, postId);
@@ -432,7 +510,7 @@ window.submitReply = async function(postId, postAuthorName) {
     }
 };
 
-// --- 5. SECURE DELETE FUNCTIONS ---
+// --- 6. SECURE DELETE FUNCTIONS ---
 
 window.deletePost = async function(postId) {
     if (!currentUser || currentUser.type !== 'staff') return; 
@@ -452,14 +530,70 @@ window.deleteComment = async function(commentId) {
 
 function formatMessageMentions(text) {
     let formattedText = text;
-    // allUserNames is already populated by your fetchAllNames() function
     allUserNames.forEach(name => {
         const mention = '@' + name;
         if (formattedText.includes(mention)) {
-            // Replace the plain text mention with a styled span
-            // We use split/join to replace all instances without needing complex regex escaping
-            formattedText = formattedText.split(mention).join(`<span style="color: #007bff; font-weight: bold;">${mention}</span>`);
+            formattedText = formattedText.split(mention).join(`<span style="color: var(--primary-color); font-weight: bold;">${mention}</span>`);
         }
     });
     return formattedText;
 }
+
+// --- RELATIVE TIME FORMATTER & AUTO-UPDATE ---
+
+/**
+ * Converts an ISO timestamp into a short relative time string (e.g., 5m, 2h, 1d)
+ */
+function formatTimeAgo(timestamp) {
+    if (!timestamp) return '';
+    
+    const postDate = new Date(timestamp);
+    const now = new Date();
+    const secondsPast = Math.floor((now - postDate) / 1000);
+
+    // Handles negative time offsets or immediate posts
+    if (secondsPast < 30) {
+        return 'just now';
+    }
+    
+    const minutes = Math.floor(secondsPast / 60);
+    if (minutes < 60) {
+        return `${minutes}m`;
+    }
+    
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) {
+        return `${hours}h`;
+    }
+    
+    const days = Math.floor(hours / 24);
+    if (days < 7) {
+        return `${days}d`;
+    }
+    
+    const weeks = Math.floor(days / 7);
+    if (weeks < 52) {
+        return `${weeks}w`;
+    }
+    
+    const years = Math.floor(days / 365);
+    return `${years}y`;
+}
+
+/**
+ * Periodically updates all timestamp elements on the page without re-fetching from Firestore
+ */
+function startLiveTimestampUpdates() {
+    setInterval(() => {
+        const timeElements = document.querySelectorAll('.post-time[data-timestamp]');
+        timeElements.forEach(el => {
+            const rawTimestamp = el.getAttribute('data-timestamp');
+            if (rawTimestamp) {
+                el.innerText = formatTimeAgo(rawTimestamp);
+            }
+        });
+    }, 60000); // Runs every 60 seconds
+}
+
+// Start the live update timer when script loads
+startLiveTimestampUpdates();

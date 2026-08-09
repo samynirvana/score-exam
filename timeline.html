@@ -2,120 +2,72 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Classroom Timeline</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- External Stylesheets -->
     <link rel="stylesheet" href="style.css">
-    <style>
-        .timeline-container { max-width: 700px; margin: 0 auto; width: 100%; text-align: left; }
-        .post-box { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #ddd; }
-        .post-box input, .post-box textarea { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-family: inherit; }
-        .post-box textarea { resize: vertical; min-height: 80px; }
-        .post-box button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; }
-        
-        .timeline-post { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 15px; border: 1px solid #eee; transition: border 0.3s; }
-        .post-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .post-header strong { color: #333; font-size: 16px; }
-        .post-header .time { font-size: 12px; color: #888; }
-        .post-body { font-size: 15px; color: #444; margin-bottom: 15px; white-space: pre-wrap; }
-        
-        .comments-section { border-top: 1px solid #f1f1f1; padding-top: 10px; margin-bottom: 10px; }
-        .comment { background: #f8f9fa; padding: 8px 12px; border-radius: 6px; margin-bottom: 8px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
-        .comment strong { color: #007bff; }
-        
-        .reply-box { display: flex; gap: 8px; margin-top: 10px; }
-        .reply-box input[type="text"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; flex: 1; }
-        .reply-box button { background: #28a745; color: white; border: none; border-radius: 4px; padding: 0 15px; cursor: pointer; font-size: 13px; }
-        
-        .staff-badge { display: inline-block; background: #28a745; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; margin-left: 5px; vertical-align: middle; }
-        .delete-btn { background: #dc3545; color: white; border: none; border-radius: 4px; padding: 4px 10px; font-size: 12px; cursor: pointer; font-weight: bold; }
-        .delete-btn:hover { background: #c82333; }
-        .delete-comment-btn { background: #dc3545; color: white; border: none; border-radius: 4px; padding: 2px 6px; font-size: 10px; cursor: pointer; }
-        
-        /* Login Screen specific styles */
-        .login-box { max-width: 400px; margin: 60px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }
-        .login-box input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
-        .login-box button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        
-        .header-flex { display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 5px; margin-top: 0; }
-        .refresh-btn { background: #17a2b8; color: white; border: none; border-radius: 4px; padding: 6px 12px; font-size: 12px; cursor: pointer; font-weight: bold; }
-        .refresh-btn:hover { background: #138496; }
-
-        /* Notification UI Styles */
-        .top-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .nav-controls { display: flex; gap: 10px; align-items: center; }
-        .notif-wrapper { position: relative; }
-        .notif-btn { background: #ffc107; color: #333; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
-        .notif-badge { position: absolute; top: -5px; right: -5px; background: #dc3545; color: white; font-size: 10px; padding: 2px 5px; border-radius: 50%; font-weight: bold; display: none; }
-        .notif-dropdown { display: none; position: absolute; top: 35px; right: 0; width: 280px; max-height: 300px; overflow-y: auto; background: white; border: 1px solid #ddd; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 100; }
-        .notif-item { padding: 12px; border-bottom: 1px solid #eee; font-size: 13px; cursor: pointer; color: #333; }
-        .notif-item:hover { background: #f8f9fa; }
-        .notif-item.unread { font-weight: bold; background: #f1f8ff; border-left: 3px solid #007bff; }
-        
-        /* Mention Autocomplete Styles */
-        .mention-popup { position: absolute; background: white; border: 1px solid #ccc; max-height: 180px; overflow-y: auto; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 6px; }
-        .mention-item { padding: 10px 12px; font-size: 13px; cursor: pointer; color: #333; border-bottom: 1px solid #f1f1f1; }
-        .mention-item:last-child { border-bottom: none; }
-        .mention-item:hover { background: #f1f8ff; color: #007bff; font-weight: bold; }
-    </style>
+    <link rel="stylesheet" href="timeline.css">
 </head>
 <body>
-<div class="page-wrapper" style="display: block; width: 100%;">
+<div class="page-wrapper">
     
     <!-- LOGIN SCREEN -->
     <div id="loginScreen" class="login-box">
-        <h2 style="color: #007bff; margin-top: 0;">Timeline Access</h2>
-        <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; font-size: 13px; color: #555; margin-bottom: 20px; text-align: left;">
-            <strong>Students:</strong> Enter your 5-Character code as BOTH your Username and Password.<br><br>
-            <strong>Teachers/Admin:</strong> Login with your registered Email and Password.
+        <h2 style="color: var(--primary-color); margin-top: 0;">Timeline Access</h2>
+        <div style="background: var(--comment-bg); padding: 14px; border-radius: 8px; font-size: 14px; color: var(--text-muted); margin-bottom: 16px; text-align: left; border: 1px solid var(--border-color);">
+            <strong>Students:</strong> Enter your 5-Character code as BOTH Username and Password.<br><br>
+            <strong>Teachers/Admin:</strong> Login with registered Email and Password.
         </div>
         <input type="text" id="loginUsername" placeholder="Username / Code / Email">
         <input type="password" id="loginPassword" placeholder="Password">
         <button id="loginBtn">Secure Login</button>
-        <a href="index.html" style="display: block; margin-top: 15px; font-size: 14px; color: #666; text-decoration: none;">&larr; Back to Portal</a>
+        <a href="index.html" style="display: block; margin-top: 16px; font-size: 14px; color: var(--text-muted); text-decoration: none;">&larr; Back to Portal</a>
     </div>
 
     <!-- MAIN TIMELINE APP -->
     <div id="timelineApp" class="container timeline-container hidden">
         
         <div class="top-nav">
-            <a href="index.html" style="color: #007bff; text-decoration: none; font-size: 14px;">&larr; Back to Portal</a>
+            <a href="index.html" style="color: var(--primary-color); text-decoration: none; font-size: 15px; font-weight: 600;">&larr; Back to Portal</a>
             <div class="nav-controls">
                 
+                <button id="darkModeToggle" class="theme-toggle-btn">🌙 Dark</button>
+
                 <div class="notif-wrapper">
                     <button id="notifToggleBtn" class="notif-btn">🔔 Alerts <span id="notifBadge" class="notif-badge">0</span></button>
                     <div id="notifDropdown" class="notif-dropdown">
-                        <div style="padding: 10px; text-align: center; font-size: 12px; color: #666;">Loading notifications...</div>
+                        <div style="padding: 12px; text-align: center; font-size: 13px; color: var(--text-muted);">Loading notifications...</div>
                     </div>
                 </div>
 
-                <button id="logoutBtn" style="background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">Logout</button>
+                <button id="logoutBtn" style="background: #ef4444; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; min-height: 40px;">Logout</button>
             </div>
         </div>
         
-        <div class="header-flex">
-            <h2 style="color: #007bff; margin: 0;">Classroom Discussion</h2>
-            <button id="refreshBtn" class="refresh-btn">🔄 Refresh</button>
+        <div style="text-align: center; margin-bottom: 12px;">
+            <h2 style="color: var(--primary-color); margin: 0 0 6px 0; font-size: 24px;">Classroom Discussion</h2>
+            <p style="font-size: 14px; color: #10b981; margin: 0; font-weight: 600;">
+                Logged in as: <span id="currentUserDisplay"></span>
+            </p>
         </div>
         
-        <p style="text-align: center; font-size: 13px; color: #28a745; margin-bottom: 20px; font-weight: bold;">
-            Logged in as: <span id="currentUserDisplay"></span>
-        </p>
-        <p style="text-align: center; font-size: 12px; color: #666; margin-top: -15px;">
-            Hint: Type <strong>@</strong> to mention someone by their name!
-        </p>
-        
         <div class="post-box">
-            <textarea id="postMessage" placeholder="What would you like to share with the class?"></textarea>
+            <textarea id="postMessage" placeholder="What would you like to share with the class? (Type @ to mention someone)"></textarea>
             <button id="submitPostBtn">Post to Timeline</button>
         </div>
 
         <div id="timelineFeed">
-            <!-- Posts will be injected here via JavaScript -->
+            <!-- Posts injected dynamically via JS -->
         </div>
     </div>
 </div>
 
-<!-- Invisible container for the autocomplete dropdown -->
 <div id="mentionPopup" class="mention-popup hidden"></div>
 
 <script type="module" src="timeline.js"></script>
