@@ -57,9 +57,20 @@
             </p>
         </div>
         
+        <!-- POST CREATION BOX -->
         <div class="post-box">
             <textarea id="postMessage" placeholder="What would you like to share with the class? (Type @ to mention someone)"></textarea>
-            <button id="submitPostBtn">Post to Timeline</button>
+            
+            <div class="post-options-row">
+                <div class="target-selector-wrapper">
+                    <label for="postTargetClass">Audience:</label>
+                    <select id="postTargetClass">
+                        <option value="All">All Classes</option>
+                        <!-- Classes will be dynamically populated via JavaScript -->
+                    </select>
+                </div>
+                <button id="submitPostBtn">Post to Timeline</button>
+            </div>
         </div>
 
         <div id="timelineFeed">

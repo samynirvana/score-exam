@@ -441,6 +441,71 @@ input, textarea, button {
     cursor: pointer; 
 }
 
+/* ==========================================================================
+   CLASS TARGETING & AUDIENCE BADGES
+   ========================================================================== */
+.post-options-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.target-selector-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 200px;
+}
+
+.target-selector-wrapper label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.target-selector-wrapper select {
+    flex: 1;
+    padding: 10px 12px;
+    background-color: var(--input-bg);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    outline: none;
+    cursor: pointer;
+}
+
+.target-selector-wrapper select:focus {
+    border-color: var(--primary-color);
+}
+
+.target-class-badge {
+    display: inline-flex;
+    align-items: center;
+    background: var(--avatar-bg);
+    color: var(--avatar-text);
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-left: 6px;
+    border: 1px solid var(--border-color);
+}
+
+@media (max-width: 480px) {
+    .post-options-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .target-selector-wrapper select {
+        width: 100%;
+    }
+}
+
 /* Notifications & Mentions */
 .notif-wrapper { position: relative; }
 .notif-btn { background: #200094; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; min-height: 40px; }

@@ -797,9 +797,12 @@ div.gform-q-input:empty:before { content: attr(data-placeholder); color: #70757a
 /* ======================================================
    RESPONSIVE MOBILE FIX (IPHONE 13 & MOBILE SCREENS)
    ====================================================== */
+/* ======================================================
+   RESPONSIVE MOBILE FIX (IPHONE 13 & MOBILE SCREENS)
+   ====================================================== */
 @media screen and (max-width: 430px) {
     
-    /* 1. NATIVE IOS VERTICAL SCROLLING FIX (Issue 6) */
+    /* 1. Native Page Vertical Scrolling Fix */
     html, body {
         width: 100% !important;
         max-width: 100vw !important;
@@ -831,7 +834,7 @@ div.gform-q-input:empty:before { content: attr(data-placeholder); color: #70757a
         box-sizing: border-box !important;
     }
 
-    /* 2. COMPACT TAB SIDEBAR / HEADER MENU (Issue 5) */
+    /* 2. Grid Navigation Bar (All 6 Tabs Visible At Once) */
     .sidebar {
         width: 100% !important;
         height: auto !important;
@@ -847,37 +850,37 @@ div.gform-q-input:empty:before { content: attr(data-placeholder); color: #70757a
     }
 
     .menu-bar {
-        display: flex !important;
-        flex-direction: row !important;
-        overflow-x: auto !important;
-        overflow-y: hidden !important;
-        -webkit-overflow-scrolling: touch !important;
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 6px !important;
         padding: 4px 12px 8px !important;
-        gap: 8px !important;
-        white-space: nowrap !important;
         width: 100% !important;
         box-sizing: border-box !important;
-        scroll-behavior: smooth;
-    }
-
-    /* Hide standard horizontal scrollbar for clean tab aesthetic */
-    .menu-bar::-webkit-scrollbar {
-        display: none !important;
+        overflow: visible !important;
+        white-space: normal !important;
     }
 
     .menu-btn {
-        padding: 8px 16px !important;
-        font-size: 13px !important;
+        padding: 10px 4px !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        text-align: center !important;
+        white-space: normal !important;
+        line-height: 1.2 !important;
+        border-radius: 8px !important;
+        width: 100% !important;
         margin-bottom: 0 !important;
-        flex-shrink: 0 !important;
-        border-radius: 20px !important;
+        box-sizing: border-box !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
 
     .user-profile-bottom {
         display: none !important;
     }
 
-    /* 3. TOPBAR HEADER & ACTIONS */
+    /* 3. Topbar Header & Actions */
     .topbar {
         flex-direction: column !important;
         align-items: stretch !important;
@@ -911,7 +914,7 @@ div.gform-q-input:empty:before { content: attr(data-placeholder); color: #70757a
         box-sizing: border-box !important;
     }
 
-    /* 4. CONTAINER & BOX OVERFLOW FIX (Issues 3 & 4) */
+    /* 4. Container & Box Overflow Fix */
     .stats-grid, 
     .dashboard-grid,
     .behavior-form-row-split,
@@ -929,10 +932,10 @@ div.gform-q-input:empty:before { content: attr(data-placeholder); color: #70757a
         width: 100% !important;
         max-width: 100% !important;
         box-sizing: border-box !important;
-        overflow: hidden !important;
+        overflow: visible !important;
     }
 
-    /* 5. DROPDOWN & FORM LAYOUT CLEANUP (Issue 2) */
+    /* 5. Dropdowns & Form Controls */
     .form-row,
     .form-group,
     .behavior-action-row,
@@ -981,14 +984,14 @@ div.gform-q-input:empty:before { content: attr(data-placeholder); color: #70757a
         border-radius: 14px !important;
     }
 
-    /* 6. TABLE HORIZONTAL SWIPE SUPPORT (Issue 1) */
+    /* 6. Table Touch Scrolling (Restores Vertical & Horizontal Gestures) */
     .table-responsive {
         width: 100% !important;
         max-width: 100% !important;
         overflow-x: auto !important;
-        overflow-y: hidden !important;
+        overflow-y: visible !important;
         -webkit-overflow-scrolling: touch !important;
-        touch-action: pan-x pan-y !important;
+        touch-action: auto !important;
         display: block !important;
         box-sizing: border-box !important;
         border-radius: 8px !important;

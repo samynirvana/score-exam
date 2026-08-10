@@ -112,6 +112,24 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
                 alert("Student code not found in the directory.");
             }
         } catch (error) { alert("Login Error: " + error.message); }
+
+        try {
+            const studentRef = doc(db, "students", code);
+            const studentSnap = await getDoc(studentRef);
+            if (studentSnap.exists()) {
+                const sData = studentSnap.data();
+                currentUser = { 
+                    type: 'student', 
+                    name: sData.studentName, 
+                    code: code,
+                    studentClass: sData.studentClass || sData.class || 'Unassigned'
+                };
+                sessionStorage.setItem('studentTimelineSession', JSON.stringify(currentUser));
+                showTimelineApp();
+            } else {
+                alert("Student code not found in the directory.");
+            }
+        } catch (error) { alert("Login Error: " + error.message); }
     }
 });
 
@@ -127,18 +145,6 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
     document.getElementById('loginUsername').value = '';
     document.getElementById('loginPassword').value = '';
 });
-
-function showTimelineApp() {
-    document.getElementById('loginScreen').classList.add('hidden');
-    document.getElementById('timelineApp').classList.remove('hidden');
-    
-    const badgeHTML = currentUser.type === 'staff' ? ` <span class="staff-badge">✓</span>` : '';
-    document.getElementById('currentUserDisplay').innerHTML = currentUser.name + badgeHTML;
-    
-    fetchAllNames(); 
-    loadPosts();
-    loadNotifications();
-}
 
 // --- 3. @MENTION AUTOCOMPLETE ---
 
@@ -318,6 +324,8 @@ window.openNotification = async function(notifId, postId) {
 document.getElementById('submitPostBtn').addEventListener('click', async () => {
     if (!currentUser) return; 
     const message = document.getElementById('postMessage').value.trim();
+    const targetClass = document.getElementById('postTargetClass') ? document.getElementById('postTargetClass').value : 'All';
+
     if (!message) return alert("You must write a message first.");
 
     try {
@@ -326,6 +334,7 @@ document.getElementById('submitPostBtn').addEventListener('click', async () => {
             authorName: currentUser.name,
             isStaff: currentUser.type === 'staff',
             message: message,
+            targetClass: targetClass, // Saved class target
             timestamp: new Date().toISOString()
         });
         
@@ -353,13 +362,21 @@ function loadPosts() {
         snapshot.forEach((docSnap) => {
             const post = docSnap.data();
             const postId = docSnap.id;
+            const postTarget = post.targetClass || 'All';
+
+            // SECURITY & PRIVACY FILTER FOR STUDENTS
+            if (currentUser.type === 'student') {
+                const userClass = currentUser.studentClass || '';
+                if (postTarget !== 'All' && postTarget !== userClass) {
+                    return; // Skip rendering post if not intended for student's class
+                }
+            }
             
-            // Format timestamp relative to now (e.g. 12m, 2h, 1d)
             const dateStr = formatTimeAgo(post.timestamp);
             const badgeHTML = post.isStaff ? `<span class="staff-badge">✓</span>` : '';
+            const classBadgeHTML = `<span class="target-class-badge">${postTarget === 'All' ? 'All' : ' ' + postTarget}</span>`;
             const initialLetter = post.authorName ? post.authorName.charAt(0) : '?';
 
-            // Kebab Menu for Staff Deletion
             let kebabMenuHTML = '';
             if (currentUser.type === 'staff') {
                 kebabMenuHTML = `
@@ -386,8 +403,8 @@ function loadPosts() {
                             <div class="sender-name-line">
                                 <span class="sender-name">${post.authorName}</span>
                                 ${badgeHTML}
+                                ${classBadgeHTML}
                             </div>
-                            <!-- Store raw ISO timestamp in data-timestamp attribute for auto-updates -->
                             <span class="post-time" data-timestamp="${post.timestamp}">${dateStr}</span>
                         </div>
                     </div>
@@ -403,9 +420,7 @@ function loadPosts() {
                 </div>
 
                 <div class="comments-wrapper hidden" id="comments-wrapper-${postId}">
-                    <div class="comments-list" id="comments-list-${postId}">
-                        <!-- Comments injected dynamically -->
-                    </div>
+                    <div class="comments-list" id="comments-list-${postId}"></div>
                     
                     <div class="reply-box">
                         <input type="text" id="reply-msg-${postId}" placeholder="Write a reply... (Type @ to mention)">
@@ -597,3 +612,52 @@ function startLiveTimestampUpdates() {
 
 // Start the live update timer when script loads
 startLiveTimestampUpdates();
+
+async function populateClassDropdown() {
+    const classSelect = document.getElementById('postTargetClass');
+    if (!classSelect || !currentUser) return;
+
+    // Default option available to everyone
+    classSelect.innerHTML = '<option value="All">📢 All Classes</option>';
+
+    // CASE 1: Student User (Restricted to 'All' or Their Own Class)
+    if (currentUser.type === 'student') {
+        const userClass = currentUser.studentClass || 'Unassigned';
+        if (userClass !== 'Unassigned') {
+            classSelect.innerHTML += `<option value="${userClass}">🏫 ${userClass} (My Class)</option>`;
+        }
+    } 
+    // CASE 2: Staff / Teacher / Admin (Allowed to target Any Class)
+    else if (currentUser.type === 'staff') {
+        try {
+            const studentsSnap = await getDocs(collection(db, "students"));
+            const uniqueClasses = new Set();
+
+            studentsSnap.forEach(docSnap => {
+                const data = docSnap.data();
+                const cName = data.studentClass || data.class || data.className;
+                if (cName) uniqueClasses.add(cName);
+            });
+
+            Array.from(uniqueClasses).sort().forEach(className => {
+                classSelect.innerHTML += `<option value="${className}">🏫 ${className}</option>`;
+            });
+        } catch (e) {
+            console.warn("Could not load classes dropdown list:", e);
+        }
+    }
+}
+
+function showTimelineApp() {
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('timelineApp').classList.remove('hidden');
+    
+    const badgeHTML = currentUser.type === 'staff' ? ` <span class="staff-badge">✓</span>` : '';
+    const classBadgeHTML = currentUser.studentClass ? ` (${currentUser.studentClass})` : '';
+    document.getElementById('currentUserDisplay').innerHTML = currentUser.name + badgeHTML + classBadgeHTML;
+    
+    fetchAllNames(); 
+    populateClassDropdown(); // Dynamically builds options based on Student vs Staff role
+    loadPosts();
+    loadNotifications();
+}
