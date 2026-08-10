@@ -23,7 +23,7 @@ const secondaryAuth = getAuth(secondaryApp);
 let userRole = null;
 let teacherSubject = null;
 
-// --- DYNAMIC AUTH & USER DISPLAY LISTENER ---
+// --- DYNAMIC AUTH & PERMISSION LISTENER ---
 onAuthStateChanged(auth, async (user) => {
     const loginScreen = document.getElementById('loginScreen');
     const adminDashboard = document.getElementById('adminDashboard');
@@ -33,7 +33,7 @@ onAuthStateChanged(auth, async (user) => {
 
     if (user) {
         try {
-            // 1. Fetch User Metadata
+            // 1. Fetch User Role & Subject
             const userDoc = await getDoc(doc(db, "users", user.uid));
             if (userDoc.exists()) {
                 const userData = userDoc.data();
@@ -44,13 +44,12 @@ onAuthStateChanged(auth, async (user) => {
                 teacherSubject = "Unassigned";
             }
 
-            // 2. Format Logged-In User Name from Email or Firestore
+            // 2. Format Display Name
             const rawEmail = user.email || "user@mks.sch.id";
             const formattedName = rawEmail.split('@')[0]
                 .replace(/[._]/g, ' ')
                 .replace(/\b\w/g, char => char.toUpperCase());
 
-            // 3. Update Sidebar Profile Info
             const sidebarNameEl = document.getElementById('sidebarUserName');
             const sidebarRoleEl = document.getElementById('sidebarUserRole');
             const avatarCircleEl = document.getElementById('userAvatarCircle');
@@ -63,17 +62,21 @@ onAuthStateChanged(auth, async (user) => {
                 avatarCircleEl.innerText = formattedName.charAt(0).toUpperCase();
             }
 
-            // 4. Update Topbar Greetings
             const welcomeSubEl = document.querySelector('.header-title p');
             if (welcomeSubEl) welcomeSubEl.innerText = `Welcome back, ${formattedName}`;
 
-            // Reveal Dashboard
             loginScreen.classList.add('hidden');
             adminDashboard.classList.remove('hidden');
 
+            // 3. Load System Databases & News for all authorized users
+            if (typeof window.loadSystemDatabases === "function") {
+                await window.loadSystemDatabases();
+            }
+            await loadNewsTable();
+
             if (userRole === "admin") {
+                // Admin Access: Reveal Dashboard & Manage Databases
                 document.querySelectorAll('.admin-only-view').forEach(el => el.classList.remove('hidden'));
-                document.getElementById('menuAdminOnly').style.display = "block";
                 
                 if (subjectInput) {
                     subjectInput.disabled = false;
@@ -86,19 +89,23 @@ onAuthStateChanged(auth, async (user) => {
                 if (welcomeTitle) {
                     welcomeTitle.innerText = "Administrator Master System Workspace";
                 }
+                
                 loadStudentsDirectory();
-                loadNewsTable();
                 updateDashboardStats();
 
-                if (typeof window.loadSystemDatabases === "function") {
-                    window.loadSystemDatabases();
-                }
-
             } else {
+                // Teacher Access: Hide Dashboard & Manage Databases
                 document.querySelectorAll('.admin-only-view').forEach(el => el.classList.add('hidden'));
-                document.getElementById('menuAdminOnly').style.display = "none";
-                document.querySelector('[data-tab="tab-manage-scores"]').click();
                 
+                // Redirect Teacher Landing Page to "Manage Scores"
+                document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+                
+                const scoresBtn = document.querySelector('[data-tab="tab-manage-scores"]');
+                const scoresTab = document.getElementById('tab-manage-scores');
+                if (scoresBtn) scoresBtn.classList.add('active');
+                if (scoresTab) scoresTab.classList.add('active');
+
                 if (subjectInput) {
                     subjectInput.value = teacherSubject;
                     subjectInput.disabled = true; 
@@ -108,6 +115,12 @@ onAuthStateChanged(auth, async (user) => {
                 }
                 if (welcomeTitle) {
                     welcomeTitle.innerText = `Teacher Portal Workspace (${teacherSubject})`;
+                }
+
+                // Pre-select teacher's specialty subject in score entry if available
+                const directSubSelect = document.getElementById('directSubjectSelect');
+                if (directSubSelect && teacherSubject) {
+                    directSubSelect.value = teacherSubject;
                 }
             }
 
@@ -1916,22 +1929,11 @@ function processBulkScoreUpload() {
     alert(`Processing file: ${fileInput.files[0].name}. Please wait...`);
 }
 
+// --- SAFE DATABASE LOAD FOR ADMINS & TEACHERS ---
 window.loadSystemDatabases = async function() {
     try {
         console.log("--- STARTING DATABASE LOAD ---");
         
-        // --- A. Extract Subjects from Teachers ---
-        const usersSnap = await getDocs(collection(db, "users"));
-        const uniqueSubjects = new Set();
-        
-        usersSnap.forEach(doc => {
-            const data = doc.data();
-            const teacherSubject = data.subject || data.Subject || data.course; 
-            if (data.role === 'teacher' && teacherSubject && teacherSubject !== "Unassigned") {
-                uniqueSubjects.add(teacherSubject);
-            }
-        });
-
         const subjTbody = document.querySelector("#subjectsTable tbody");
         const subjSelect = document.getElementById("directSubjectSelect");
         const quizSubjSelect = document.getElementById("quizSubject");
@@ -1942,6 +1944,26 @@ window.loadSystemDatabases = async function() {
         if(quizSubjSelect) quizSubjSelect.innerHTML = '<option value="">-- Select Subject --</option>';
         if(manualQuizSubjSelect) manualQuizSubjSelect.innerHTML = '<option value="">-- Select Subject --</option>';
 
+        // --- A. Extract Subjects (Admin queries 'users', Teachers use assigned subject) ---
+        const uniqueSubjects = new Set();
+
+        if (userRole === 'admin') {
+            try {
+                const usersSnap = await getDocs(collection(db, "users"));
+                usersSnap.forEach(doc => {
+                    const data = doc.data();
+                    const sub = data.subject || data.Subject || data.course; 
+                    if (data.role === 'teacher' && sub && sub !== "Unassigned") {
+                        uniqueSubjects.add(sub);
+                    }
+                });
+            } catch (err) {
+                console.warn("User collection read restricted:", err.message);
+            }
+        } else if (teacherSubject && teacherSubject !== "Unassigned") {
+            uniqueSubjects.add(teacherSubject);
+        }
+
         Array.from(uniqueSubjects).sort().forEach(name => {
             if(subjTbody) subjTbody.innerHTML += `<tr><td><strong>${name}</strong></td><td><span style="background: #eef2ff; color: var(--primary-blue); padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Teacher Linked</span></td></tr>`;
             if(subjSelect) subjSelect.innerHTML += `<option value="${name}">${name}</option>`;
@@ -1949,16 +1971,12 @@ window.loadSystemDatabases = async function() {
             if(manualQuizSubjSelect) manualQuizSubjSelect.innerHTML += `<option value="${name}">${name}</option>`;
         });
 
+        // Pre-select assigned subject for teachers
+        if (userRole !== 'admin' && teacherSubject && subjSelect) {
+            subjSelect.value = teacherSubject;
+        }
 
         // --- B. Extract Classes from Students ---
-        const studentsSnap = await getDocs(collection(db, "students"));
-        const uniqueClasses = new Set();
-        studentsSnap.forEach(doc => {
-            const data = doc.data();
-            const studentClass = data.studentClass || data.class || data.className || data.Class;
-            if (studentClass) uniqueClasses.add(studentClass);
-        });
-
         const classTbody = document.querySelector("#classesTable tbody");
         const classSelect = document.getElementById("directClassSelect");
         const ledgerClassSelect = document.getElementById("ledgerClassSelect");
@@ -1971,50 +1989,70 @@ window.loadSystemDatabases = async function() {
         if(quizClassSelect) quizClassSelect.innerHTML = '<option value="">-- Select Target Class --</option><option value="All Classes">All Classes</option>';
         if(manualQuizClassSelect) manualQuizClassSelect.innerHTML = '<option value="">-- Select Target Class --</option><option value="All Classes">All Classes</option>';
 
-        Array.from(uniqueClasses).sort().forEach(name => {
-            if(classTbody) classTbody.innerHTML += `<tr><td><strong>${name}</strong></td><td><span style="background: #ecfdf5; color: #10b981; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Student Linked</span></td></tr>`;
-            if(classSelect) classSelect.innerHTML += `<option value="${name}">${name}</option>`;
-            if(ledgerClassSelect) ledgerClassSelect.innerHTML += `<option value="${name}">${name}</option>`;
-            if(quizClassSelect) quizClassSelect.innerHTML += `<option value="${name}">${name}</option>`;
-            if(manualQuizClassSelect) manualQuizClassSelect.innerHTML += `<option value="${name}">${name}</option>`;
-        });
+        try {
+            const studentsSnap = await getDocs(collection(db, "students"));
+            const uniqueClasses = new Set();
+            studentsSnap.forEach(doc => {
+                const data = doc.data();
+                const studentClass = data.studentClass || data.class || data.className || data.Class;
+                if (studentClass) uniqueClasses.add(studentClass);
+            });
 
+            Array.from(uniqueClasses).sort().forEach(name => {
+                if(classTbody) classTbody.innerHTML += `<tr><td><strong>${name}</strong></td><td><span style="background: #ecfdf5; color: #10b981; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Student Linked</span></td></tr>`;
+                if(classSelect) classSelect.innerHTML += `<option value="${name}">${name}</option>`;
+                if(ledgerClassSelect) ledgerClassSelect.innerHTML += `<option value="${name}">${name}</option>`;
+                if(quizClassSelect) quizClassSelect.innerHTML += `<option value="${name}">${name}</option>`;
+                if(manualQuizClassSelect) manualQuizClassSelect.innerHTML += `<option value="${name}">${name}</option>`;
+            });
+        } catch (err) {
+            console.warn("Students collection read restricted:", err.message);
+        }
 
         // --- C. Extract Quizzes (Digital + Offline) ---
         const quizTbody = document.querySelector("#quizzesDatabaseTable tbody");
         if(quizTbody) quizTbody.innerHTML = "";
 
-        // 1. Get Digital Quizzes
-        const digitalSnap = await getDocs(collection(db, "quizzes"));
-        digitalSnap.forEach(docSnap => {
-            const data = docSnap.data();
-            const title = data.title || data.quizName;
-            const sub = data.subject || '-';
-            const cls = data.targetClass || '-';
-            if(quizTbody && title) {
-                quizTbody.innerHTML += `<tr><td><strong>${title}</strong></td><td>${sub}</td><td>${cls}</td><td><span style="background: #fffbeb; color: #f59e0b; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Quiz Builder</span></td><td>-</td></tr>`;
-            }
-        });
+        try {
+            const digitalSnap = await getDocs(collection(db, "quizzes"));
+            digitalSnap.forEach(docSnap => {
+                const data = docSnap.data();
+                const title = data.title || data.quizName;
+                const sub = data.subject || '-';
+                const cls = data.targetClass || '-';
+                if(quizTbody && title) {
+                    quizTbody.innerHTML += `<tr><td><strong>${title}</strong></td><td>${sub}</td><td>${cls}</td><td><span style="background: #fffbeb; color: #f59e0b; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Quiz Builder</span></td><td>-</td></tr>`;
+                }
+            });
+        } catch (err) {
+            console.warn("Digital quizzes read restricted:", err.message);
+        }
 
-        // 2. Get Manual/Offline Quizzes
-        const manualSnap = await getDocs(collection(db, "system_quizzes"));
-        manualSnap.forEach(docSnap => {
-            const data = docSnap.data();
-            const title = data.name;
-            const sub = data.subject || '-';
-            const cls = data.targetClass || '-';
-            if(quizTbody && title) {
-                quizTbody.innerHTML += `<tr><td><strong>${title}</strong></td><td>${sub}</td><td>${cls}</td><td><span style="background: #f1f5f9; color: #64748b; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Offline Exam</span></td><td><button class="delete-btn" onclick="deleteSystemRecord('system_quizzes', '${docSnap.id}')">Delete</button></td></tr>`;
-            }
-        });
+        try {
+            const manualSnap = await getDocs(collection(db, "system_quizzes"));
+            manualSnap.forEach(docSnap => {
+                const data = docSnap.data();
+                const title = data.name;
+                const sub = data.subject || '-';
+                const cls = data.targetClass || '-';
+                if(quizTbody && title) {
+                    quizTbody.innerHTML += `<tr><td><strong>${title}</strong></td><td>${sub}</td><td>${cls}</td><td><span style="background: #f1f5f9; color: #64748b; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Offline Exam</span></td><td><button class="delete-btn" onclick="deleteSystemRecord('system_quizzes', '${docSnap.id}')">Delete</button></td></tr>`;
+                }
+            });
+        } catch (err) {
+            console.warn("System quizzes read restricted:", err.message);
+        }
 
-        loadTeachersDirectory();
-        renderDbStudentsTable();
+        // Run Admin-only directories exclusively for Administrators
+        if (userRole === 'admin') {
+            loadTeachersDirectory();
+            renderDbStudentsTable();
+        }
 
         console.log("--- DATABASE LOAD COMPLETE ---");
 
     } catch(e) {
-        console.error("Error loading linked databases:", e);
+        console.error("Error loading linked databases:", e.message);
     }
 };
 
@@ -2126,12 +2164,22 @@ async function loadClassRoster() {
             existingScores[data.studentCode] = data.score;
         });
 
+        // 3. Convert snapshots to array and sort alphabetically by Student Name (A to Z)
+        let studentsList = [];
+        studentsSnap.forEach(docSnap => {
+            studentsList.push({
+                id: docSnap.id,
+                ...docSnap.data()
+            });
+        });
+
+        studentsList.sort((a, b) => (a.studentName || '').localeCompare(b.studentName || ''));
+
+        // 4. Render sorted table rows and pre-fill input values
         tbody.innerHTML = "";
 
-        // 3. Render table and pre-fill input values if a score exists
-        studentsSnap.forEach(docSnap => {
-            const data = docSnap.data();
-            const studentCode = docSnap.id;
+        studentsList.forEach(data => {
+            const studentCode = data.id;
             const currentScore = existingScores[studentCode] !== undefined ? existingScores[studentCode] : "";
 
             tbody.innerHTML += `
@@ -2819,7 +2867,7 @@ window.deleteTeacherAccount = async function(uid, teacherName) {
     }
 };
 
-// --- DYNAMIC QUIZ FILTERING FOR ADD SCORES DIRECTLY ---
+// --- SAFE QUIZ FILTERING ---
 async function filterDirectQuizzes() {
     const subjectSelect = document.getElementById('directSubjectSelect');
     const classSelect = document.getElementById('directClassSelect');
@@ -2830,49 +2878,53 @@ async function filterDirectQuizzes() {
     const selectedSubject = subjectSelect ? subjectSelect.value.trim().toLowerCase() : "";
     const selectedClass = classSelect ? classSelect.value.trim().toLowerCase() : "";
 
-    // Reset dropdown
     quizSelect.innerHTML = '<option value="">-- Select Quiz --</option>';
 
-    // Only populate if both Subject and Class are selected
-    if (!selectedSubject || !selectedClass) {
-        return;
-    }
+    if (!selectedSubject || !selectedClass) return;
 
     try {
-        // 1. Fetch Digital Quizzes from "quizzes" collection
-        const digitalSnap = await getDocs(collection(db, "quizzes"));
-        digitalSnap.forEach(docSnap => {
-            const data = docSnap.data();
-            const title = data.title || data.quizName || "";
-            const qSubject = (data.subject || "").trim().toLowerCase();
-            const qClass = (data.targetClass || "").trim().toLowerCase();
+        // 1. Digital Quizzes
+        try {
+            const digitalSnap = await getDocs(collection(db, "quizzes"));
+            digitalSnap.forEach(docSnap => {
+                const data = docSnap.data();
+                const title = data.title || data.quizName || "";
+                const qSubject = (data.subject || "").trim().toLowerCase();
+                const qClass = (data.targetClass || "").trim().toLowerCase();
 
-            const matchesSubject = qSubject === selectedSubject;
-            const matchesClass = qClass === selectedClass || qClass === "all classes" || qClass === "all";
+                const matchesSubject = !qSubject || qSubject === selectedSubject || selectedSubject.includes(qSubject) || qSubject.includes(selectedSubject);
+                const matchesClass = !qClass || qClass === selectedClass || qClass === "all classes" || qClass === "all";
 
-            if (title && matchesSubject && matchesClass) {
-                quizSelect.innerHTML += `<option value="${title}">${title} (Digital)</option>`;
-            }
-        });
+                if (title && matchesSubject && matchesClass) {
+                    quizSelect.innerHTML += `<option value="${title}">${title} (Digital)</option>`;
+                }
+            });
+        } catch (err) {
+            console.warn("Could not read digital quizzes:", err.message);
+        }
 
-        // 2. Fetch Manual/Offline Quizzes from "system_quizzes" collection
-        const manualSnap = await getDocs(collection(db, "system_quizzes"));
-        manualSnap.forEach(docSnap => {
-            const data = docSnap.data();
-            const title = data.name || "";
-            const qSubject = (data.subject || "").trim().toLowerCase();
-            const qClass = (data.targetClass || "").trim().toLowerCase();
+        // 2. Offline Quizzes
+        try {
+            const manualSnap = await getDocs(collection(db, "system_quizzes"));
+            manualSnap.forEach(docSnap => {
+                const data = docSnap.data();
+                const title = data.name || "";
+                const qSubject = (data.subject || "").trim().toLowerCase();
+                const qClass = (data.targetClass || "").trim().toLowerCase();
 
-            const matchesSubject = qSubject === selectedSubject;
-            const matchesClass = qClass === selectedClass || qClass === "all classes" || qClass === "all";
+                const matchesSubject = !qSubject || qSubject === selectedSubject || selectedSubject.includes(qSubject) || qSubject.includes(selectedSubject);
+                const matchesClass = !qClass || qClass === selectedClass || qClass === "all classes" || qClass === "all";
 
-            if (title && matchesSubject && matchesClass) {
-                quizSelect.innerHTML += `<option value="${title}">${title} (Offline)</option>`;
-            }
-        });
+                if (title && matchesSubject && matchesClass) {
+                    quizSelect.innerHTML += `<option value="${title}">${title} (Offline)</option>`;
+                }
+            });
+        } catch (err) {
+            console.warn("Could not read offline quizzes:", err.message);
+        }
 
     } catch (e) {
-        console.error("Error filtering direct quizzes:", e);
+        console.error("Error filtering direct quizzes:", e.message);
     }
 }
 
