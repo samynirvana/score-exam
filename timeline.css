@@ -202,13 +202,15 @@ input, textarea, button {
 }
 
 .post-body { 
-    font-size: 18px; /* Increased from 16px to make post content larger */
+    font-size: 18px;
     font-weight: 400;
     color: var(--text-main); 
-    margin-bottom: 8px; /* Reduced bottom margin for tighter alignment */
+    margin-bottom: 8px;
     white-space: pre-wrap; 
     line-height: 1.6;
     padding-left: 56px;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 /* ==========================================================================
@@ -339,6 +341,10 @@ input, textarea, button {
 .comment-content {
     color: var(--text-main);
     line-height: 1.5;
+
+    /* Prevent overflow in replies as well */
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 .comment-content strong { 
