@@ -2078,17 +2078,40 @@ async function addManualQuiz() {
     const input = document.getElementById('newManualQuiz');
     const subjectSelect = document.getElementById('newManualQuizSubject');
     const classSelect = document.getElementById('newManualQuizClass');
+    const submitBtn = document.querySelector("button[onclick='addManualQuiz()']");
 
     const examName = input ? input.value.trim() : "";
     const subject = subjectSelect ? subjectSelect.value : "";
     const targetClass = classSelect ? classSelect.value : "";
 
+    // 1. Validate Form Inputs
     if (!examName || !subject || !targetClass) {
         alert("Please enter an Exam Name and select both a Subject and Target Class.");
         return;
     }
 
     try {
+        // 2. Lock UI Button to prevent rapid double-clicks
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerText = "Checking & Adding...";
+        }
+
+        // 3. Query Firestore for Existing Duplicates
+        const dupQuery = query(
+            collection(db, "system_quizzes"),
+            where("name", "==", examName),
+            where("subject", "==", subject),
+            where("targetClass", "==", targetClass)
+        );
+        const dupSnap = await getDocs(dupQuery);
+
+        if (!dupSnap.empty) {
+            alert(`Duplicate Exam Blocked!\nAn offline exam named "${examName}" already exists for ${subject} (${targetClass}).`);
+            return;
+        }
+
+        // 4. Create New Offline Exam Document
         await addDoc(collection(db, "system_quizzes"), {
             name: examName,
             subject: subject,
@@ -2097,15 +2120,24 @@ async function addManualQuiz() {
         });
         
         alert(`Offline exam "${examName}" added successfully!`);
+        
+        // Reset Inputs
         input.value = "";
         subjectSelect.value = "";
         classSelect.value = "";
         
+        // Refresh Table Data
         if (typeof window.loadSystemDatabases === "function") {
-            window.loadSystemDatabases();
+            await window.loadSystemDatabases();
         }
     } catch (e) {
         alert("Error adding offline exam: " + e.message);
+    } finally {
+        // 5. Restore UI Button State
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerText = "Add Offline Exam";
+        }
     }
 }
 
