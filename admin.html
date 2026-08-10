@@ -26,12 +26,14 @@
         <!-- SIDEBAR -->
         <nav class="sidebar">
             <div class="brand">
-                <div style="background: #fbbf24; padding: 8px; border-radius: 8px; font-weight: bold; color: #0b1437;">MKS</div>
-                <div>
-                    <h2>MKS SCHOOL</h2>
-                    <p>Administrator</p>
-                </div>
-            </div>
+    <div style="background: #f0efec; padding: 6px; border-radius: 8px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; box-sizing: border-box; flex-shrink: 0;">
+        <img id="brandLogoImg" src="https://lh3.googleusercontent.com/d/1NLOGftk-CtNp9nxv4MUTqxNQTHdUxce7" alt="Logo" style="width: 100%; height: 100%; object-fit: contain;">
+    </div>
+    <div>
+        <h2>MITRA KASIH</h2>
+        <p>SCHOOL</p>
+    </div>
+</div>
             
            <div class="menu-bar">
                 <!-- Using the same data-tabs as your JS logic -->
@@ -43,13 +45,16 @@
                 <button class="menu-btn" data-tab="tab-manage-quizzes">Manage Quizzes</button>
             </div>
 
-            <div class="user-profile-bottom">
-                <div style="width: 32px; height: 32px; background: #cbd5e1; border-radius: 50%;"></div>
-                <div>
-                    <h4 style="margin: 0; font-size: 14px;">Administrator</h4>
-                    <p style="margin: 0; font-size: 12px; color: var(--text-gray);">Super Admin</p>
+            <!-- USER PROFILE BOTTOM -->
+                <div class="user-profile-bottom">
+                    <div id="userAvatarCircle" style="width: 36px; height: 36px; background: #1e5eff; color: #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; flex-shrink: 0;">
+                        A
+                    </div>
+                    <div style="overflow: hidden;">
+                        <h4 id="sidebarUserName" style="margin: 0; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Administrator</h4>
+                        <p id="sidebarUserRole" style="margin: 0; font-size: 12px; color: var(--text-gray);">Super Admin</p>
+                    </div>
                 </div>
-            </div>
         </nav>
 
         <!-- MAIN CONTENT AREA -->
@@ -68,7 +73,7 @@
             </header>
 
             <!-- TAB 0: NEW DASHBOARD OVERVIEW -->
-            <div id="tab-dashboard" class="tab-content active admin-only-view">
+            <div id="tab-dashboard" class="tab-content active">
                 
                <!-- Stat Cards -->
                     <div class="stats-grid">
@@ -209,7 +214,7 @@
             
 
         <!-- TAB: Manage Score -->
-        <div id="tab-manage-scores" class="tab-content admin-only-view">
+        <div id="tab-manage-scores" class="tab-content">
             
             <!-- 1. Add Scores Directly Panel -->
             <div class="box" style="margin-bottom: 24px;">
@@ -379,7 +384,41 @@
 
                         </div>
                     </div>
-
+            <!-- RESTORED: Top 10 Positive & Negative Reasons Box -->
+                    <div class="box" style="grid-column: 1 / -1;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                            <div>
+                                <h3 style="margin-top: 0; color: #10b981;">Top 10 Positive Reasons</h3>
+                                <div class="table-responsive" style="max-height: 300px;">
+                                    <table id="topPositiveTable">
+                                        <thead>
+                                            <tr>
+                                                <th>Reason / Event</th>
+                                                <th>Frequency</th>
+                                                <th>Points</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 style="margin-top: 0; color: #e02d2d;">Top 10 Negative Reasons</h3>
+                                <div class="table-responsive" style="max-height: 300px;">
+                                    <table id="topNegativeTable">
+                                        <thead>
+                                            <tr>
+                                                <th>Reason / Event</th>
+                                                <th>Frequency</th>
+                                                <th>Points</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <!-- Full Behavior Ledger Table -->
                     <div class="box" style="grid-column: 1 / -1;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
@@ -396,11 +435,11 @@
                 </div>
             </div>
 
-            <!-- TAB 4: Manage Databases (Unified User & Database Management) -->
+          <!-- TAB 4: Manage Databases (Unified User & Database Management) -->
             <div id="tab-view-ledgers" class="tab-content admin-only-view">
                 <div class="dashboard-grid">
                     
-                    <!-- 1. Register Student -->
+                    <!-- 1. Register Single Student -->
                     <div class="box">
                         <h3>1. Register Single Student</h3>
                         <input type="text" id="newStudentName" placeholder="Full Student Name">
@@ -418,27 +457,97 @@
                     <!-- 3. Provision Teacher -->
                     <div class="box">
                         <h3>2. Provision Teacher Account</h3>
+                        <input type="text" id="newTeacherName" placeholder="Teacher Full Name">
                         <input type="email" id="newTeacherEmail" placeholder="Teacher Email Address">
                         <input type="password" id="newTeacherPassword" placeholder="Login Password">
                         <input type="text" id="newTeacherSubject" placeholder="Subject Specialty">
                         <button id="createTeacherBtn" style="background: #f59e0b;">Register Teacher</button>
                     </div>
 
-                    <!-- 4. Manual Offline Quizzes / Exams -->
-                    <div class="box">
-                        <h3>Manage Offline Exams / Quizzes</h3>
-                        <p style="font-size: 13px; color: var(--text-gray);">Add offline exams here. Digital quizzes from the Quiz Builder are automatically linked.</p>
-                        <input type="text" id="newManualQuiz" placeholder="Enter Offline Exam Name (e.g., Midterm Paper)">
-                        <button onclick="addManualQuiz()" style="background: var(--primary-blue);">Add Offline Exam</button>
-                        <div class="table-responsive" style="margin-top: 15px; max-height: 200px;">
-                            <table id="quizzesDatabaseTable">
-                                <thead><tr><th>Quiz / Exam Name</th><th>Source</th><th>Action</th></tr></thead>
-                                <tbody></tbody>
+                   <!-- 4. Manual Offline Quizzes / Exams -->
+                        <div class="box">
+                            <h3>Manage Offline Exams / Quizzes</h3>
+                            <p style="font-size: 13px; color: var(--text-gray);">Add offline exams here. Digital quizzes from the Quiz Builder are automatically linked.</p>
+                            
+                            <input type="text" id="newManualQuiz" placeholder="Enter Offline Exam Name (e.g., Midterm Paper)">
+                            
+                            <div class="form-row" style="margin-top: 8px; margin-bottom: 12px;">
+                                <div class="form-group">
+                                    <label for="newManualQuizSubject">Subject:</label>
+                                    <select id="newManualQuizSubject">
+                                        <option value="">-- Select Subject --</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="newManualQuizClass">Target Class:</label>
+                                    <select id="newManualQuizClass">
+                                        <option value="">-- Select Target Class --</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <button onclick="addManualQuiz()" style="background: var(--primary-blue);">Add Offline Exam</button>
+                            
+                            <div class="table-responsive" style="margin-top: 15px; max-height: 250px;">
+                                <table id="quizzesDatabaseTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Quiz / Exam Name</th>
+                                            <th>Subject</th>
+                                            <th>Class</th>
+                                            <th>Source</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    <!-- 5. TEACHERS MASTER DIRECTORY -->
+                    <div class="box" style="grid-column: 1 / -1;">
+                        <h3 style="margin-top: 0; margin-bottom: 16px;">Teachers Master Directory</h3>
+                        <div class="table-responsive" style="max-height: 350px;">
+                            <table id="teachersDirectoryTable">
+                                <thead>
+                                    <tr>
+                                        <th>Teacher Name</th>
+                                        <th>Email Address</th>
+                                        <th>Subject Specialty</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Populated via JavaScript -->
+                                </tbody>
                             </table>
                         </div>
                     </div>
 
-                    <!-- 5. Auto-Linked Subjects & Classes (Spans full width at the bottom) -->
+                    <!-- 6. STUDENTS MASTER DIRECTORY -->
+                    <div class="box" style="grid-column: 1 / -1;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                            <h3 style="margin: 0;">Students Master Directory</h3>
+                            <input type="text" id="searchDbStudents" placeholder="Search students..." oninput="renderDbStudentsTable()" style="width: 200px; margin: 0; padding: 6px 12px; font-size: 13px;">
+                        </div>
+                        <div class="table-responsive" style="max-height: 350px;">
+                            <table id="dbStudentsDirectoryTable">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Student Name</th>
+                                        <th>Class</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Populated via JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 7. Auto-Linked Subjects & Classes -->
                     <div class="box" style="grid-column: 1 / -1;">
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
                             <div>
@@ -468,7 +577,7 @@
             </div>
 
           <!-- TAB 5: Manage News -->
-                <div id="tab-manage-news" class="tab-content admin-only-view">
+                <div id="tab-manage-news" class="tab-content">
                     <div class="dashboard-grid">
                         <!-- Post / Edit Form -->
                         <div class="box">
@@ -501,7 +610,7 @@
                 </div>
 
  <!-- TAB 6: Manage Quizzes (Redesigned with Landing Page) -->
-<div id="tab-manage-quizzes" class="tab-content admin-only-view">
+<div id="tab-manage-quizzes" class="tab-content">
     
     <!-- STEP 1: LANDING VIEW -->
     <div id="quiz-landing-view">

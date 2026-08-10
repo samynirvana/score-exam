@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, where, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -23,16 +23,17 @@ const secondaryAuth = getAuth(secondaryApp);
 let userRole = null;
 let teacherSubject = null;
 
+// --- DYNAMIC AUTH & USER DISPLAY LISTENER ---
 onAuthStateChanged(auth, async (user) => {
     const loginScreen = document.getElementById('loginScreen');
     const adminDashboard = document.getElementById('adminDashboard');
-    // REMOVED: const adminOnlySection = document.getElementById('adminOnlySection');
     const subjectInput = document.getElementById('subject');
     const tableTitle = document.getElementById('tableTitle');
     const welcomeTitle = document.getElementById('welcomeTitle');
 
     if (user) {
         try {
+            // 1. Fetch User Metadata
             const userDoc = await getDoc(doc(db, "users", user.uid));
             if (userDoc.exists()) {
                 const userData = userDoc.data();
@@ -43,11 +44,34 @@ onAuthStateChanged(auth, async (user) => {
                 teacherSubject = "Unassigned";
             }
 
+            // 2. Format Logged-In User Name from Email or Firestore
+            const rawEmail = user.email || "user@mks.sch.id";
+            const formattedName = rawEmail.split('@')[0]
+                .replace(/[._]/g, ' ')
+                .replace(/\b\w/g, char => char.toUpperCase());
+
+            // 3. Update Sidebar Profile Info
+            const sidebarNameEl = document.getElementById('sidebarUserName');
+            const sidebarRoleEl = document.getElementById('sidebarUserRole');
+            const avatarCircleEl = document.getElementById('userAvatarCircle');
+
+            if (sidebarNameEl) sidebarNameEl.innerText = formattedName;
+            if (sidebarRoleEl) {
+                sidebarRoleEl.innerText = userRole === "admin" ? "Super Admin" : `Teacher (${teacherSubject})`;
+            }
+            if (avatarCircleEl) {
+                avatarCircleEl.innerText = formattedName.charAt(0).toUpperCase();
+            }
+
+            // 4. Update Topbar Greetings
+            const welcomeSubEl = document.querySelector('.header-title p');
+            if (welcomeSubEl) welcomeSubEl.innerText = `Welcome back, ${formattedName}`;
+
+            // Reveal Dashboard
             loginScreen.classList.add('hidden');
             adminDashboard.classList.remove('hidden');
 
             if (userRole === "admin") {
-                // NEW: Use the class-based toggle for admin views
                 document.querySelectorAll('.admin-only-view').forEach(el => el.classList.remove('hidden'));
                 document.getElementById('menuAdminOnly').style.display = "block";
                 
@@ -71,15 +95,14 @@ onAuthStateChanged(auth, async (user) => {
                 }
 
             } else {
-                // NEW: Hide admin views for teachers
                 document.querySelectorAll('.admin-only-view').forEach(el => el.classList.add('hidden'));
                 document.getElementById('menuAdminOnly').style.display = "none";
-                document.querySelector('[data-tab="tab-manage-scores"]').click(); // Force teacher to scores tab
+                document.querySelector('[data-tab="tab-manage-scores"]').click();
                 
                 if (subjectInput) {
-                        subjectInput.value = teacherSubject;
-                        subjectInput.disabled = true; 
-                    }
+                    subjectInput.value = teacherSubject;
+                    subjectInput.disabled = true; 
+                }
                 if (tableTitle) {
                     tableTitle.innerText = `Departmental Performance Ledger: ${teacherSubject}`;
                 }
@@ -114,47 +137,113 @@ async function logoutAdmin() {
 }
 
 async function createTeacherAccount() {
+    const name = document.getElementById('newTeacherName').value.trim();
     const email = document.getElementById('newTeacherEmail').value.trim();
     const password = document.getElementById('newTeacherPassword').value.trim();
     const subject = document.getElementById('newTeacherSubject').value.trim();
 
-    if (!email || !password || !subject) {
-        alert("All fields are required to register a teacher.");
+    if (!name || !email || !password || !subject) {
+        alert("All fields (Name, Email, Password, Subject) are required to register a teacher.");
         return;
     }
 
     try {
         const credential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
         await setDoc(doc(db, "users", credential.user.uid), {
+            name: name,
             email: email,
             role: "teacher",
             subject: subject
         });
-        alert(`Teacher Registered Successfully!\nEmail: ${email}\nSubject: ${subject}`);
+        alert(`Teacher Registered Successfully!\nName: ${name}\nEmail: ${email}\nSubject: ${subject}`);
+        
+        document.getElementById('newTeacherName').value = "";
         document.getElementById('newTeacherEmail').value = "";
         document.getElementById('newTeacherPassword').value = "";
         document.getElementById('newTeacherSubject').value = "";
+        
         await secondaryAuth.signOut();
+        loadTeachersDirectory();
+        if (typeof window.loadSystemDatabases === "function") {
+            window.loadSystemDatabases();
+        }
     } catch (e) {
         alert("Registration operation rejected: " + e.message);
     }
 }
 
-async function generateUniqueStudentCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let code;
-    let isUnique = false;
-    while (!isUnique) {
-        code = '';
-        for (let i = 0; i < 5; i++) {
-            code += chars.charAt(Math.floor(Math.random() * chars.length));
+window.generateNewUniqueCode = async function(oldCode) {
+    if (confirm(`Are you sure you want to generate a new unique code for student ${oldCode}? The old code will be retired.`)) {
+        try {
+            const studentRef = doc(db, "students", oldCode);
+            const studentSnap = await getDoc(studentRef);
+
+            if (!studentSnap.exists()) {
+                alert("Student record missing.");
+                return;
+            }
+
+            const studentData = studentSnap.data();
+            const newCode = await generateUniqueStudentCode();
+
+            // Create new record with new code ID
+            await setDoc(doc(db, "students", newCode), studentData);
+
+            // Delete old record
+            await deleteDoc(studentRef);
+
+            alert(`Code updated successfully!\nOld Code: ${oldCode}\nNew Code: ${newCode}`);
+
+            loadStudentsDirectory();
+            renderDbStudentsTable();
+            loadPointsTable();
+        } catch (e) {
+            alert("Error regenerating student code: " + e.message);
         }
-        const docRef = doc(db, "students", code);
-        const docSnap = await getDoc(docRef);
-        if (!docSnap.exists()) isUnique = true; 
     }
-    return code;
-}
+};
+
+window.renderDbStudentsTable = function() {
+    const searchInput = document.getElementById('searchDbStudents');
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+    const tbody = document.querySelector("#dbStudentsDirectoryTable tbody");
+    
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    const filtered = allStudentsData.filter(s => {
+        return (s.studentName && s.studentName.toLowerCase().includes(searchTerm)) ||
+               (s.studentClass && s.studentClass.toLowerCase().includes(searchTerm)) ||
+               (s.id && s.id.toLowerCase().includes(searchTerm));
+    });
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: var(--text-gray);">No matching students found.</td></tr>`;
+        return;
+    }
+
+    filtered.forEach(student => {
+        const safeName = (student.studentName || '').replace(/'/g, "\\'");
+        
+        tbody.innerHTML += `
+            <tr>
+                <td><strong style="letter-spacing: 1px;">${student.id}</strong></td>
+                <td>${student.studentName}</td>
+                <td><span style="color: var(--primary-blue); font-weight: 600;">${student.studentClass || 'N/A'}</span></td>
+                <td>
+                    <div class="kebab-menu">
+                        <button class="kebab-btn" onclick="toggleMenu(event, 'dbstudent-${student.id}')">⋮</button>
+                        <div id="menu-dbstudent-${student.id}" class="dropdown-menu">
+                            <button class="dropdown-item" onclick="editStudentProfile('${student.id}')">Edit Student Profile</button>
+                            <button class="dropdown-item" onclick="generateNewUniqueCode('${student.id}')">Generate New Code</button>
+                            <button class="dropdown-item danger" onclick="deleteStudentProfile('${student.id}')">Delete Student</button>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+};
 
 async function registerStudent() {
     const name = document.getElementById('newStudentName').value.trim();
@@ -1840,84 +1929,88 @@ window.loadSystemDatabases = async function() {
             const teacherSubject = data.subject || data.Subject || data.course; 
             if (data.role === 'teacher' && teacherSubject && teacherSubject !== "Unassigned") {
                 uniqueSubjects.add(teacherSubject);
-            
             }
-        
-
-            
         });
 
         const subjTbody = document.querySelector("#subjectsTable tbody");
         const subjSelect = document.getElementById("directSubjectSelect");
-        const quizSubjSelect = document.getElementById("quizSubject"); // ADD THIS
+        const quizSubjSelect = document.getElementById("quizSubject");
+        const manualQuizSubjSelect = document.getElementById("newManualQuizSubject");
 
         if(subjTbody) subjTbody.innerHTML = "";
         if(subjSelect) subjSelect.innerHTML = '<option value="">-- Select Subject --</option>';
-        if(subjSelect) subjSelect.innerHTML = '<option value="">-- Select Subject --</option>';
-        if(quizSubjSelect) quizSubjSelect.innerHTML = '<option value="">-- Select Subject --</option>'; // ADD THIS
+        if(quizSubjSelect) quizSubjSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+        if(manualQuizSubjSelect) manualQuizSubjSelect.innerHTML = '<option value="">-- Select Subject --</option>';
 
         Array.from(uniqueSubjects).sort().forEach(name => {
             if(subjTbody) subjTbody.innerHTML += `<tr><td><strong>${name}</strong></td><td><span style="background: #eef2ff; color: var(--primary-blue); padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Teacher Linked</span></td></tr>`;
             if(subjSelect) subjSelect.innerHTML += `<option value="${name}">${name}</option>`;
-            if(quizSubjSelect) quizSubjSelect.innerHTML += `<option value="${name}">${name}</option>`; // ADD THIS
+            if(quizSubjSelect) quizSubjSelect.innerHTML += `<option value="${name}">${name}</option>`;
+            if(manualQuizSubjSelect) manualQuizSubjSelect.innerHTML += `<option value="${name}">${name}</option>`;
         });
 
 
-            // --- B. Extract Classes from Students ---
-            const studentsSnap = await getDocs(collection(db, "students"));
-            const uniqueClasses = new Set();
-            studentsSnap.forEach(doc => {
-                const data = doc.data();
-                const studentClass = data.studentClass || data.class || data.className || data.Class;
-                if (studentClass) uniqueClasses.add(studentClass);
-                
-            });
+        // --- B. Extract Classes from Students ---
+        const studentsSnap = await getDocs(collection(db, "students"));
+        const uniqueClasses = new Set();
+        studentsSnap.forEach(doc => {
+            const data = doc.data();
+            const studentClass = data.studentClass || data.class || data.className || data.Class;
+            if (studentClass) uniqueClasses.add(studentClass);
+        });
 
-            const classTbody = document.querySelector("#classesTable tbody");
-            const classSelect = document.getElementById("directClassSelect");
-            const ledgerClassSelect = document.getElementById("ledgerClassSelect"); // NEW
-            const quizClassSelect = document.getElementById("quizTargetClass"); // ADD THIS
+        const classTbody = document.querySelector("#classesTable tbody");
+        const classSelect = document.getElementById("directClassSelect");
+        const ledgerClassSelect = document.getElementById("ledgerClassSelect");
+        const quizClassSelect = document.getElementById("quizTargetClass");
+        const manualQuizClassSelect = document.getElementById("newManualQuizClass");
 
-            if(classTbody) classTbody.innerHTML = "";
-            if(classSelect) classSelect.innerHTML = '<option value="">-- Select Class --</option>';
-            if(ledgerClassSelect) ledgerClassSelect.innerHTML = '<option value="">-- Choose a Class --</option>'; // NEW
-            if(quizClassSelect) quizClassSelect.innerHTML = '<option value="">-- Select Target Class --</option><option value="All Classes">All Classes</option>';
+        if(classTbody) classTbody.innerHTML = "";
+        if(classSelect) classSelect.innerHTML = '<option value="">-- Select Class --</option>';
+        if(ledgerClassSelect) ledgerClassSelect.innerHTML = '<option value="">-- Choose a Class --</option>';
+        if(quizClassSelect) quizClassSelect.innerHTML = '<option value="">-- Select Target Class --</option><option value="All Classes">All Classes</option>';
+        if(manualQuizClassSelect) manualQuizClassSelect.innerHTML = '<option value="">-- Select Target Class --</option><option value="All Classes">All Classes</option>';
 
-            Array.from(uniqueClasses).sort().forEach(name => {
-                if(classTbody) classTbody.innerHTML += `<tr><td><strong>${name}</strong></td><td><span style="background: #ecfdf5; color: #10b981; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Student Linked</span></td></tr>`;
-                if(classSelect) classSelect.innerHTML += `<option value="${name}">${name}</option>`;
-                if(ledgerClassSelect) ledgerClassSelect.innerHTML += `<option value="${name}">${name}</option>`; // NEW
-                if(quizClassSelect) quizClassSelect.innerHTML = '<option value="">-- Select Target Class --</option><option value="All Classes">All Classes</option>';
-            });
+        Array.from(uniqueClasses).sort().forEach(name => {
+            if(classTbody) classTbody.innerHTML += `<tr><td><strong>${name}</strong></td><td><span style="background: #ecfdf5; color: #10b981; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Student Linked</span></td></tr>`;
+            if(classSelect) classSelect.innerHTML += `<option value="${name}">${name}</option>`;
+            if(ledgerClassSelect) ledgerClassSelect.innerHTML += `<option value="${name}">${name}</option>`;
+            if(quizClassSelect) quizClassSelect.innerHTML += `<option value="${name}">${name}</option>`;
+            if(manualQuizClassSelect) manualQuizClassSelect.innerHTML += `<option value="${name}">${name}</option>`;
+        });
 
 
-            // --- C. Extract Quizzes (Digital + Offline) ---
-            const quizSelect = document.getElementById("directQuizSelect");
-            const ledgerQuizSelect = document.getElementById("ledgerQuizSelect"); // NEW
-            const quizTbody = document.querySelector("#quizzesDatabaseTable tbody");
+        // --- C. Extract Quizzes (Digital + Offline) ---
+        const quizTbody = document.querySelector("#quizzesDatabaseTable tbody");
+        if(quizTbody) quizTbody.innerHTML = "";
 
-            if(quizSelect) quizSelect.innerHTML = '<option value="">-- Select Quiz --</option>';
-            if(ledgerQuizSelect) ledgerQuizSelect.innerHTML = '<option value="">-- Choose a Quiz / Review --</option>'; // NEW
-            if(quizTbody) quizTbody.innerHTML = "";
+        // 1. Get Digital Quizzes
+        const digitalSnap = await getDocs(collection(db, "quizzes"));
+        digitalSnap.forEach(docSnap => {
+            const data = docSnap.data();
+            const title = data.title || data.quizName;
+            const sub = data.subject || '-';
+            const cls = data.targetClass || '-';
+            if(quizTbody && title) {
+                quizTbody.innerHTML += `<tr><td><strong>${title}</strong></td><td>${sub}</td><td>${cls}</td><td><span style="background: #fffbeb; color: #f59e0b; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Quiz Builder</span></td><td>-</td></tr>`;
+            }
+        });
 
-            // 1. Get Digital Quizzes
-            const digitalSnap = await getDocs(collection(db, "quizzes"));
-            digitalSnap.forEach(docSnap => {
-                const title = docSnap.data().title || docSnap.data().quizName;
-                if(quizTbody && title) quizTbody.innerHTML += `<tr><td><strong>${title}</strong></td><td><span style="background: #fffbeb; color: #f59e0b; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Quiz Builder</span></td><td>-</td></tr>`;
-                if(quizSelect && title) quizSelect.innerHTML += `<option value="${title}">${title} (Digital)</option>`;
-                if(ledgerQuizSelect && title) ledgerQuizSelect.innerHTML += `<option value="${title}">${title} (Digital)</option>`; // NEW
-            });
+        // 2. Get Manual/Offline Quizzes
+        const manualSnap = await getDocs(collection(db, "system_quizzes"));
+        manualSnap.forEach(docSnap => {
+            const data = docSnap.data();
+            const title = data.name;
+            const sub = data.subject || '-';
+            const cls = data.targetClass || '-';
+            if(quizTbody && title) {
+                quizTbody.innerHTML += `<tr><td><strong>${title}</strong></td><td>${sub}</td><td>${cls}</td><td><span style="background: #f1f5f9; color: #64748b; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Offline Exam</span></td><td><button class="delete-btn" onclick="deleteSystemRecord('system_quizzes', '${docSnap.id}')">Delete</button></td></tr>`;
+            }
+        });
 
-            // 2. Get Manual/Offline Quizzes
-            const manualSnap = await getDocs(collection(db, "system_quizzes"));
-            manualSnap.forEach(docSnap => {
-                const title = docSnap.data().name;
-                if(quizTbody && title) quizTbody.innerHTML += `<tr><td><strong>${title}</strong></td><td><span style="background: #f1f5f9; color: #64748b; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Offline Exam</span></td><td><button class="delete-btn" onclick="deleteSystemRecord('system_quizzes', '${docSnap.id}')">Delete</button></td></tr>`;
-                if(quizSelect && title) quizSelect.innerHTML += `<option value="${title}">${title} (Offline)</option>`;
-                if(ledgerQuizSelect && title) ledgerQuizSelect.innerHTML += `<option value="${title}">${title} (Offline)</option>`; // NEW
-            });
-        
+        loadTeachersDirectory();
+        renderDbStudentsTable();
+
         console.log("--- DATABASE LOAD COMPLETE ---");
 
     } catch(e) {
@@ -1925,14 +2018,17 @@ window.loadSystemDatabases = async function() {
     }
 };
 
-// 2. Safely call the function when the page loads
+// --- DATABASE INITIALIZATION EVENT LISTENERS ---
 document.addEventListener("DOMContentLoaded", () => {
+    // Initial system load on page boot
     if (typeof window.loadSystemDatabases === "function") {
         window.loadSystemDatabases();
     }
-    const manageDatabasesTab = document.getElementById('tab-view-ledgers'); 
-    if (manageDatabasesTab) {
-        manageDatabasesTab.addEventListener('click', () => {
+
+    // FIX: Attach event listener to the sidebar MENU BUTTON instead of the tab content container
+    const manageDatabasesBtn = document.querySelector('[data-tab="tab-view-ledgers"]'); 
+    if (manageDatabasesBtn) {
+        manageDatabasesBtn.addEventListener('click', () => {
             if (typeof window.loadSystemDatabases === "function") {
                 window.loadSystemDatabases();
             }
@@ -1942,22 +2038,31 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function addManualQuiz() {
     const input = document.getElementById('newManualQuiz');
-    const examName = input.value.trim();
+    const subjectSelect = document.getElementById('newManualQuizSubject');
+    const classSelect = document.getElementById('newManualQuizClass');
 
-    if (!examName) {
-        alert("Please enter an exam or quiz name.");
+    const examName = input ? input.value.trim() : "";
+    const subject = subjectSelect ? subjectSelect.value : "";
+    const targetClass = classSelect ? classSelect.value : "";
+
+    if (!examName || !subject || !targetClass) {
+        alert("Please enter an Exam Name and select both a Subject and Target Class.");
         return;
     }
 
     try {
         await addDoc(collection(db, "system_quizzes"), {
             name: examName,
+            subject: subject,
+            targetClass: targetClass,
             createdAt: new Date().toISOString()
         });
+        
         alert(`Offline exam "${examName}" added successfully!`);
         input.value = "";
+        subjectSelect.value = "";
+        classSelect.value = "";
         
-        // Refresh active databases list
         if (typeof window.loadSystemDatabases === "function") {
             window.loadSystemDatabases();
         }
@@ -2603,6 +2708,177 @@ function createQuizResultsModal() {
 }
 window.toggleQuizStatus = toggleQuizStatus;
 
+// --- TEACHER MASTER DIRECTORY LOGIC ---
+
+async function loadTeachersDirectory() {
+    try {
+        const usersSnap = await getDocs(collection(db, "users"));
+        const tbody = document.querySelector("#teachersDirectoryTable tbody");
+        if (!tbody) return;
+
+        tbody.innerHTML = "";
+
+        let teacherCount = 0;
+        usersSnap.forEach((docSnap) => {
+            const data = docSnap.data();
+            if (data.role === 'teacher') {
+                teacherCount++;
+                const teacherId = docSnap.id;
+                const teacherEmail = data.email || "N/A";
+                
+                // Safe check: Only run .split() if data.email is defined
+                const fallbackName = data.email ? data.email.split('@')[0] : "Teacher";
+                const teacherName = data.name || fallbackName;
+                const teacherSubject = data.subject || "Unassigned";
+
+                const safeName = teacherName.replace(/'/g, "\\'");
+                const safeSubject = teacherSubject.replace(/'/g, "\\'");
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${teacherName}</strong></td>
+                        <td>${teacherEmail}</td>
+                        <td><span style="background: #eef2ff; color: var(--primary-blue); padding: 4px 8px; border-radius: 4px; font-weight: 600; font-size: 13px;">${teacherSubject}</span></td>
+                        <td>
+                            <div class="kebab-menu">
+                                <button class="kebab-btn" onclick="toggleMenu(event, 'teacher-${teacherId}')">⋮</button>
+                                <div id="menu-teacher-${teacherId}" class="dropdown-menu">
+                                    <button class="dropdown-item" onclick="editTeacherProfile('${teacherId}', '${safeName}', '${safeSubject}')">Edit Details</button>
+                                    <button class="dropdown-item" onclick="sendTeacherPasswordReset('${teacherEmail}')">Send Password Reset Email</button>
+                                    <button class="dropdown-item danger" onclick="deleteTeacherAccount('${teacherId}', '${safeName}')">Delete Account</button>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+        });
+
+        if (teacherCount === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: var(--text-gray);">No teacher accounts found in database.</td></tr>`;
+        }
+
+    } catch (error) {
+        console.error("Error loading teachers directory:", error);
+    }
+}
+
+window.editTeacherProfile = async function(uid, currentName, currentSubject) {
+    const newName = prompt("Modify Teacher Full Name:", currentName);
+    if (newName === null) return;
+
+    const newSubject = prompt("Modify Subject Specialty:", currentSubject);
+    if (newSubject === null) return;
+
+    if (!newName.trim() || !newSubject.trim()) {
+        alert("Teacher Name and Subject cannot be left empty.");
+        return;
+    }
+
+    try {
+        await updateDoc(doc(db, "users", uid), {
+            name: newName.trim(),
+            subject: newSubject.trim()
+        });
+
+        alert("Teacher details updated successfully!");
+        loadTeachersDirectory();
+        if (typeof window.loadSystemDatabases === "function") {
+            window.loadSystemDatabases();
+        }
+    } catch (e) {
+        alert("Error updating teacher record: " + e.message);
+    }
+};
+
+window.sendTeacherPasswordReset = async function(email) {
+    if (!email || email === "N/A") return alert("No valid email address available for this account.");
+
+    if (confirm(`Send a password reset email to ${email}?`)) {
+        try {
+            await sendPasswordResetEmail(auth, email);
+            alert(`Password reset link sent to ${email}. The teacher can follow the link to set a new password.`);
+        } catch (e) {
+            alert("Error sending reset email: " + e.message);
+        }
+    }
+};
+
+window.deleteTeacherAccount = async function(uid, teacherName) {
+    if (confirm(`Are you sure you want to delete teacher account "${teacherName}" from the database?\n(Note: This removes their database record.)`)) {
+        try {
+            await deleteDoc(doc(db, "users", uid));
+            alert("Teacher record deleted successfully.");
+            loadTeachersDirectory();
+            if (typeof window.loadSystemDatabases === "function") {
+                window.loadSystemDatabases();
+            }
+        } catch (e) {
+            alert("Error removing teacher record: " + e.message);
+        }
+    }
+};
+
+// --- DYNAMIC QUIZ FILTERING FOR ADD SCORES DIRECTLY ---
+async function filterDirectQuizzes() {
+    const subjectSelect = document.getElementById('directSubjectSelect');
+    const classSelect = document.getElementById('directClassSelect');
+    const quizSelect = document.getElementById('directQuizSelect');
+
+    if (!quizSelect) return;
+
+    const selectedSubject = subjectSelect ? subjectSelect.value.trim().toLowerCase() : "";
+    const selectedClass = classSelect ? classSelect.value.trim().toLowerCase() : "";
+
+    // Reset dropdown
+    quizSelect.innerHTML = '<option value="">-- Select Quiz --</option>';
+
+    // Only populate if both Subject and Class are selected
+    if (!selectedSubject || !selectedClass) {
+        return;
+    }
+
+    try {
+        // 1. Fetch Digital Quizzes from "quizzes" collection
+        const digitalSnap = await getDocs(collection(db, "quizzes"));
+        digitalSnap.forEach(docSnap => {
+            const data = docSnap.data();
+            const title = data.title || data.quizName || "";
+            const qSubject = (data.subject || "").trim().toLowerCase();
+            const qClass = (data.targetClass || "").trim().toLowerCase();
+
+            const matchesSubject = qSubject === selectedSubject;
+            const matchesClass = qClass === selectedClass || qClass === "all classes" || qClass === "all";
+
+            if (title && matchesSubject && matchesClass) {
+                quizSelect.innerHTML += `<option value="${title}">${title} (Digital)</option>`;
+            }
+        });
+
+        // 2. Fetch Manual/Offline Quizzes from "system_quizzes" collection
+        const manualSnap = await getDocs(collection(db, "system_quizzes"));
+        manualSnap.forEach(docSnap => {
+            const data = docSnap.data();
+            const title = data.name || "";
+            const qSubject = (data.subject || "").trim().toLowerCase();
+            const qClass = (data.targetClass || "").trim().toLowerCase();
+
+            const matchesSubject = qSubject === selectedSubject;
+            const matchesClass = qClass === selectedClass || qClass === "all classes" || qClass === "all";
+
+            if (title && matchesSubject && matchesClass) {
+                quizSelect.innerHTML += `<option value="${title}">${title} (Offline)</option>`;
+            }
+        });
+
+    } catch (e) {
+        console.error("Error filtering direct quizzes:", e);
+    }
+}
+
+// Bind change listeners to update quiz options dynamically
+document.getElementById('directSubjectSelect')?.addEventListener('change', filterDirectQuizzes);
+document.getElementById('directClassSelect')?.addEventListener('change', filterDirectQuizzes);
 
 // Expose functions globally for HTML button clicks
 window.addManualQuiz = addManualQuiz;
