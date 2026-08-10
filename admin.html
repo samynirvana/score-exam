@@ -256,17 +256,45 @@
                 </div>
             </div>
 
-            <!-- 2. Bulk Update Scores Panel -->
+                    <!-- 2. Bulk Update Scores Panel -->
             <div class="box" style="margin-bottom: 24px;">
                 <h3 style="margin-top:0; margin-bottom: 8px;">Bulk Update Scores</h3>
                 <p style="font-size: 13px; color: var(--text-gray); margin-bottom: 16px;">
-                    To bulk update student scores, upload an Excel (.xlsx) or CSV file. Columns must follow: Student Code, Student Name, Class, Subject, Exam/Quiz Name, Score.
+                    Select a Subject, Class, and Quiz to download an auto-populated Excel template. Fill in the scores, then upload the file back to update the ledger.
                 </p>
                 
+                <!-- Step A: Choose Options & Download Template -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="bulkSubjectSelect">Subject:</label>
+                        <select id="bulkSubjectSelect">
+                            <option value="">-- Select Subject --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bulkClassSelect">Class:</label>
+                        <select id="bulkClassSelect">
+                            <option value="">-- Select Class --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bulkQuizSelect">Quiz Name:</label>
+                        <select id="bulkQuizSelect">
+                            <option value="">-- Select Quiz --</option>
+                        </select>
+                    </div>
+                    <div style="flex: 0 0 auto;">
+                        <button id="downloadTemplateBtn" style="background: #10b981;">Download Template</button>
+                    </div>
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 16px 0;">
+
+                <!-- Step B: Upload Completed File -->
                 <div class="form-row">
                     <div class="form-group" style="flex: 2;">
-                        <label for="fileInput">Select Excel / CSV File:</label>
-                        <input type="file" id="fileInput" accept=".xlsx, .xls, .csv">
+                        <label for="excelFile">Select Completed Excel / CSV File:</label>
+                        <input type="file" id="excelFile" accept=".xlsx, .xls, .csv">
                     </div>
                     <div style="flex: 0 0 auto;">
                         <button id="uploadExcelBtn" style="background: var(--primary-blue);">Upload & Process</button>
@@ -275,63 +303,70 @@
             </div>
 
             <!-- 3. View Score Ledger Panel -->
-            <div class="box">
-                <h3 style="margin-top:0; margin-bottom: 8px;">View Score Ledger</h3>
-                <p style="font-size: 14px; color: var(--text-gray); margin-bottom: 16px;">Select a specific Quiz or Review to view the student score ledger.</p>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="ledgerClassSelect">Class:</label>
-                        <select id="ledgerClassSelect">
-                            <option value="">-- Choose a Class --</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group" style="flex: 1.5;">
-                        <label for="ledgerQuizSelect">Quiz / Review:</label>
-                        <select id="ledgerQuizSelect">
-                            <option value="">-- Choose a Quiz / Review --</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="ledgerSortSelect">Sort Order:</label>
-                        <select id="ledgerSortSelect">
-                            <option value="name_asc">Name (A-Z)</option>
-                            <option value="score_desc">Highest Score</option>
-                            <option value="score_asc">Lowest Score</option>
-                        </select>
-                    </div>
-                    
-                    <div style="flex: 0 0 auto;">
-                        <button id="viewLedgerBtn" onclick="viewScoreLedger()">View Table</button>
-                    </div>
+                    <div class="box">
+            <h3 style="margin-top:0; margin-bottom: 8px;">View Score Ledger</h3>
+            <p style="font-size: 14px; color: var(--text-gray); margin-bottom: 16px;">Select a specific Subject, Class, and Quiz/Review to view the student score ledger.</p>
+            
+            <div class="form-row">
+                <!-- ADDED: Subject Dropdown -->
+                <div class="form-group">
+                    <label for="ledgerSubjectSelect">Subject:</label>
+                    <select id="ledgerSubjectSelect">
+                        <option value="">-- Choose a Subject --</option>
+                    </select>
                 </div>
 
-                <div id="scoreLedgerContainer" style="display: none;">
-                    <hr style="border: 0; border-top: 1px solid var(--border-color); margin-bottom: 15px;">
-                    <h4 id="activeLedgerTitle" style="margin-bottom: 15px; color: var(--primary-blue);">Ledger Results</h4>
-                    
-                    <div class="table-responsive">
-                        <table id="manageScoreTable">
-                            <thead>
-                                <tr>
-                                    <th>Exam</th>
-                                    <th>Subject</th>
-                                    <th>Student Name</th>
-                                    <th>Class</th>
-                                    <th>Student Code</th>
-                                    <th>Score</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="manageScoreTbody"></tbody>
-                        </table>
-                    </div>
+                <div class="form-group">
+                    <label for="ledgerClassSelect">Class:</label>
+                    <select id="ledgerClassSelect">
+                        <option value="">-- Choose a Class --</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" style="flex: 1.5;">
+                    <label for="ledgerQuizSelect">Quiz / Review:</label>
+                    <select id="ledgerQuizSelect">
+                        <option value="">-- Choose a Quiz / Review --</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="ledgerSortSelect">Sort Order:</label>
+                    <select id="ledgerSortSelect">
+                        <option value="name_asc">Name (A-Z)</option>
+                        <option value="score_desc">Highest Score</option>
+                        <option value="score_asc">Lowest Score</option>
+                    </select>
+                </div>
+                
+                <div style="flex: 0 0 auto;">
+                    <button id="viewLedgerBtn" onclick="viewScoreLedger()">View Table</button>
+                </div>
+            </div>
+
+            <div id="scoreLedgerContainer" style="display: none;">
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin-bottom: 15px;">
+                <h4 id="activeLedgerTitle" style="margin-bottom: 15px; color: var(--primary-blue);">Ledger Results</h4>
+                
+                <div class="table-responsive">
+                    <table id="manageScoreTable">
+                        <thead>
+                            <tr>
+                                <th>Exam</th>
+                                <th>Subject</th>
+                                <th>Student Name</th>
+                                <th>Class</th>
+                                <th>Student Code</th>
+                                <th>Score</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="manageScoreTbody"></tbody>
+                    </table>
                 </div>
             </div>
         </div>
-           <!-- TAB 3: Behavior Points -->
+        </div>
             <!-- TAB 3: Behavior Points -->
             <div id="tab-manage-behavior" class="tab-content">
                 <div class="dashboard-grid">
@@ -445,13 +480,6 @@
                         <input type="text" id="newStudentName" placeholder="Full Student Name">
                         <input type="text" id="newStudentClass" placeholder="Class Room (e.g., Grade 7A)">
                         <button id="registerStudentBtn">Generate Student Code</button>
-                    </div>
-
-                    <!-- 2. Bulk Upload Students -->
-                    <div class="box">
-                        <h3>Bulk Upload Students (Excel)</h3>
-                        <input type="file" id="bulkStudentsFile" accept=".xlsx, .xls, .csv">
-                        <button id="uploadBulkStudentsBtn" style="background: #10b981;">Parse & Upload</button>
                     </div>
                     
                     <!-- 3. Provision Teacher -->

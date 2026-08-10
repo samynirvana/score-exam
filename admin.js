@@ -498,10 +498,11 @@ async function loadAdminTable() {
     }
 }
 
+// --- BULK EXCEL PROCESSOR & FIRESTORE SYNCHRONIZER ---
 async function processExcel() {
     const fileInput = document.getElementById('excelFile');
-    const file = fileInput.files[0];
-    if (!file) return alert("Select an Excel workbook document first.");
+    const file = fileInput ? fileInput.files[0] : null;
+    if (!file) return alert("Select an Excel (.xlsx) file to upload first.");
 
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -511,43 +512,59 @@ async function processExcel() {
             const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
 
             let successCount = 0;
+            let skippedCount = 0;
+
             for (const row of jsonData) {
                 const code = String(row["Student Code"] || row["Code"] || "").toUpperCase().trim();
-                const examName = row["Exam Name"] || row["Exam"];
-                const fileSubject = row["Subject"];
+                const name = String(row["Student Name"] || row["Name"] || "").trim();
+                const sClass = String(row["Class"] || "").trim();
+                const examName = String(row["Exam Name"] || row["Exam"] || row["Quiz Name"] || "").trim();
+                const fileSubject = String(row["Subject"] || "").trim();
                 const subject = userRole === "admin" ? fileSubject : teacherSubject;
-                const score = parseInt(row["Score"] || row["score"]);
+                
+                const rawScore = row["Score"] !== undefined ? row["Score"] : row["score"];
+                const score = parseInt(rawScore);
 
-                if (userRole !== "admin" && String(fileSubject).toLowerCase() !== teacherSubject.toLowerCase()) {
+                // Check authorization for non-admin teachers
+                if (userRole !== "admin" && fileSubject.toLowerCase() !== teacherSubject.toLowerCase()) {
+                    skippedCount++;
                     continue; 
                 }
 
                 if (code && examName && subject && !isNaN(score)) {
-                    const studentDoc = await getDoc(doc(db, "students", code));
-                    if (studentDoc.exists()) {
-                        const sData = studentDoc.data();
-                        const sClass = sData.studentClass || sData.Class || sData.class || 'N/A';
-                        await addDoc(collection(db, "exam_scores"), {
-                            studentCode: code,
-                            studentName: sData.studentName,
-                            studentClass: sClass,
-                            examName: String(examName),
-                            subject: String(subject),
-                            score: score
-                        });
-                        successCount++;
-                    }
+                    // Unique Document ID pattern prevents duplicate score documents
+                    const customDocId = `${code}_${subject}_${examName}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+
+                    await setDoc(doc(db, "exam_scores", customDocId), {
+                        studentCode: code,
+                        studentName: name || "Unknown",
+                        studentClass: sClass || "N/A",
+                        examName: examName,
+                        quizName: examName,
+                        subject: subject,
+                        score: score,
+                        updatedAt: new Date()
+                    }, { merge: true });
+
+                    successCount++;
                 }
             }
-            alert(`Excel execution complete! Processed ${successCount} entries into records.`);
+
+            alert(`Excel Process Complete!\nUpdated/Saved: ${successCount} entries${skippedCount > 0 ? `\nSkipped (Unauthorized Subject): ${skippedCount}` : ''}`);
             fileInput.value = "";
-            loadAdminTable();
+            
+            // Refresh admin table if active
+            if (typeof loadAdminTable === "function") loadAdminTable();
+
         } catch (err) {
-            alert("Error parsing document mapping properties: " + err.message);
+            alert("Error processing Excel file: " + err.message);
         }
     };
     reader.readAsArrayBuffer(file);
 }
+
+// Re-bind upload button
+document.getElementById('uploadExcelBtn')?.addEventListener('click', processExcel);
 
 // Function to handle saving point transactions
 async function processStudentPoint(pointValue) {
@@ -1930,21 +1947,28 @@ function processBulkScoreUpload() {
 }
 
 // --- SAFE DATABASE LOAD FOR ADMINS & TEACHERS ---
+// --- UNIFIED SYSTEM DATABASE LOADER ---
 window.loadSystemDatabases = async function() {
     try {
         console.log("--- STARTING DATABASE LOAD ---");
         
+        // 1. Fetch Subject Dropdown Elements
         const subjTbody = document.querySelector("#subjectsTable tbody");
         const subjSelect = document.getElementById("directSubjectSelect");
+        const ledgerSubjSelect = document.getElementById("ledgerSubjectSelect");
         const quizSubjSelect = document.getElementById("quizSubject");
         const manualQuizSubjSelect = document.getElementById("newManualQuizSubject");
+        const bulkSubjSelect = document.getElementById("bulkSubjectSelect"); // Bulk Upload Dropdown
 
+        // Reset Subject Dropdowns
         if(subjTbody) subjTbody.innerHTML = "";
         if(subjSelect) subjSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+        if(ledgerSubjSelect) ledgerSubjSelect.innerHTML = '<option value="">-- Choose a Subject --</option>';
         if(quizSubjSelect) quizSubjSelect.innerHTML = '<option value="">-- Select Subject --</option>';
         if(manualQuizSubjSelect) manualQuizSubjSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+        if(bulkSubjSelect) bulkSubjSelect.innerHTML = '<option value="">-- Select Subject --</option>';
 
-        // --- A. Extract Subjects (Admin queries 'users', Teachers use assigned subject) ---
+        // 2. Extract & Populate Unique Subjects
         const uniqueSubjects = new Set();
 
         if (userRole === 'admin') {
@@ -1964,31 +1988,40 @@ window.loadSystemDatabases = async function() {
             uniqueSubjects.add(teacherSubject);
         }
 
+        // Loop and populate subject options
         Array.from(uniqueSubjects).sort().forEach(name => {
             if(subjTbody) subjTbody.innerHTML += `<tr><td><strong>${name}</strong></td><td><span style="background: #eef2ff; color: var(--primary-blue); padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Teacher Linked</span></td></tr>`;
             if(subjSelect) subjSelect.innerHTML += `<option value="${name}">${name}</option>`;
+            if(ledgerSubjSelect) ledgerSubjSelect.innerHTML += `<option value="${name}">${name}</option>`;
             if(quizSubjSelect) quizSubjSelect.innerHTML += `<option value="${name}">${name}</option>`;
             if(manualQuizSubjSelect) manualQuizSubjSelect.innerHTML += `<option value="${name}">${name}</option>`;
+            if(bulkSubjSelect) bulkSubjSelect.innerHTML += `<option value="${name}">${name}</option>`;
         });
 
-        // Pre-select assigned subject for teachers
-        if (userRole !== 'admin' && teacherSubject && subjSelect) {
-            subjSelect.value = teacherSubject;
+        // Pre-select assigned subject for teacher accounts
+        if (userRole !== 'admin' && teacherSubject) {
+            if (subjSelect) subjSelect.value = teacherSubject;
+            if (ledgerSubjSelect) ledgerSubjSelect.value = teacherSubject;
+            if (bulkSubjSelect) bulkSubjSelect.value = teacherSubject;
         }
 
-        // --- B. Extract Classes from Students ---
+        // 3. Fetch Class Dropdown Elements
         const classTbody = document.querySelector("#classesTable tbody");
         const classSelect = document.getElementById("directClassSelect");
         const ledgerClassSelect = document.getElementById("ledgerClassSelect");
         const quizClassSelect = document.getElementById("quizTargetClass");
         const manualQuizClassSelect = document.getElementById("newManualQuizClass");
+        const bulkClassSelect = document.getElementById("bulkClassSelect"); // Bulk Upload Dropdown
 
+        // Reset Class Dropdowns
         if(classTbody) classTbody.innerHTML = "";
         if(classSelect) classSelect.innerHTML = '<option value="">-- Select Class --</option>';
         if(ledgerClassSelect) ledgerClassSelect.innerHTML = '<option value="">-- Choose a Class --</option>';
         if(quizClassSelect) quizClassSelect.innerHTML = '<option value="">-- Select Target Class --</option><option value="All Classes">All Classes</option>';
         if(manualQuizClassSelect) manualQuizClassSelect.innerHTML = '<option value="">-- Select Target Class --</option><option value="All Classes">All Classes</option>';
+        if(bulkClassSelect) bulkClassSelect.innerHTML = '<option value="">-- Select Class --</option>';
 
+        // 4. Extract & Populate Unique Classes from Student Records
         try {
             const studentsSnap = await getDocs(collection(db, "students"));
             const uniqueClasses = new Set();
@@ -1998,18 +2031,20 @@ window.loadSystemDatabases = async function() {
                 if (studentClass) uniqueClasses.add(studentClass);
             });
 
+            // Loop and populate class options
             Array.from(uniqueClasses).sort().forEach(name => {
                 if(classTbody) classTbody.innerHTML += `<tr><td><strong>${name}</strong></td><td><span style="background: #ecfdf5; color: #10b981; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Student Linked</span></td></tr>`;
                 if(classSelect) classSelect.innerHTML += `<option value="${name}">${name}</option>`;
                 if(ledgerClassSelect) ledgerClassSelect.innerHTML += `<option value="${name}">${name}</option>`;
                 if(quizClassSelect) quizClassSelect.innerHTML += `<option value="${name}">${name}</option>`;
                 if(manualQuizClassSelect) manualQuizClassSelect.innerHTML += `<option value="${name}">${name}</option>`;
+                if(bulkClassSelect) bulkClassSelect.innerHTML += `<option value="${name}">${name}</option>`;
             });
         } catch (err) {
             console.warn("Students collection read restricted:", err.message);
         }
 
-        // --- C. Extract Quizzes (Digital + Offline) ---
+        // 5. Populate Quizzes Table (Digital + Offline)
         const quizTbody = document.querySelector("#quizzesDatabaseTable tbody");
         if(quizTbody) quizTbody.innerHTML = "";
 
@@ -2043,7 +2078,7 @@ window.loadSystemDatabases = async function() {
             console.warn("System quizzes read restricted:", err.message);
         }
 
-        // Run Admin-only directories exclusively for Administrators
+        // Load directories for Admin role
         if (userRole === 'admin') {
             loadTeachersDirectory();
             renderDbStudentsTable();
@@ -2296,20 +2331,23 @@ async function saveDirectScores() {
 }
 
 async function viewScoreLedger() {
-    const selectedClass = document.getElementById('ledgerClassSelect')?.value || document.getElementById('directClassSelect').value;
-    const selectedQuiz = document.getElementById('ledgerQuizSelect').value;
+    const selectedSubject = document.getElementById('ledgerSubjectSelect')?.value;
+    const selectedClass = document.getElementById('ledgerClassSelect')?.value;
+    const selectedQuiz = document.getElementById('ledgerQuizSelect')?.value;
     const sortOption = document.getElementById('ledgerSortSelect')?.value || 'name_asc';
 
-    if (!selectedClass || !selectedQuiz) {
-        alert("Please select both a Class and a Quiz/Review to view the ledger.");
+    if (!selectedSubject || !selectedClass || !selectedQuiz) {
+        alert("Please select Subject, Class, and Quiz/Review to view the ledger.");
         return;
     }
 
     const viewBtn = document.getElementById('viewLedgerBtn'); 
 
     try {
-        viewBtn.innerText = "Loading...";
-        viewBtn.disabled = true;
+        if (viewBtn) {
+            viewBtn.innerText = "Loading...";
+            viewBtn.disabled = true;
+        }
 
         const tableContainer = document.getElementById('scoreLedgerContainer');
         if (tableContainer) tableContainer.style.display = 'block';
@@ -2317,8 +2355,9 @@ async function viewScoreLedger() {
         const tbody = document.getElementById('manageScoreTbody');
         tbody.innerHTML = "<tr><td colspan='7' style='text-align:center;'>Fetching scores...</td></tr>";
 
-        // Query unified exam_scores collection
+        // Query unified exam_scores collection filtering by Subject, Class, and Exam
         const q = query(collection(db, "exam_scores"), 
+            where("subject", "==", selectedSubject),
             where("studentClass", "==", selectedClass),
             where("examName", "==", selectedQuiz)
         );
@@ -2327,7 +2366,7 @@ async function viewScoreLedger() {
         tbody.innerHTML = ""; 
 
         if (snap.empty) {
-            tbody.innerHTML = "<tr><td colspan='7' style='text-align:center; color: red;'>No scores found for this Class and Quiz combination.</td></tr>";
+            tbody.innerHTML = "<tr><td colspan='7' style='text-align:center; color: red;'>No scores found for this Subject, Class, and Quiz combination.</td></tr>";
             return;
         }
 
@@ -2959,6 +2998,221 @@ async function filterDirectQuizzes() {
         console.error("Error filtering direct quizzes:", e.message);
     }
 }
+
+// --- DYNAMIC QUIZ FILTERING FOR LEDGER ---
+async function filterLedgerQuizzes() {
+    const subjectSelect = document.getElementById('ledgerSubjectSelect');
+    const classSelect = document.getElementById('ledgerClassSelect');
+    const quizSelect = document.getElementById('ledgerQuizSelect');
+
+    if (!quizSelect) return;
+
+    const selectedSubject = subjectSelect ? subjectSelect.value.trim().toLowerCase() : "";
+    const selectedClass = classSelect ? classSelect.value.trim().toLowerCase() : "";
+
+    quizSelect.innerHTML = '<option value="">-- Choose a Quiz / Review --</option>';
+
+    if (!selectedSubject || !selectedClass) return;
+
+    try {
+        // 1. Digital Quizzes
+        try {
+            const digitalSnap = await getDocs(collection(db, "quizzes"));
+            digitalSnap.forEach(docSnap => {
+                const data = docSnap.data();
+                const title = data.title || data.quizName || "";
+                const qSubject = (data.subject || "").trim().toLowerCase();
+                const qClass = (data.targetClass || "").trim().toLowerCase();
+
+                const matchesSubject = !qSubject || qSubject === selectedSubject || selectedSubject.includes(qSubject) || qSubject.includes(selectedSubject);
+                const matchesClass = !qClass || qClass === selectedClass || qClass === "all classes" || qClass === "all";
+
+                if (title && matchesSubject && matchesClass) {
+                    quizSelect.innerHTML += `<option value="${title}">${title} (Digital)</option>`;
+                }
+            });
+        } catch (err) {
+            console.warn("Could not read digital quizzes:", err.message);
+        }
+
+        // 2. Offline Quizzes
+        try {
+            const manualSnap = await getDocs(collection(db, "system_quizzes"));
+            manualSnap.forEach(docSnap => {
+                const data = docSnap.data();
+                const title = data.name || "";
+                const qSubject = (data.subject || "").trim().toLowerCase();
+                const qClass = (data.targetClass || "").trim().toLowerCase();
+
+                const matchesSubject = !qSubject || qSubject === selectedSubject || selectedSubject.includes(qSubject) || qSubject.includes(selectedSubject);
+                const matchesClass = !qClass || qClass === selectedClass || qClass === "all classes" || qClass === "all";
+
+                if (title && matchesSubject && matchesClass) {
+                    quizSelect.innerHTML += `<option value="${title}">${title} (Offline)</option>`;
+                }
+            });
+        } catch (err) {
+            console.warn("Could not read offline quizzes:", err.message);
+        }
+
+    } catch (e) {
+        console.error("Error filtering ledger quizzes:", e.message);
+    }
+}
+
+// --- DYNAMIC QUIZ FILTERING FOR BULK TEMPLATE ---
+async function filterBulkQuizzes() {
+    const subjectSelect = document.getElementById('bulkSubjectSelect');
+    const classSelect = document.getElementById('bulkClassSelect');
+    const quizSelect = document.getElementById('bulkQuizSelect');
+
+    if (!quizSelect) return;
+
+    const selectedSubject = subjectSelect ? subjectSelect.value.trim().toLowerCase() : "";
+    const selectedClass = classSelect ? classSelect.value.trim().toLowerCase() : "";
+
+    quizSelect.innerHTML = '<option value="">-- Select Quiz --</option>';
+
+    if (!selectedSubject || !selectedClass) return;
+
+    try {
+        // Fetch Digital Quizzes
+        const digitalSnap = await getDocs(collection(db, "quizzes"));
+        digitalSnap.forEach(docSnap => {
+            const data = docSnap.data();
+            const title = data.title || data.quizName || "";
+            const qSubject = (data.subject || "").trim().toLowerCase();
+            const qClass = (data.targetClass || "").trim().toLowerCase();
+
+            const matchesSubject = !qSubject || qSubject === selectedSubject || selectedSubject.includes(qSubject);
+            const matchesClass = !qClass || qClass === selectedClass || qClass === "all classes" || qClass === "all";
+
+            if (title && matchesSubject && matchesClass) {
+                quizSelect.innerHTML += `<option value="${title}">${title} (Digital)</option>`;
+            }
+        });
+
+        // Fetch Offline Quizzes
+        const manualSnap = await getDocs(collection(db, "system_quizzes"));
+        manualSnap.forEach(docSnap => {
+            const data = docSnap.data();
+            const title = data.name || "";
+            const qSubject = (data.subject || "").trim().toLowerCase();
+            const qClass = (data.targetClass || "").trim().toLowerCase();
+
+            const matchesSubject = !qSubject || qSubject === selectedSubject || selectedSubject.includes(qSubject);
+            const matchesClass = !qClass || qClass === selectedClass || qClass === "all classes" || qClass === "all";
+
+            if (title && matchesSubject && matchesClass) {
+                quizSelect.innerHTML += `<option value="${title}">${title} (Offline)</option>`;
+            }
+        });
+    } catch (e) {
+        console.error("Error filtering bulk quizzes:", e.message);
+    }
+}
+
+// --- AUTOMATED EXCEL TEMPLATE GENERATOR ---
+async function downloadScoreTemplate() {
+    const subject = document.getElementById('bulkSubjectSelect')?.value;
+    const studentClass = document.getElementById('bulkClassSelect')?.value;
+    const quiz = document.getElementById('bulkQuizSelect')?.value;
+
+    if (!subject || !studentClass || !quiz) {
+        alert("Please select a Subject, Class, and Quiz before downloading the template.");
+        return;
+    }
+
+    const downloadBtn = document.getElementById('downloadTemplateBtn');
+
+    try {
+        if (downloadBtn) {
+            downloadBtn.innerText = "Generating...";
+            downloadBtn.disabled = true;
+        }
+
+        // 1. Fetch students belonging to target class
+        const studentsQuery = query(collection(db, "students"), where("studentClass", "==", studentClass));
+        const studentsSnap = await getDocs(studentsQuery);
+
+        if (studentsSnap.empty) {
+            alert(`No students found registered under class "${studentClass}".`);
+            return;
+        }
+
+        // 2. Query existing exam scores to pre-fill current grades if available
+        const scoresQuery = query(
+            collection(db, "exam_scores"),
+            where("studentClass", "==", studentClass),
+            where("subject", "==", subject),
+            where("examName", "==", quiz)
+        );
+        const scoresSnap = await getDocs(scoresQuery);
+        const existingScores = {};
+        scoresSnap.forEach(docSnap => {
+            const data = docSnap.data();
+            existingScores[data.studentCode] = data.score;
+        });
+
+        // 3. Construct rows array
+        let excelRows = [];
+        studentsSnap.forEach(docSnap => {
+            const sData = docSnap.data();
+            const code = docSnap.id;
+            const currentScore = existingScores[code] !== undefined ? existingScores[code] : "";
+
+            excelRows.push({
+                "Student Code": code,
+                "Student Name": sData.studentName || "",
+                "Class": studentClass,
+                "Subject": subject,
+                "Exam Name": quiz,
+                "Score": currentScore
+            });
+        });
+
+        // Sort alphabetically by Student Name (A-Z)
+        excelRows.sort((a, b) => a["Student Name"].localeCompare(b["Student Name"]));
+
+        // 4. Generate worksheet using SheetJS
+        const worksheet = XLSX.utils.json_to_sheet(excelRows);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Scores");
+
+        // Format column widths for clarity
+        worksheet["!cols"] = [
+            { wch: 16 }, // Student Code
+            { wch: 28 }, // Student Name
+            { wch: 12 }, // Class
+            { wch: 18 }, // Subject
+            { wch: 24 }, // Exam Name
+            { wch: 10 }  // Score
+        ];
+
+        // 5. Trigger download file
+        const fileName = `ScoreTemplate_${studentClass}_${subject}_${quiz}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+        XLSX.writeFile(workbook, `${fileName}.xlsx`);
+
+    } catch (err) {
+        console.error("Error generating template:", err);
+        alert("Failed to generate Excel template: " + err.message);
+    } finally {
+        if (downloadBtn) {
+            downloadBtn.innerText = "Download Template";
+            downloadBtn.disabled = false;
+        }
+    }
+}
+
+// Bind button listener
+document.getElementById('downloadTemplateBtn')?.addEventListener('click', downloadScoreTemplate);
+// Bind change listeners to update quizzes dynamically
+document.getElementById('bulkSubjectSelect')?.addEventListener('change', filterBulkQuizzes);
+document.getElementById('bulkClassSelect')?.addEventListener('change', filterBulkQuizzes);
+
+// Bind change listeners for ledger dropdowns
+document.getElementById('ledgerSubjectSelect')?.addEventListener('change', filterLedgerQuizzes);
+document.getElementById('ledgerClassSelect')?.addEventListener('change', filterLedgerQuizzes);
 
 // Bind change listeners to update quiz options dynamically
 document.getElementById('directSubjectSelect')?.addEventListener('change', filterDirectQuizzes);
