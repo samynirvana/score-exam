@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>School Weekly Schedule</title>
+<link rel="stylesheet" href="weekly.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="shortcut icon" href="#">
+  <title>School Weekly Schedule</title>
   <style>
     :root {
       --border-color: #cbd5e1;
@@ -115,17 +120,21 @@
 
   <!-- Navigation -->
   <div class="nav-tabs">
-    <button class="tab-btn active" onclick="switchTab('classView')">Class View (Student)</button>
-    <button class="tab-btn" onclick="switchTab('teacherView')">Teacher Material Entry</button>
+    <button class="tab-btn active" id="btnClassView" onclick="switchTab('classView')">Class View (Student)</button>
+    <button class="tab-btn" id="btnTeacherView" onclick="switchTab('teacherView')">Teacher Material Entry</button>
+    <button class="tab-btn" id="btnAdminView" onclick="switchTab('adminView')">Admin Dashboard</button>
   </div>
 
   <!-- 1. CLASS VIEW (STUDENTS) -->
   <div id="classView" class="tab-content active">
-    <h2>Class Schedule: Grade 9C</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h2>Class Schedule</h2>
+      <select id="classSelectView" style="width: 200px;"></select>
+    </div>
     <table>
       <thead>
         <tr>
-          <th style="width: 12%;">TIME</th>
+          <th style="width: 15%">TIME</th>
           <th>MONDAY</th>
           <th>TUESDAY</th>
           <th>WEDNESDAY</th>
@@ -134,14 +143,17 @@
         </tr>
       </thead>
       <tbody id="classScheduleBody">
-        <!-- Rendered via JavaScript -->
+<!-- Rendered via weekly.js -->
       </tbody>
     </table>
   </div>
 
-  <!-- 2. TEACHER VIEW -->
+  <!-- Teacher View -->
   <div id="teacherView" class="tab-content">
-    <h2>Teacher Panel: Mr. Syam</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h2>Teacher Panel: Mr. Syam</h2>
+      <select id="teacherSelectView" style="width: 200px;"></select>
+    </div>
     <div class="teacher-layout">
       
       <!-- Left Schedule Grid -->
@@ -158,7 +170,7 @@
             </tr>
           </thead>
           <tbody id="teacherScheduleBody">
-            <!-- Rendered via JavaScript -->
+<!-- Rendered via weekly.js -->
           </tbody>
         </table>
       </div>
@@ -178,7 +190,7 @@
             </tr>
           </thead>
           <tbody id="materialTableBody">
-            <!-- Rendered via JavaScript -->
+<!-- Rendered via weekly.js -->
           </tbody>
         </table>
         <button class="save-btn" id="saveMaterialsBtn">Save All Materials to Firebase</button>
@@ -187,168 +199,134 @@
     </div>
   </div>
 
-  <!-- Firebase JavaScript SDK -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+<!-- Admin View -->
+  <div id="adminView" class="tab-content">
+    <h2>Admin Dashboard</h2>
+    <div class="admin-grid">
+      
+      <!-- Left Column with Sub-Tab Toggle -->
+      <div>
+        <div class="admin-subtabs">
+          <button class="subtab-btn active" id="btnSubAdd">Add Resource</button>
+          <button class="subtab-btn" id="btnSubManage">Manage Entities</button>
+        </div>
 
-    // Insert your Firebase project credentials here
-    const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "weekly-teacher.firebaseapp.com",
-      projectId: "weekly-teacher",
-      storageBucket: "weekly-teacher.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
-    };
+        <!-- Sub-Tab 1: Add Form -->
+        <div id="subTabAdd" class="subtab-content active">
+          <div class="admin-card">
+            <h3>Add New Resource</h3>
+            <form id="addResourceForm">
+              <div class="form-group">
+                <label for="resourceType">Resource Type</label>
+                <select id="resourceType" required>
+                  <option value="teachers">Teacher</option>
+                  <option value="classes">Class</option>
+                  <option value="subjects">Subject</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="resourceName">Name / Identifier</label>
+                <input type="text" id="resourceName" placeholder="e.g. Mr. Syam, Grade 9C, Math" required>
+              </div>
+              <button type="submit" class="save-btn">Add Resource</button>
+            </form>
+          </div>
+        </div>
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+        <!-- Sub-Tab 2: Manage Tables -->
+        <div id="subTabManage" class="subtab-content">
+          <div class="admin-card">
+            <h3>Database Entities</h3>
 
-    // Timetable slot assignments (Managed by Admin)
-    const timetableStructure = [
-      { time: "07.30 - 07.40", type: "break", label: "OPENING" },
-      { time: "07.40 - 08.25", MONDAY: "English G9A", WEDNESDAY: "ICT G9A", THURSDAY: "ICT G9B" },
-      { time: "08.25 - 09.10", MONDAY: "English G9A", WEDNESDAY: "ICT G9A", THURSDAY: "ICT G9B" },
-      { time: "09.10 - 09.55", MONDAY: "ICT G9C", THURSDAY: "English G9C" },
-      { time: "09.55 - 10.10", type: "break", label: "BREAK" },
-      { time: "10.10 - 10.55", MONDAY: "ICT G9C", TUESDAY: "ICT G10A", WEDNESDAY: "ICT G10B", THURSDAY: "English G9C", FRIDAY: "English G9B" },
-      { time: "10.55 - 11.40", TUESDAY: "ICT G10A", WEDNESDAY: "ICT G10B", THURSDAY: "English G9A", FRIDAY: "English G9B" }
-    ];
+            <div class="resource-table-group">
+              <h4>Teachers</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th style="text-align: left; padding-left: 12px;">Teacher Name</th>
+                    <th style="width: 60px;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="tableTeachers"></tbody>
+              </table>
+            </div>
 
-    const teacherClasses = ["English G9A", "English G9B", "English G9C", "ICT G9A", "ICT G9B", "ICT G9C", "ICT G10A", "ICT G10B"];
-    let materialsData = {};
+            <div class="resource-table-group">
+              <h4>Classes</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th style="text-align: left; padding-left: 12px;">Class Identifier</th>
+                    <th style="width: 60px;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="tableClasses"></tbody>
+              </table>
+            </div>
 
-    // Tab Switching Logic
-    window.switchTab = (tabId) => {
-      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-      document.getElementById(tabId).classList.add('active');
-      event.currentTarget.classList.add('active');
-    };
+            <div class="resource-table-group">
+              <h4>Subjects</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th style="text-align: left; padding-left: 12px;">Subject Name</th>
+                    <th style="width: 60px;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="tableSubjects"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
 
-    // Render Student Class View (Includes Clickable Links)
-    function renderClassSchedule() {
-      const tbody = document.getElementById('classScheduleBody');
-      tbody.innerHTML = '';
-      const days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
+      </div>
 
-      timetableStructure.forEach(row => {
-        const tr = document.createElement('tr');
-        if (row.type === 'break') {
-          tr.className = 'break-row';
-          tr.innerHTML = `<td>${row.time}</td><td colspan="5">${row.label}</td>`;
-        } else {
-          let html = `<td><strong>${row.time}</strong></td>`;
-          days.forEach(day => {
-            const className = row[day];
-            if (className) {
-              const matInfo = materialsData[className] || {};
-              const linkHtml = matInfo.link ? `<a href="${matInfo.link}" target="_blank" class="resource-link">🔗 Resource Link</a>` : '';
-              html += `
-                <td>
-                  <span class="subject-title">${className}</span>
-                  <div class="material-text">${matInfo.material || 'No material added'}</div>
-                  ${linkHtml}
-                </td>`;
-            } else {
-              html += `<td>-</td>`;
-            }
-          });
-          tr.innerHTML = html;
-        }
-        tbody.appendChild(tr);
-      });
-    }
+      <!-- Right Column: Period Assignment Panel -->
+      <div class="admin-card">
+        <h3>Assign Schedule Slot</h3>
+        <form id="assignSlotForm">
+          <div class="form-group">
+            <label>Select Target Class</label>
+            <select id="adminClassSelect" required></select>
+          </div>
+          <div class="form-group">
+            <label>Select Day</label>
+            <select id="adminDaySelect">
+              <option value="MONDAY">MONDAY</option>
+              <option value="TUESDAY">TUESDAY</option>
+              <option value="WEDNESDAY">WEDNESDAY</option>
+              <option value="THURSDAY">THURSDAY</option>
+              <option value="FRIDAY">FRIDAY</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Start Subject Period</label>
+            <select id="adminPeriodSelect" required></select>
+          </div>
+          <div class="form-group">
+            <label>Period Duration (Consecutive Periods)</label>
+            <select id="adminDurationSelect">
+              <option value="1">1 Period</option>
+              <option value="2">2 Periods Consecutive</option>
+              <option value="3">3 Periods Consecutive</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Assign Subject</label>
+            <select id="adminSubjectSelect" required></select>
+          </div>
+          <div class="form-group">
+            <label>Assign Teacher</label>
+            <select id="adminTeacherSelect" required></select>
+          </div>
+          <button type="submit" class="save-btn">Update Class Schedule</button>
+        </form>
+      </div>
 
-    // Render Teacher Material Table
-    function renderMaterialTable() {
-      const tbody = document.getElementById('materialTableBody');
-      tbody.innerHTML = '';
+    </div>
+  </div>
 
-      teacherClasses.forEach(cls => {
-        const mat = materialsData[cls]?.material || '';
-        const link = materialsData[cls]?.link || '';
-        const combine = mat ? `${cls}\n${mat}` : cls;
-
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td><strong>${cls}</strong></td>
-          <td><input type="text" class="mat-input" data-class="${cls}" value="${mat}" placeholder="Enter topic..."></td>
-          <td style="white-space: pre-line;">${combine}</td>
-          <td><input type="text" class="link-input" data-class="${cls}" value="${link}" placeholder="https://..."></td>
-        `;
-        tbody.appendChild(tr);
-      });
-
-      // Attach instant input handlers
-      document.querySelectorAll('.mat-input').forEach(input => {
-        input.addEventListener('input', (e) => {
-          const cls = e.target.dataset.class;
-          if (!materialsData[cls]) materialsData[cls] = {};
-          materialsData[cls].material = e.target.value;
-          renderClassSchedule();
-          renderTeacherScheduleGrid();
-        });
-      });
-
-      document.querySelectorAll('.link-input').forEach(input => {
-        input.addEventListener('input', (e) => {
-          const cls = e.target.dataset.class;
-          if (!materialsData[cls]) materialsData[cls] = {};
-          materialsData[cls].link = e.target.value;
-          renderClassSchedule();
-        });
-      });
-    }
-
-    // Render Left Schedule Grid in Teacher View
-    function renderTeacherScheduleGrid() {
-      const tbody = document.getElementById('teacherScheduleBody');
-      tbody.innerHTML = '';
-      const days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
-
-      timetableStructure.forEach(row => {
-        const tr = document.createElement('tr');
-        if (row.type === 'break') {
-          tr.className = 'break-row';
-          tr.innerHTML = `<td>${row.time}</td><td colspan="5">${row.label}</td>`;
-        } else {
-          let html = `<td><strong>${row.time}</strong></td>`;
-          days.forEach(day => {
-            const cls = row[day];
-            if (cls) {
-              const mat = materialsData[cls]?.material || '';
-              html += `<td><strong>${cls}</strong><br><small>${mat}</small></td>`;
-            } else {
-              html += `<td></td>`;
-            }
-          });
-          tr.innerHTML = html;
-        }
-        tbody.appendChild(tr);
-      });
-    }
-
-    // Save Data to Firebase
-    document.getElementById('saveMaterialsBtn').addEventListener('click', async () => {
-      try {
-        await setDoc(doc(db, "schedules", "Grade9C_Materials"), materialsData, { merge: true });
-        alert("Materials and Links successfully saved to Firebase!");
-      } catch (err) {
-        alert("Error saving: " + err.message);
-      }
-    });
-
-    // Sync in Real-Time from Firebase
-    onSnapshot(doc(db, "schedules", "Grade9C_Materials"), (docSnap) => {
-      if (docSnap.exists()) {
-        materialsData = docSnap.data();
-        renderClassSchedule();
-        renderMaterialTable();
-        renderTeacherScheduleGrid();
-      }
-    });
-  </script>
+  <!-- Main JavaScript Module -->
+  <script type="module" src="weekly.js"></script>
 </body>
 </html>
