@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>School Weekly Schedule</title>
+  <link rel="stylesheet" href="weekly.css">
+</head>
+<body>
+
+  <!-- Navigation Tabs -->
+  <div class="nav-tabs">
+    <button class="tab-btn active" id="btnClassView">Class View (Student)</button>
+    <button class="tab-btn" id="btnTeacherView">Teacher Material Entry</button>
+    <button class="tab-btn" id="btnAdminView">Admin Dashboard</button>
+  </div>
+
+  <!-- Student Class View -->
+  <div id="classView" class="tab-content active">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h2>Class Schedule</h2>
+      <select id="classSelectView" style="width: 200px;"></select>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 15%;">TIME</th>
+          <th>MONDAY</th>
+          <th>TUESDAY</th>
+          <th>WEDNESDAY</th>
+          <th>THURSDAY</th>
+          <th>FRIDAY</th>
+        </tr>
+      </thead>
+      <tbody id="classScheduleBody">
+        <!-- Rendered via weekly.js -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Teacher View -->
+  <div id="teacherView" class="tab-content">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h2>Teacher Material Portal</h2>
+      <select id="teacherSelectView" style="width: 200px;"></select>
+    </div>
+    <div class="teacher-layout">
+      
+      <!-- Left Schedule Grid -->
+      <div class="schedule-side">
+        <table>
+          <thead>
+            <tr>
+              <th>TIME</th>
+              <th>MON</th>
+              <th>TUE</th>
+              <th>WED</th>
+              <th>THU</th>
+              <th>FRI</th>
+            </tr>
+          </thead>
+          <tbody id="teacherScheduleBody">
+            <!-- Rendered via weekly.js -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Right Personal Material Table -->
+      <div class="material-side">
+        <table>
+          <thead>
+            <tr>
+              <th colspan="4">PERSONAL MATERIALS</th>
+            </tr>
+            <tr>
+              <th>Class</th>
+              <th>Material</th>
+              <th>Combine</th>
+              <th>LINK</th>
+            </tr>
+          </thead>
+          <tbody id="materialTableBody">
+            <!-- Rendered via weekly.js -->
+          </tbody>
+        </table>
+        <button class="save-btn" id="saveMaterialsBtn">Save All Materials to Firebase</button>
+      </div>
+
+    </div>
+  </div>
+
+<!-- Admin View -->
+  <div id="adminView" class="tab-content">
+    <h2>Admin Dashboard</h2>
+    <div class="admin-grid">
+      
+      <!-- Left Column with Sub-Tab Toggle -->
+      <div>
+        <div class="admin-subtabs">
+          <button class="subtab-btn active" id="btnSubAdd">Add Resource</button>
+          <button class="subtab-btn" id="btnSubManage">Manage Entities</button>
+        </div>
+
+        <!-- Sub-Tab 1: Add Form -->
+        <div id="subTabAdd" class="subtab-content active">
+          <div class="admin-card">
+            <h3>Add New Resource</h3>
+            <form id="addResourceForm">
+              <div class="form-group">
+                <label for="resourceType">Resource Type</label>
+                <select id="resourceType" required>
+                  <option value="teachers">Teacher</option>
+                  <option value="classes">Class</option>
+                  <option value="subjects">Subject</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="resourceName">Name / Identifier</label>
+                <input type="text" id="resourceName" placeholder="e.g. Mr. Syam, Grade 9C, Math" required>
+              </div>
+              <button type="submit" class="save-btn">Add Resource</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Sub-Tab 2: Manage Tables -->
+        <div id="subTabManage" class="subtab-content">
+          <div class="admin-card">
+            <h3>Database Entities</h3>
+
+            <div class="resource-table-group">
+              <h4>Teachers</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th style="text-align: left; padding-left: 12px;">Teacher Name</th>
+                    <th style="width: 60px;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="tableTeachers"></tbody>
+              </table>
+            </div>
+
+            <div class="resource-table-group">
+              <h4>Classes</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th style="text-align: left; padding-left: 12px;">Class Identifier</th>
+                    <th style="width: 60px;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="tableClasses"></tbody>
+              </table>
+            </div>
+
+            <div class="resource-table-group">
+              <h4>Subjects</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th style="text-align: left; padding-left: 12px;">Subject Name</th>
+                    <th style="width: 60px;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="tableSubjects"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Period Assignment Panel -->
+      <div class="admin-card">
+        <h3>Assign Schedule Slot</h3>
+        <form id="assignSlotForm">
+          <div class="form-group">
+            <label>Select Target Class</label>
+            <select id="adminClassSelect" required></select>
+          </div>
+          <div class="form-group">
+            <label>Select Day</label>
+            <select id="adminDaySelect">
+              <option value="MONDAY">MONDAY</option>
+              <option value="TUESDAY">TUESDAY</option>
+              <option value="WEDNESDAY">WEDNESDAY</option>
+              <option value="THURSDAY">THURSDAY</option>
+              <option value="FRIDAY">FRIDAY</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Start Subject Period</label>
+            <select id="adminPeriodSelect" required></select>
+          </div>
+          <div class="form-group">
+            <label>Period Duration (Consecutive Periods)</label>
+            <select id="adminDurationSelect">
+              <option value="1">1 Period</option>
+              <option value="2">2 Periods Consecutive</option>
+              <option value="3">3 Periods Consecutive</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Assign Subject</label>
+            <select id="adminSubjectSelect" required></select>
+          </div>
+          <div class="form-group">
+            <label>Assign Teacher</label>
+            <select id="adminTeacherSelect" required></select>
+          </div>
+          <button type="submit" class="save-btn">Update Class Schedule</button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Main JavaScript Module -->
+  <script type="module" src="weekly.js"></script>
+</body>
+</html>
