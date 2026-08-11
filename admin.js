@@ -258,6 +258,39 @@ window.renderDbStudentsTable = function() {
     });
 };
 
+function generateRandomCode(length = 5) {
+    const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < length; i++) {
+        code += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return code;
+}
+
+/**
+ * Generates a guaranteed unique 5-character student code.
+ * Checks Firestore to ensure the code does not already exist.
+ */
+async function generateUniqueStudentCode() {
+    let isUnique = false;
+    let newCode = '';
+
+    while (!isUnique) {
+        newCode = generateRandomCode(5);
+        
+        // Check if a student document with this code already exists in Firestore
+        const studentRef = doc(db, "students", newCode);
+        const studentSnap = await getDoc(studentRef);
+
+        // If the snapshot does not exist, the code is unique and safe to use!
+        if (!studentSnap.exists()) {
+            isUnique = true;
+        }
+    }
+
+    return newCode;
+}
+
 async function registerStudent() {
     const name = document.getElementById('newStudentName').value.trim();
     const studentClass = document.getElementById('newStudentClass').value.trim();
@@ -775,43 +808,7 @@ document.querySelectorAll('.menu-btn').forEach(button => {
     });
 });
 
-// --- BULK UPLOAD STUDENTS LOGIC ---
-async function processBulkStudents() {
-    const fileInput = document.getElementById('bulkStudentsFile');
-    const file = fileInput.files[0];
-    if (!file) return alert("Select an Excel file containing Student Name and Class.");
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-        try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-
-            let successCount = 0;
-            for (const row of jsonData) {
-                const name = row["Student Name"] || row["Name"];
-                const sClass = row["Class"] || row["Class Room"];
-
-                if (name && sClass) {
-                    const uniqueCode = await generateUniqueStudentCode(); // Reusing your existing function
-                    await setDoc(doc(db, "students", uniqueCode), {
-                        studentName: String(name).trim(),
-                        studentClass: String(sClass).trim()
-                    });
-                    successCount++;
-                }
-            }
-            alert(`Bulk Student Upload Complete! Created ${successCount} new profiles.`);
-            fileInput.value = "";
-            loadStudentsDirectory();
-            loadPointsTable();
-        } catch (err) {
-            alert("Error parsing student document: " + err.message);
-        }
-    };
-    reader.readAsArrayBuffer(file);
-}
 
 // --- BULK UPLOAD TEACHERS LOGIC ---
 async function processBulkTeachers() {
@@ -1934,18 +1931,66 @@ async function fetchAndRenderScores(quizId, tbodyElement) {
     }
 }
 
-// Placeholder function for your bulk upload tool
-function processBulkScoreUpload() {
-    const fileInput = document.getElementById('bulkScoreUpload');
-    if (!fileInput.files.length) {
-        alert("Please select a file to upload.");
+// --- BULK UPLOAD STUDENTS LOGIC ---
+async function processBulkStudents() {
+    const fileInput = document.getElementById('bulkStudentsFile');
+    const file = fileInput ? fileInput.files[0] : null;
+    
+    if (!file) {
+        alert("Please select an Excel (.xlsx, .csv) file to upload.");
         return;
     }
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+            let successCount = 0;
+            let skippedCount = 0;
+
+            for (const row of jsonData) {
+                // Support multiple possible header naming variations
+                const name = row["Student Name"] || row["Name"] || row["studentName"];
+                const sClass = row["Class"] || row["Class Room"] || row["studentClass"] || row["class"];
+
+                if (name && sClass) {
+                    const uniqueCode = await generateUniqueStudentCode();
+                    
+                    await setDoc(doc(db, "students", uniqueCode), {
+                        studentName: String(name).trim(),
+                        studentClass: String(sClass).trim()
+                    });
+                    
+                    successCount++;
+                } else {
+                    skippedCount++;
+                }
+            }
+
+            alert(`Bulk Student Registration Complete!\n• Created: ${successCount} profiles${skippedCount > 0 ? `\n• Skipped (Missing Name/Class): ${skippedCount}` : ''}`);
+            
+            fileInput.value = "";
+            
+            // Refresh directories and databases
+            if (typeof loadStudentsDirectory === "function") loadStudentsDirectory();
+            if (typeof renderDbStudentsTable === "function") renderDbStudentsTable();
+            if (typeof loadPointsTable === "function") loadPointsTable();
+            if (typeof window.loadSystemDatabases === "function") window.loadSystemDatabases();
+
+        } catch (err) {
+            alert("Error processing Excel file: " + err.message);
+        }
+    };
     
-    // Add your Excel/CSV parsing logic here (e.g., using SheetJS / PapaParse)
-    alert(`Processing file: ${fileInput.files[0].name}. Please wait...`);
+    reader.readAsArrayBuffer(file);
 }
 
+// Bind button event listener
+document.getElementById('uploadBulkStudentsBtn')?.addEventListener('click', processBulkStudents);
 // --- SAFE DATABASE LOAD FOR ADMINS & TEACHERS ---
 // --- UNIFIED SYSTEM DATABASE LOADER ---
 window.loadSystemDatabases = async function() {
@@ -2467,6 +2512,7 @@ window.submitModalPoint = async function() {
 };
 
 
+
 // Function to toggle code visibility in the Points Ledger
 window.togglePtCodeVisibility = function(studentId) {
     const span = document.getElementById(`pt-code-${studentId}`);
@@ -2526,20 +2572,32 @@ async function refreshBehaviorTabLedgers() {
 
         // --- Render Full Ledger in Behavior Tab ---
         const ledgerTbody = document.querySelector("#behaviorTabPointsTable tbody");
-        if(ledgerTbody) {
-            ledgerTbody.innerHTML = "";
-            Object.values(studentTotals)
-                .sort((a,b) => b.total - a.total)
-                .forEach(info => {
-                    const color = info.total > 0 ? '#28a745' : (info.total < 0 ? '#dc3545' : '#333');
-                    const sign = info.total > 0 ? '+' : '';
-                    ledgerTbody.innerHTML += `<tr>
-                        <td><strong>${info.code}</strong></td>
-                        <td>${info.name}</td>
-                        <td>${info.sClass}</td>
-                        <td><strong style="color: ${color};">${sign}${info.total}</strong></td>
-                    </tr>`;
-                });
+            if (ledgerTbody) {
+                ledgerTbody.innerHTML = "";
+                Object.values(studentTotals)
+                    .sort((a, b) => b.total - a.total)
+                    .forEach(info => {
+                        const color = info.total > 0 ? '#28a745' : (info.total < 0 ? '#dc3545' : '#333');
+                        const sign = info.total > 0 ? '+' : '';
+                        
+                        // Declare safeName before using it in the inline HTML string below
+                        const safeName = (info.name || '').replace(/'/g, "\\'");
+
+                        ledgerTbody.innerHTML += `<tr>
+                            <td><strong>${info.code}</strong></td>
+                            <td>${info.name}</td>
+                            <td><strong>${info.sClass}</strong></td>
+                            <td><strong style="color: ${color};">${sign}${info.total}</strong></td>
+                            <td>
+                                <div class="kebab-menu">
+                                    <button class="kebab-btn" onclick="toggleMenu(event, 'bhv-${info.code}')">⋮</button>
+                                    <div id="menu-bhv-${info.code}" class="dropdown-menu">
+                                        <button class="dropdown-item" onclick="openBehaviorHistoryModal('${info.code}', '${safeName}')">View History</button>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>`;
+                    });
         }
 
         // --- Render Top 10 Positive Reasons ---
@@ -3204,6 +3262,131 @@ async function downloadScoreTemplate() {
     }
 }
 
+window.openBehaviorHistoryModal = async function(studentCode, studentName) {
+    const modal = document.getElementById('behaviorHistoryModal');
+    const title = document.getElementById('historyModalTitle');
+    const tbody = document.getElementById('historyDetailTbody');
+
+    if (!modal || !tbody) return;
+
+    title.innerText = `Behavior History: ${studentName} (${studentCode})`;
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">Loading logs...</td></tr>`;
+
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+
+    try {
+        const q = query(collection(db, "student_points"), where("studentCode", "==", studentCode));
+        const snap = await getDocs(q);
+
+        tbody.innerHTML = "";
+
+        if (snap.empty) {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: var(--text-gray);">No behavior entries recorded for this student.</td></tr>`;
+            return;
+        }
+
+        let entries = [];
+        snap.forEach(docSnap => {
+            entries.push({ docId: docSnap.id, ...docSnap.data() });
+        });
+
+        // Sort newest entries first
+        entries.sort((a, b) => {
+            const tA = a.timestamp ? (a.timestamp.seconds ? a.timestamp.seconds * 1000 : new Date(a.timestamp).getTime()) : 0;
+            const tB = b.timestamp ? (b.timestamp.seconds ? b.timestamp.seconds * 1000 : new Date(b.timestamp).getTime()) : 0;
+            return tB - tA;
+        });
+
+        entries.forEach(item => {
+            const pts = parseFloat(item.points) || 0;
+            const color = pts > 0 ? '#10b981' : (pts < 0 ? '#e02d2d' : 'var(--text-dark)');
+            const sign = pts > 0 ? '+' : '';
+            
+            let dateStr = 'N/A';
+            if (item.timestamp) {
+                const d = item.timestamp.seconds ? new Date(item.timestamp.seconds * 1000) : new Date(item.timestamp);
+                dateStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+
+            const safeReason = (item.reason || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const safeStudentName = studentName.replace(/'/g, "\\'");
+
+            tbody.innerHTML += `
+                <tr>
+                    <td style="font-size: 12px; color: var(--text-gray);">${dateStr}</td>
+                    <td>${item.reason || 'N/A'}</td>
+                    <td><strong style="color: ${color};">${sign}${pts}</strong></td>
+                    <td>
+                        <div style="display: flex; gap: 6px;">
+                            <button class="edit-btn" onclick="editPointEntry('${item.docId}', '${safeReason}', ${pts}, '${studentCode}', '${safeStudentName}')">Edit</button>
+                            <button class="delete-btn" onclick="deletePointEntry('${item.docId}', '${studentCode}', '${safeStudentName}')">Delete</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+
+    } catch (err) {
+        console.error("Error fetching behavior history:", err);
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: red;">Error loading logs.</td></tr>`;
+    }
+};
+
+window.closeBehaviorHistoryModal = function() {
+    const modal = document.getElementById('behaviorHistoryModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+    }
+};
+
+window.editPointEntry = async function(docId, currentReason, currentPoints, studentCode, studentName) {
+    const newReason = prompt("Modify Reason / Event:", currentReason);
+    if (newReason === null) return;
+
+    const newPtsStr = prompt("Modify Point Value (+ or -):", currentPoints);
+    if (newPtsStr === null) return;
+
+    const newPts = parseFloat(newPtsStr);
+    if (isNaN(newPts) || !newReason.trim()) {
+        alert("Please provide a valid point number and reason.");
+        return;
+    }
+
+    try {
+        await updateDoc(doc(db, "student_points", docId), {
+            reason: newReason.trim(),
+            points: newPts
+        });
+
+        alert("Behavior entry updated successfully!");
+
+        // Refresh History Modal and Ledgers
+        openBehaviorHistoryModal(studentCode, studentName);
+        refreshBehaviorTabLedgers();
+        if (typeof loadPointsTable === "function") loadPointsTable();
+    } catch (e) {
+        alert("Error updating behavior entry: " + e.message);
+    }
+};
+
+window.deletePointEntry = async function(docId, studentCode, studentName) {
+    if (confirm("Are you sure you want to permanently delete this behavior entry?")) {
+        try {
+            await deleteDoc(doc(db, "student_points", docId));
+            alert("Entry deleted successfully!");
+
+            // Refresh History Modal and Ledgers
+            openBehaviorHistoryModal(studentCode, studentName);
+            refreshBehaviorTabLedgers();
+            if (typeof loadPointsTable === "function") loadPointsTable();
+        } catch (e) {
+            alert("Error deleting behavior entry: " + e.message);
+        }
+    }
+};
+
 // Bind button listener
 document.getElementById('downloadTemplateBtn')?.addEventListener('click', downloadScoreTemplate);
 // Bind change listeners to update quizzes dynamically
@@ -3239,8 +3422,6 @@ window.viewScoreLedger = viewScoreLedger;
 window.inlineAdjustPoint = inlineAdjustPoint;
 
 // Bind the new bulk upload buttons
-document.getElementById('uploadBulkStudentsBtn')?.addEventListener('click', processBulkStudents);
-document.getElementById('uploadBulkTeachersBtn')?.addEventListener('click', processBulkTeachers);
 document.getElementById('sortStudents')?.addEventListener('change', loadStudentsDirectory);
 document.getElementById('sortScores')?.addEventListener('change', loadAdminTable);
 document.getElementById('sortPoints')?.addEventListener('change', loadPointsTable);

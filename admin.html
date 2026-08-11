@@ -461,7 +461,7 @@
                         </div>
                         <div class="table-responsive" style="max-height: 400px;">
                             <table id="behaviorTabPointsTable">
-                                <thead><tr><th>Student Code</th><th>Student Name</th><th>Class</th><th>Total Points</th></tr></thead>
+                                <thead><tr><th>Student Code</th><th>Student Name</th><th>Class</th><th>Total Points</th><th>Action</th></tr></thead>
                                 <tbody></tbody>
                             </table>
                         </div>
@@ -480,6 +480,15 @@
                         <input type="text" id="newStudentName" placeholder="Full Student Name">
                         <input type="text" id="newStudentClass" placeholder="Class Room (e.g., Grade 7A)">
                         <button id="registerStudentBtn">Generate Student Code</button>
+                    </div>
+                    <!-- Bulk Register Students with Excel -->
+                    <div class="box">
+                        <h3>Bulk Register Students (Excel)</h3>
+                        <p style="font-size: 13px; color: var(--text-gray); margin-bottom: 12px;">
+                            Upload an Excel (.xlsx, .csv) file containing columns for <strong>Student Name</strong> and <strong>Class</strong>.
+                        </p>
+                        <input type="file" id="bulkStudentsFile" accept=".xlsx, .xls, .csv" style="margin-bottom: 12px;">
+                        <button id="uploadBulkStudentsBtn" style="background: var(--primary-blue);">Upload & Process Bulk Students</button>
                     </div>
                     
                     <!-- 3. Provision Teacher -->
@@ -816,8 +825,33 @@
                             <button onclick="submitModalPoint()" style="background:#10b981; margin-top: 20px;">Save Adjustment</button>
                         </div>
                     </div>
+
+                    <!-- Modal for Viewing and Managing Student Behavior History -->
+                <div id="behaviorHistoryModal" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1100; display:flex; justify-content:center; align-items:center;">
+                    <div class="box" style="width: 90%; max-width: 650px; position: relative; max-height: 85vh; overflow-y: auto; padding: 24px;">
+                        <button onclick="closeBehaviorHistoryModal()" style="position:absolute; right:15px; top:15px; width:auto; background:#64748b; color:white; padding: 6px 12px; font-size: 12px; border-radius: 6px;">Close</button>
+                        <h3 id="historyModalTitle" style="margin-top:0; color: var(--text-dark);">Behavior History</h3>
+                        
+                        <div class="table-responsive" style="max-height: 400px; margin-top: 16px;">
+                            <table id="historyDetailTable">
+                                <thead>
+                                    <tr>
+                                        <th>Date / Time</th>
+                                        <th>Reason</th>
+                                        <th>Points</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historyDetailTbody">
+                                    <!-- Dynamic entries injected via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
         </main>
     </div>
+
 
     <!-- Make sure admin.js is imported last -->
     <script type="module" src="admin.js?v=100"></script>

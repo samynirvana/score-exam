@@ -168,19 +168,19 @@ function renderExamScoresTable(filterValue) {
     }
 
     // 3. Render row with enlarged, highlighted score badge
-    filtered.forEach(data => {
-        scoresTbody.innerHTML += `
-            <tr>
-                <td style="vertical-align: middle;"><strong>${data.examName || data.quizName || 'N/A'}</strong></td>
-                <td style="vertical-align: middle; color: var(--text-gray);">${data.subject || 'N/A'}</td>
-                <td style="text-align: right; vertical-align: middle;">
-                    <span style="display: inline-block; background: #ecfdf5; color: #10b981; font-size: 24px; font-weight: 800; padding: 4px 16px; border-radius: 8px; border: 1px solid #a7f3d0;">
-                        ${data.score}
-                    </span>
-                </td>
-            </tr>
-        `;
-    });
+   filtered.forEach(data => {
+    scoresTbody.innerHTML += `
+        <tr>
+            <td style="vertical-align: middle;"><strong>${data.examName || data.quizName || 'N/A'}</strong></td>
+            <td style="vertical-align: middle; color: var(--text-gray); white-space: nowrap;">${data.subject || 'N/A'}</td>
+            <td style="text-align: right; vertical-align: middle;">
+                <span style="display: inline-block; white-space: nowrap; background: #ecfdf5; color: #10b981; font-size: 24px; font-weight: 800; padding: 4px 16px; border-radius: 8px; border: 1px solid #a7f3d0;">
+                    ${data.score}
+                </span>
+            </td>
+        </tr>
+    `;
+});
 }
 
 // Dropdown change listener
