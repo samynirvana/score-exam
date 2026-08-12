@@ -45,6 +45,45 @@ body {
   display: block; 
 }
 
+/* Filter Toolbar & Badges */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: white;
+  padding: 12px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filter-group label {
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.filter-group select {
+  width: auto;
+  min-width: 120px;
+}
+
+.date-badge {
+  background: #eff6ff;
+  color: var(--accent);
+  border: 1px solid #bfdbfe;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
 /* Side-by-Side Flex Layout */
 .teacher-layout {
   display: flex;
@@ -115,6 +154,7 @@ th {
 /* Admin Dashboard Elements */
 .admin-grid {
   display: grid;
+  grid-column: 1fr 2fr;
   grid-template-columns: 1fr 2fr;
   gap: 20px;
 }
@@ -138,7 +178,7 @@ th {
   margin-bottom: 4px;
 }
 
-input[type="text"], select {
+input[type="text"], input[type="date"], select {
   width: 100%;
   padding: 8px;
   font-size: 12px;
@@ -161,20 +201,6 @@ input[type="text"], select {
 
 .save-btn:hover {
   background-color: #1d4ed8;
-}
-
-.badge-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.badge {
-  background: #e2e8f0;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 11px;
 }
 
 /* Kebab Action Menu */
@@ -279,4 +305,39 @@ input[type="text"], select {
 
 .subtab-content.active {
   display: block;
+}
+
+/* Print PDF Formatting Rules */
+@media print {
+  /* Hide navigation buttons, tab bars, filter controls, and admin panels */
+  .tab-btn, .subtab-btn, .filter-bar, button, .kebab-menu, #btnAdminView, #btnTeacherView {
+    display: none !important;
+  }
+
+  body {
+    background-color: #ffffff !important;
+    font-size: 11pt;
+  }
+
+  .schedule-container, #printableArea {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+
+  table {
+    page-break-inside: auto;
+    width: 100% !important;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  td, th {
+    border: 1px solid #000000 !important;
+    padding: 6px !important;
+  }
 }

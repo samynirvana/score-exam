@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>School Weekly Schedule</title>
   <link rel="stylesheet" href="weekly.css">
+  <link rel="shortcut icon" href="#">
 </head>
 <body>
 
@@ -16,36 +17,63 @@
   </div>
 
   <!-- Student Class View -->
-  <div id="classView" class="tab-content active">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-      <h2>Class Schedule</h2>
-      <select id="classSelectView" style="width: 200px;"></select>
+ <!-- Class View Controls with Print Button -->
+<div id="classView" class="tab-content active">
+  <div class="filter-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+      <label>School Year: <select id="classYearSelect"></select></label>
+      <label>Theme: <select id="classThemeSelect"></select></label>
+      <label>Week: <select id="classWeekSelect"></select></label>
+      <span id="classDateBadge" class="date-badge">Dates: -</span>
+      <label>Class: <select id="classSelectView"></select></label>
     </div>
-    <table>
+    <!-- Print PDF Button -->
+    <button id="btnPrintPDF" class="save-btn" style="width: auto; padding: 8px 16px; background-color: #059669;">
+      🖨️ Print as PDF
+    </button>
+  </div>
+
+  <!-- Class Schedule Table -->
+  <div id="printableArea" class="schedule-container">
+    <table class="schedule-table" style="width: 100%; border-collapse: collapse;">
       <thead>
         <tr>
-          <th style="width: 15%;">TIME</th>
-          <th>MONDAY</th>
-          <th>TUESDAY</th>
-          <th>WEDNESDAY</th>
-          <th>THURSDAY</th>
-          <th>FRIDAY</th>
+          <th style="width: 12%;">TIME</th>
+          <th style="width: 17.6%;">MONDAY<br><small style="font-weight: normal; font-size: 11px; color: #475569;">(Seragam Putih Biru)</small></th>
+          <th style="width: 17.6%;">TUESDAY<br><small style="font-weight: normal; font-size: 11px; color: #475569;">(Seragam Kotak-Kotak)</small></th>
+          <th style="width: 17.6%;">WEDNESDAY<br><small style="font-weight: normal; font-size: 11px; color: #475569;">(Seragam Putih Biru)</small></th>
+          <th style="width: 17.6%;">THURSDAY<br><small style="font-weight: normal; font-size: 11px; color: #475569;">(Seragam Kotak-Kotak)</small></th>
+          <th style="width: 17.6%;">FRIDAY<br><small style="font-weight: normal; font-size: 11px; color: #475569;">(Seragam Pramuka/Batik Jumat)</small></th>
         </tr>
       </thead>
-      <tbody id="classScheduleBody">
-        <!-- Rendered via weekly.js -->
-      </tbody>
+      <tbody id="classScheduleBody"></tbody>
     </table>
   </div>
+</div>
 
   <!-- Teacher View -->
   <div id="teacherView" class="tab-content">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-      <h2>Teacher Material Portal</h2>
-      <select id="teacherSelectView" style="width: 200px;"></select>
+    <div class="filter-bar">
+      <div class="filter-group">
+        <label for="teacherYearSelect">School Year:</label>
+        <select id="teacherYearSelect"></select>
+      </div>
+      <div class="filter-group">
+        <label for="teacherThemeSelect">Theme:</label>
+        <select id="teacherThemeSelect"></select>
+      </div>
+      <div class="filter-group">
+        <label for="teacherWeekSelect">Week:</label>
+        <select id="teacherWeekSelect"></select>
+      </div>
+      <div class="date-badge" id="teacherDateBadge">Dates: -</div>
+      <div class="filter-group" style="margin-left: auto;">
+        <label for="teacherSelectView">Teacher:</label>
+        <select id="teacherSelectView"></select>
+      </div>
     </div>
+
     <div class="teacher-layout">
-      
       <!-- Left Schedule Grid -->
       <div class="schedule-side">
         <table>
@@ -59,37 +87,61 @@
               <th>FRI</th>
             </tr>
           </thead>
-          <tbody id="teacherScheduleBody">
-            <!-- Rendered via weekly.js -->
-          </tbody>
+          <tbody id="teacherScheduleBody"></tbody>
         </table>
       </div>
 
       <!-- Right Personal Material Table -->
       <div class="material-side">
-        <table>
+        <table class="material-table">
           <thead>
             <tr>
-              <th colspan="4">PERSONAL MATERIALS</th>
-            </tr>
-            <tr>
-              <th>Class</th>
+              <th>Class & Day</th>
               <th>Material</th>
-              <th>Combine</th>
-              <th>LINK</th>
+              <th>Actions</th>
             </tr>
           </thead>
-          <tbody id="materialTableBody">
-            <!-- Rendered via weekly.js -->
-          </tbody>
+          <tbody id="materialTableBody"></tbody>
         </table>
         <button class="save-btn" id="saveMaterialsBtn">Save All Materials to Firebase</button>
       </div>
+    </div>
 
+    <div id="homeTeacherSection" style="display: none; margin-top: 25px; padding: 15px; border: 2px solid #3b82f6; border-radius: 8px; background-color: #eff6ff;">
+      <h3 style="color: #1e40af; margin-top: 0;">Home Teacher Panel — <span id="homeClassTitle"></span></h3>
+      
+      <!-- 1. Weekly Class Notes Editor -->
+      <div style="margin-bottom: 20px;">
+        <label for="weeklyNoteInput" style="font-weight: bold; display: block; margin-bottom: 6px;">Weekly Class Notes:</label>
+        <textarea id="weeklyNoteInput" style="width: 100%; height: 80px; padding: 8px; border-radius: 4px; border: 1px solid #cbd5e1;" placeholder="Enter announcements or notes for this week..."></textarea>
+        <button id="btnSaveClassNotes" class="save-btn" style="width: auto; margin-top: 8px;">Save Weekly Notes</button>
+      </div>
+
+      <hr style="border: 0; border-top: 1px solid #bfdbfe; margin: 15px 0;">
+
+      <!-- 2. Disconnected Temp Weekly Generator -->
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h4 style="margin: 0; color: #1e3a8a;">Temporary Offline Draft Weekly Schedule</h4>
+          <button id="btnCreateTempWeekly" class="tab-btn" style="padding: 6px 12px; font-size: 12px; background-color: #d97706; color: white;">+ Create Blank Temp Weekly</button>
+        </div>
+        <small style="color: #64748b; display: block; margin-top: 4px;">* Edits made here are temporary, disconnected from the database, and do not overwrite live data.</small>
+        
+        <div id="tempWeeklyContainer" style="margin-top: 15px; display: none;">
+          <table class="schedule-table" style="width: 100%; border-collapse: collapse; background: white;">
+            <thead>
+              <tr>
+                <th>TIME</th><th>MONDAY</th><th>TUESDAY</th><th>WEDNESDAY</th><th>THURSDAY</th><th>FRIDAY</th>
+              </tr>
+            </thead>
+            <tbody id="tempWeeklyBody"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 
-<!-- Admin View -->
+  <!-- Admin View -->
   <div id="adminView" class="tab-content">
     <h2>Admin Dashboard</h2>
     <div class="admin-grid">
@@ -99,6 +151,7 @@
         <div class="admin-subtabs">
           <button class="subtab-btn active" id="btnSubAdd">Add Resource</button>
           <button class="subtab-btn" id="btnSubManage">Manage Entities</button>
+          <button class="subtab-btn" id="btnSubCalendar">Academic Calendar</button>
         </div>
 
         <!-- Sub-Tab 1: Add Form -->
@@ -169,6 +222,81 @@
           </div>
         </div>
 
+        <!-- Manage Existing Schedules Section -->
+          <div class="admin-card" style="margin-top: 20px;">
+            <h3>Manage & Edit Assigned Schedules</h3>
+            
+            <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+              <div style="flex: 1;">
+                <label for="manageClassSelect">Select Class</label>
+                <select id="manageClassSelect" class="form-control"></select>
+              </div>
+              <div style="flex: 1;">
+                <label for="manageDaySelect">Select Day</label>
+                <select id="manageDaySelect" class="form-control">
+                  <option value="MONDAY">MONDAY</option>
+                  <option value="TUESDAY">TUESDAY</option>
+                  <option value="WEDNESDAY">WEDNESDAY</option>
+                  <option value="THURSDAY">THURSDAY</option>
+                  <option value="FRIDAY">FRIDAY</option>
+                </select>
+              </div>
+            </div>
+
+            <table class="schedule-table" style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr>
+                  <th style="padding: 8px;">Period / Time</th>
+                  <th style="padding: 8px;">Subject</th>
+                  <th style="padding: 8px;">Teacher</th>
+                  <th style="padding: 8px; width: 120px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="manageScheduleTableBody">
+                <!-- Dynamic list of assigned slots will render here -->
+              </tbody>
+            </table>
+          </div>
+
+        <!-- Sub-Tab 3: Academic Calendar Setup -->
+          <div id="subTabCalendar" class="subtab-content">
+            <div class="admin-card">
+              <h3>Academic Calendar Configuration</h3>
+              <form id="calendarForm">
+                <!-- School Year Dropdown + Add Button -->
+                <div class="form-group">
+                  <label for="adminYearSelect">School Year</label>
+                  <div style="display: flex; gap: 8px;">
+                    <select id="adminYearSelect" style="flex: 1;" required></select>
+                    <button type="button" id="btnAddYear" class="tab-btn" style="padding: 6px 12px; font-size: 12px; white-space: nowrap;">+ Add Year</button>
+                  </div>
+                </div>
+
+                <!-- Theme Dropdown + Add Button -->
+                <div class="form-group">
+                  <label for="adminThemeSelect">Theme Name</label>
+                  <div style="display: flex; gap: 8px;">
+                    <select id="adminThemeSelect" style="flex: 1;" required></select>
+                    <button type="button" id="btnAddTheme" class="tab-btn" style="padding: 6px 12px; font-size: 12px; white-space: nowrap;">+ Add Theme</button>
+                  </div>
+                </div>
+
+                <!-- Start & End Date Inputs -->
+                <div class="form-group">
+                  <label for="calStartDate">Theme Start Date</label>
+                  <input type="date" id="calStartDate" required>
+                </div>
+
+                <div class="form-group">
+                  <label for="calEndDate">Theme End Date</label>
+                  <input type="date" id="calEndDate" required>
+                </div>
+
+                <button type="submit" class="save-btn">Auto-Generate & Save Weeks</button>
+              </form>
+            </div>
+          </div>
+
       </div>
 
       <!-- Right Column: Period Assignment Panel -->
@@ -216,7 +344,6 @@
     </div>
   </div>
 
-  <!-- Main JavaScript Module -->
   <script type="module" src="weekly.js"></script>
 </body>
 </html>

@@ -15,7 +15,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Complete 13 Slot Daily Master Schedule Structure
+// 13 Slot Daily Master Schedule Structure
 const timeSlots = [
   { id: 0, time: "07.30 - 07.40", isBreak: true, label: "OPENING" },
   { id: 1, time: "07.40 - 08.25", isBreak: false, period: 1 },
@@ -32,38 +32,267 @@ const timeSlots = [
   { id: 12, time: "15.15 - 15.30", isBreak: true, label: "CLOSING" }
 ];
 
-// App State
-let appEntities = { teachers: [], classes: [], subjects: [] };
+const dailyUniforms = {
+  MONDAY: "Seragam Putih Biru",
+  TUESDAY: "Seragam Kotak-Kotak",
+  WEDNESDAY: "Seragam Putih Biru",
+  THURSDAY: "Seragam Kotak-Kotak",
+  FRIDAY: "Seragam Pramuka/Batik Jumat"
+};
+
+// Application State
+let appEntities = { teachers: [], classes: [], subjects: [], homeTeachers: {} };
+let classNotesData = {};
 let masterSchedules = {};
 let materialsData = {};
+let academicCalendar = {};
 
 // Main Navigation Event Listeners
-document.getElementById('btnClassView').addEventListener('click', (e) => switchTab('classView', e.target));
-document.getElementById('btnTeacherView').addEventListener('click', (e) => switchTab('teacherView', e.target));
-document.getElementById('btnAdminView').addEventListener('click', (e) => switchTab('adminView', e.target));
+document.getElementById('btnClassView')?.addEventListener('click', (e) => switchTab('classView', e.target));
+document.getElementById('btnTeacherView')?.addEventListener('click', (e) => switchTab('teacherView', e.target));
+document.getElementById('btnAdminView')?.addEventListener('click', (e) => switchTab('adminView', e.target));
 
 function switchTab(tabId, targetBtn) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-  document.getElementById(tabId).classList.add('active');
-  targetBtn.classList.add('active');
+  document.getElementById(tabId)?.classList.add('active');
+  targetBtn?.classList.add('active');
+}
+
+// Helper to retrieve slot assignments normalized as an array
+function getSlotAssignments(className, day, slotId) {
+  const entry = masterSchedules[className]?.[day]?.[slotId];
+  if (!entry) return [];
+  if (Array.isArray(entry)) return entry;
+  return [entry]; // Convert single legacy object to array format
 }
 
 // Admin Sub-Tab Navigation
 document.getElementById('btnSubAdd')?.addEventListener('click', (e) => switchAdminSubTab('subTabAdd', e.target));
 document.getElementById('btnSubManage')?.addEventListener('click', (e) => switchAdminSubTab('subTabManage', e.target));
+document.getElementById('btnSubCalendar')?.addEventListener('click', (e) => switchAdminSubTab('subTabCalendar', e.target));
 
 function switchAdminSubTab(subTabId, targetBtn) {
   document.querySelectorAll('.subtab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.subtab-btn').forEach(el => el.classList.remove('active'));
   document.getElementById(subTabId)?.classList.add('active');
-  targetBtn.classList.add('active');
+  targetBtn?.classList.add('active');
 }
+
+// Populate Calendar Select Boxes for Class, Teacher, and Admin Views
+function populateCalendarSelects() {
+  const years = Object.keys(academicCalendar);
+  const views = ['class', 'teacher'];
+
+  // 1. Populate Student and Teacher View Selectors
+  views.forEach(prefix => {
+    const yearSel = document.getElementById(`${prefix}YearSelect`);
+    const themeSel = document.getElementById(`${prefix}ThemeSelect`);
+    const weekSel = document.getElementById(`${prefix}WeekSelect`);
+
+    if (!yearSel || !themeSel || !weekSel) return;
+
+    const currYear = yearSel.value;
+    yearSel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+    if (currYear && years.includes(currYear)) yearSel.value = currYear;
+    
+    const selectedYear = yearSel.value;
+    const themes = selectedYear && academicCalendar[selectedYear] ? Object.keys(academicCalendar[selectedYear]) : [];
+
+    const currTheme = themeSel.value;
+    themeSel.innerHTML = themes.map(t => `<option value="${t}">${t}</option>`).join('');
+    if (currTheme && themes.includes(currTheme)) themeSel.value = currTheme;
+
+    const selectedTheme = themeSel.value;
+    const weeks = selectedYear && selectedTheme && academicCalendar[selectedYear][selectedTheme] 
+      ? Object.keys(academicCalendar[selectedYear][selectedTheme]) 
+      : [];
+
+    const currWeek = weekSel.value;
+    weekSel.innerHTML = weeks.map(w => `<option value="${w}">${w}</option>`).join('');
+    if (currWeek && weeks.includes(currWeek)) weekSel.value = currWeek;
+
+    const selectedWeek = weekSel.value;
+    const badge = document.getElementById(`${prefix}DateBadge`);
+    if (badge) {
+      if (selectedYear && selectedTheme && selectedWeek && academicCalendar[selectedYear]?.[selectedTheme]?.[selectedWeek]) {
+        const info = academicCalendar[selectedYear][selectedTheme][selectedWeek];
+        badge.textContent = `Dates: ${info.startDate} to ${info.endDate}`;
+      } else {
+        badge.textContent = "Dates: -";
+      }
+    }
+  });
+
+  // 2. Populate Admin Calendar Form Selectors
+  populateAdminCalendarDropdowns();
+}
+
+// Admin Calendar Form Dropdown Handler
+function populateAdminCalendarDropdowns() {
+  const adminYearSel = document.getElementById('adminYearSelect');
+  const adminThemeSel = document.getElementById('adminThemeSelect');
+  if (!adminYearSel || !adminThemeSel) return;
+
+  const years = Object.keys(academicCalendar);
+  const currYear = adminYearSel.value;
+  adminYearSel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+  if (currYear && years.includes(currYear)) adminYearSel.value = currYear;
+
+  const selectedYear = adminYearSel.value;
+  const themes = selectedYear && academicCalendar[selectedYear] ? Object.keys(academicCalendar[selectedYear]) : [];
+  
+  const currTheme = adminThemeSel.value;
+  adminThemeSel.innerHTML = themes.map(t => `<option value="${t}">${t}</option>`).join('');
+  if (currTheme && themes.includes(currTheme)) adminThemeSel.value = currTheme;
+}
+
+// Add New School Year Button Handler
+document.getElementById('btnAddYear')?.addEventListener('click', async () => {
+  const newYear = prompt("Enter new Academic School Year (e.g., 2026-2027):");
+  if (!newYear || !newYear.trim()) return;
+
+  const cleanYear = newYear.trim();
+  if (!academicCalendar[cleanYear]) {
+    academicCalendar[cleanYear] = {};
+    try {
+      await setDoc(doc(db, "config", "academicCalendar"), academicCalendar);
+      populateCalendarSelects();
+      document.getElementById('adminYearSelect').value = cleanYear;
+      populateAdminCalendarDropdowns();
+    } catch (err) {
+      alert("Error adding School Year: " + err.message);
+    }
+  } else {
+    alert("This School Year already exists.");
+  }
+});
+
+// Add New Theme Button Handler
+document.getElementById('btnAddTheme')?.addEventListener('click', async () => {
+  const selectedYear = document.getElementById('adminYearSelect')?.value;
+  if (!selectedYear) {
+    alert("Please select or add a School Year first.");
+    return;
+  }
+
+  const newTheme = prompt(`Enter new Theme name for ${selectedYear} (e.g., Theme 1):`);
+  if (!newTheme || !newTheme.trim()) return;
+
+  const cleanTheme = newTheme.trim();
+  if (!academicCalendar[selectedYear][cleanTheme]) {
+    academicCalendar[selectedYear][cleanTheme] = {};
+    try {
+      await setDoc(doc(db, "config", "academicCalendar"), academicCalendar);
+      populateCalendarSelects();
+      document.getElementById('adminThemeSelect').value = cleanTheme;
+    } catch (err) {
+      alert("Error adding Theme: " + err.message);
+    }
+  } else {
+    alert("This Theme already exists under the selected year.");
+  }
+});
+
+// Sync Admin Calendar Year Dropdown Change
+document.getElementById('adminYearSelect')?.addEventListener('change', () => {
+  populateAdminCalendarDropdowns();
+});
+
+// Date Formatter Helper (YYYY-MM-DD)
+function formatDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+// Helper Function: Auto-Generate Weeks
+function generateWeeksFromDateRange(startStr, endStr) {
+  const weeksObj = {};
+  let currentStart = new Date(startStr + "T00:00:00");
+  const finalEnd = new Date(endStr + "T00:00:00");
+  let weekNum = 1;
+
+  if (currentStart > finalEnd) {
+    alert("Start Date must be before or equal to End Date!");
+    return null;
+  }
+
+  while (currentStart <= finalEnd) {
+    let currentEnd = new Date(currentStart);
+    currentEnd.setDate(currentEnd.getDate() + 6); // 7 days (e.g., Mon - Sun)
+
+    if (currentEnd > finalEnd) {
+      currentEnd = new Date(finalEnd);
+    }
+
+    const weekKey = `Week ${weekNum}`;
+    weeksObj[weekKey] = {
+      startDate: formatDate(currentStart),
+      endDate: formatDate(currentEnd)
+    };
+
+    // Move to start of next week (+7 days)
+    currentStart.setDate(currentStart.getDate() + 7);
+    weekNum++;
+  }
+
+  return weeksObj;
+}
+
+// Submit Academic Calendar Form (Auto-Generate Weeks)
+document.getElementById('calendarForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const year = document.getElementById('adminYearSelect').value;
+  const theme = document.getElementById('adminThemeSelect').value;
+  const startDate = document.getElementById('calStartDate').value;
+  const endDate = document.getElementById('calEndDate').value;
+
+  if (!year || !theme) {
+    alert("Please select a valid Year and Theme.");
+    return;
+  }
+
+  const generatedWeeks = generateWeeksFromDateRange(startDate, endDate);
+  if (!generatedWeeks) return;
+
+  if (!academicCalendar[year]) academicCalendar[year] = {};
+  academicCalendar[year][theme] = generatedWeeks;
+
+  try {
+    await setDoc(doc(db, "config", "academicCalendar"), academicCalendar);
+    const weekCount = Object.keys(generatedWeeks).length;
+    alert(`Successfully generated and saved ${weekCount} weeks for ${year} > ${theme}!`);
+    populateCalendarSelects();
+  } catch (err) {
+    alert("Error saving calendar data: " + err.message);
+  }
+});
+
+// Sync Calendar Filters across Views
+['class', 'teacher'].forEach(prefix => {
+  document.getElementById(`${prefix}YearSelect`)?.addEventListener('change', () => {
+    populateCalendarSelects();
+    renderClassSchedule();
+    renderTeacherView();
+  });
+  document.getElementById(`${prefix}ThemeSelect`)?.addEventListener('change', () => {
+    populateCalendarSelects();
+    renderClassSchedule();
+    renderTeacherView();
+  });
+  document.getElementById(`${prefix}WeekSelect`)?.addEventListener('change', () => {
+    populateCalendarSelects();
+    renderClassSchedule();
+    renderTeacherView();
+  });
+});
 
 // Populate Admin Select Pickers & Entity Tables
 function populateAdminSelects() {
   const periodSelect = document.getElementById('adminPeriodSelect');
-  if (periodSelect) {
+  if (periodSelect && periodSelect.children.length === 0) {
     periodSelect.innerHTML = timeSlots
       .filter(s => !s.isBreak)
       .map(s => `<option value="${s.id}">Period ${s.period} (${s.time})</option>`).join('');
@@ -71,15 +300,27 @@ function populateAdminSelects() {
 
   const classSelects = [document.getElementById('adminClassSelect'), document.getElementById('classSelectView')];
   classSelects.forEach(select => {
-    if (select) select.innerHTML = appEntities.classes.map(c => `<option value="${c}">${c}</option>`).join('');
+    if (select) {
+      const currentVal = select.value;
+      select.innerHTML = appEntities.classes.map(c => `<option value="${c}">${c}</option>`).join('');
+      if (currentVal && appEntities.classes.includes(currentVal)) select.value = currentVal;
+    }
   });
 
   const adminSub = document.getElementById('adminSubjectSelect');
-  if (adminSub) adminSub.innerHTML = appEntities.subjects.map(s => `<option value="${s}">${s}</option>`).join('');
+  if (adminSub) {
+    const currentVal = adminSub.value;
+    adminSub.innerHTML = appEntities.subjects.map(s => `<option value="${s}">${s}</option>`).join('');
+    if (currentVal && appEntities.subjects.includes(currentVal)) adminSub.value = currentVal;
+  }
   
   const teacherSelects = [document.getElementById('adminTeacherSelect'), document.getElementById('teacherSelectView')];
   teacherSelects.forEach(select => {
-    if (select) select.innerHTML = appEntities.teachers.map(t => `<option value="${t}">${t}</option>`).join('');
+    if (select) {
+      const currentVal = select.value;
+      select.innerHTML = appEntities.teachers.map(t => `<option value="${t}">${t}</option>`).join('');
+      if (currentVal && appEntities.teachers.includes(currentVal)) select.value = currentVal;
+    }
   });
 
   renderEntityTables();
@@ -88,7 +329,8 @@ function populateAdminSelects() {
 // Render Entity Tables with Kebab Actions
 function renderEntityTables() {
   const types = ['teachers', 'classes', 'subjects'];
-  
+  if (!appEntities.homeTeachers) appEntities.homeTeachers = {};
+
   types.forEach(type => {
     const tbodyId = `table${type.charAt(0).toUpperCase() + type.slice(1)}`;
     const tbody = document.getElementById(tbodyId);
@@ -97,12 +339,20 @@ function renderEntityTables() {
 
     appEntities[type].forEach(item => {
       const tr = document.createElement('tr');
+      let homeBadge = '';
+      if (type === 'teachers' && appEntities.homeTeachers[item]) {
+        homeBadge = `<br><small style="color: #2563eb;">(Home Teacher: ${appEntities.homeTeachers[item]})</small>`;
+      }
+
       tr.innerHTML = `
-        <td style="text-align: left; padding-left: 12px;"><strong>${item}</strong></td>
+        <td style="text-align: left; padding-left: 12px;">
+          <strong>${item}</strong>${homeBadge}
+        </td>
         <td>
           <div class="kebab-menu">
             <button class="kebab-btn">⋮</button>
             <div class="kebab-dropdown">
+              ${type === 'teachers' ? `<button class="set-hometeacher-opt" data-name="${item}">Set Home Teacher</button>` : ''}
               <button class="edit-opt" data-type="${type}" data-name="${item}">Edit</button>
               <button class="delete-opt" data-type="${type}" data-name="${item}">Delete</button>
             </div>
@@ -113,7 +363,7 @@ function renderEntityTables() {
     });
   });
 
-  // Kebab Toggle Logic
+  // Action listeners
   document.querySelectorAll('.kebab-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -124,23 +374,45 @@ function renderEntityTables() {
     });
   });
 
-  // Attach Edit Listeners
+  // Set Home Teacher Kebab Action
+  document.querySelectorAll('.set-hometeacher-opt').forEach(btn => {
+    btn.addEventListener('click', (e) => setHomeTeacher(e.target.dataset.name));
+  });
+
   document.querySelectorAll('.edit-opt').forEach(btn => {
     btn.addEventListener('click', (e) => editEntity(e.target.dataset.type, e.target.dataset.name));
   });
 
-  // Attach Delete Listeners
   document.querySelectorAll('.delete-opt').forEach(btn => {
     btn.addEventListener('click', (e) => deleteEntity(e.target.dataset.type, e.target.dataset.name));
   });
 }
 
-// Close Dropdowns when Clicking Outside
-window.addEventListener('click', () => {
-  document.querySelectorAll('.kebab-dropdown').forEach(d => d.classList.remove('show'));
-});
+// Set Home Teacher Handler
+async function setHomeTeacher(teacherName) {
+  const availableClasses = appEntities.classes.join(', ');
+  const chosenClass = prompt(`Assign ${teacherName} as Home Teacher to class:\nAvailable Classes: ${availableClasses}`);
+  if (!chosenClass) return;
 
-// Edit Entity in Firestore
+  const cleanClass = chosenClass.trim();
+  if (!appEntities.classes.includes(cleanClass)) {
+    alert(`Class "${cleanClass}" does not exist in database.`);
+    return;
+  }
+
+  if (!appEntities.homeTeachers) appEntities.homeTeachers = {};
+  appEntities.homeTeachers[teacherName] = cleanClass;
+
+  try {
+    await setDoc(doc(db, "config", "appEntities"), appEntities);
+    alert(`Assigned ${teacherName} as Home Teacher for ${cleanClass}!`);
+    renderEntityTables();
+    renderTeacherView();
+  } catch (err) {
+    alert("Error updating Home Teacher assignment: " + err.message);
+  }
+}
+
 async function editEntity(type, oldName) {
   const newName = prompt(`Enter new name for "${oldName}":`, oldName);
   if (!newName || newName.trim() === '' || newName.trim() === oldName) return;
@@ -158,7 +430,6 @@ async function editEntity(type, oldName) {
   }
 }
 
-// Delete Entity from Firestore
 async function deleteEntity(type, name) {
   if (confirm(`Are you sure you want to delete "${name}" from ${type}?`)) {
     appEntities[type] = appEntities[type].filter(item => item !== name);
@@ -171,7 +442,37 @@ async function deleteEntity(type, name) {
   }
 }
 
-// Render Student Class Schedule View
+function getActiveCalendarPrefix(viewType = 'class') {
+  const year = document.getElementById(`${viewType}YearSelect`)?.value || '2026-2027';
+  const theme = document.getElementById(`${viewType}ThemeSelect`)?.value || 'Theme 1';
+  const week = document.getElementById(`${viewType}WeekSelect`)?.value || 'Week 1';
+  return `${year}_${theme}_${week}`;
+}
+
+// Helper to identify special combined subject groups
+function getSubjectGroupType(subjectName) {
+  if (!subjectName) return 'regular';
+  const name = subjectName.toLowerCase();
+  if (name.includes('religion') || name.includes('islam') || name.includes('christian') || 
+      name.includes('catholic') || name.includes('buddha') || name.includes('hindu')) {
+    return 'religion';
+  }
+  if (name.includes('art') || name.includes('music')) {
+    return 'art';
+  }
+  return 'regular';
+}
+
+// Helper to determine if two slot entries belong to the same consecutive subject block
+function isSameSubjectGroup(sub1, sub2) {
+  if (sub1 === sub2) return true;
+  const type1 = getSubjectGroupType(sub1);
+  const type2 = getSubjectGroupType(sub2);
+  if (type1 !== 'regular' && type1 === type2) return true;
+  return false;
+}
+
+// Render Student Class Schedule View with Row Merging & Combined Subject Material Support
 function renderClassSchedule() {
   const selectElem = document.getElementById('classSelectView');
   if (!selectElem) return;
@@ -179,72 +480,175 @@ function renderClassSchedule() {
   const tbody = document.getElementById('classScheduleBody');
   if (!tbody) return;
   tbody.innerHTML = '';
-  const days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
-  const classData = masterSchedules[selectedClass] || {};
 
-  timeSlots.forEach(slot => {
+  const days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
+  const calPrefix = getActiveCalendarPrefix('class');
+  const skipCells = { MONDAY: 0, TUESDAY: 0, WEDNESDAY: 0, THURSDAY: 0, FRIDAY: 0 };
+
+  // Render Time Slots
+  timeSlots.forEach((slot, sIndex) => {
     const tr = document.createElement('tr');
+
     if (slot.isBreak) {
       tr.className = 'break-row';
       tr.innerHTML = `<td>${slot.time}</td><td colspan="5">${slot.label}</td>`;
+      days.forEach(day => skipCells[day] = 0);
     } else {
       let html = `<td><strong>${slot.time}</strong><br><small>Period ${slot.period}</small></td>`;
+
       days.forEach(day => {
-        const slotEntry = classData[day]?.[slot.id];
-        if (slotEntry) {
-          const matKey = `${selectedClass}_${slotEntry.subject}`;
-          const matInfo = materialsData[matKey] || {};
-          const linkHtml = matInfo.link ? `<a href="${matInfo.link}" target="_blank" class="resource-link">🔗 Link</a>` : '';
-          html += `
-            <td>
-              <span class="subject-title">${slotEntry.subject}</span>
-              <span class="teacher-tag">${slotEntry.teacher}</span>
+        if (skipCells[day] > 0) {
+          skipCells[day]--;
+          return;
+        }
+
+        const slotEntries = getSlotAssignments(selectedClass, day, slot.id);
+
+        if (slotEntries.length > 0) {
+          const primarySubject = slotEntries[0].subject;
+          const primaryGroup = getSubjectGroupType(primarySubject);
+
+          let rowspan = 1;
+          for (let i = sIndex + 1; i < timeSlots.length; i++) {
+            const nextSlot = timeSlots[i];
+            if (nextSlot.isBreak) break;
+
+            const nextEntries = getSlotAssignments(selectedClass, day, nextSlot.id);
+            if (nextEntries.length > 0) {
+              const nextGroup = getSubjectGroupType(nextEntries[0].subject);
+              if (isSameSubjectGroup(primarySubject, nextEntries[0].subject) || 
+                 (primaryGroup !== 'regular' && primaryGroup === nextGroup)) {
+                rowspan++;
+              } else {
+                break;
+              }
+            } else {
+              break;
+            }
+          }
+
+          if (rowspan > 1) skipCells[day] = rowspan - 1;
+
+          let cellContent = '';
+          if (primaryGroup === 'religion' || primaryGroup === 'art') {
+            const groupTitle = primaryGroup === 'religion' ? 'RELIGION' : 'ART & MUSIC';
+            cellContent = `<span class="subject-title">${groupTitle}</span>`;
+
+            slotEntries.forEach(entry => {
+              const matKey = `${calPrefix}_${selectedClass}_${day}_${entry.subject}`;
+              const matInfo = materialsData[matKey] || {};
+              const linkHtml = matInfo.link ? `<a href="${matInfo.link}" target="_blank" class="resource-link">🔗 Link</a>` : '';
+
+              cellContent += `
+                <div style="margin-top: 6px; padding-top: 4px; border-top: 1px dashed #cbd5e1;">
+                  <span class="teacher-tag"><strong>${entry.subject}</strong> (${entry.teacher})</span>
+                  <div class="material-text">${matInfo.material || 'No material entered'}</div>
+                  ${linkHtml}
+                </div>`;
+            });
+          } else {
+            const entry = slotEntries[0];
+            const matKey = `${calPrefix}_${selectedClass}_${day}_${entry.subject}`;
+            const matInfo = materialsData[matKey] || {};
+            const linkHtml = matInfo.link ? `<a href="${matInfo.link}" target="_blank" class="resource-link">🔗 Link</a>` : '';
+
+            cellContent = `
+              <span class="subject-title">${entry.subject}</span>
+              <span class="teacher-tag">${entry.teacher}</span>
               <div class="material-text">${matInfo.material || ''}</div>
-              ${linkHtml}
-            </td>`;
+              ${linkHtml}`;
+          }
+
+          const rowspanAttr = rowspan > 1 ? ` rowspan="${rowspan}"` : '';
+          html += `<td${rowspanAttr}>${cellContent}</td>`;
         } else {
           html += `<td>-</td>`;
         }
       });
+
       tr.innerHTML = html;
     }
+
     tbody.appendChild(tr);
   });
+
+  // APPEND NOTES ROW AT THE BOTTOM (Below CLOSING Slot)
+  const notesKey = `${calPrefix}_${selectedClass}_notes`;
+  const noteText = classNotesData[notesKey] || 'No notes for this week.';
+  
+  const notesTr = document.createElement('tr');
+  notesTr.innerHTML = `
+    <td style="background-color: #f1f5f9; font-weight: bold; text-align: center;">NOTES</td>
+    <td colspan="5" style="text-align: left; padding: 12px; background-color: #f8fafc; font-style: italic; color: #334155;">
+      ${noteText}
+    </td>
+  `;
+  tbody.appendChild(notesTr);
 }
 
-// Render Teacher Schedule & Materials Entry
+// Print PDF Button Listener
+document.getElementById('btnPrintPDF')?.addEventListener('click', () => {
+  window.print();
+});
+
 function renderTeacherView() {
   const selectElem = document.getElementById('teacherSelectView');
   if (!selectElem) return;
   const selectedTeacher = selectElem.value;
   const days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
-  
-  const tbodyGrid = document.getElementById('teacherScheduleBody');
-  if (!tbodyGrid) return;
-  tbodyGrid.innerHTML = '';
+  const calPrefix = getActiveCalendarPrefix('teacher');
 
-  timeSlots.forEach(slot => {
-    const tr = document.createElement('tr');
-    if (slot.isBreak) {
-      tr.className = 'break-row';
-      tr.innerHTML = `<td>${slot.time}</td><td colspan="5">${slot.label}</td>`;
-    } else {
-      let html = `<td><strong>${slot.time}</strong></td>`;
-      days.forEach(day => {
-        let assignedInfo = "";
-        Object.keys(masterSchedules).forEach(className => {
-          const entry = masterSchedules[className]?.[day]?.[slot.id];
-          if (entry && entry.teacher === selectedTeacher) {
-            assignedInfo = `<strong>${entry.subject}</strong><br><small>${className}</small>`;
-          }
-        });
-        html += `<td>${assignedInfo}</td>`;
-      });
-      tr.innerHTML = html;
+  // DOM Elements for Home Teacher Panel
+  const homeSection = document.getElementById('homeTeacherSection');
+  const homeClassTitle = document.getElementById('homeClassTitle');
+  const noteInput = document.getElementById('weeklyNoteInput');
+
+  // Check if selected teacher is a Home Teacher
+  const assignedClass = appEntities.homeTeachers?.[selectedTeacher];
+  if (assignedClass && homeSection) {
+    homeSection.style.display = 'block';
+    if (homeClassTitle) homeClassTitle.textContent = `${assignedClass} (${selectedTeacher})`;
+
+    const notesKey = `${calPrefix}_${assignedClass}_notes`;
+
+    // Load existing weekly note
+    if (noteInput) {
+      noteInput.value = classNotesData[notesKey] || '';
     }
-    tbodyGrid.appendChild(tr);
-  });
+  } else if (homeSection) {
+    homeSection.style.display = 'none';
+  }
 
+  // 1. Render Weekly Schedule Grid for Selected Teacher
+  const tbodyGrid = document.getElementById('teacherScheduleBody');
+  if (tbodyGrid) {
+    tbodyGrid.innerHTML = '';
+    timeSlots.forEach(slot => {
+      const tr = document.createElement('tr');
+      if (slot.isBreak) {
+        tr.className = 'break-row';
+        tr.innerHTML = `<td>${slot.time}</td><td colspan="5">${slot.label}</td>`;
+      } else {
+        let html = `<td><strong>${slot.time}</strong></td>`;
+        days.forEach(day => {
+          let assignedInfo = "";
+          Object.keys(masterSchedules).forEach(className => {
+            const slotEntries = getSlotAssignments(className, day, slot.id);
+            slotEntries.forEach(entry => {
+              if (entry.teacher === selectedTeacher) {
+                assignedInfo = `<strong>${entry.subject}</strong><br><small>${className}</small>`;
+              }
+            });
+          });
+          html += `<td>${assignedInfo}</td>`;
+        });
+        tr.innerHTML = html;
+      }
+      tbodyGrid.appendChild(tr);
+    });
+  }
+    
+  // 2. Render Personal Material Entries
   const tbodyMat = document.getElementById('materialTableBody');
   if (!tbodyMat) return;
   tbodyMat.innerHTML = '';
@@ -253,13 +657,15 @@ function renderTeacherView() {
   Object.keys(masterSchedules).forEach(className => {
     days.forEach(day => {
       timeSlots.forEach(slot => {
-        const entry = masterSchedules[className]?.[day]?.[slot.id];
-        if (entry && entry.teacher === selectedTeacher) {
-          const key = `${className}_${entry.subject}`;
-          if (!teacherAssignments.find(a => a.key === key)) {
-            teacherAssignments.push({ key, className, subject: entry.subject });
+        const slotEntries = getSlotAssignments(className, day, slot.id);
+        slotEntries.forEach(entry => {
+          if (entry.teacher === selectedTeacher) {
+            const key = `${calPrefix}_${className}_${day}_${entry.subject}`;
+            if (!teacherAssignments.find(a => a.key === key)) {
+              teacherAssignments.push({ key, className, day, subject: entry.subject });
+            }
           }
-        }
+        });
       });
     });
   });
@@ -267,18 +673,26 @@ function renderTeacherView() {
   teacherAssignments.forEach(item => {
     const mat = materialsData[item.key]?.material || '';
     const link = materialsData[item.key]?.link || '';
-    const combine = mat ? `${item.className} - ${item.subject}\n${mat}` : `${item.className} - ${item.subject}`;
+    const dayShort = item.day.substring(0, 3);
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><strong>${item.className}</strong><br><small>${item.subject}</small></td>
+      <td><strong>${item.className}</strong><br><small>${item.subject} (${dayShort})</small></td>
       <td><input type="text" class="mat-input" data-key="${item.key}" value="${mat}" placeholder="Enter material..."></td>
-      <td style="white-space: pre-line;">${combine}</td>
-      <td><input type="text" class="link-input" data-key="${item.key}" value="${link}" placeholder="https://..."></td>
+      <td>
+        <div class="kebab-menu">
+          <button class="kebab-btn">⋮</button>
+          <div class="kebab-dropdown">
+            <button class="set-link-opt" data-key="${item.key}">${link ? 'Edit Link' : 'Add Link'}</button>
+            ${link ? `<button class="remove-link-opt" data-key="${item.key}">Remove Link</button>` : ''}
+          </div>
+        </div>
+      </td>
     `;
     tbodyMat.appendChild(tr);
   });
 
+  // Material Input Listeners
   document.querySelectorAll('.mat-input').forEach(input => {
     input.addEventListener('input', (e) => {
       const key = e.target.dataset.key;
@@ -288,52 +702,224 @@ function renderTeacherView() {
     });
   });
 
-  document.querySelectorAll('.link-input').forEach(input => {
-    input.addEventListener('input', (e) => {
+  document.querySelectorAll('#materialTableBody .kebab-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.querySelectorAll('#materialTableBody .kebab-dropdown').forEach(d => {
+        if (d !== btn.nextElementSibling) d.classList.remove('show');
+      });
+      btn.nextElementSibling.classList.toggle('show');
+    });
+  });
+
+  document.querySelectorAll('.set-link-opt').forEach(btn => {
+    btn.addEventListener('click', (e) => {
       const key = e.target.dataset.key;
-      if (!materialsData[key]) materialsData[key] = {};
-      materialsData[key].link = e.target.value;
-      renderClassSchedule();
+      const currentLink = materialsData[key]?.link || '';
+      const newLink = prompt("Enter web link / resource URL:", currentLink);
+      
+      if (newLink !== null) {
+        if (!materialsData[key]) materialsData[key] = {};
+        materialsData[key].link = newLink.trim();
+        renderTeacherView();
+        renderClassSchedule();
+      }
+    });
+  });
+
+  document.querySelectorAll('.remove-link-opt').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const key = e.target.dataset.key;
+      if (materialsData[key]) {
+        materialsData[key].link = '';
+        renderTeacherView();
+        renderClassSchedule();
+      }
     });
   });
 }
 
-// Helper & Wrapper Functions for Database Addition
-async function addEntity(type, name) {
-  const cleanName = name ? name.trim() : '';
-  if (!cleanName) throw new Error("Name field cannot be blank.");
-  if (!['teachers', 'classes', 'subjects'].includes(type)) throw new Error(`Invalid entity type: ${type}`);
-  if (appEntities[type].includes(cleanName)) throw new Error(`"${cleanName}" already exists in ${type}.`);
+// 1. Render Manage Schedule Table for selected Class & Day
+function renderManageScheduleTable() {
+  const classSelect = document.getElementById('manageClassSelect');
+  const daySelect = document.getElementById('manageDaySelect');
+  const tbody = document.getElementById('manageScheduleTableBody');
+  
+  if (!classSelect || !daySelect || !tbody) return;
 
-  appEntities[type].push(cleanName);
-  await setDoc(doc(db, "config", "appEntities"), appEntities);
-  return cleanName;
+  const selectedClass = classSelect.value;
+  const selectedDay = daySelect.value;
+  tbody.innerHTML = '';
+
+  if (!selectedClass) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 12px;">Select a class to manage.</td></tr>`;
+    return;
+  }
+
+  let entryCount = 0;
+
+  timeSlots.forEach(slot => {
+    if (slot.isBreak) return;
+
+    const slotAssignments = getSlotAssignments(selectedClass, selectedDay, slot.id);
+
+    slotAssignments.forEach((assignment, index) => {
+      entryCount++;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="padding: 8px;"><strong>Period ${slot.period}</strong><br><small>${slot.time}</small></td>
+        <td style="padding: 8px;">${assignment.subject}</td>
+        <td style="padding: 8px;">${assignment.teacher}</td>
+        <td style="padding: 8px; text-align: center;">
+          <div class="kebab-menu">
+            <button class="kebab-btn">⋮</button>
+            <div class="kebab-dropdown">
+              <button class="edit-slot-btn" data-slot="${slot.id}" data-index="${index}">Edit</button>
+              <button class="delete-slot-btn" data-slot="${slot.id}" data-index="${index}" style="color: #ef4444;">Delete</button>
+            </div>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  });
+
+  if (entryCount === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 12px; color: #64748b;">No schedules assigned for ${selectedClass} on ${selectedDay}.</td></tr>`;
+  }
+
+  // Bind dropdown toggle listeners
+  tbody.querySelectorAll('.kebab-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      tbody.querySelectorAll('.kebab-dropdown').forEach(d => {
+        if (d !== btn.nextElementSibling) d.classList.remove('show');
+      });
+      btn.nextElementSibling.classList.toggle('show');
+    });
+  });
+
+  // Bind Edit action listeners
+  tbody.querySelectorAll('.edit-slot-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const slotId = parseInt(e.target.dataset.slot);
+      const index = parseInt(e.target.dataset.index);
+      editSlotAssignment(selectedClass, selectedDay, slotId, index);
+    });
+  });
+
+  // Bind Delete action listeners
+  tbody.querySelectorAll('.delete-slot-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const slotId = parseInt(e.target.dataset.slot);
+      const index = parseInt(e.target.dataset.index);
+      deleteSlotAssignment(selectedClass, selectedDay, slotId, index);
+    });
+  });
 }
 
-async function addTeacher(teacherName) { return await addEntity('teachers', teacherName); }
-async function addClass(className) { return await addEntity('classes', className); }
-async function addSubject(subjectName) { return await addEntity('subjects', subjectName); }
+// 2. Edit Slot Assignment (Teacher or Subject Correction)
+async function editSlotAssignment(className, day, slotId, index) {
+  const currentAssignments = getSlotAssignments(className, day, slotId);
+  const target = currentAssignments[index];
+  if (!target) return;
 
-// Resource Form Listener
+  // Prompt for Subject choice
+  const availableSubjects = appEntities.subjects.join(', ');
+  const newSubject = prompt(`Current Subject: "${target.subject}"\nEnter new Subject (${availableSubjects}):`, target.subject);
+  if (newSubject === null) return; // Cancelled
+
+  // Prompt for Teacher choice
+  const availableTeachers = appEntities.teachers.join(', ');
+  const newTeacher = prompt(`Current Teacher: "${target.teacher}"\nEnter new Teacher (${availableTeachers}):`, target.teacher);
+  if (newTeacher === null) return; // Cancelled
+
+  const cleanSubject = newSubject.trim() || target.subject;
+  const cleanTeacher = newTeacher.trim() || target.teacher;
+
+  // Update object entry
+  currentAssignments[index] = { subject: cleanSubject, teacher: cleanTeacher };
+  masterSchedules[className][day][slotId] = currentAssignments;
+
+  try {
+    await setDoc(doc(db, "schedules", "masterSchedules"), masterSchedules);
+    alert("Schedule updated successfully!");
+    renderManageScheduleTable();
+    renderClassSchedule();
+    renderTeacherView();
+  } catch (err) {
+    alert("Failed to update schedule: " + err.message);
+  }
+}
+
+// 3. Delete Slot Assignment Entry
+async function deleteSlotAssignment(className, day, slotId, index) {
+  const currentAssignments = getSlotAssignments(className, day, slotId);
+  const target = currentAssignments[index];
+  if (!target) return;
+
+  if (confirm(`Are you sure you want to remove ${target.subject} (${target.teacher}) from Period ${timeSlots[slotId]?.period || slotId}?`)) {
+    // Remove the item from array
+    currentAssignments.splice(index, 1);
+
+    if (currentAssignments.length === 0) {
+      delete masterSchedules[className][day][slotId];
+    } else {
+      masterSchedules[className][day][slotId] = currentAssignments;
+    }
+
+    try {
+      await setDoc(doc(db, "schedules", "masterSchedules"), masterSchedules);
+      alert("Assignment removed successfully!");
+      renderManageScheduleTable();
+      renderClassSchedule();
+      renderTeacherView();
+    } catch (err) {
+      alert("Failed to delete assignment: " + err.message);
+    }
+  }
+}
+
+// 4. Attach Sync Listeners for Management Dropdowns
+document.getElementById('manageClassSelect')?.addEventListener('change', renderManageScheduleTable);
+document.getElementById('manageDaySelect')?.addEventListener('change', renderManageScheduleTable);
+
+// Update populateAdminSelects to sync the management class selector
+const originalPopulateAdminSelects = populateAdminSelects;
+populateAdminSelects = function() {
+  if (typeof originalPopulateAdminSelects === 'function') originalPopulateAdminSelects();
+
+  const manageClassSel = document.getElementById('manageClassSelect');
+  if (manageClassSel) {
+    const currVal = manageClassSel.value;
+    manageClassSel.innerHTML = appEntities.classes.map(c => `<option value="${c}">${c}</option>`).join('');
+    if (currVal && appEntities.classes.includes(currVal)) manageClassSel.value = currVal;
+    renderManageScheduleTable();
+  }
+};
+
 document.getElementById('addResourceForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   const type = document.getElementById('resourceType').value;
-  const name = document.getElementById('resourceName').value;
+  const name = document.getElementById('resourceName').value.trim();
 
+  if (!name) return;
+  if (appEntities[type].includes(name)) {
+    alert(`"${name}" already exists in ${type}.`);
+    return;
+  }
+
+  appEntities[type].push(name);
   try {
-    let addedName = '';
-    if (type === 'teachers') addedName = await addTeacher(name);
-    else if (type === 'classes') addedName = await addClass(name);
-    else if (type === 'subjects') addedName = await addSubject(name);
-
+    await setDoc(doc(db, "config", "appEntities"), appEntities);
     document.getElementById('resourceName').value = '';
-    alert(`Successfully added "${addedName}" to ${type}!`);
-  } catch (error) {
-    alert(`Error adding resource: ${error.message}`);
+    alert(`Successfully added "${name}" to ${type}!`);
+  } catch (err) {
+    alert("Error adding resource: " + err.message);
   }
 });
 
-// Assign Slot Form Handler
+// Admin Assignment Handler (Appends Religion & Art Teachers to the Same Slot)
 document.getElementById('assignSlotForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   const className = document.getElementById('adminClassSelect').value;
@@ -343,39 +929,83 @@ document.getElementById('assignSlotForm')?.addEventListener('submit', async (e) 
   const subject = document.getElementById('adminSubjectSelect').value;
   const teacher = document.getElementById('adminTeacherSelect').value;
 
+  if (!className || !subject || !teacher || isNaN(startSlotId)) {
+    alert("Please select a valid class, start period, subject, and teacher.");
+    return;
+  }
+
   if (!masterSchedules[className]) masterSchedules[className] = {};
   if (!masterSchedules[className][day]) masterSchedules[className][day] = {};
 
   let filledCount = 0;
   let currentSlotId = startSlotId;
+  const groupType = getSubjectGroupType(subject);
 
   while (filledCount < duration && currentSlotId < timeSlots.length) {
     if (!timeSlots[currentSlotId].isBreak) {
-      masterSchedules[className][day][currentSlotId] = { subject, teacher };
+      const existingAssignments = getSlotAssignments(className, day, currentSlotId);
+
+      if (groupType !== 'regular') {
+        // Multi-teacher group (Religion or Art): Append without duplicates
+        const alreadyExists = existingAssignments.some(
+          item => item.teacher === teacher && item.subject === subject
+        );
+
+        if (!alreadyExists) {
+          existingAssignments.push({ subject, teacher });
+        }
+        masterSchedules[className][day][currentSlotId] = existingAssignments;
+      } else {
+        // Standard regular subject: Replace slot assignment
+        masterSchedules[className][day][currentSlotId] = [{ subject, teacher }];
+      }
       filledCount++;
     }
     currentSlotId++;
   }
 
-  await setDoc(doc(db, "schedules", "masterSchedules"), masterSchedules);
-  alert(`Assigned ${subject} (${duration} period/s) to ${className} on ${day}`);
+  try {
+    await setDoc(doc(db, "schedules", "masterSchedules"), masterSchedules);
+    renderClassSchedule();
+    renderTeacherView();
+    alert(`Successfully assigned ${subject} (${teacher}) to ${className} on ${day}!`);
+  } catch (err) {
+    alert("Error updating schedule: " + err.message);
+  }
 });
 
-// Save Materials Listener
 document.getElementById('saveMaterialsBtn')?.addEventListener('click', async () => {
   try {
     await setDoc(doc(db, "schedules", "materialsData"), materialsData, { merge: true });
     alert("Materials updated successfully!");
   } catch (err) {
-    alert("Error: " + err.message);
+    alert("Error saving materials: " + err.message);
   }
 });
 
-// Dropdown Change Listeners
 document.getElementById('classSelectView')?.addEventListener('change', renderClassSchedule);
 document.getElementById('teacherSelectView')?.addEventListener('change', renderTeacherView);
 
-// Firebase Real-time Synchronization
+// Firebase Real-time Synchronization Listeners
+onSnapshot(doc(db, "config", "academicCalendar"), (docSnap) => {
+  if (docSnap.exists()) {
+    academicCalendar = docSnap.data();
+  } else {
+    academicCalendar = {
+      "2026-2027": {
+        "Theme 1": {
+          "Week 1": { startDate: "2026-07-13", endDate: "2026-07-19" },
+          "Week 2": { startDate: "2026-07-20", endDate: "2026-07-26" }
+        }
+      }
+    };
+    setDoc(doc(db, "config", "academicCalendar"), academicCalendar);
+  }
+  populateCalendarSelects();
+  renderClassSchedule();
+  renderTeacherView();
+});
+
 onSnapshot(doc(db, "config", "appEntities"), (docSnap) => {
   if (docSnap.exists()) {
     appEntities = docSnap.data();
@@ -400,6 +1030,62 @@ onSnapshot(doc(db, "schedules", "masterSchedules"), (docSnap) => {
 
 onSnapshot(doc(db, "schedules", "materialsData"), (docSnap) => {
   if (docSnap.exists()) materialsData = docSnap.data();
+  renderClassSchedule();
+  renderTeacherView();
+});
+
+document.getElementById('btnSaveClassNotes')?.addEventListener('click', async () => {
+  const selectedTeacher = document.getElementById('teacherSelectView')?.value;
+  const assignedClass = appEntities.homeTeachers?.[selectedTeacher];
+  if (!assignedClass) return;
+
+  const calPrefix = getActiveCalendarPrefix('teacher');
+  const notesKey = `${calPrefix}_${assignedClass}_notes`;
+  const text = document.getElementById('weeklyNoteInput').value;
+
+  classNotesData[notesKey] = text;
+
+  try {
+    await setDoc(doc(db, "schedules", "classNotesData"), classNotesData, { merge: true });
+    alert(`Weekly notes updated for ${assignedClass}!`);
+    renderClassSchedule();
+  } catch (err) {
+    alert("Error saving weekly notes: " + err.message);
+  }
+});
+
+document.getElementById('btnCreateTempWeekly')?.addEventListener('click', () => {
+  const container = document.getElementById('tempWeeklyContainer');
+  const tbody = document.getElementById('tempWeeklyBody');
+  if (!container || !tbody) return;
+
+  tbody.innerHTML = '';
+  const days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
+
+  timeSlots.forEach(slot => {
+    const tr = document.createElement('tr');
+
+    if (slot.isBreak) {
+      tr.className = 'break-row';
+      tr.innerHTML = `<td>${slot.time}</td><td colspan="5">${slot.label}</td>`;
+    } else {
+      let html = `<td><strong>${slot.time}</strong></td>`;
+      days.forEach(() => {
+        // Editable inline table cell disconnected from Firestore
+        html += `<td contenteditable="true" style="background-color: #fff; border: 1px dashed #94a3b8; padding: 6px;" placeholder="Click to edit...">-</td>`;
+      });
+      tr.innerHTML = html;
+    }
+    tbody.appendChild(tr);
+  });
+
+  container.style.display = 'block';
+  alert("Generated temporary blank weekly schedule! You can click and edit any cell directly. Changes will not touch the database.");
+});
+
+// Sync Real-Time Class Notes Snapshot
+onSnapshot(doc(db, "schedules", "classNotesData"), (docSnap) => {
+  if (docSnap.exists()) classNotesData = docSnap.data();
   renderClassSchedule();
   renderTeacherView();
 });
