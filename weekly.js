@@ -573,17 +573,17 @@ function renderClassSchedule() {
   });
 
   // APPEND NOTES ROW AT THE BOTTOM (Below CLOSING Slot)
-  const notesKey = `${calPrefix}_${selectedClass}_notes`;
-  const noteText = classNotesData[notesKey] || 'No notes for this week.';
-  
-  const notesTr = document.createElement('tr');
-  notesTr.innerHTML = `
-    <td style="background-color: #f1f5f9; font-weight: bold; text-align: center;">NOTES</td>
-    <td colspan="5" style="text-align: left; padding: 12px; background-color: #f8fafc; font-style: italic; color: #334155;">
-      ${noteText}
-    </td>
-  `;
-  tbody.appendChild(notesTr);
+    const notesKey = `${calPrefix}_${selectedClass}_notes`;
+    const noteText = classNotesData[notesKey] || 'No notes for this week.';
+
+    const notesTr = document.createElement('tr');
+    notesTr.innerHTML = `
+      <td style="background-color: #f1f5f9; font-weight: bold; text-align: center;">NOTES</td>
+      <td colspan="5" style="text-align: left; padding: 12px; background-color: #f8fafc; font-style: italic; color: #334155; white-space: pre-line;">
+        ${noteText}
+      </td>
+    `;
+    tbody.appendChild(notesTr);
 }
 
 // Print PDF Button Listener
@@ -1055,6 +1055,15 @@ document.getElementById('btnSaveClassNotes')?.addEventListener('click', async ()
 });
 
 document.getElementById('btnCreateTempWeekly')?.addEventListener('click', () => {
+  const selectedTeacher = document.getElementById('teacherSelectView')?.value;
+  const assignedClass = appEntities.homeTeachers?.[selectedTeacher];
+
+  if (!assignedClass) {
+    alert("Please select a valid Home Teacher assigned to a class first.");
+    return;
+  }
+
+  const calPrefix = getActiveCalendarPrefix('teacher');
   const container = document.getElementById('tempWeeklyContainer');
   const tbody = document.getElementById('tempWeeklyBody');
   if (!container || !tbody) return;
@@ -1062,6 +1071,7 @@ document.getElementById('btnCreateTempWeekly')?.addEventListener('click', () => 
   tbody.innerHTML = '';
   const days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
 
+  // Populate table with active class schedule template
   timeSlots.forEach(slot => {
     const tr = document.createElement('tr');
 
@@ -1070,9 +1080,13 @@ document.getElementById('btnCreateTempWeekly')?.addEventListener('click', () => 
       tr.innerHTML = `<td>${slot.time}</td><td colspan="5">${slot.label}</td>`;
     } else {
       let html = `<td><strong>${slot.time}</strong></td>`;
-      days.forEach(() => {
-        // Editable inline table cell disconnected from Firestore
-        html += `<td contenteditable="true" style="background-color: #fff; border: 1px dashed #94a3b8; padding: 6px;" placeholder="Click to edit...">-</td>`;
+      days.forEach(day => {
+        const slotEntries = getSlotAssignments(assignedClass, day, slot.id);
+        let cellText = "-";
+        if (slotEntries.length > 0) {
+          cellText = slotEntries.map(e => `${e.subject} (${e.teacher})`).join("<br>");
+        }
+        html += `<td contenteditable="true" style="background-color: #fff; border: 1px dashed #94a3b8; padding: 6px; text-align: center;">${cellText}</td>`;
       });
       tr.innerHTML = html;
     }
@@ -1080,7 +1094,77 @@ document.getElementById('btnCreateTempWeekly')?.addEventListener('click', () => 
   });
 
   container.style.display = 'block';
-  alert("Generated temporary blank weekly schedule! You can click and edit any cell directly. Changes will not touch the database.");
+
+  // Open Template Draft in a New Tab
+  const newWin = window.open("", "_blank");
+  if (!newWin) {
+    alert("Pop-up blocked! Please allow pop-ups for this site to open the template in a new tab.");
+    return;
+  }
+
+  const weekInfo = document.getElementById('teacherWeekSelect')?.value || 'Weekly Draft';
+
+  const newTabHtml = `
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Draft Schedule - ${assignedClass} (${weekInfo})</title>
+    <style>
+      body { font-family: system-ui, -apple-system, sans-serif; padding: 20px; background-color: #f8fafc; color: #0f172a; }
+      .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+      .btn { padding: 8px 16px; font-weight: bold; border-radius: 6px; cursor: pointer; border: none; font-size: 13px; }
+      .btn-print { background-color: #059669; color: white; }
+      .btn-save { background-color: #2563eb; color: white; margin-left: 8px; }
+      table { width: 100%; border-collapse: collapse; background: white; font-size: 12px; }
+      th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: center; }
+      th { background-color: #f1f5f9; font-weight: bold; }
+      .break-row { background-color: #e2e8f0; font-weight: bold; letter-spacing: 1px; }
+      [contenteditable="true"] { background-color: #ffffea; outline: 1px dashed #93c5fd; }
+      [contenteditable="true"]:focus { background-color: #ffffff; outline: 2px solid #2563eb; }
+      @media print {
+        .no-print { display: none !important; }
+        body { padding: 0; background: white; }
+        [contenteditable="true"] { outline: none !important; background: transparent !important; }
+        th, td { border: 1px solid #000 !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header-bar no-print">
+      <div>
+        <h2 style="margin: 0;">Offline Draft Weekly Schedule: ${assignedClass}</h2>
+        <small style="color: #64748b;">${weekInfo} | Edits here are isolated and will not overwrite live database data.</small>
+      </div>
+      <div>
+        <button class="btn btn-print" onclick="window.print()">🖨️ Print Draft Directly</button>
+        <button class="btn btn-save" onclick="saveDraft()">💾 Save Draft Locally</button>
+      </div>
+    </div>
+    <table id="draftTable">
+      <thead>
+        <tr>
+          <th>TIME</th><th>MONDAY</th><th>TUESDAY</th><th>WEDNESDAY</th><th>THURSDAY</th><th>FRIDAY</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${tbody.innerHTML}
+      </tbody>
+    </table>
+    <script>
+      function saveDraft() {
+        const content = document.getElementById('draftTable').innerHTML;
+        localStorage.setItem('tempDraft_${assignedClass}_${calPrefix}', content);
+        alert('Draft saved locally for ${assignedClass}!');
+      }
+    <\/script>
+  </body>
+  </html>
+  `;
+
+  newWin.document.open();
+  newWin.document.write(newTabHtml);
+  newWin.document.close();
 });
 
 // Sync Real-Time Class Notes Snapshot
