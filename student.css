@@ -59,7 +59,7 @@ html, body {
 }
 
 .brand-badge {
-    background: #fbbf24;
+    background: #ffffff;
     padding: 8px 12px;
     border-radius: 8px;
     font-weight: bold;
@@ -373,4 +373,112 @@ th, td {
     white-space: pre-wrap;
     word-break: break-word;
     font-weight: 400;
+}
+
+/* ==========================================================================
+   LOGO & ICON SIZING FIXES
+   ========================================================================== */
+
+/* 1. Header Layout & Yellow Logo Box Fix */
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 24px;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+/* Enforce strict square dimensions on the yellow brand box */
+.brand-badge {
+    width: 50px !important;
+    height: 50px !important;
+    min-width: 50px !important;
+    min-height: 50px !important;
+    background-color: #ffffff; /* Yellow background */
+    border-radius: 10px;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 6px !important;
+    overflow: hidden !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box;
+}
+
+/* Force the logo image to scale down inside the box */
+.brand-badge-img {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
+    display: block;
+}
+
+/* 2. Topbar Action Buttons & Icons Fix */
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.theme-toggle-btn, 
+.teacher-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    padding: 8px 16px !important;
+    height: 42px !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+/* Restrict topbar button icons */
+.btn-icon {
+    width: 20px !important;
+    height: 20px !important;
+    max-width: 20px !important;
+    max-height: 20px !important;
+    object-fit: contain !important;
+    flex-shrink: 0 !important;
+    display: inline-block;
+}
+
+/* 3. Quick Link Cards & Icon Containers Fix */
+.quick-link-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* Fixed container box for Quiz & Timeline icons */
+.stat-icon {
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 48px !important;
+    min-height: 48px !important;
+    border-radius: 10px;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+    flex-shrink: 0 !important;
+}
+
+/* Restrict card icons */
+.stat-icon-img {
+    width: 26px !important;
+    height: 26px !important;
+    max-width: 26px !important;
+    max-height: 26px !important;
+    object-fit: contain !important;
+    display: block;
 }

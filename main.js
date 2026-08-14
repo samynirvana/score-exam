@@ -17,19 +17,37 @@ const db = getFirestore(app);
 let cachedExamScores = [];
 
 // --- THEME TOGGLE SYSTEM ---
+// --- THEME TOGGLE SYSTEM ---
 const themeToggleBtn = document.getElementById('themeToggleBtn');
-const savedTheme = localStorage.getItem('appTheme') || 'light';
+const mainThemeIcon = document.getElementById('mainThemeIcon');
+const mainThemeText = document.getElementById('mainThemeText');
 
-if (savedTheme === 'dark') {
-    document.body.classList.add('dark-theme');
-    if (themeToggleBtn) themeToggleBtn.innerText = 'Light Mode';
+// Replace these with your Google Drive image URLs
+const DARK_MODE_ICON_URL = 'https://lh3.googleusercontent.com/d/1N2sZUgBKIQCviZYYm4ibVWCXc4XVhnnh';
+const LIGHT_MODE_ICON_URL = 'https://lh3.googleusercontent.com/d/1_NNJ0sMnU6x1pLW1GiV8FmfL9bPccVhd';
+
+function applyTheme(theme) {
+    if (theme === 'dark') {
+        document.body.classList.add('dark-theme');
+        if (mainThemeIcon) mainThemeIcon.src = LIGHT_MODE_ICON_URL;
+        if (mainThemeText) mainThemeText.innerText = 'Light Mode';
+    } else {
+        document.body.classList.remove('dark-theme');
+        if (mainThemeIcon) mainThemeIcon.src = DARK_MODE_ICON_URL;
+        if (mainThemeText) mainThemeText.innerText = 'Dark Mode';
+    }
 }
 
+// Load saved theme on startup
+const savedTheme = localStorage.getItem('appTheme') || 'light';
+applyTheme(savedTheme);
+
+// Handle click event
 themeToggleBtn?.addEventListener('click', () => {
-    document.body.classList.toggle('dark-theme');
-    const isDark = document.body.classList.contains('dark-theme');
-    localStorage.setItem('appTheme', isDark ? 'dark' : 'light');
-    themeToggleBtn.innerText = isDark ? 'Light Mode' : 'Dark Mode';
+    const isDarkNow = document.body.classList.toggle('dark-theme');
+    const newTheme = isDarkNow ? 'dark' : 'light';
+    localStorage.setItem('appTheme', newTheme);
+    applyTheme(newTheme);
 });
 
 // --- UNIFIED SEARCH FUNCTIONALITY ---

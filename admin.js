@@ -16,6 +16,15 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
+// --- UTILITY: DEBOUNCE FUNCTION ---
+// Prevents functions from firing repeatedly on every single keystroke
+function debounce(func, delay = 200) {
+    let timeoutId;
+    return (...args) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => func(...args), delay);
+    };
+}
 // Secondary background authorization loop configuration context
 const secondaryApp = initializeApp(firebaseConfig, "SecondaryAuthApp");
 const secondaryAuth = getAuth(secondaryApp);
@@ -24,6 +33,7 @@ let userRole = null;
 let teacherSubject = null;
 
 // --- DYNAMIC AUTH & PERMISSION LISTENER ---
+// --- DYNAMIC AUTH & PERMISSION LISTENER (FAST & PARALLEL) ---
 onAuthStateChanged(auth, async (user) => {
     const loginScreen = document.getElementById('loginScreen');
     const adminDashboard = document.getElementById('adminDashboard');
@@ -33,7 +43,7 @@ onAuthStateChanged(auth, async (user) => {
 
     if (user) {
         try {
-            // 1. Fetch User Role & Subject
+            // 1. Fetch User Role & Subject FIRST so queries know what permissions to apply
             const userDoc = await getDoc(doc(db, "users", user.uid));
             if (userDoc.exists()) {
                 const userData = userDoc.data();
@@ -44,7 +54,7 @@ onAuthStateChanged(auth, async (user) => {
                 teacherSubject = "Unassigned";
             }
 
-            // 2. Format Display Name
+            // 2. Format Display Name & Update Sidebar UI
             const rawEmail = user.email || "user@mks.sch.id";
             const formattedName = rawEmail.split('@')[0]
                 .replace(/[._]/g, ' ')
@@ -68,14 +78,8 @@ onAuthStateChanged(auth, async (user) => {
             loginScreen.classList.add('hidden');
             adminDashboard.classList.remove('hidden');
 
-            // 3. Load System Databases & News for all authorized users
-            if (typeof window.loadSystemDatabases === "function") {
-                await window.loadSystemDatabases();
-            }
-            await loadNewsTable();
-
+            // 3. Set UI Views and Role Permissions
             if (userRole === "admin") {
-                // Admin Access: Reveal Dashboard & Manage Databases
                 document.querySelectorAll('.admin-only-view').forEach(el => el.classList.remove('hidden'));
                 
                 if (subjectInput) {
@@ -83,21 +87,11 @@ onAuthStateChanged(auth, async (user) => {
                     subjectInput.value = "";
                     subjectInput.placeholder = "Subject Name (e.g. English)";
                 }
-                if (tableTitle) {
-                    tableTitle.innerText = "Master Registry Ledger - All Subjects & Classes";
-                }
-                if (welcomeTitle) {
-                    welcomeTitle.innerText = "Administrator Master System Workspace";
-                }
-                
-                loadStudentsDirectory();
-                updateDashboardStats();
+                if (tableTitle) tableTitle.innerText = "Master Registry Ledger - All Subjects & Classes";
+                if (welcomeTitle) welcomeTitle.innerText = "Administrator Master System Workspace";
 
             } else {
-                // Teacher Access: Hide Dashboard & Manage Databases
                 document.querySelectorAll('.admin-only-view').forEach(el => el.classList.add('hidden'));
-                
-                // Redirect Teacher Landing Page to "Manage Scores"
                 document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
                 document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
                 
@@ -110,24 +104,42 @@ onAuthStateChanged(auth, async (user) => {
                     subjectInput.value = teacherSubject;
                     subjectInput.disabled = true; 
                 }
-                if (tableTitle) {
-                    tableTitle.innerText = `Departmental Performance Ledger: ${teacherSubject}`;
-                }
-                if (welcomeTitle) {
-                    welcomeTitle.innerText = `Teacher Portal Workspace (${teacherSubject})`;
-                }
+                if (tableTitle) tableTitle.innerText = `Departmental Performance Ledger: ${teacherSubject}`;
+                if (welcomeTitle) welcomeTitle.innerText = `Teacher Portal Workspace (${teacherSubject})`;
 
-                // Pre-select teacher's specialty subject in score entry if available
                 const directSubSelect = document.getElementById('directSubjectSelect');
                 if (directSubSelect && teacherSubject) {
                     directSubSelect.value = teacherSubject;
                 }
             }
 
-            loadAdminTable();
-            loadPointsTable(); 
+            // 4. Build array of tasks to fetch concurrently in PARALLEL
+            const parallelTasks = [
+                loadNewsTable(),
+                loadAdminTable(),
+                loadPointsTable()
+            ];
+
+            if (typeof window.loadSystemDatabases === "function") {
+                parallelTasks.push(window.loadSystemDatabases());
+            }
+
+            if (userRole === "admin") {
+                parallelTasks.push(loadStudentsDirectory());
+                parallelTasks.push(loadTeachersDirectory());
+            }
+
+            // Execute all queries simultaneously
+            await Promise.all(parallelTasks);
+
+            // 5. Update stats after directories are loaded
+            if (userRole === "admin") {
+                updateDashboardStats();
+            }
+
         } catch (err) {
-            alert("Error querying identity permissions: " + err.message);
+            console.error("Error querying identity permissions: ", err);
+            alert("Error setting up session: " + err.message);
         }
     } else {
         loginScreen.classList.remove('hidden');
@@ -218,14 +230,14 @@ window.generateNewUniqueCode = async function(oldCode) {
 
 window.renderDbStudentsTable = function() {
     const searchInput = document.getElementById('searchDbStudents');
-    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+    const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
     const tbody = document.querySelector("#dbStudentsDirectoryTable tbody");
     
     if (!tbody) return;
-    tbody.innerHTML = "";
 
     const filtered = allStudentsData.filter(s => {
-        return (s.studentName && s.studentName.toLowerCase().includes(searchTerm)) ||
+        return !searchTerm ||
+               (s.studentName && s.studentName.toLowerCase().includes(searchTerm)) ||
                (s.studentClass && s.studentClass.toLowerCase().includes(searchTerm)) ||
                (s.id && s.id.toLowerCase().includes(searchTerm));
     });
@@ -235,27 +247,26 @@ window.renderDbStudentsTable = function() {
         return;
     }
 
-    filtered.forEach(student => {
-        const safeName = (student.studentName || '').replace(/'/g, "\\'");
-        
-        tbody.innerHTML += `
-            <tr>
-                <td><strong style="letter-spacing: 1px;">${student.id}</strong></td>
-                <td>${student.studentName}</td>
-                <td><span style="color: var(--primary-blue); font-weight: 600;">${student.studentClass || 'N/A'}</span></td>
-                <td>
-                    <div class="kebab-menu">
-                        <button class="kebab-btn" onclick="toggleMenu(event, 'dbstudent-${student.id}')">⋮</button>
-                        <div id="menu-dbstudent-${student.id}" class="dropdown-menu">
-                            <button class="dropdown-item" onclick="editStudentProfile('${student.id}')">Edit Student Profile</button>
-                            <button class="dropdown-item" onclick="generateNewUniqueCode('${student.id}')">Generate New Code</button>
-                            <button class="dropdown-item danger" onclick="deleteStudentProfile('${student.id}')">Delete Student</button>
-                        </div>
+    // Batch HTML creation in memory
+    const rowsHtml = filtered.map(student => `
+        <tr>
+            <td><strong style="letter-spacing: 1px;">${student.id}</strong></td>
+            <td>${student.studentName || 'N/A'}</td>
+            <td><span style="color: var(--primary-blue); font-weight: 600;">${student.studentClass || 'N/A'}</span></td>
+            <td>
+                <div class="kebab-menu">
+                    <button class="kebab-btn" onclick="toggleMenu(event, 'dbstudent-${student.id}')">⋮</button>
+                    <div id="menu-dbstudent-${student.id}" class="dropdown-menu">
+                        <button class="dropdown-item" onclick="editStudentProfile('${student.id}')">Edit Student Profile</button>
+                        <button class="dropdown-item" onclick="generateNewUniqueCode('${student.id}')">Generate New Code</button>
+                        <button class="dropdown-item danger" onclick="deleteStudentProfile('${student.id}')">Delete Student</button>
                     </div>
-                </td>
-            </tr>
-        `;
-    });
+                </div>
+            </td>
+        </tr>
+    `);
+
+    tbody.innerHTML = rowsHtml.join('');
 };
 
 function generateRandomCode(length = 5) {
@@ -354,6 +365,9 @@ async function loadStudentsDirectory() {
         });
 
         renderStudentsTable();
+        if (typeof renderDbStudentsTable === "function") {
+            renderDbStudentsTable();
+        }
     } catch (error) {
         console.error("Error loading students:", error);
     }
@@ -1689,27 +1703,36 @@ async function loadScoresTable() {
 }
 window.loadScoresTable = loadScoresTable;
 // --- DASHBOARD STATISTICS CALCULATOR ---
+// --- OPTIMIZED DASHBOARD STATS CALCULATOR (PARALLEL FETCH) ---
 async function updateDashboardStats() {
     try {
-        // 1. Total Students
-        const studentsSnap = await getDocs(collection(db, "students"));
-        document.getElementById('stat-total-students').innerText = studentsSnap.size;
+        // 1. Fire all 5 Firestore queries concurrently in a single parallel batch
+        const [studentsSnap, usersSnap, pointsSnap, newsSnap, quizSnap] = await Promise.all([
+            getDocs(collection(db, "students")),
+            getDocs(collection(db, "users")),
+            getDocs(collection(db, "student_points")),
+            getDocs(collection(db, "news_updates")),
+            getDocs(collection(db, "quizzes"))
+        ]);
 
-        // 2. Total Teachers
-        const usersSnap = await getDocs(collection(db, "users"));
+        // 2. Render Total Students Count
+        const elTotalStudents = document.getElementById('stat-total-students');
+        if (elTotalStudents) elTotalStudents.innerText = studentsSnap.size;
+
+        // 3. Render Total Teachers Count
         let teacherCount = 0;
         usersSnap.forEach(doc => {
-            if(doc.data().role === 'teacher') teacherCount++;
+            if (doc.data().role === 'teacher') teacherCount++;
         });
-        document.getElementById('stat-total-teachers').innerText = teacherCount;
+        const elTotalTeachers = document.getElementById('stat-total-teachers');
+        if (elTotalTeachers) elTotalTeachers.innerText = teacherCount;
 
-        // 3 & 4. Highest and Lowest Behavior Points
+        // 4. Calculate & Render Highest and Lowest Behavior Points
         const studentsMap = {};
         studentsSnap.forEach(doc => {
             studentsMap[doc.id] = { name: doc.data().studentName || 'N/A', total: 0 };
         });
-        
-        const pointsSnap = await getDocs(collection(db, "student_points"));
+
         pointsSnap.forEach(doc => {
             const data = doc.data();
             if (studentsMap[data.studentCode]) {
@@ -1724,25 +1747,34 @@ async function updateDashboardStats() {
         for (const code in studentsMap) {
             hasStudents = true;
             const student = studentsMap[code];
-            if (student.total > highestScore) { highestScore = student.total; highestName = student.name; }
-            if (student.total < lowestScore) { lowestScore = student.total; lowestName = student.name; }
+            if (student.total > highestScore) { 
+                highestScore = student.total; 
+                highestName = student.name; 
+            }
+            if (student.total < lowestScore) { 
+                lowestScore = student.total; 
+                lowestName = student.name; 
+            }
         }
+
+        const elHighest = document.getElementById('stat-highest-behavior');
+        const elLowest = document.getElementById('stat-lowest-behavior');
 
         if (hasStudents && highestScore !== -Infinity) {
-            document.getElementById('stat-highest-behavior').innerText = `${highestName} (${highestScore > 0 ? '+' : ''}${highestScore})`;
-            document.getElementById('stat-lowest-behavior').innerText = `${lowestName} (${lowestScore > 0 ? '+' : ''}${lowestScore})`;
+            if (elHighest) elHighest.innerText = `${highestName} (${highestScore > 0 ? '+' : ''}${highestScore})`;
+            if (elLowest) elLowest.innerText = `${lowestName} (${lowestScore > 0 ? '+' : ''}${lowestScore})`;
         } else {
-            document.getElementById('stat-highest-behavior').innerText = "N/A";
-            document.getElementById('stat-lowest-behavior').innerText = "N/A";
+            if (elHighest) elHighest.innerText = "N/A";
+            if (elLowest) elLowest.innerText = "N/A";
         }
 
-        // 5. Total News
-        const newsSnap = await getDocs(collection(db, "news_updates"));
-        document.getElementById('stat-total-news').innerText = newsSnap.size;
+        // 5. Render Total News Count
+        const elTotalNews = document.getElementById('stat-total-news');
+        if (elTotalNews) elTotalNews.innerText = newsSnap.size;
 
-        // 6. Total Quizzes
-        const quizSnap = await getDocs(collection(db, "quizzes"));
-        document.getElementById('stat-total-quizzes').innerText = quizSnap.size;
+        // 6. Render Total Quizzes Count
+        const elTotalQuizzes = document.getElementById('stat-total-quizzes');
+        if (elTotalQuizzes) elTotalQuizzes.innerText = quizSnap.size;
 
     } catch (e) {
         console.error("Dashboard stats calculation error:", e);
@@ -1750,71 +1782,75 @@ async function updateDashboardStats() {
 }
 
 // 2. Function to filter, sort, and render the table with hidden codes
+// --- OPTIMIZED STUDENT TABLE RENDER ---
 function renderStudentsTable() {
-    const searchTerm = document.getElementById('searchStudents').value.toLowerCase();
-    const sortBy = document.getElementById('sortStudents').value;
-    const filterByClass = document.getElementById('filterClass').value; // Get filter value
+    const searchInput = document.getElementById('searchStudents');
+    const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    const sortBy = document.getElementById('sortStudents')?.value || 'code';
+    const filterByClass = document.getElementById('filterClass')?.value || 'all';
     
-    // Filter data based on search input AND class filter
-    let filteredStudents = allStudentsData.filter(s => {
-        // IMPORTANT: Make sure 's.class' matches your exact Firebase field!
-        const matchesSearch = (s.studentName && s.studentName.toLowerCase().includes(searchTerm)) ||
-                              (s.studentClass && s.studentClass.toLowerCase().includes(searchTerm)) || 
-                              (s.id && s.id.toLowerCase().includes(searchTerm));
+    // 1. Filter student array
+    const filteredStudents = allStudentsData.filter(s => {
+        const matchesSearch = !searchTerm || 
+            (s.studentName && s.studentName.toLowerCase().includes(searchTerm)) ||
+            (s.studentClass && s.studentClass.toLowerCase().includes(searchTerm)) || 
+            (s.id && s.id.toLowerCase().includes(searchTerm));
                               
         const matchesClass = (filterByClass === 'all') || (s.studentClass === filterByClass);
 
         return matchesSearch && matchesClass;
     });
 
-    // Sort data
+    // 2. Sort filtered array
     filteredStudents.sort((a, b) => {
-        // IMPORTANT: Make sure 'a.studentClass' and 'b.studentClass' match your exact Firebase field!
         if (sortBy === 'name') return (a.studentName || '').localeCompare(b.studentName || '');
         if (sortBy === 'class') return (a.studentClass || '').localeCompare(b.studentClass || '');
         return (a.id || '').localeCompare(b.id || ''); 
     });
 
-    // Render HTML
     const tbody = document.querySelector('#studentsTable tbody');
-    tbody.innerHTML = '';
-    
-    filteredStudents.forEach(student => {
-        tbody.innerHTML += `
-            <tr>
-                <td>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <!-- Code masked by default with letter-spacing for styling -->
-                        <span id="code-${student.id}" style="font-weight: 600; letter-spacing: 2px;">•••••</span>
-                        
-                        <!-- Eye Button SVG -->
-                        <button class="eye-btn" onclick="toggleCodeVisibility('${student.id}')" title="Show/Hide Code">
-                            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                                <path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0"/>
-                                <path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8m8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7"/>
-                            </svg>
-                        </button>
+    if (!tbody) return;
+
+    if (filteredStudents.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: var(--text-gray);">No matching students found.</td></tr>`;
+        return;
+    }
+
+    // 3. BATCH DOM CREATION: Build HTML array in memory first
+    const rowsHtml = filteredStudents.map(student => `
+        <tr>
+            <td>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span id="code-${student.id}" style="font-weight: 600; letter-spacing: 2px;">•••••</span>
+                    <button class="eye-btn" onclick="toggleCodeVisibility('${student.id}')" title="Show/Hide Code">
+                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0"/>
+                            <path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8m8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7"/>
+                        </svg>
+                    </button>
+                </div>
+            </td>
+            <td>${student.studentName}</td>
+            <td><span style="color:var(--primary-blue); font-weight:600;">${student.studentClass || 'N/A'}</span></td>
+            <td>
+                <div class="kebab-menu">
+                    <button class="kebab-btn" onclick="toggleMenu(event, '${student.id}')">⋮</button>
+                    <div id="menu-${student.id}" class="dropdown-menu">
+                        <button class="dropdown-item" onclick="editStudentProfile('${student.id}')">Edit Student</button>
+                        <button class="dropdown-item" onclick="generateNewUniqueCode('${student.id}')">Generate New Code</button>
+                        <button class="dropdown-item danger" onclick="deleteStudentProfile('${student.id}')">Delete Student</button>
                     </div>
-                </td>
-                <td>${student.studentName}</td>
-                
-                <!-- IMPORTANT: Make sure 'student.studentClass' matches your exact Firebase field! -->
-                <td><span style="color:var(--primary-blue); font-weight:600;">${student.studentClass || 'N/A'}</span></td>
-                
-                <td>
-                    <div class="kebab-menu">
-                        <button class="kebab-btn" onclick="toggleMenu(event, '${student.id}')">⋮</button>
-                        <div id="menu-${student.id}" class="dropdown-menu">
-                            <button class="dropdown-item" onclick="editStudent('${student.id}')">Edit Student</button>
-                            <button class="dropdown-item" onclick="generateNewUniqueCode('${student.id}')">Generate New Code</button>
-                            <button class="dropdown-item danger" onclick="deleteStudent('${student.id}')">Delete Student</button>
-                        </div>
-                    </div>
-                </td>
-            </tr>
-        `;
-    });
+                </div>
+            </td>
+        </tr>
+    `);
+
+    // 4. Inject into DOM ONCE to prevent lag and UI freezing
+    tbody.innerHTML = rowsHtml.join('');
 }
+
+// Attach debounced event listener (200ms delay)
+document.getElementById('searchStudents')?.addEventListener('input', debounce(renderStudentsTable, 200));
 
 // 3. New Event Listener for the Class Filter
 document.getElementById('filterClass').addEventListener('change', renderStudentsTable);
@@ -2091,44 +2127,72 @@ window.loadSystemDatabases = async function() {
 
         // 5. Populate Quizzes Table (Digital + Offline)
         const quizTbody = document.querySelector("#quizzesDatabaseTable tbody");
-        if(quizTbody) quizTbody.innerHTML = "";
+        if (quizTbody) {
+            try {
+                // Fetch digital and offline quizzes simultaneously
+                const [digitalSnap, manualSnap] = await Promise.all([
+                    getDocs(collection(db, "quizzes")),
+                    getDocs(collection(db, "system_quizzes"))
+                ]);
 
-        try {
-            const digitalSnap = await getDocs(collection(db, "quizzes"));
-            digitalSnap.forEach(docSnap => {
-                const data = docSnap.data();
-                const title = data.title || data.quizName;
-                const sub = data.subject || '-';
-                const cls = data.targetClass || '-';
-                if(quizTbody && title) {
-                    quizTbody.innerHTML += `<tr><td><strong>${title}</strong></td><td>${sub}</td><td>${cls}</td><td><span style="background: #fffbeb; color: #f59e0b; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Quiz Builder</span></td><td>-</td></tr>`;
+                const quizRows = [];
+
+                // 1. Process Digital Quizzes (from Quiz Builder)
+                digitalSnap.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const title = data.title || data.quizName;
+                    const sub = data.subject || '-';
+                    const cls = data.targetClass || '-';
+
+                    if (title) {
+                        quizRows.push(`
+                            <tr>
+                                <td><strong>${title}</strong></td>
+                                <td>${sub}</td>
+                                <td>${cls}</td>
+                                <td><span style="background: #fffbeb; color: #f59e0b; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Quiz Builder</span></td>
+                                <td>-</td>
+                            </tr>
+                        `);
+                    }
+                });
+
+                // 2. Process Offline Quizzes (Manual Exams)
+                manualSnap.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const title = data.name;
+                    const sub = data.subject || '-';
+                    const cls = data.targetClass || '-';
+
+                    if (title) {
+                        quizRows.push(`
+                            <tr>
+                                <td><strong>${title}</strong></td>
+                                <td>${sub}</td>
+                                <td>${cls}</td>
+                                <td><span style="background: #f1f5f9; color: #64748b; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Offline Exam</span></td>
+                                <td><button class="delete-btn" onclick="deleteSystemRecord('system_quizzes', '${docSnap.id}')">Delete</button></td>
+                            </tr>
+                        `);
+                    }
+                });
+
+                // 3. Inject into DOM in a single batch operation
+                if (quizRows.length > 0) {
+                    quizTbody.innerHTML = quizRows.join('');
+                } else {
+                    quizTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text-gray);">No quizzes or exams found in database.</td></tr>`;
                 }
-            });
-        } catch (err) {
-            console.warn("Digital quizzes read restricted:", err.message);
-        }
 
-        try {
-            const manualSnap = await getDocs(collection(db, "system_quizzes"));
-            manualSnap.forEach(docSnap => {
-                const data = docSnap.data();
-                const title = data.name;
-                const sub = data.subject || '-';
-                const cls = data.targetClass || '-';
-                if(quizTbody && title) {
-                    quizTbody.innerHTML += `<tr><td><strong>${title}</strong></td><td>${sub}</td><td>${cls}</td><td><span style="background: #f1f5f9; color: #64748b; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Offline Exam</span></td><td><button class="delete-btn" onclick="deleteSystemRecord('system_quizzes', '${docSnap.id}')">Delete</button></td></tr>`;
-                }
-            });
-        } catch (err) {
-            console.warn("System quizzes read restricted:", err.message);
+            } catch (err) {
+                console.warn("Error loading quiz records:", err.message);
+                quizTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: red;">Error loading quiz database.</td></tr>`;
+            }
         }
-
-        // Load directories for Admin role
-        if (userRole === 'admin') {
-            loadTeachersDirectory();
+        
+        if (typeof renderDbStudentsTable === "function") {
             renderDbStudentsTable();
         }
-
         console.log("--- DATABASE LOAD COMPLETE ---");
 
     } catch(e) {
@@ -2692,21 +2756,35 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 const themeToggleBtn = document.getElementById('themeToggleBtn');
-const savedTheme = localStorage.getItem('appTheme') || 'light';
+const adminThemeIcon = document.getElementById('adminThemeIcon');
+const adminThemeText = document.getElementById('adminThemeText');
 
-// Apply saved theme preference on page load
-if (savedTheme === 'dark') {
-    document.body.classList.add('dark-theme');
-    if (themeToggleBtn) themeToggleBtn.innerText = '☀️ Light Mode';
+// Google Drive Image URLs
+const DARK_MODE_ICON_URL = 'https://lh3.googleusercontent.com/d/1N2sZUgBKIQCviZYYm4ibVWCXc4XVhnnh';
+const LIGHT_MODE_ICON_URL = 'https://lh3.googleusercontent.com/d/1_NNJ0sMnU6x1pLW1GiV8FmfL9bPccVhd';
+
+function applyAdminTheme(theme) {
+    if (theme === 'dark') {
+        document.body.classList.add('dark-theme');
+        if (adminThemeIcon) adminThemeIcon.src = LIGHT_MODE_ICON_URL;
+        if (adminThemeText) adminThemeText.innerText = 'Light Mode';
+    } else {
+        document.body.classList.remove('dark-theme');
+        if (adminThemeIcon) adminThemeIcon.src = DARK_MODE_ICON_URL;
+        if (adminThemeText) adminThemeText.innerText = 'Dark Mode';
+    }
 }
 
-// Toggle theme on button click
+// Load saved theme state
+const savedAdminTheme = localStorage.getItem('appTheme') || 'light';
+applyAdminTheme(savedAdminTheme);
+
+// Handle toggle click
 themeToggleBtn?.addEventListener('click', () => {
-    document.body.classList.toggle('dark-theme');
-    const isDark = document.body.classList.contains('dark-theme');
-    
-    localStorage.setItem('appTheme', isDark ? 'dark' : 'light');
-    themeToggleBtn.innerText = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
+    const isDarkNow = document.body.classList.toggle('dark-theme');
+    const newTheme = isDarkNow ? 'dark' : 'light';
+    localStorage.setItem('appTheme', newTheme);
+    applyAdminTheme(newTheme);
 });
 
 

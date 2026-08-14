@@ -541,3 +541,58 @@ input, textarea, button {
         font-size: 16px; /* Responsive size for mobile screens */
         padding-left: 0;}
 }
+
+/* --- ICON & LOGO UTILITY CLASSES --- */
+.brand-badge-img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.stat-icon-img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+}
+
+.btn-icon {
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+    margin-right: 6px;
+    object-fit: contain;
+}
+
+.inline-icon {
+    width: 18px;
+    height: 18px;
+    vertical-align: middle;
+    margin-right: 6px;
+    object-fit: contain;
+}
+
+.action-icon {
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+    margin-right: 4px;
+    object-fit: contain;
+}
+
+.staff-badge-img {
+    width: 18px;
+    height: 18px;
+    vertical-align: middle;
+    margin-left: 4px;
+    object-fit: contain;
+}
+
+/* Custom Font for Timeline Heading */
+.timeline-heading {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    color: var(--primary-color);
+    margin: 0 0 6px 0;
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}

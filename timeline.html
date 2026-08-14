@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Classroom Timeline</title>
+    <title>Timeline</title>
     
-    <!-- Google Fonts -->
+    <!-- Google Fonts (Inter + Recommended Plus Jakarta Sans for Timeline Title) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
     
     <!-- External Stylesheets -->
     <link rel="stylesheet" href="style.css">
@@ -37,7 +37,11 @@
             <a href="index.html" style="color: var(--primary-color); text-decoration: none; font-size: 15px; font-weight: 600;">&larr; Back to Portal</a>
             <div class="nav-controls">
                 
-                <button id="darkModeToggle" class="theme-toggle-btn">Dark</button>
+                <!-- Dark Mode Button with Separated Image and Text Span -->
+                <button id="darkModeToggle" class="theme-toggle-btn">
+                    <img id="themeToggleIcon" src="https://lh3.googleusercontent.com/d/YOUR_DARK_MODE_ICON_FILE_ID" alt="Theme" class="btn-icon">
+                    <span id="themeToggleText">Dark</span>
+                </button>
 
                 <div class="notif-wrapper">
                     <button id="notifToggleBtn" class="notif-btn">Alerts <span id="notifBadge" class="notif-badge">0</span></button>
@@ -51,7 +55,8 @@
         </div>
         
         <div style="text-align: center; margin-bottom: 12px;">
-            <h2 style="color: var(--primary-color); margin: 0 0 6px 0; font-size: 24px;">Classroom Discussion</h2>
+            <!-- Updated Header Font & Text -->
+            <h2 class="timeline-heading">Timeline</h2>
             <p style="font-size: 14px; color: #10b981; margin: 0; font-weight: 600;">
                 Logged in as: <span id="currentUserDisplay"></span>
             </p>
@@ -63,7 +68,10 @@
             
             <div class="post-options-row">
                 <div class="target-selector-wrapper">
-                    <label for="postTargetClass">Audience:</label>
+                    <label for="postTargetClass">
+                        <img src="https://lh3.googleusercontent.com/d/1PpLvL3BNycZKdg_fzuIhMvUN1kUadf0d" alt="Classes" class="inline-icon">
+                        Audience:
+                    </label>
                     <select id="postTargetClass">
                         <option value="All">All Classes</option>
                         <!-- Classes will be dynamically populated via JavaScript -->

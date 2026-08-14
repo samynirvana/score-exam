@@ -159,3 +159,21 @@ body {
     color: #dc3545;
     margin-top: 15px;
 }
+
+/* Prevents theme button text from wrapping onto two lines */
+.theme-toggle-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    white-space: nowrap !important; /* Keeps "Light Mode" on 1 line */
+    padding: 8px 14px !important;
+    min-width: max-content !important;
+}
+
+.theme-toggle-btn .btn-icon {
+    width: 18px !important;
+    height: 18px !important;
+    object-fit: contain !important;
+    flex-shrink: 0 !important;
+}

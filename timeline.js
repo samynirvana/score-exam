@@ -22,19 +22,38 @@ let unsubscribeNotifs = null;
 let allUserNames = [];
 
 // --- 1. DARK MODE & GLOBAL CLICK HANDLER ---
+// --- 1. DARK MODE TOGGLE SYSTEM ---
 const themeToggleBtn = document.getElementById('darkModeToggle');
+const themeToggleIcon = document.getElementById('themeToggleIcon');
+const themeToggleText = document.getElementById('themeToggleText');
 
-if (localStorage.getItem('theme') === 'dark') {
-    document.body.classList.add('dark-mode');
-    if (themeToggleBtn) themeToggleBtn.innerText = '☀️ Light';
+// Store your custom Google Drive image URLs here
+const DARK_MODE_ICON_URL = 'https://lh3.googleusercontent.com/d/1N2sZUgBKIQCviZYYm4ibVWCXc4XVhnnh';
+const LIGHT_MODE_ICON_URL = 'https://lh3.googleusercontent.com/d/1_NNJ0sMnU6x1pLW1GiV8FmfL9bPccVhd';
+
+function applyTheme(theme) {
+    if (theme === 'dark') {
+        document.body.classList.add('dark-mode');
+        if (themeToggleIcon) themeToggleIcon.src = LIGHT_MODE_ICON_URL;
+        if (themeToggleText) themeToggleText.innerText = 'Light';
+    } else {
+        document.body.classList.remove('dark-mode');
+        if (themeToggleIcon) themeToggleIcon.src = DARK_MODE_ICON_URL;
+        if (themeToggleText) themeToggleText.innerText = 'Dark';
+    }
 }
 
+// Load saved theme on initial page load
+const savedTheme = localStorage.getItem('theme') || 'light';
+applyTheme(savedTheme);
+
+// Toggle theme on button click
 if (themeToggleBtn) {
     themeToggleBtn.addEventListener('click', () => {
-        document.body.classList.toggle('dark-mode');
-        const isDark = document.body.classList.contains('dark-mode');
-        localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        themeToggleBtn.innerText = isDark ? '☀️ Light' : '🌙 Dark';
+        const isDarkNow = document.body.classList.toggle('dark-mode');
+        const newTheme = isDarkNow ? 'dark' : 'light';
+        localStorage.setItem('theme', newTheme);
+        applyTheme(newTheme);
     });
 }
 
@@ -373,7 +392,7 @@ function loadPosts() {
             }
             
             const dateStr = formatTimeAgo(post.timestamp);
-            const badgeHTML = post.isStaff ? `<span class="staff-badge">✓</span>` : '';
+            const badgeHTML = post.isStaff ? `<img src="https://lh3.googleusercontent.com/d/1F9iWlab0M6Hlc1L5NR_HP4vsQDJJpd3d" alt="Verified" class="staff-badge-img">` : '';
             const classBadgeHTML = `<span class="target-class-badge">${postTarget === 'All' ? 'All' : ' ' + postTarget}</span>`;
             const initialLetter = post.authorName ? post.authorName.charAt(0) : '?';
 
@@ -415,7 +434,7 @@ function loadPosts() {
                 
                 <div class="post-actions-bar">
                     <button class="action-btn" onclick="toggleComments('${postId}')">
-                        💬 <span id="comment-count-${postId}">0</span> Comments
+                        <img src="https://lh3.googleusercontent.com/d/1mG_1QIzF-9Y1_wnSONpFkIMmqaIj7pgZ" alt="Comment" class="action-icon"> <span id="comment-count-${postId}">0</span> Comments
                     </button>
                 </div>
 
@@ -617,17 +636,15 @@ async function populateClassDropdown() {
     const classSelect = document.getElementById('postTargetClass');
     if (!classSelect || !currentUser) return;
 
-    // Default option available to everyone
-    classSelect.innerHTML = '<option value="All">📢 All Classes</option>';
+    // Use plain text inside option tags so browsers render correctly
+    classSelect.innerHTML = '<option value="All">All Classes</option>';
 
-    // CASE 1: Student User (Restricted to 'All' or Their Own Class)
     if (currentUser.type === 'student') {
         const userClass = currentUser.studentClass || 'Unassigned';
         if (userClass !== 'Unassigned') {
-            classSelect.innerHTML += `<option value="${userClass}">🏫 ${userClass} (My Class)</option>`;
+            classSelect.innerHTML += `<option value="${userClass}">${userClass} (My Class)</option>`;
         }
     } 
-    // CASE 2: Staff / Teacher / Admin (Allowed to target Any Class)
     else if (currentUser.type === 'staff') {
         try {
             const studentsSnap = await getDocs(collection(db, "students"));
@@ -640,7 +657,7 @@ async function populateClassDropdown() {
             });
 
             Array.from(uniqueClasses).sort().forEach(className => {
-                classSelect.innerHTML += `<option value="${className}">🏫 ${className}</option>`;
+                classSelect.innerHTML += `<option value="${className}">${className}</option>`;
             });
         } catch (e) {
             console.warn("Could not load classes dropdown list:", e);

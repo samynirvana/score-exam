@@ -15,7 +15,10 @@
         <!-- TOP NAVIGATION BAR -->
         <header class="topbar student-header">
             <div class="brand student-brand">
-                <div class="brand-badge">MKS</div>
+                <!-- Yellow Box with Logo from Google Drive -->
+                <div class="brand-badge" style="display: flex; align-items: center; justify-content: center; padding: 4px;">
+                    <img src="https://lh3.googleusercontent.com/d/1o_7O1hdx1SJOXfoFw9ZKxpl4zSOD_VYd" alt="Logo" class="brand-badge-img">
+                </div>
                 <div>
                     <h2 style="margin: 0; font-size: 18px;">MITRA KASIH SCHOOL</h2>
                     <p style="margin: 0; font-size: 12px; color: var(--text-gray);">Student Portal</p>
@@ -23,9 +26,16 @@
             </div>
 
             <div class="topbar-actions">
-                <button id="themeToggleBtn" class="theme-toggle-btn">Dark Mode</button>
-                <!-- "For Teacher" Button -->
-                <button onclick="window.location.href='admin.html'" class="teacher-btn">For Teacher</button>
+                <!-- Dark Mode Button with Icon -->
+                <button id="themeToggleBtn" class="theme-toggle-btn">
+                    <img id="mainThemeIcon" src="https://lh3.googleusercontent.com/d/1N2sZUgBKIQCviZYYm4ibVWCXc4XVhnnh" alt="Theme Icon" class="btn-icon">
+                    <span id="mainThemeText">Dark Mode</span>
+                </button>
+                <!-- For Teacher Button with Icon -->
+                <button onclick="window.location.href='admin.html'" class="teacher-btn">
+                    <img src="https://lh3.googleusercontent.com/d/1XHDibj7Ont3do-lyNvQYnmYk0M0swAOl" alt="Teacher" class="btn-icon">
+                    <span>For Teacher</span>
+                </button>
             </div>
         </header>
 
@@ -34,9 +44,12 @@
             
             <!-- QUICK LINKS GRID -->
             <div class="quick-links-grid">
+                <!-- Take Online Quiz Card -->
                 <a href="quiz.html" class="quick-link-anchor">
                     <div class="stat-card quick-link-card">
-                        <div class="stat-icon" style="background: #eef2ff; color: var(--primary-blue);">Q</div>
+                        <div class="stat-icon" style="background: #eef2ff;">
+                            <img src="https://lh3.googleusercontent.com/d/1sfotUq2RjQnAtLVISx5kD2o1epPMCd2v" alt="Quiz" class="stat-icon-img">
+                        </div>
                         <div class="stat-info">
                             <h3 style="font-size: 16px; margin: 0; color: var(--primary-blue);">Take Online Quiz</h3>
                             <p style="margin-top: 2px;">Access online worksheets and tests</p>
@@ -44,9 +57,12 @@
                     </div>
                 </a>
 
+                <!-- Classroom Timeline Card -->
                 <a href="timeline.html" class="quick-link-anchor">
                     <div class="stat-card quick-link-card">
-                        <div class="stat-icon" style="background: #ecfdf5; color: #10b981;">T</div>
+                        <div class="stat-icon" style="background: #ecfdf5;">
+                            <img src="https://lh3.googleusercontent.com/d/1d9XEZdUxsu04yFg2NX2eZBrd2QbhiXVB" alt="Timeline" class="stat-icon-img">
+                        </div>
                         <div class="stat-info">
                             <h3 style="font-size: 16px; margin: 0; color: #10b981;">Classroom Timeline</h3>
                             <p style="margin-top: 2px;">Join classroom discussions & announcements</p>

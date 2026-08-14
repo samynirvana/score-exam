@@ -1510,3 +1510,63 @@ select:focus {
     border-color: #2563eb;
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
+
+/* Theme Toggle Button Single-Line Alignment */
+.theme-toggle-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    white-space: nowrap !important; /* Prevents text from breaking into 2 lines */
+    padding: 8px 16px !important;
+    height: 42px !important;
+    min-width: max-content !important;
+}
+
+.theme-toggle-btn .btn-icon {
+    width: 18px !important;
+    height: 18px !important;
+    object-fit: contain !important;
+    flex-shrink: 0 !important;
+}
+
+/* Ensure circular icon containers contain image bounds properly */
+.stat-icon {
+    overflow: hidden !important;
+    flex-shrink: 0 !important;
+}
+
+/* Image scaling inside stat circles */
+.stat-icon-img {
+    width: 24px !important;
+    height: 24px !important;
+    max-width: 24px !important;
+    max-height: 24px !important;
+    object-fit: contain !important;
+    display: block;
+}
+
+/* --- DASHBOARD COLUMN STACKING FIX --- */
+.dashboard-col {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    width: 100%;
+}
+
+/* --- STUDENT DIRECTORY HEADER ALIGNMENT FIX --- */
+#searchStudents {
+    margin: 0 !important;
+    height: 36px !important;
+    padding: 6px 12px !important;
+    box-sizing: border-box !important;
+    display: inline-block !important;
+}
+
+/* Ensure dropdowns match search bar height exactly */
+#filterClass,
+#sortStudents {
+    height: 36px !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+}

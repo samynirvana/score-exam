@@ -67,7 +67,10 @@
                     <p>Welcome back, Administrator</p>
                 </div>
                 <div class="topbar-actions">
-                    <button id="themeToggleBtn" class="theme-toggle-btn">Dark Mode</button>
+                   <button id="themeToggleBtn" class="theme-toggle-btn">
+                    <img id="adminThemeIcon" src="https://lh3.googleusercontent.com/d/YOUR_DARK_MODE_ICON_FILE_ID" alt="Theme Icon" class="btn-icon">
+                    <span id="adminThemeText">Dark Mode</span>
+                </button>
                     <button id="logoutBtn" class="logout-btn">Logout</button>
                 </div>
             </header>
@@ -78,52 +81,68 @@
                <!-- Stat Cards -->
                     <div class="stats-grid">
                         <div class="stat-card">
-                            <div class="stat-icon" style="background: #eef2ff; color: #4f46e5;">St</div>
+                            <div class="stat-icon" style="background: #eef2ff;">
+                                <img src="https://lh3.googleusercontent.com/d/1zvGDmjrYGsXe_c03GZ-KEY2FJM9tvFi9" alt="Total Students" class="stat-icon-img">
+                            </div>
                             <div class="stat-info"><p>Total Students</p><h3 id="stat-total-students">...</h3></div>
                         </div>
+
                         <div class="stat-card">
-                            <div class="stat-icon" style="background: #ecfdf5; color: #10b981;">Te</div>
+                            <div class="stat-icon" style="background: #ecfdf5;">
+                                <img src="https://lh3.googleusercontent.com/d/1aBOITXqEpEOH0j2QcrOEyPEP3m71WGC3" alt="Total Teachers" class="stat-icon-img">
+                            </div>
                             <div class="stat-info"><p>Total Teachers</p><h3 id="stat-total-teachers">...</h3></div>
                         </div>
+
                         <div class="stat-card">
-                            <div class="stat-icon" style="background: #f5f3ff; color: #8b5cf6;">Po</div>
+                            <div class="stat-icon" style="background: #f5f3ff;">
+                                <img src="https://lh3.googleusercontent.com/d/1Zr_PlUg4Xnu1wah55uTcpYZu7_bfnWYN" alt="Highest Behavior" class="stat-icon-img">
+                            </div>
                             <div class="stat-info"><p>Highest Behavior</p><h3 id="stat-highest-behavior" style="font-size: 16px; margin-top: 8px;">...</h3></div>
                         </div>
+
                         <div class="stat-card">
-                            <div class="stat-icon" style="background: #fff0f2; color: #e02d2d;">Ne</div>
+                            <div class="stat-icon" style="background: #fff0f2;">
+                                <img src="https://lh3.googleusercontent.com/d/1vk0aYlNNXsXVhNRnyLosXCPkFGo5eBgG" alt="Lowest Behavior" class="stat-icon-img">
+                            </div>
                             <div class="stat-info"><p>Lowest Behavior</p><h3 id="stat-lowest-behavior" style="font-size: 16px; margin-top: 8px;">...</h3></div>
                         </div>
+
                         <div class="stat-card">
-                            <div class="stat-icon" style="background: #f0fdfa; color: #14b8a6;">Ns</div>
+                            <div class="stat-icon" style="background: #f0fdfa;">
+                                <img src="https://lh3.googleusercontent.com/d/1CmvDBuel1w49ia-YF3R2P3BYKbNuPChO" alt="News Posted" class="stat-icon-img">
+                            </div>
                             <div class="stat-info"><p>News Posted</p><h3 id="stat-total-news">...</h3></div>
                         </div>
+
                         <div class="stat-card">
-                            <div class="stat-icon" style="background: #fffbeb; color: #f59e0b;">Qu</div>
+                            <div class="stat-icon" style="background: #fffbeb;">
+                                <img src="https://lh3.googleusercontent.com/d/1A37Bf-O04vX3eFB1J1norb4g9z5gtLGO" alt="Quizzes Created" class="stat-icon-img">
+                            </div>
                             <div class="stat-info"><p>Quizzes Created</p><h3 id="stat-total-quizzes">...</h3></div>
                         </div>
                     </div>
 
                 <!-- Main Layout Grid mimicking the Image -->
                 <div class="dashboard-grid">
-                    
-                   <!-- Left Col: Student Directory -->
+    
+                    <!-- LEFT COLUMN CONTAINER -->
+                    <div class="dashboard-col">
+                        
+                        <!-- Box 1: Student Directory -->
                         <div class="box">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
                                 <h3 style="margin: 0;">Student Master Directory</h3>
                                 <div style="display: flex; gap: 10px; align-items: center; flex: 1; justify-content: flex-end;">
-                                    <!-- Search Input -->
-                                    <input type="text" id="searchStudents" placeholder="Search students..." style="width: 170px; margin: 0; padding: 6px 12px; font-size: 13px;">
+                                    <input type="text" id="searchStudents" placeholder="Search students..." style="width: 170px;">
                                     
-                                    <!-- NEW: Filter Class Dropdown -->
                                     <label for="filterClass" style="font-size: 12px; white-space: nowrap;">Class:</label>
-                                    <select id="filterClass" style="padding: 6px; margin: 0; width: auto; font-size: 12px;">
+                                    <select id="filterClass">
                                         <option value="all">All Classes</option>
-                                        <!-- JS will auto-populate this list based on your database -->
                                     </select>
 
-                                    <!-- Sort Dropdown -->
                                     <label for="sortStudents" style="font-size: 12px; white-space: nowrap;">Sort by:</label>
-                                    <select id="sortStudents" style="padding: 6px; margin: 0; width: auto; font-size: 12px;">
+                                    <select id="sortStudents">
                                         <option value="code">Code</option>
                                         <option value="name">Name</option>
                                         <option value="studentClass">Class</option>
@@ -140,74 +159,84 @@
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        <!-- JS will inject rows here -->
-                                    </tbody>
+                                    <tbody></tbody>
                                 </table>
                             </div>
                         </div>
 
-                <!-- Right Col: Quick Actions (Moved up) -->
-                <div class="box">
-                    <h3 style="margin: 0 0 16px 0;">Quick Actions</h3>
-                    
-                    <div class="quick-action-item" onclick="document.querySelector('[data-tab=\'tab-view-ledgers\']').click()">
-                        <div class="stat-icon" style="background: #eef2ff; color: var(--primary-blue); width: 40px; height: 40px;">St</div>
-                        <div style="flex: 1;">
-                            <h4 style="margin: 0; font-size: 14px;">Register New Student</h4>
-                            <p style="margin: 0; font-size: 12px; color: var(--text-gray);">Add a new student to the system</p>
+                        <!-- Box 2: Behavior Ledger -->
+                        <div class="box">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                <h3 style="margin: 0;">Student Behavior Points Ledger</h3>
+                                <select id="sortPoints">
+                                    <option value="default">Default</option>
+                                    <option value="name">Name (A-Z)</option>
+                                    <option value="class">Class</option>
+                                    <option value="pointsDesc">Highest Point</option>
+                                    <option value="pointsAsc">Lowest Point</option>
+                                </select>
+                            </div>
+                            <div class="table-responsive" style="max-height: 350px;">
+                                <table id="pointsTable">
+                                    <thead><tr><th>Student Code</th><th>Student Name</th><th>Class</th><th>Total Points</th><th>Action</th></tr></thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
                         </div>
-                    </div>
-                    <div class="quick-action-item" onclick="document.querySelector('[data-tab=\'tab-manage-scores\']').click()">
-                        <div class="stat-icon" style="background: #f5f3ff; color: var(--purple-header); width: 40px; height: 40px;">Sc</div>
-                        <div style="flex: 1;">
-                            <h4 style="margin: 0; font-size: 14px;">Bulk Upload Scores (Excel)</h4>
-                            <p style="margin: 0; font-size: 12px; color: var(--text-gray);">Upload exam scores in bulk</p>
-                        </div>
-                    </div>
-                    <div class="quick-action-item" onclick="document.querySelector('[data-tab=\'tab-manage-behavior\']').click()">
-                        <div class="stat-icon" style="background: #fffbeb; color: #f59e0b; width: 40px; height: 40px;">Be</div>
-                        <div style="flex: 1;">
-                            <h4 style="margin: 0; font-size: 14px;">Record Behavior Points</h4>
-                            <p style="margin: 0; font-size: 12px; color: var(--text-gray);">Add or subtract behavior points</p>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Left Col: Behavior Ledger -->
-                <div class="box">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                        <h3 style="margin: 0;">Student Behavior Points Ledger</h3>
-                        <!-- NEW: Sort options populated -->
-                        <select id="sortPoints" style="padding: 6px; margin: 0; width: auto; font-size: 12px;">
-                            <option value="default">Default</option>
-                            <option value="name">Name (A-Z)</option>
-                            <option value="class">Class</option>
-                            <option value="pointsDesc">Highest Point</option>
-                            <option value="pointsAsc">Lowest Point</option>
-                        </select>
                     </div>
-                    <div class="table-responsive" style="max-height: 350px;">
-                        <table id="pointsTable">
-                            <thead><tr><th>Student Code</th><th>Student Name</th><th>Class</th><th>Total Points</th><th>Action</th></tr></thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                </div>
 
-                <!-- Right Col: Active News (Moved down) -->
-                <div class="box">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                        <h3 style="margin: 0;">Active News / Notice</h3>
-                        <a href="#" onclick="document.querySelector('[data-tab=\'tab-manage-news\']').click()" style="font-size: 13px; color: var(--primary-blue); text-decoration: none;">View All</a>
+                    <!-- RIGHT COLUMN CONTAINER -->
+                    <div class="dashboard-col">
+                        
+                        <!-- Box 3: Quick Actions -->
+                        <div class="box">
+                            <h3 style="margin: 0 0 16px 0;">Quick Actions</h3>
+                            
+                            <div class="quick-action-item" onclick="document.querySelector('[data-tab=\'tab-view-ledgers\']').click()">
+                                <div class="stat-icon" style="background: #eef2ff; width: 40px; height: 40px;">
+                                    <img src="https://lh3.googleusercontent.com/d/1wU--DpQ8zJXiKPi87YGX0yrdoX5tPSUJ" alt="Register" class="stat-icon-img">
+                                </div>
+                                <div style="flex: 1;">
+                                    <h4 style="margin: 0; font-size: 14px;">Register New Student</h4>
+                                    <p style="margin: 0; font-size: 12px; color: var(--text-gray);">Add a new student to the system</p>
+                                </div>
+                            </div>
+
+                            <div class="quick-action-item" onclick="document.querySelector('[data-tab=\'tab-manage-scores\']').click()">
+                                <div class="stat-icon" style="background: #f5f3ff; width: 40px; height: 40px;">
+                                    <img src="https://lh3.googleusercontent.com/d/1brvgCoXM3f0-EdWU_IBBKajMoTqN4SWP" alt="Scores" class="stat-icon-img">
+                                </div>
+                                <div style="flex: 1;">
+                                    <h4 style="margin: 0; font-size: 14px;">Bulk Upload Scores (Excel)</h4>
+                                    <p style="margin: 0; font-size: 12px; color: var(--text-gray);">Upload exam scores in bulk</p>
+                                </div>
+                            </div>
+
+                            <div class="quick-action-item" onclick="document.querySelector('[data-tab=\'tab-manage-behavior\']').click()">
+                                <div class="stat-icon" style="background: #fffbeb; width: 40px; height: 40px;">
+                                    <img src="https://lh3.googleusercontent.com/d/1UHsOQgU3N6Fk2Z18hctdamP_oJ7nHjQn" alt="Behavior" class="stat-icon-img">
+                                </div>
+                                <div style="flex: 1;">
+                                    <h4 style="margin: 0; font-size: 14px;">Record Behavior Points</h4>
+                                    <p style="margin: 0; font-size: 12px; color: var(--text-gray);">Add or subtract behavior points</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Box 4: Active News / Notice -->
+                        <div class="box">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                <h3 style="margin: 0;">Active News / Notice</h3>
+                                <a href="#" onclick="document.querySelector('[data-tab=\'tab-manage-news\']').click()" style="font-size: 13px; color: var(--primary-blue); text-decoration: none;">View All</a>
+                            </div>
+                            
+                            <div class="table-responsive" style="max-height: 250px; border: none; overflow-y: auto;" id="dashboard-news-container"></div>
+                            <button onclick="document.querySelector('[data-tab=\'tab-manage-news\']').click()" style="margin-top: 10px;">+ Post News / Notice</button>
+                        </div>
+
                     </div>
-                    
-                    <!-- Dynamic News Container -->
-                    <div class="table-responsive" style="max-height: 250px; border: none; overflow-y: auto;" id="dashboard-news-container">
-                        <!-- JS will automatically inject active .notice-item elements here -->
-                    </div>
-                    <button onclick="document.querySelector('[data-tab=\'tab-manage-news\']').click()" style="margin-top: 10px;">+ Post News / Notice</button>
-                </div>
+
                 </div>
             </div>
             <!-- Keep your existing tabs hidden securely beneath. When users click sidebar links, these will show -->
