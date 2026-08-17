@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teacher Admin Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="admin.css">
+    <link rel="stylesheet" href="admin.css?v=101">
 </head>
 <body>
 
@@ -27,7 +27,7 @@
         <nav class="sidebar">
             <div class="brand">
     <div style="background: #f0efec; padding: 6px; border-radius: 8px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; box-sizing: border-box; flex-shrink: 0;">
-        <img id="brandLogoImg" src="https://drive.google.com/thumbnail?id=1NLOGftk-CtNp9nxv4MUTqxNQTHdUxce7&sz=s4000 alt="Logo" style="width: 100%; height: 100%; object-fit: contain;">
+        <img id="brandLogoImg" src="https://drive.google.com/thumbnail?id=1NLOGftk-CtNp9nxv4MUTqxNQTHdUxce7&sz=s4000" alt="Logo" style="width: 100%; height: 100%; object-fit: contain;">
     </div>
     <div>
         <h2>MITRA KASIH</h2>
@@ -36,13 +36,96 @@
 </div>
             
            <div class="menu-bar">
-                <!-- Using the same data-tabs as your JS logic -->
-                <button class="menu-btn active admin-only-view" data-tab="tab-dashboard" id="menuDashboard">Dashboard</button>
-                <button class="menu-btn" data-tab="tab-manage-scores">Manage Scores</button>
-                <button class="menu-btn" data-tab="tab-manage-behavior">Behavior Points</button>
-                <button class="menu-btn" data-tab="tab-view-ledgers" id="menuAdminOnly">Manage Databases</button>
-                <button class="menu-btn" data-tab="tab-manage-news" id="menuNewsOnly">Manage News</button>
-                <button class="menu-btn" data-tab="tab-manage-quizzes">Manage Quizzes</button>
+                <!-- 1. Dashboard -->
+                <button class="menu-btn active admin-only-view" data-tab="tab-dashboard" id="menuDashboard">
+                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="9" rx="1.5"></rect>
+                        <rect x="14" y="3" width="7" height="5" rx="1.5"></rect>
+                        <rect x="14" y="12" width="7" height="9" rx="1.5"></rect>
+                        <rect x="3" y="16" width="7" height="5" rx="1.5"></rect>
+                    </svg>
+                    <span class="menu-label">Dashboard</span>
+                </button>
+
+                <!-- 2. Manage Score -->
+                <button class="menu-btn" data-tab="tab-manage-scores" id="menuManageScore">
+                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 11l3 3L22 4"></path>
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                    </svg>
+                    <span class="menu-label">Manage Score</span>
+                </button>
+
+                <!-- 3. Students Behavior -->
+                <button class="menu-btn" data-tab="tab-manage-behavior" id="menuManageBehavior">
+                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <polygon points="18 4 19.3 6.7 22.3 7.1 20.1 9.2 20.6 12.2 18 10.8 15.4 12.2 15.9 9.2 13.7 7.1 16.7 6.7 18 4"></polygon>
+                    </svg>
+                    <span class="menu-label">Students Behavior</span>
+                </button>
+
+                <!-- 4. Databases (with sub tabs) -->
+                <div class="menu-item-group admin-only-view" id="groupDatabases">
+                    <button class="menu-btn menu-btn-expandable" data-tab="tab-view-ledgers" id="menuAdminOnly">
+                        <span class="menu-btn-content">
+                            <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+                                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+                                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+                            </svg>
+                            <span class="menu-label">Databases</span>
+                        </span>
+                        <svg class="submenu-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+                    <div class="submenu" id="databasesSubmenu">
+                        <button class="submenu-btn" data-tab="tab-view-ledgers" data-subtab="students" id="subtabStudents">
+                            <svg class="submenu-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            </svg>
+                            <span>Students</span>
+                        </button>
+                        <button class="submenu-btn" data-tab="tab-view-ledgers" data-subtab="teachers" id="subtabTeachers">
+                            <svg class="submenu-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                            </svg>
+                            <span>Teacher</span>
+                        </button>
+                        <button class="submenu-btn" data-tab="tab-view-ledgers" data-subtab="quizzes" id="subtabQuizzes">
+                            <svg class="submenu-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            </svg>
+                            <span>Quiz</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 5. News and Notices -->
+                <button class="menu-btn" data-tab="tab-manage-news" id="menuNewsOnly">
+                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                    <span class="menu-label">News and Notices</span>
+                </button>
+
+                <!-- 6. Create Quizzes -->
+                <button class="menu-btn" data-tab="tab-manage-quizzes" id="menuManageQuizzes">
+                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                    <span class="menu-label">Create Quizzes</span>
+                </button>
             </div>
 
             <!-- USER PROFILE BOTTOM -->
@@ -499,39 +582,154 @@
                 </div>
             </div>
 
-          <!-- TAB 4: Manage Databases (Unified User & Database Management) -->
+          <!-- TAB 4: Databases (Unified User & Database Management) -->
             <div id="tab-view-ledgers" class="tab-content admin-only-view">
+                
+                <!-- Sub-tab Navigation Pill Bar -->
+                <div class="db-subtab-nav">
+                    <button class="db-pill-btn active" onclick="switchDbView('all')" id="pillDbAll">
+                        <svg class="db-pill-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+                            <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+                            <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+                            <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+                        </svg>
+                        All Databases
+                    </button>
+                    <button class="db-pill-btn" onclick="switchDbView('students')" id="pillDbStudents">
+                        <svg class="db-pill-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        Students Database
+                    </button>
+                    <button class="db-pill-btn" onclick="switchDbView('teachers')" id="pillDbTeachers">
+                        <svg class="db-pill-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                        </svg>
+                        Teacher Database
+                    </button>
+                    <button class="db-pill-btn" onclick="switchDbView('quizzes')" id="pillDbQuizzes">
+                        <svg class="db-pill-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        Quiz Database
+                    </button>
+                </div>
+
                 <div class="dashboard-grid">
                     
-                    <!-- 1. Register Single Student -->
-                    <div class="box">
-                        <h3>1. Register Single Student</h3>
-                        <input type="text" id="newStudentName" placeholder="Full Student Name">
-                        <input type="text" id="newStudentClass" placeholder="Class Room (e.g., Grade 7A)">
-                        <button id="registerStudentBtn">Generate Student Code</button>
-                    </div>
-                    <!-- Bulk Register Students with Excel -->
-                    <div class="box">
-                        <h3>Bulk Register Students (Excel)</h3>
-                        <p style="font-size: 13px; color: var(--text-gray); margin-bottom: 12px;">
-                            Upload an Excel (.xlsx, .csv) file containing columns for <strong>Student Name</strong> and <strong>Class</strong>.
-                        </p>
-                        <input type="file" id="bulkStudentsFile" accept=".xlsx, .xls, .csv" style="margin-bottom: 12px;">
-                        <button id="uploadBulkStudentsBtn" style="background: var(--primary-blue);">Upload & Process Bulk Students</button>
-                    </div>
-                    
-                    <!-- 3. Provision Teacher -->
-                    <div class="box">
-                        <h3>2. Provision Teacher Account</h3>
-                        <input type="text" id="newTeacherName" placeholder="Teacher Full Name">
-                        <input type="email" id="newTeacherEmail" placeholder="Teacher Email Address">
-                        <input type="password" id="newTeacherPassword" placeholder="Login Password">
-                        <input type="text" id="newTeacherSubject" placeholder="Subject Specialty">
-                        <button id="createTeacherBtn" style="background: #f59e0b;">Register Teacher</button>
+                    <!-- STUDENTS SECTION -->
+                    <div id="db-section-students" class="db-section-group" style="grid-column: 1 / -1; display: contents;">
+                        <!-- 1. Register Single Student -->
+                        <div class="box">
+                            <h3>1. Register Single Student</h3>
+                            <input type="text" id="newStudentName" placeholder="Full Student Name">
+                            <input type="text" id="newStudentClass" placeholder="Class Room (e.g., Grade 7A)">
+                            <button id="registerStudentBtn">Generate Student Code</button>
+                        </div>
+                        <!-- Bulk Register Students with Excel -->
+                        <div class="box">
+                            <h3>Bulk Register Students (Excel)</h3>
+                            <p style="font-size: 13px; color: var(--text-gray); margin-bottom: 12px;">
+                                Upload an Excel (.xlsx, .csv) file containing columns for <strong>Student Name</strong> and <strong>Class</strong>.
+                            </p>
+                            <input type="file" id="bulkStudentsFile" accept=".xlsx, .xls, .csv" style="margin-bottom: 12px;">
+                            <button id="uploadBulkStudentsBtn" style="background: var(--primary-blue);">Upload & Process Bulk Students</button>
+                        </div>
+
+                        <!-- STUDENTS MASTER DIRECTORY -->
+                        <div class="box" style="grid-column: 1 / -1;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                                <h3 style="margin: 0;">Students Master Directory</h3>
+                                <input type="text" id="searchDbStudents" placeholder="Search students..." oninput="renderDbStudentsTable()" style="width: 200px; margin: 0; padding: 6px 12px; font-size: 13px;">
+                            </div>
+                            <div class="table-responsive" style="max-height: 350px;">
+                                <table id="dbStudentsDirectoryTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Code</th>
+                                            <th>Student Name</th>
+                                            <th>Class</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Populated via JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Active Classes -->
+                        <div class="box" style="grid-column: 1 / -1;">
+                            <h3 style="margin-top: 0;">Active Classes</h3>
+                            <p style="font-size: 13px; color: var(--text-gray);">Classes are automatically populated based on registered Student profiles.</p>
+                            <div class="table-responsive" style="margin-top: 15px; max-height: 250px;">
+                                <table id="classesTable">
+                                    <thead><tr><th>Class Name</th><th>Source</th></tr></thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
 
-                   <!-- 4. Manual Offline Quizzes / Exams -->
-                        <div class="box">
+                    <!-- TEACHER SECTION -->
+                    <div id="db-section-teachers" class="db-section-group" style="grid-column: 1 / -1; display: contents;">
+                        <!-- 2. Provision Teacher Account -->
+                        <div class="box" style="grid-column: 1 / -1;">
+                            <h3>2. Provision Teacher Account</h3>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                                <input type="text" id="newTeacherName" placeholder="Teacher Full Name">
+                                <input type="email" id="newTeacherEmail" placeholder="Teacher Email Address">
+                                <input type="password" id="newTeacherPassword" placeholder="Login Password">
+                                <input type="text" id="newTeacherSubject" placeholder="Subject Specialty">
+                            </div>
+                            <button id="createTeacherBtn" style="background: #f59e0b; margin-top: 12px;">Register Teacher</button>
+                        </div>
+
+                        <!-- TEACHERS MASTER DIRECTORY -->
+                        <div class="box" style="grid-column: 1 / -1;">
+                            <h3 style="margin-top: 0; margin-bottom: 16px;">Teachers Master Directory</h3>
+                            <div class="table-responsive" style="max-height: 350px;">
+                                <table id="teachersDirectoryTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Teacher Name</th>
+                                            <th>Email Address</th>
+                                            <th>Subject Specialty</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Populated via JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Active Subjects -->
+                        <div class="box" style="grid-column: 1 / -1;">
+                            <h3>Active Subjects</h3>
+                            <p style="font-size: 13px; color: var(--text-gray);">Subjects are automatically populated based on registered Teacher accounts.</p>
+                            <div class="table-responsive" style="margin-top: 15px; max-height: 250px;">
+                                <table id="subjectsTable">
+                                    <thead><tr><th>Subject Name</th><th>Source</th></tr></thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- QUIZ SECTION -->
+                    <div id="db-section-quizzes" class="db-section-group" style="grid-column: 1 / -1; display: contents;">
+                        <!-- Manual Offline Quizzes / Exams -->
+                        <div class="box" style="grid-column: 1 / -1;">
                             <h3>Manage Offline Exams / Quizzes</h3>
                             <p style="font-size: 13px; color: var(--text-gray);">Add offline exams here. Digital quizzes from the Quiz Builder are automatically linked.</p>
                             
@@ -554,7 +752,7 @@
 
                             <button onclick="addManualQuiz()" style="background: var(--primary-blue);">Add Offline Exam</button>
                             
-                            <div class="table-responsive" style="margin-top: 15px; max-height: 250px;">
+                            <div class="table-responsive" style="margin-top: 15px; max-height: 350px;">
                                 <table id="quizzesDatabaseTable">
                                     <thead>
                                         <tr>
@@ -567,74 +765,6 @@
                                     </thead>
                                     <tbody></tbody>
                                 </table>
-                            </div>
-                        </div>
-
-                    <!-- 5. TEACHERS MASTER DIRECTORY -->
-                    <div class="box" style="grid-column: 1 / -1;">
-                        <h3 style="margin-top: 0; margin-bottom: 16px;">Teachers Master Directory</h3>
-                        <div class="table-responsive" style="max-height: 350px;">
-                            <table id="teachersDirectoryTable">
-                                <thead>
-                                    <tr>
-                                        <th>Teacher Name</th>
-                                        <th>Email Address</th>
-                                        <th>Subject Specialty</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Populated via JavaScript -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- 6. STUDENTS MASTER DIRECTORY -->
-                    <div class="box" style="grid-column: 1 / -1;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
-                            <h3 style="margin: 0;">Students Master Directory</h3>
-                            <input type="text" id="searchDbStudents" placeholder="Search students..." oninput="renderDbStudentsTable()" style="width: 200px; margin: 0; padding: 6px 12px; font-size: 13px;">
-                        </div>
-                        <div class="table-responsive" style="max-height: 350px;">
-                            <table id="dbStudentsDirectoryTable">
-                                <thead>
-                                    <tr>
-                                        <th>Code</th>
-                                        <th>Student Name</th>
-                                        <th>Class</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Populated via JavaScript -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- 7. Auto-Linked Subjects & Classes -->
-                    <div class="box" style="grid-column: 1 / -1;">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
-                            <div>
-                                <h3>Active Subjects</h3>
-                                <p style="font-size: 13px; color: var(--text-gray);">Subjects are automatically populated based on registered Teacher accounts.</p>
-                                <div class="table-responsive" style="margin-top: 15px; max-height: 250px;">
-                                    <table id="subjectsTable">
-                                        <thead><tr><th>Subject Name</th><th>Source</th></tr></thead>
-                                        <tbody></tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <div>
-                                <h3 style="margin-top: 0;">Active Classes</h3>
-                                <p style="font-size: 13px; color: var(--text-gray);">Classes are automatically populated based on registered Student profiles.</p>
-                                <div class="table-responsive" style="margin-top: 15px; max-height: 250px;">
-                                    <table id="classesTable">
-                                        <thead><tr><th>Class Name</th><th>Source</th></tr></thead>
-                                        <tbody></tbody>
-                                    </table>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -883,6 +1013,6 @@
 
 
     <!-- Make sure admin.js is imported last -->
-    <script type="module" src="admin.js?v=100"></script>
+    <script type="module" src="admin.js?v=101"></script>
 </body>
 </html>
