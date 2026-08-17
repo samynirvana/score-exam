@@ -808,17 +808,111 @@ window.inlineAdjustPoint = inlineAdjustPoint;
 document.getElementById('filterScoreClass')?.addEventListener('change', loadAdminTable);
 document.getElementById('filterPointsClass')?.addEventListener('change', loadPointsTable);
 
-// --- TAB NAVIGATION LOGIC ---
+// --- TAB & SUB-TAB NAVIGATION LOGIC ---
+window.switchDbView = function(viewName) {
+    const validViews = ['all', 'students', 'teachers', 'quizzes'];
+    if (!validViews.includes(viewName)) viewName = 'all';
+
+    // 1. Update In-Page Sub-tab Pills
+    const pillMap = {
+        'all': 'pillDbAll',
+        'students': 'pillDbStudents',
+        'teachers': 'pillDbTeachers',
+        'quizzes': 'pillDbQuizzes'
+    };
+    document.querySelectorAll('.db-pill-btn').forEach(btn => btn.classList.remove('active'));
+    const activePill = document.getElementById(pillMap[viewName]);
+    if (activePill) activePill.classList.add('active');
+
+    // 2. Update Sidebar Submenu Active States
+    document.querySelectorAll('.submenu-btn').forEach(btn => btn.classList.remove('active'));
+    const subtabMap = {
+        'students': 'subtabStudents',
+        'teachers': 'subtabTeachers',
+        'quizzes': 'subtabQuizzes'
+    };
+    if (subtabMap[viewName]) {
+        const activeSubBtn = document.getElementById(subtabMap[viewName]);
+        if (activeSubBtn) activeSubBtn.classList.add('active');
+    }
+
+    // 3. Show/Hide Database Section Groups
+    const secStudents = document.getElementById('db-section-students');
+    const secTeachers = document.getElementById('db-section-teachers');
+    const secQuizzes = document.getElementById('db-section-quizzes');
+
+    if (secStudents) {
+        secStudents.style.display = (viewName === 'all' || viewName === 'students') ? 'contents' : 'none';
+    }
+    if (secTeachers) {
+        secTeachers.style.display = (viewName === 'all' || viewName === 'teachers') ? 'contents' : 'none';
+    }
+    if (secQuizzes) {
+        secQuizzes.style.display = (viewName === 'all' || viewName === 'quizzes') ? 'contents' : 'none';
+    }
+};
+
+// Main Menu Button Handlers
 document.querySelectorAll('.menu-btn').forEach(button => {
-    button.addEventListener('click', () => {
-        // Remove active class from all buttons and hide all tabs
+    button.addEventListener('click', (e) => {
+        const tabId = button.getAttribute('data-tab');
+        const dbGroup = document.getElementById('groupDatabases');
+
+        // Check if this is the expandable Databases menu item
+        if (button.classList.contains('menu-btn-expandable') || button.id === 'menuAdminOnly') {
+            if (dbGroup) {
+                // If it's already active and open, toggle close; otherwise open
+                if (button.classList.contains('active') && dbGroup.classList.contains('open')) {
+                    dbGroup.classList.toggle('open');
+                } else {
+                    dbGroup.classList.add('open');
+                }
+            }
+        } else {
+            // Close database dropdown when navigating to a different main tab
+            if (dbGroup) dbGroup.classList.remove('open');
+            document.querySelectorAll('.submenu-btn').forEach(btn => btn.classList.remove('active'));
+        }
+
+        // Remove active from all main menu buttons and hide tab contents
         document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-        
+
         // Activate clicked button and corresponding tab
         button.classList.add('active');
-        const tabId = button.getAttribute('data-tab');
-        document.getElementById(tabId).classList.add('active');
+        const targetTab = document.getElementById(tabId);
+        if (targetTab) targetTab.classList.add('active');
+    });
+});
+
+// Sidebar Sub-menu Button Handlers (Databases -> Students, Teacher, Quiz)
+document.querySelectorAll('.submenu-btn').forEach(subBtn => {
+    subBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const tabId = subBtn.getAttribute('data-tab');
+        const subtab = subBtn.getAttribute('data-subtab');
+        const dbGroup = document.getElementById('groupDatabases');
+
+        // Keep parent group open and parent button active
+        if (dbGroup) dbGroup.classList.add('open');
+        document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
+        const parentBtn = document.getElementById('menuAdminOnly');
+        if (parentBtn) parentBtn.classList.add('active');
+
+        // Activate Databases tab content
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        const targetTab = document.getElementById(tabId);
+        if (targetTab) targetTab.classList.add('active');
+
+        // Switch to the specific sub-view
+        if (subtab && typeof window.switchDbView === 'function') {
+            window.switchDbView(subtab);
+        }
+
+        // Trigger system load if needed
+        if (typeof window.loadSystemDatabases === "function") {
+            window.loadSystemDatabases();
+        }
     });
 });
 
