@@ -1,9 +1,16 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { 
+  getAuth, 
+  signInWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged, 
+  createUserWithEmailAndPassword 
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-// Firebase Configuration
+
 const firebaseConfig = {
-  apiKey: "AIzaSyBIUtrjlgHEI7TtOY-nRiXzQ0DICdkT-W0",
+  apiKey: "AIzaSyBIUtrjlgHEI7TtOY-nRiXzQ0DIcdkT-W0",
   authDomain: "weekly-teacher.firebaseapp.com",
   projectId: "weekly-teacher",
   storageBucket: "weekly-teacher.firebasestorage.app",
@@ -12,8 +19,15 @@ const firebaseConfig = {
   measurementId: "G-VFRECGLJFK"
 };
 
+
+// Initialize Primary Firebase & Auth
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
+
+// Secondary Firebase Instance for creating new users without switching current admin session
+const secondaryApp = initializeApp(firebaseConfig, "SecondaryRegistrationApp");
+const secondaryAuth = getAuth(secondaryApp);
 
 // 13 Slot Daily Master Schedule Structure
 const timeSlots = [
@@ -41,11 +55,68 @@ const dailyUniforms = {
 };
 
 // Application State
-let appEntities = { teachers: [], classes: [], subjects: [], homeTeachers: {} };
+let appEntities = { teachers: [], classes: [], subjects: [], homeTeachers: {}, teacherEmails: {} };
 let classNotesData = {};
 let masterSchedules = {};
 let materialsData = {};
 let academicCalendar = {};
+
+// Firebase Auth State Observer
+onAuthStateChanged(auth, (user) => {
+  const loginModal = document.getElementById('loginModal');
+  const appMain = document.getElementById('appMain');
+  const userDisplayEmail = document.getElementById('userDisplayEmail');
+
+  if (user) {
+    if (loginModal) loginModal.style.display = 'none';
+    if (appMain) appMain.style.display = 'block';
+    if (userDisplayEmail) userDisplayEmail.textContent = `Logged in as: ${user.email}`;
+
+    if (appEntities.teacherEmails) {
+      const teacherName = Object.keys(appEntities.teacherEmails).find(
+        name => appEntities.teacherEmails[name] === user.email
+      );
+      if (teacherName) {
+        const tSelect = document.getElementById('teacherSelectView');
+        if (tSelect) {
+          tSelect.value = teacherName;
+          renderTeacherView();
+        }
+      }
+    }
+  } else {
+    if (loginModal) loginModal.style.display = 'flex';
+    if (appMain) appMain.style.display = 'none';
+  }
+});
+
+// Firebase User Sign In Handler
+document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value.trim();
+  const errDiv = document.getElementById('loginError');
+  const submitBtn = document.getElementById('btnLoginSubmit');
+
+  errDiv.style.display = 'none';
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Authenticating...';
+
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (err) {
+    errDiv.textContent = err.message.replace("Firebase: ", "");
+    errDiv.style.display = 'block';
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Sign In';
+  }
+});
+
+// Sign Out Handler
+document.getElementById('btnLogout')?.addEventListener('click', () => {
+  signOut(auth);
+});
 
 // Main Navigation Event Listeners
 document.getElementById('btnClassView')?.addEventListener('click', (e) => switchTab('classView', e.target));
@@ -64,7 +135,7 @@ function getSlotAssignments(className, day, slotId) {
   const entry = masterSchedules[className]?.[day]?.[slotId];
   if (!entry) return [];
   if (Array.isArray(entry)) return entry;
-  return [entry]; // Convert single legacy object to array format
+  return [entry];
 }
 
 // Admin Sub-Tab Navigation
@@ -79,12 +150,19 @@ function switchAdminSubTab(subTabId, targetBtn) {
   targetBtn?.classList.add('active');
 }
 
-// Populate Calendar Select Boxes for Class, Teacher, and Admin Views
+// Resource Type Switcher (Show/Hide Teacher Credentials Inputs)
+document.getElementById('resourceType')?.addEventListener('change', (e) => {
+  const teacherAuthFields = document.getElementById('teacherAuthFields');
+  if (teacherAuthFields) {
+    teacherAuthFields.style.display = e.target.value === 'teachers' ? 'block' : 'none';
+  }
+});
+
+// Populate Calendar Select Boxes
 function populateCalendarSelects() {
   const years = Object.keys(academicCalendar);
   const views = ['class', 'teacher'];
 
-  // 1. Populate Student and Teacher View Selectors
   views.forEach(prefix => {
     const yearSel = document.getElementById(`${prefix}YearSelect`);
     const themeSel = document.getElementById(`${prefix}ThemeSelect`);
@@ -124,11 +202,9 @@ function populateCalendarSelects() {
     }
   });
 
-  // 2. Populate Admin Calendar Form Selectors
   populateAdminCalendarDropdowns();
 }
 
-// Admin Calendar Form Dropdown Handler
 function populateAdminCalendarDropdowns() {
   const adminYearSel = document.getElementById('adminYearSelect');
   const adminThemeSel = document.getElementById('adminThemeSelect');
@@ -147,7 +223,6 @@ function populateAdminCalendarDropdowns() {
   if (currTheme && themes.includes(currTheme)) adminThemeSel.value = currTheme;
 }
 
-// Add New School Year Button Handler
 document.getElementById('btnAddYear')?.addEventListener('click', async () => {
   const newYear = prompt("Enter new Academic School Year (e.g., 2026-2027):");
   if (!newYear || !newYear.trim()) return;
@@ -168,7 +243,6 @@ document.getElementById('btnAddYear')?.addEventListener('click', async () => {
   }
 });
 
-// Add New Theme Button Handler
 document.getElementById('btnAddTheme')?.addEventListener('click', async () => {
   const selectedYear = document.getElementById('adminYearSelect')?.value;
   if (!selectedYear) {
@@ -194,12 +268,10 @@ document.getElementById('btnAddTheme')?.addEventListener('click', async () => {
   }
 });
 
-// Sync Admin Calendar Year Dropdown Change
 document.getElementById('adminYearSelect')?.addEventListener('change', () => {
   populateAdminCalendarDropdowns();
 });
 
-// Date Formatter Helper (YYYY-MM-DD)
 function formatDate(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -207,7 +279,6 @@ function formatDate(date) {
   return `${year}-${month}-${day}`;
 }
 
-// Helper Function: Auto-Generate Weeks
 function generateWeeksFromDateRange(startStr, endStr) {
   const weeksObj = {};
   let currentStart = new Date(startStr + "T00:00:00");
@@ -221,7 +292,7 @@ function generateWeeksFromDateRange(startStr, endStr) {
 
   while (currentStart <= finalEnd) {
     let currentEnd = new Date(currentStart);
-    currentEnd.setDate(currentEnd.getDate() + 6); // 7 days (e.g., Mon - Sun)
+    currentEnd.setDate(currentEnd.getDate() + 6);
 
     if (currentEnd > finalEnd) {
       currentEnd = new Date(finalEnd);
@@ -233,7 +304,6 @@ function generateWeeksFromDateRange(startStr, endStr) {
       endDate: formatDate(currentEnd)
     };
 
-    // Move to start of next week (+7 days)
     currentStart.setDate(currentStart.getDate() + 7);
     weekNum++;
   }
@@ -241,7 +311,6 @@ function generateWeeksFromDateRange(startStr, endStr) {
   return weeksObj;
 }
 
-// Submit Academic Calendar Form (Auto-Generate Weeks)
 document.getElementById('calendarForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   const year = document.getElementById('adminYearSelect').value;
@@ -270,7 +339,6 @@ document.getElementById('calendarForm')?.addEventListener('submit', async (e) =>
   }
 });
 
-// Sync Calendar Filters across Views
 ['class', 'teacher'].forEach(prefix => {
   document.getElementById(`${prefix}YearSelect`)?.addEventListener('change', () => {
     populateCalendarSelects();
@@ -289,7 +357,6 @@ document.getElementById('calendarForm')?.addEventListener('submit', async (e) =>
   });
 });
 
-// Populate Admin Select Pickers & Entity Tables
 function populateAdminSelects() {
   const periodSelect = document.getElementById('adminPeriodSelect');
   if (periodSelect && periodSelect.children.length === 0) {
@@ -326,7 +393,6 @@ function populateAdminSelects() {
   renderEntityTables();
 }
 
-// Render Entity Tables with Kebab Actions
 function renderEntityTables() {
   const types = ['teachers', 'classes', 'subjects'];
   if (!appEntities.homeTeachers) appEntities.homeTeachers = {};
@@ -340,7 +406,9 @@ function renderEntityTables() {
     appEntities[type].forEach(item => {
       const tr = document.createElement('tr');
       let homeBadge = '';
-      if (type === 'teachers' && appEntities.homeTeachers[item]) {
+      const isHomeTeacher = type === 'teachers' && appEntities.homeTeachers[item];
+
+      if (isHomeTeacher) {
         homeBadge = `<br><small style="color: #2563eb;">(Home Teacher: ${appEntities.homeTeachers[item]})</small>`;
       }
 
@@ -352,7 +420,11 @@ function renderEntityTables() {
           <div class="kebab-menu">
             <button class="kebab-btn">⋮</button>
             <div class="kebab-dropdown">
-              ${type === 'teachers' ? `<button class="set-hometeacher-opt" data-name="${item}">Set Home Teacher</button>` : ''}
+              ${type === 'teachers' ? (
+                isHomeTeacher 
+                  ? `<button class="remove-hometeacher-opt" data-name="${item}" style="color: #ef4444;">Remove Home Teacher</button>`
+                  : `<button class="set-hometeacher-opt" data-name="${item}">Set Home Teacher</button>`
+              ) : ''}
               <button class="edit-opt" data-type="${type}" data-name="${item}">Edit</button>
               <button class="delete-opt" data-type="${type}" data-name="${item}">Delete</button>
             </div>
@@ -363,7 +435,6 @@ function renderEntityTables() {
     });
   });
 
-  // Action listeners
   document.querySelectorAll('.kebab-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -374,9 +445,12 @@ function renderEntityTables() {
     });
   });
 
-  // Set Home Teacher Kebab Action
   document.querySelectorAll('.set-hometeacher-opt').forEach(btn => {
     btn.addEventListener('click', (e) => setHomeTeacher(e.target.dataset.name));
+  });
+
+  document.querySelectorAll('.remove-hometeacher-opt').forEach(btn => {
+    btn.addEventListener('click', (e) => removeHomeTeacher(e.target.dataset.name));
   });
 
   document.querySelectorAll('.edit-opt').forEach(btn => {
@@ -388,7 +462,6 @@ function renderEntityTables() {
   });
 }
 
-// Set Home Teacher Handler
 async function setHomeTeacher(teacherName) {
   const availableClasses = appEntities.classes.join(', ');
   const chosenClass = prompt(`Assign ${teacherName} as Home Teacher to class:\nAvailable Classes: ${availableClasses}`);
@@ -413,17 +486,39 @@ async function setHomeTeacher(teacherName) {
   }
 }
 
+async function removeHomeTeacher(teacherName) {
+  if (confirm(`Are you sure you want to remove ${teacherName} as Home Teacher?`)) {
+    delete appEntities.homeTeachers[teacherName];
+    try {
+      await setDoc(doc(db, "config", "appEntities"), appEntities);
+      alert(`Removed ${teacherName} from Home Teacher role.`);
+      renderEntityTables();
+      renderTeacherView();
+    } catch (err) {
+      alert("Error updating Home Teacher assignment: " + err.message);
+    }
+  }
+}
+
 async function editEntity(type, oldName) {
   const newName = prompt(`Enter new name for "${oldName}":`, oldName);
-  if (!newName || newName.trim() === '' || newName.trim() === oldName) return;
+  if (newName === null) return;
+  const cleanName = newName.trim() || oldName;
 
-  const cleanName = newName.trim();
   const index = appEntities[type].indexOf(oldName);
   if (index !== -1) {
     appEntities[type][index] = cleanName;
+
+    if (type === 'teachers' && appEntities.teacherEmails) {
+      if (oldName !== cleanName && appEntities.teacherEmails[oldName]) {
+        appEntities.teacherEmails[cleanName] = appEntities.teacherEmails[oldName];
+        delete appEntities.teacherEmails[oldName];
+      }
+    }
+
     try {
       await setDoc(doc(db, "config", "appEntities"), appEntities);
-      alert(`Updated "${oldName}" to "${cleanName}".`);
+      alert(`Updated entity details successfully.`);
     } catch (err) {
       alert("Error updating database: " + err.message);
     }
@@ -433,6 +528,9 @@ async function editEntity(type, oldName) {
 async function deleteEntity(type, name) {
   if (confirm(`Are you sure you want to delete "${name}" from ${type}?`)) {
     appEntities[type] = appEntities[type].filter(item => item !== name);
+    if (type === 'teachers' && appEntities.teacherEmails) {
+      delete appEntities.teacherEmails[name];
+    }
     try {
       await setDoc(doc(db, "config", "appEntities"), appEntities);
       alert(`Removed "${name}".`);
@@ -449,7 +547,6 @@ function getActiveCalendarPrefix(viewType = 'class') {
   return `${year}_${theme}_${week}`;
 }
 
-// Helper to identify special combined subject groups
 function getSubjectGroupType(subjectName) {
   if (!subjectName) return 'regular';
   const name = subjectName.toLowerCase();
@@ -463,7 +560,6 @@ function getSubjectGroupType(subjectName) {
   return 'regular';
 }
 
-// Helper to determine if two slot entries belong to the same consecutive subject block
 function isSameSubjectGroup(sub1, sub2) {
   if (sub1 === sub2) return true;
   const type1 = getSubjectGroupType(sub1);
@@ -472,7 +568,6 @@ function isSameSubjectGroup(sub1, sub2) {
   return false;
 }
 
-// Render Student Class Schedule View with Row Merging & Combined Subject Material Support
 function renderClassSchedule() {
   const selectElem = document.getElementById('classSelectView');
   if (!selectElem) return;
@@ -485,7 +580,6 @@ function renderClassSchedule() {
   const calPrefix = getActiveCalendarPrefix('class');
   const skipCells = { MONDAY: 0, TUESDAY: 0, WEDNESDAY: 0, THURSDAY: 0, FRIDAY: 0 };
 
-  // Render Time Slots
   timeSlots.forEach((slot, sIndex) => {
     const tr = document.createElement('tr');
 
@@ -572,21 +666,19 @@ function renderClassSchedule() {
     tbody.appendChild(tr);
   });
 
-  // APPEND NOTES ROW AT THE BOTTOM (Below CLOSING Slot)
-    const notesKey = `${calPrefix}_${selectedClass}_notes`;
-    const noteText = classNotesData[notesKey] || 'No notes for this week.';
+  const notesKey = `${calPrefix}_${selectedClass}_notes`;
+  const noteText = classNotesData[notesKey] || 'No notes for this week.';
 
-    const notesTr = document.createElement('tr');
-    notesTr.innerHTML = `
-      <td style="background-color: #f1f5f9; font-weight: bold; text-align: center;">NOTES</td>
-      <td colspan="5" style="text-align: left; padding: 12px; background-color: #f8fafc; font-style: italic; color: #334155; white-space: pre-line;">
-        ${noteText}
-      </td>
-    `;
-    tbody.appendChild(notesTr);
+  const notesTr = document.createElement('tr');
+  notesTr.innerHTML = `
+    <td style="background-color: #f1f5f9; font-weight: bold; text-align: center;">NOTES</td>
+    <td colspan="5" style="text-align: left; padding: 12px; background-color: #f8fafc; font-style: italic; color: #334155; white-space: pre-line;">
+      ${noteText}
+    </td>
+  `;
+  tbody.appendChild(notesTr);
 }
 
-// Print PDF Button Listener
 document.getElementById('btnPrintPDF')?.addEventListener('click', () => {
   window.print();
 });
@@ -598,12 +690,10 @@ function renderTeacherView() {
   const days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
   const calPrefix = getActiveCalendarPrefix('teacher');
 
-  // DOM Elements for Home Teacher Panel
   const homeSection = document.getElementById('homeTeacherSection');
   const homeClassTitle = document.getElementById('homeClassTitle');
   const noteInput = document.getElementById('weeklyNoteInput');
 
-  // Check if selected teacher is a Home Teacher
   const assignedClass = appEntities.homeTeachers?.[selectedTeacher];
   if (assignedClass && homeSection) {
     homeSection.style.display = 'block';
@@ -611,7 +701,6 @@ function renderTeacherView() {
 
     const notesKey = `${calPrefix}_${assignedClass}_notes`;
 
-    // Load existing weekly note
     if (noteInput) {
       noteInput.value = classNotesData[notesKey] || '';
     }
@@ -619,7 +708,6 @@ function renderTeacherView() {
     homeSection.style.display = 'none';
   }
 
-  // 1. Render Weekly Schedule Grid for Selected Teacher
   const tbodyGrid = document.getElementById('teacherScheduleBody');
   if (tbodyGrid) {
     tbodyGrid.innerHTML = '';
@@ -648,7 +736,6 @@ function renderTeacherView() {
     });
   }
     
-  // 2. Render Personal Material Entries
   const tbodyMat = document.getElementById('materialTableBody');
   if (!tbodyMat) return;
   tbodyMat.innerHTML = '';
@@ -692,7 +779,6 @@ function renderTeacherView() {
     tbodyMat.appendChild(tr);
   });
 
-  // Material Input Listeners
   document.querySelectorAll('.mat-input').forEach(input => {
     input.addEventListener('input', (e) => {
       const key = e.target.dataset.key;
@@ -739,7 +825,6 @@ function renderTeacherView() {
   });
 }
 
-// 1. Render Manage Schedule Table for selected Class & Day
 function renderManageScheduleTable() {
   const classSelect = document.getElementById('manageClassSelect');
   const daySelect = document.getElementById('manageDaySelect');
@@ -788,7 +873,6 @@ function renderManageScheduleTable() {
     tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 12px; color: #64748b;">No schedules assigned for ${selectedClass} on ${selectedDay}.</td></tr>`;
   }
 
-  // Bind dropdown toggle listeners
   tbody.querySelectorAll('.kebab-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -799,7 +883,6 @@ function renderManageScheduleTable() {
     });
   });
 
-  // Bind Edit action listeners
   tbody.querySelectorAll('.edit-slot-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const slotId = parseInt(e.target.dataset.slot);
@@ -808,7 +891,6 @@ function renderManageScheduleTable() {
     });
   });
 
-  // Bind Delete action listeners
   tbody.querySelectorAll('.delete-slot-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const slotId = parseInt(e.target.dataset.slot);
@@ -818,26 +900,22 @@ function renderManageScheduleTable() {
   });
 }
 
-// 2. Edit Slot Assignment (Teacher or Subject Correction)
 async function editSlotAssignment(className, day, slotId, index) {
   const currentAssignments = getSlotAssignments(className, day, slotId);
   const target = currentAssignments[index];
   if (!target) return;
 
-  // Prompt for Subject choice
   const availableSubjects = appEntities.subjects.join(', ');
   const newSubject = prompt(`Current Subject: "${target.subject}"\nEnter new Subject (${availableSubjects}):`, target.subject);
-  if (newSubject === null) return; // Cancelled
+  if (newSubject === null) return;
 
-  // Prompt for Teacher choice
   const availableTeachers = appEntities.teachers.join(', ');
   const newTeacher = prompt(`Current Teacher: "${target.teacher}"\nEnter new Teacher (${availableTeachers}):`, target.teacher);
-  if (newTeacher === null) return; // Cancelled
+  if (newTeacher === null) return;
 
   const cleanSubject = newSubject.trim() || target.subject;
   const cleanTeacher = newTeacher.trim() || target.teacher;
 
-  // Update object entry
   currentAssignments[index] = { subject: cleanSubject, teacher: cleanTeacher };
   masterSchedules[className][day][slotId] = currentAssignments;
 
@@ -852,14 +930,12 @@ async function editSlotAssignment(className, day, slotId, index) {
   }
 }
 
-// 3. Delete Slot Assignment Entry
 async function deleteSlotAssignment(className, day, slotId, index) {
   const currentAssignments = getSlotAssignments(className, day, slotId);
   const target = currentAssignments[index];
   if (!target) return;
 
   if (confirm(`Are you sure you want to remove ${target.subject} (${target.teacher}) from Period ${timeSlots[slotId]?.period || slotId}?`)) {
-    // Remove the item from array
     currentAssignments.splice(index, 1);
 
     if (currentAssignments.length === 0) {
@@ -880,11 +956,9 @@ async function deleteSlotAssignment(className, day, slotId, index) {
   }
 }
 
-// 4. Attach Sync Listeners for Management Dropdowns
 document.getElementById('manageClassSelect')?.addEventListener('change', renderManageScheduleTable);
 document.getElementById('manageDaySelect')?.addEventListener('change', renderManageScheduleTable);
 
-// Update populateAdminSelects to sync the management class selector
 const originalPopulateAdminSelects = populateAdminSelects;
 populateAdminSelects = function() {
   if (typeof originalPopulateAdminSelects === 'function') originalPopulateAdminSelects();
@@ -898,6 +972,7 @@ populateAdminSelects = function() {
   }
 };
 
+// Add Resource & Register Teacher in Firebase Auth
 document.getElementById('addResourceForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   const type = document.getElementById('resourceType').value;
@@ -909,17 +984,40 @@ document.getElementById('addResourceForm')?.addEventListener('submit', async (e)
     return;
   }
 
+  if (type === 'teachers') {
+    const email = document.getElementById('teacherEmail').value.trim();
+    const password = document.getElementById('teacherPassword').value.trim();
+
+    if (!email || !password) {
+      alert("Please enter both an Email and Password for the teacher account.");
+      return;
+    }
+
+    try {
+      await createUserWithEmailAndPassword(secondaryAuth, email, password);
+      
+      if (!appEntities.teacherEmails) appEntities.teacherEmails = {};
+      appEntities.teacherEmails[name] = email;
+    } catch (err) {
+      alert("Error creating Firebase user account: " + err.message);
+      return;
+    }
+  }
+
   appEntities[type].push(name);
+
   try {
     await setDoc(doc(db, "config", "appEntities"), appEntities);
     document.getElementById('resourceName').value = '';
+    if (document.getElementById('teacherEmail')) document.getElementById('teacherEmail').value = '';
+    if (document.getElementById('teacherPassword')) document.getElementById('teacherPassword').value = '';
     alert(`Successfully added "${name}" to ${type}!`);
   } catch (err) {
     alert("Error adding resource: " + err.message);
   }
 });
 
-// Admin Assignment Handler (Appends Religion & Art Teachers to the Same Slot)
+// Admin Assignment Handler
 document.getElementById('assignSlotForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   const className = document.getElementById('adminClassSelect').value;
@@ -946,7 +1044,6 @@ document.getElementById('assignSlotForm')?.addEventListener('submit', async (e) 
       const existingAssignments = getSlotAssignments(className, day, currentSlotId);
 
       if (groupType !== 'regular') {
-        // Multi-teacher group (Religion or Art): Append without duplicates
         const alreadyExists = existingAssignments.some(
           item => item.teacher === teacher && item.subject === subject
         );
@@ -956,7 +1053,6 @@ document.getElementById('assignSlotForm')?.addEventListener('submit', async (e) 
         }
         masterSchedules[className][day][currentSlotId] = existingAssignments;
       } else {
-        // Standard regular subject: Replace slot assignment
         masterSchedules[className][day][currentSlotId] = [{ subject, teacher }];
       }
       filledCount++;
@@ -986,7 +1082,7 @@ document.getElementById('saveMaterialsBtn')?.addEventListener('click', async () 
 document.getElementById('classSelectView')?.addEventListener('change', renderClassSchedule);
 document.getElementById('teacherSelectView')?.addEventListener('change', renderTeacherView);
 
-// Firebase Real-time Synchronization Listeners
+// Firebase Real-time Synchronization Snapshots
 onSnapshot(doc(db, "config", "academicCalendar"), (docSnap) => {
   if (docSnap.exists()) {
     academicCalendar = docSnap.data();
@@ -1034,6 +1130,12 @@ onSnapshot(doc(db, "schedules", "materialsData"), (docSnap) => {
   renderTeacherView();
 });
 
+onSnapshot(doc(db, "schedules", "classNotesData"), (docSnap) => {
+  if (docSnap.exists()) classNotesData = docSnap.data();
+  renderClassSchedule();
+  renderTeacherView();
+});
+
 document.getElementById('btnSaveClassNotes')?.addEventListener('click', async () => {
   const selectedTeacher = document.getElementById('teacherSelectView')?.value;
   const assignedClass = appEntities.homeTeachers?.[selectedTeacher];
@@ -1071,7 +1173,6 @@ document.getElementById('btnCreateTempWeekly')?.addEventListener('click', () => 
   tbody.innerHTML = '';
   const days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
 
-  // Populate table with active class schedule template
   timeSlots.forEach(slot => {
     const tr = document.createElement('tr');
 
@@ -1095,7 +1196,6 @@ document.getElementById('btnCreateTempWeekly')?.addEventListener('click', () => 
 
   container.style.display = 'block';
 
-  // Open Template Draft in a New Tab
   const newWin = window.open("", "_blank");
   if (!newWin) {
     alert("Pop-up blocked! Please allow pop-ups for this site to open the template in a new tab.");
@@ -1165,11 +1265,4 @@ document.getElementById('btnCreateTempWeekly')?.addEventListener('click', () => 
   newWin.document.open();
   newWin.document.write(newTabHtml);
   newWin.document.close();
-});
-
-// Sync Real-Time Class Notes Snapshot
-onSnapshot(doc(db, "schedules", "classNotesData"), (docSnap) => {
-  if (docSnap.exists()) classNotesData = docSnap.data();
-  renderClassSchedule();
-  renderTeacherView();
 });
