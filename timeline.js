@@ -99,25 +99,38 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-window.onload = () => {
+function initTimelineSession() {
     const savedSession = sessionStorage.getItem('studentLoggedInSession') || sessionStorage.getItem('studentTimelineSession');
     if (savedSession) {
         try {
-            currentUser = JSON.parse(savedSession);
-            if (currentUser && currentUser.code) {
-                // Normalise role object format
-                if (!currentUser.type) currentUser.type = 'student';
+            const parsed = JSON.parse(savedSession);
+            if (parsed && (parsed.code || parsed.studentName || parsed.name)) {
+                currentUser = {
+                    type: parsed.type || 'student',
+                    name: parsed.name || parsed.studentName || 'Student',
+                    code: parsed.code || '',
+                    studentClass: parsed.studentClass || parsed.class || 'Unassigned'
+                };
                 showTimelineApp();
             }
         } catch (e) {
             console.error("Timeline session parse error:", e);
         }
     }
-};
+}
 
-document.getElementById('loginBtn').addEventListener('click', async () => {
-    const usernameInput = document.getElementById('loginUsername').value.trim();
-    const passwordInput = document.getElementById('loginPassword').value.trim();
+if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', initTimelineSession);
+} else {
+    initTimelineSession();
+}
+
+document.getElementById('loginBtn')?.addEventListener('click', async () => {
+    const uIn = document.getElementById('loginUsername');
+    const pIn = document.getElementById('loginPassword');
+    if (!uIn || !pIn) return;
+    const usernameInput = uIn.value.trim();
+    const passwordInput = pIn.value.trim();
 
     if (!usernameInput || !passwordInput) return alert("Please enter both fields.");
 
@@ -134,22 +147,10 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
             const studentRef = doc(db, "students", code);
             const studentSnap = await getDoc(studentRef);
             if (studentSnap.exists()) {
-                currentUser = { type: 'student', name: studentSnap.data().studentName, code: code };
-                sessionStorage.setItem('studentTimelineSession', JSON.stringify(currentUser));
-                showTimelineApp();
-            } else {
-                alert("Student code not found in the directory.");
-            }
-        } catch (error) { alert("Login Error: " + error.message); }
-
-        try {
-            const studentRef = doc(db, "students", code);
-            const studentSnap = await getDoc(studentRef);
-            if (studentSnap.exists()) {
                 const sData = studentSnap.data();
                 currentUser = { 
                     type: 'student', 
-                    name: sData.studentName, 
+                    name: sData.studentName || 'Student', 
                     code: code,
                     studentClass: sData.studentClass || sData.class || 'Unassigned'
                 };
@@ -209,9 +210,8 @@ document.getElementById('studentLogoutBtn')?.addEventListener('click', handleTim
 // --- 3. @MENTION AUTOCOMPLETE ---
 
 async function fetchAllNames() {
+    let names = [];
     try {
-        let names = [];
-        
         const usersSnap = await getDocs(collection(db, "users"));
         usersSnap.forEach(doc => {
             const data = doc.data();
@@ -221,19 +221,21 @@ async function fetchAllNames() {
                 names.push(data.role === 'admin' ? 'Administrator' : teacherName);
             }
         });
-        
+    } catch (e) {
+        console.warn("Could not load users directory for mentions.", e);
+    }
+    
+    try {
         const studentsSnap = await getDocs(collection(db, "students"));
         studentsSnap.forEach(doc => {
             if (doc.data().studentName) names.push(doc.data().studentName);
         });
-        
-        allUserNames = [...new Set(names)];
     } catch (e) {
-        console.warn("Could not load user directory for mentions.", e);
+        console.warn("Could not load students directory for mentions.", e);
     }
+    
+    allUserNames = [...new Set(names)];
 }
-
-const mentionPopup = document.getElementById('mentionPopup');
 
 document.addEventListener('input', (e) => {
     if (e.target.id === 'loginUsername' || e.target.id === 'loginPassword') return; 
@@ -256,6 +258,8 @@ document.addEventListener('input', (e) => {
 });
 
 function showMentionPopup(targetEl, searchStr) {
+    const mentionPopup = document.getElementById('mentionPopup');
+    if (!mentionPopup) return;
     const matches = allUserNames.filter(n => n.toLowerCase().includes(searchStr)).slice(0, 6); 
     if (matches.length === 0) {
         hideMentionPopup();
@@ -267,7 +271,9 @@ function showMentionPopup(targetEl, searchStr) {
         const div = document.createElement('div');
         div.className = 'mention-item';
         div.textContent = match;
-        div.onclick = () => {
+        div.onclick = (evt) => {
+            evt.preventDefault();
+            evt.stopPropagation();
             const val = targetEl.value;
             const cursorPos = targetEl.selectionStart;
             const textBeforeCursor = val.substring(0, cursorPos);
@@ -284,15 +290,19 @@ function showMentionPopup(targetEl, searchStr) {
     const rect = targetEl.getBoundingClientRect();
     mentionPopup.style.top = (rect.bottom + window.scrollY) + 'px';
     mentionPopup.style.left = (rect.left + window.scrollX) + 'px';
-    mentionPopup.style.width = rect.width + 'px';
+    mentionPopup.style.width = Math.max(rect.width, 200) + 'px';
     mentionPopup.classList.remove('hidden');
 }
 
 function hideMentionPopup() {
-    mentionPopup.classList.add('hidden');
+    const mentionPopup = document.getElementById('mentionPopup');
+    if (mentionPopup) mentionPopup.classList.add('hidden');
 }
 
-document.addEventListener('click', (e) => { if (!mentionPopup.contains(e.target)) hideMentionPopup(); });
+document.addEventListener('click', (e) => { 
+    const mentionPopup = document.getElementById('mentionPopup');
+    if (mentionPopup && !mentionPopup.contains(e.target)) hideMentionPopup(); 
+});
 
 function extractMentions(text) {
     let foundMentions = [];
@@ -360,9 +370,9 @@ function loadNotifications() {
     });
 }
 
-document.getElementById('notifToggleBtn').addEventListener('click', () => {
+document.getElementById('notifToggleBtn')?.addEventListener('click', () => {
     const dropdown = document.getElementById('notifDropdown');
-    dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+    if (dropdown) dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
 });
 
 window.openNotification = async function(notifId, postId) {
@@ -381,17 +391,19 @@ window.openNotification = async function(notifId, postId) {
 
 // --- 5. POSTING & RENDERING (WITH KEBAB MENU) ---
 
-document.getElementById('submitPostBtn').addEventListener('click', async () => {
-    if (!currentUser) return; 
-    const message = document.getElementById('postMessage').value.trim();
+document.getElementById('submitPostBtn')?.addEventListener('click', async () => {
+    if (!currentUser) return alert("Please log in first to submit a post.");
+    const postMsgEl = document.getElementById('postMessage');
+    if (!postMsgEl) return;
+    const message = postMsgEl.value.trim();
     const targetClass = document.getElementById('postTargetClass') ? document.getElementById('postTargetClass').value : 'All';
 
     if (!message) return alert("You must write a message first.");
 
     try {
         const postRef = await addDoc(collection(db, "timeline_posts"), {
-            authorCode: currentUser.code,
-            authorName: currentUser.name,
+            authorCode: currentUser.code || '',
+            authorName: currentUser.name || 'Student',
             isStaff: currentUser.type === 'staff',
             message: message,
             targetClass: targetClass, // Saved class target
@@ -403,7 +415,7 @@ document.getElementById('submitPostBtn').addEventListener('click', async () => {
             await sendNotification(m, `${currentUser.name} mentioned you in a new post.`, postRef.id);
         }
 
-        document.getElementById('postMessage').value = '';
+        postMsgEl.value = '';
     } catch (error) {
         alert("Failed to publish post: " + error.message);
     }
@@ -483,8 +495,8 @@ function loadPosts() {
                     <div class="comments-list" id="comments-list-${postId}"></div>
                     
                     <div class="reply-box">
-                        <input type="text" id="reply-msg-${postId}" placeholder="Write a reply... (Type @ to mention)">
-                        <button onclick="submitReply('${postId}', '${post.authorName}')">Reply</button>
+                        <input type="text" id="reply-msg-${postId}" class="reply-input" placeholder="Write a reply... (Type @ to mention)">
+                        <button class="reply-submit-btn" onclick="submitReply('${postId}', '${post.authorName}')">Reply</button>
                     </div>
                 </div>
             `;

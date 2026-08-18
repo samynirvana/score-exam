@@ -1104,6 +1104,7 @@ window.switchDbView = function(viewName) {
 document.querySelectorAll('.menu-btn').forEach(button => {
     button.addEventListener('click', (e) => {
         const tabId = button.getAttribute('data-tab');
+        if (!tabId) return;
         const dbGroup = document.getElementById('groupDatabases');
 
         // Check if this is the expandable Databases menu item
