@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teacher Admin Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="admin.css?v=103">
+    <link rel="stylesheet" href="admin.css?v=200">
 </head>
 <body>
 
@@ -36,9 +36,9 @@
     </div>
 </div>
             
-           <div class="menu-bar">
+            <div class="menu-bar">
                 <!-- 1. Dashboard -->
-                <button class="menu-btn active admin-only-view" data-tab="tab-dashboard" id="menuDashboard">
+                <button class="menu-btn active admin-only-view" data-tab="tab-dashboard" data-label="Dashboard" id="menuDashboard">
                     <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="3" y="3" width="7" height="9" rx="1.5"></rect>
                         <rect x="14" y="3" width="7" height="5" rx="1.5"></rect>
@@ -49,7 +49,7 @@
                 </button>
 
                 <!-- 2. Manage Score -->
-                <button class="menu-btn" data-tab="tab-manage-scores" id="menuManageScore">
+                <button class="menu-btn" data-tab="tab-manage-scores" data-label="Manage Score" id="menuManageScore">
                     <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M9 11l3 3L22 4"></path>
                         <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
@@ -58,7 +58,7 @@
                 </button>
 
                 <!-- 3. Students Behavior -->
-                <button class="menu-btn" data-tab="tab-manage-behavior" id="menuManageBehavior">
+                <button class="menu-btn" data-tab="tab-manage-behavior" data-label="Students Behavior" id="menuManageBehavior">
                     <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
                         <circle cx="9" cy="7" r="4"></circle>
@@ -69,7 +69,7 @@
 
                 <!-- 4. Databases (with sub tabs) -->
                 <div class="menu-item-group admin-only-view" id="groupDatabases">
-                    <button class="menu-btn menu-btn-expandable" data-tab="tab-view-ledgers" id="menuAdminOnly">
+                    <button class="menu-btn menu-btn-expandable" data-tab="tab-view-ledgers" data-label="Databases" id="menuAdminOnly">
                         <span class="menu-btn-content">
                             <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
@@ -111,7 +111,7 @@
                 </div>
 
                 <!-- 5. News and Notices -->
-                <button class="menu-btn" data-tab="tab-manage-news" id="menuNewsOnly">
+                <button class="menu-btn" data-tab="tab-manage-news" data-label="News and Notices" id="menuNewsOnly">
                     <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
                         <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
@@ -120,7 +120,7 @@
                 </button>
 
                 <!-- 6. Create Quizzes -->
-                <button class="menu-btn" data-tab="tab-manage-quizzes" id="menuManageQuizzes">
+                <button class="menu-btn" data-tab="tab-manage-quizzes" data-label="Create Quizzes" id="menuManageQuizzes">
                     <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
@@ -165,43 +165,43 @@
                <!-- Stat Cards -->
                     <div class="stats-grid">
                         <div class="stat-card">
-                            <div class="stat-icon" style="background: #eef2ff;">
-                                <img src="https://lh3.googleusercontent.com/d/1zvGDmjrYGsXe_c03GZ-KEY2FJM9tvFi9" alt="Total Students" class="stat-icon-img">
+                            <div class="stat-icon" style="background: #eef2ff; color: #1e5eff;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                             </div>
                             <div class="stat-info"><p>Total Students</p><h3 id="stat-total-students">...</h3></div>
                         </div>
 
                         <div class="stat-card">
-                            <div class="stat-icon" style="background: #ecfdf5;">
-                                <img src="https://lh3.googleusercontent.com/d/1aBOITXqEpEOH0j2QcrOEyPEP3m71WGC3" alt="Total Teachers" class="stat-icon-img">
+                            <div class="stat-icon" style="background: #ecfdf5; color: #10b981;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
                             </div>
                             <div class="stat-info"><p>Total Teachers</p><h3 id="stat-total-teachers">...</h3></div>
                         </div>
 
                         <div class="stat-card">
-                            <div class="stat-icon" style="background: #f5f3ff;">
-                                <img src="https://lh3.googleusercontent.com/d/1Zr_PlUg4Xnu1wah55uTcpYZu7_bfnWYN" alt="Highest Behavior" class="stat-icon-img">
+                            <div class="stat-icon" style="background: #f5f3ff; color: #8b5cf6;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>
                             </div>
                             <div class="stat-info"><p>Highest Behavior</p><h3 id="stat-highest-behavior" style="font-size: 16px; margin-top: 8px;">...</h3></div>
                         </div>
 
                         <div class="stat-card">
-                            <div class="stat-icon" style="background: #fff0f2;">
-                                <img src="https://lh3.googleusercontent.com/d/1vk0aYlNNXsXVhNRnyLosXCPkFGo5eBgG" alt="Lowest Behavior" class="stat-icon-img">
+                            <div class="stat-icon" style="background: #fff0f2; color: #ef4444;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"></polyline><polyline points="16 17 22 17 22 11"></polyline></svg>
                             </div>
                             <div class="stat-info"><p>Lowest Behavior</p><h3 id="stat-lowest-behavior" style="font-size: 16px; margin-top: 8px;">...</h3></div>
                         </div>
 
                         <div class="stat-card">
-                            <div class="stat-icon" style="background: #f0fdfa;">
-                                <img src="https://lh3.googleusercontent.com/d/1CmvDBuel1w49ia-YF3R2P3BYKbNuPChO" alt="News Posted" class="stat-icon-img">
+                            <div class="stat-icon" style="background: #f0fdfa; color: #14b8a6;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                             </div>
                             <div class="stat-info"><p>News Posted</p><h3 id="stat-total-news">...</h3></div>
                         </div>
 
                         <div class="stat-card">
-                            <div class="stat-icon" style="background: #fffbeb;">
-                                <img src="https://lh3.googleusercontent.com/d/1A37Bf-O04vX3eFB1J1norb4g9z5gtLGO" alt="Quizzes Created" class="stat-icon-img">
+                            <div class="stat-icon" style="background: #fffbeb; color: #f59e0b;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                             </div>
                             <div class="stat-info"><p>Quizzes Created</p><h3 id="stat-total-quizzes">...</h3></div>
                         </div>

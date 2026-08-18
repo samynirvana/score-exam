@@ -101,7 +101,13 @@ async function handleStudentLogin() {
         } catch (err) {
             console.error("Staff Login Error:", err);
             if (errBox) {
-                errBox.innerText = "Staff Login Failed: Invalid email or password.";
+                let msg = "Staff Login Failed: Invalid email or password.";
+                if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
+                    msg = "Invalid email or password. Please check your credentials.";
+                } else if (err.code === 'auth/too-many-requests') {
+                    msg = "Too many failed attempts. Please wait a moment and try again.";
+                }
+                errBox.innerText = msg;
                 errBox.classList.remove('hidden');
             }
             return;

@@ -1,5 +1,6 @@
 .app-container {
     display: flex !important;
+    flex-direction: column !important;
     width: 100vw !important;
     height: 100vh !important;
     overflow: hidden !important;
@@ -7,11 +8,12 @@
 
 .main-wrapper {
     flex: 1 !important;
+    width: 100% !important;
     display: flex !important;
     flex-direction: column !important;
     overflow-y: auto !important;
-    height: 100vh !important;
-    padding: 0 32px 40px !important;
+    height: calc(100vh - 60px) !important;
+    padding: 24px 32px 40px !important;
     margin: 0 !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
@@ -429,15 +431,24 @@ th, td {
 /* ======================================================
    REDESIGNED STUDENT PORTAL SIDEBAR & HERO BANNER
    ====================================================== */
+.sidebar,
 .student-sidebar {
-    width: 260px !important;
-    min-width: 260px !important;
-    background: #061838 !important;
+    width: 100vw !important;
+    height: 60px !important;
+    min-height: 60px !important;
+    max-height: 60px !important;
+    background: var(--sidebar-bg, #0b1437) !important;
+    color: white !important;
     display: flex !important;
-    flex-direction: column !important;
-    border-right: none !important;
-    height: 100vh !important;
-    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.08);
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 0 24px !important;
+    box-sizing: border-box !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    z-index: 1000 !important;
+    position: relative !important;
+    flex-shrink: 0 !important;
 }
 
 .student-greeting-banner {
@@ -714,4 +725,116 @@ button:active,
     background: #450a0a !important;
     color: #fca5a5 !important;
     border-color: #7f1d1d !important;
+}
+
+/* ======================================================
+   MOBILE & TABLET RESPONSIVE ENHANCEMENTS (IPHONE & IPAD)
+   ====================================================== */
+
+/* iPad & Medium Tablet Breakpoint (<= 1024px) */
+@media screen and (max-width: 1024px) {
+    .main-wrapper {
+        padding: 0 20px 32px !important;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 14px !important;
+    }
+    
+    .dashboard-overview-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* Mobile & iPhone Breakpoint (<= 768px) */
+@media screen and (max-width: 768px) {
+    .sidebar {
+        padding: 0 12px !important;
+    }
+
+    .menu-bar {
+        gap: 6px !important;
+    }
+
+    .menu-btn {
+        width: 44px !important;
+        height: 44px !important;
+    }
+
+    .main-wrapper {
+        padding: 0 16px 32px !important;
+        height: auto !important;
+        overflow-y: visible !important;
+    }
+
+    .quick-links-grid,
+    .quick-cards-row,
+    .stats-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+
+    .student-greeting-banner {
+        padding: 20px 18px !important;
+        min-height: 140px !important;
+    }
+
+    .greeting-title {
+        font-size: 20px !important;
+    }
+
+    .school-building-img {
+        width: 50% !important;
+        opacity: 0.25 !important;
+    }
+
+    .hero-point-card {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 12px !important;
+    }
+
+    .hero-point-badge {
+        font-size: 2.2rem !important;
+    }
+
+    .post-box {
+        padding: 14px !important;
+    }
+
+    .post-options-row {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+    }
+
+    #submitPostBtn {
+        width: 100% !important;
+    }
+
+    /* Input & Button touch targets for iPhone & iPad */
+    input, select, textarea, button {
+        font-size: 16px !important; /* Prevents auto-zoom on iOS Safari */
+    }
+}
+
+/* Small iPhone Breakpoint (<= 480px) */
+@media screen and (max-width: 480px) {
+    .main-wrapper {
+        padding: 0 12px 24px !important;
+    }
+
+    .topbar {
+        padding: 14px 0 !important;
+    }
+
+    .topbar-actions {
+        gap: 8px !important;
+    }
+
+    .theme-toggle-btn {
+        padding: 8px 14px !important;
+        font-size: 12px !important;
+    }
 }

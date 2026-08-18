@@ -23,6 +23,7 @@ body {
     background: var(--bg-body); 
     color: var(--text-dark); 
     display: flex;
+    flex-direction: column;
     height: 100vh;
     overflow: hidden;
 }
@@ -159,92 +160,157 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* --- Layout Structure --- */
-.app-container { display: flex; width: 100%; height: 100%; }
-
-/* --- Sidebar Styling --- */
-.sidebar {
-    width: 260px;
-    background: var(--sidebar-bg);
-    color: white;
+/* --- Facebook-Style Icon Top Navigation Bar --- */
+.app-container {
     display: flex;
-    flex-direction: column;
-    padding: 20px 0;
-    transition: all 0.3s;
+    flex-direction: column !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    overflow: hidden !important;
 }
+
+.sidebar,
+.student-sidebar {
+    width: 100vw !important;
+    height: 56px !important;
+    min-height: 56px !important;
+    background: var(--sidebar-bg, #0b1437) !important;
+    color: white !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 0 16px !important;
+    box-sizing: border-box !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    z-index: 1000 !important;
+    position: relative !important;
+}
+
 .brand {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 0 24px 30px;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-    margin-bottom: 20px;
-}
-.brand h2 { margin: 0; font-size: 18px; font-weight: 700; }
-.brand p { margin: 0; font-size: 12px; color: var(--text-gray); }
-
-/* --- Sidebar Menu & Navigation --- */
-.menu-bar { 
-    display: flex; 
-    flex-direction: column; 
-    width: 100%; 
-    padding: 0 14px; 
-    box-sizing: border-box; 
-    gap: 4px;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-bottom: none !important;
+    flex-shrink: 0 !important;
 }
 
-.menu-btn { 
-    background: transparent; 
-    color: var(--text-gray, #a0aec0); 
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 12px;
-    width: 100%;
-    text-align: left;
-    padding: 12px 16px; 
-    border-radius: 10px; 
-    border: none;
-    font-size: 14.5px;
-    font-weight: 500;
-    cursor: pointer; 
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
-    box-sizing: border-box;
-    position: relative;
-    user-select: none;
+.brand h2 {
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    margin: 0 !important;
+    letter-spacing: 0.5px !important;
+    color: #ffffff !important;
 }
 
-.menu-btn:hover { 
-    background: var(--sidebar-hover, rgba(255, 255, 255, 0.08)); 
-    color: #ffffff; 
+.brand p {
+    font-size: 11px !important;
+    margin: 0 !important;
+    color: var(--text-gray, #a0aec0) !important;
 }
 
-.menu-btn.active { 
-    background: var(--primary-blue, #1e5eff); 
-    color: #ffffff; 
+.menu-bar {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 12px !important;
+    padding: 0 !important;
+    height: 100% !important;
+    width: auto !important;
+    margin: 0 auto !important;
+}
+
+/* Icon-only nav button with tooltip hover */
+.menu-btn {
+    background: transparent !important;
+    color: var(--text-gray, #a0aec0) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 52px !important;
+    height: 48px !important;
+    padding: 0 !important;
+    border-radius: 8px !important;
+    border: none !important;
+    cursor: pointer !important;
+    position: relative !important;
+    box-shadow: none !important;
+    transition: all 0.2s ease !important;
+}
+
+.menu-btn:hover {
+    background: var(--sidebar-hover, rgba(255, 255, 255, 0.1)) !important;
+    color: #ffffff !important;
+    transform: none !important;
+}
+
+/* Active Tab Indicator (Facebook Style Bottom Line) */
+.menu-btn.active {
+    background: transparent !important;
+    color: #1e5eff !important;
+    box-shadow: none !important;
+}
+
+.menu-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 4px;
+    right: 4px;
+    height: 3px;
+    background: #1e5eff;
+    border-radius: 3px 3px 0 0;
+}
+
+.menu-btn .menu-label {
+    display: none !important; /* Hidden by default, shown on hover tooltip */
+}
+
+/* Tooltip on Cursor Hover */
+.menu-btn:hover::before {
+    content: attr(data-label);
+    position: absolute;
+    top: 54px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #0f172a;
+    color: #ffffff;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
     font-weight: 600;
-    box-shadow: 0 4px 12px rgba(30, 94, 255, 0.35);
-}
-
-.menu-btn-content {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex: 1;
-    min-width: 0;
-}
-
-.menu-label {
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    z-index: 10000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    pointer-events: none;
 }
 
 .menu-icon {
-    width: 19px;
-    height: 19px;
-    flex-shrink: 0;
-    stroke: currentColor;
-    transition: transform 0.2s ease;
+    width: 22px !important;
+    height: 22px !important;
+    stroke: currentColor !important;
+}
+
+.user-profile-bottom {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-top: none !important;
+    flex-shrink: 0 !important;
+}
+
+.main-wrapper {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    padding: 0 32px 32px !important;
+    height: calc(100vh - 56px) !important;
 }
 
 .menu-btn:hover .menu-icon {
@@ -255,66 +321,76 @@ input:focus, select:focus, textarea:focus {
     transform: scale(1.05);
 }
 
-/* Submenu & Expandable Group */
+/* Submenu & Expandable Group for Top Navigation Bar */
 .menu-item-group {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
+    position: relative !important;
+    display: inline-flex !important;
+    align-items: center !important;
 }
 
 .submenu-arrow {
-    width: 15px;
-    height: 15px;
-    flex-shrink: 0;
-    margin-left: auto;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    stroke: currentColor;
-    opacity: 0.85;
+    width: 12px !important;
+    height: 12px !important;
+    flex-shrink: 0 !important;
+    margin-left: 4px !important;
+    transition: transform 0.2s ease !important;
+    stroke: currentColor !important;
 }
 
+.menu-item-group:hover .submenu-arrow,
 .menu-item-group.open .submenu-arrow {
-    transform: rotate(180deg);
+    transform: rotate(180deg) !important;
 }
 
+/* Hover Dropdown Popup for Databases */
 .submenu {
-    display: none;
-    flex-direction: column;
-    gap: 3px;
-    padding: 6px 0 6px 12px;
-    margin: 3px 0 3px 12px;
-    border-left: 2px solid rgba(255, 255, 255, 0.15);
-    transition: all 0.25s ease;
+    display: none !important;
+    position: absolute !important;
+    top: calc(100% + 4px) !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    background: #0b1437 !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 12px !important;
+    padding: 6px !important;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35) !important;
+    z-index: 10000 !important;
+    min-width: 170px !important;
+    flex-direction: column !important;
+    gap: 4px !important;
 }
 
+.menu-item-group:hover .submenu,
 .menu-item-group.open .submenu {
-    display: flex;
+    display: flex !important;
+    animation: fadeIn 0.15s ease-out !important;
 }
 
 .submenu-btn {
     background: transparent !important;
-    color: var(--text-gray, #a0aec0) !important;
+    color: #a0aec0 !important;
     border: none !important;
-    border-radius: 10px !important;
+    border-radius: 8px !important;
     box-shadow: none !important;
     display: flex !important;
     align-items: center !important;
-    gap: 12px !important;
-    padding: 10px 16px !important;
-    font-size: 14px !important;
-    font-weight: 500 !important;
+    gap: 10px !important;
+    padding: 8px 12px !important;
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
     cursor: pointer !important;
-    transition: all 0.2s ease !important;
+    transition: all 0.15s ease !important;
     text-align: left !important;
     width: 100% !important;
     box-sizing: border-box !important;
     user-select: none !important;
+    white-space: nowrap !important;
 }
 
 .submenu-btn:hover {
-    background: var(--sidebar-hover, rgba(255, 255, 255, 0.08)) !important;
+    background: rgba(255, 255, 255, 0.1) !important;
     color: #ffffff !important;
     transform: none !important;
-    padding-left: 16px !important;
 }
 
 .submenu-btn.active {
@@ -1344,17 +1420,7 @@ div.gform-q-input:empty:before { content: attr(data-placeholder); color: #70757a
    ====================================================== */
 @media screen and (min-width: 768px) and (max-width: 1024px) {
     .app-container {
-        flex-direction: row !important;
-    }
-
-    /* Compact Sidebar for iPad Screens */
-    .sidebar {
-        width: 210px !important;
-        padding: 16px 0 !important;
-    }
-
-    .brand {
-        padding: 0 16px 20px !important;
+        flex-direction: column !important;
     }
 
     .menu-btn {
@@ -1669,85 +1735,101 @@ input:focus, select:focus, textarea:focus {
    KEBAB DROPDOWN MENU LAYOUT OVERRIDE
    ====================================================== */
 
-/* 1. Ensure dropdown container expands vertically to show all options */
-.dropdown-menu {
-    display: none;
-    position: absolute;
-    right: 0;
-    top: 100%;
+/* --- KEBAB MENU POPUP STYLING (FLAT CLEAN LIST) --- */
+.dropdown-menu,
+.kebab-dropdown,
+.dropdown-menu.hidden,
+.kebab-dropdown.hidden {
+    position: absolute !important;
+    right: 0 !important;
+    top: 100% !important;
     background: #ffffff !important;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
-    border-radius: 8px !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+    border-radius: 12px !important;
     z-index: 1000 !important;
-    min-width: 180px !important;
-    height: auto !important;
-    max-height: none !important;
+    min-width: 190px !important;
     border: 1px solid var(--border-color, #e2e8f0) !important;
-    overflow: visible !important;
-    padding: 6px 0 !important;
-}
-
-/* 2. Force items inside the menu to stack in a column when opened */
-.dropdown-menu.show {
-    display: flex !important;
+    overflow: hidden !important;
+    padding: 6px !important;
+    display: none !important;
     flex-direction: column !important;
+    gap: 2px !important;
 }
 
-/* 3. Override global .box button styles for dropdown items */
+.dropdown-menu.show,
+.kebab-dropdown.show,
+.dropdown-menu.active,
+.kebab-dropdown.active {
+    display: flex !important;
+    animation: fadeIn 0.15s ease-out;
+}
+
 .box .dropdown-menu button.dropdown-item,
-.dropdown-menu .dropdown-item {
-    display: block !important;
+.dropdown-menu .dropdown-item,
+.kebab-dropdown .kebab-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
     width: 100% !important;
-    height: auto !important;
+    height: 38px !important;
     min-height: 38px !important;
-    padding: 10px 16px !important;
+    padding: 8px 14px !important;
     margin: 0 !important;
     background: transparent !important;
     border: none !important;
-    border-bottom: 1px solid var(--border-color, #f1f5f9) !important;
-    color: var(--text-dark, #2b3674) !important;
-    font-size: 13px !important;
-    font-weight: 500 !important;
+    border-radius: 8px !important;
+    color: var(--text-dark, #0f172a) !important;
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
     text-align: left !important;
     justify-content: flex-start !important;
-    border-radius: 0 !important;
     cursor: pointer !important;
     box-shadow: none !important;
     white-space: nowrap !important;
+    transition: background 0.15s ease, color 0.15s ease !important;
 }
 
-.dropdown-menu .dropdown-item:last-child {
-    border-bottom: none !important;
-}
-
-/* 4. Hover states */
-.dropdown-menu .dropdown-item:hover {
-    background: var(--input-bg, #f8fafc) !important;
+.dropdown-menu .dropdown-item:hover,
+.kebab-dropdown .kebab-item:hover {
+    background: #f1f5f9 !important;
     color: var(--primary-blue, #1e5eff) !important;
     transform: none !important;
 }
 
-.dropdown-menu .dropdown-item.danger {
-    color: #e02d2d !important;
+.dropdown-menu .dropdown-item.danger,
+.kebab-dropdown .kebab-item.danger {
+    color: #ef4444 !important;
 }
 
-.dropdown-menu .dropdown-item.danger:hover {
-    background: #ffeaea !important;
+.dropdown-menu .dropdown-item.danger:hover,
+.kebab-dropdown .kebab-item.danger:hover {
+    background: #fef2f2 !important;
+    color: #dc2626 !important;
 }
 
-/* Dark mode overrides for dropdown items */
-body.dark-theme .dropdown-menu {
-    background: #111c44 !important;
-    border-color: #1b254b !important;
+/* Dark mode overrides for kebab popups */
+body.dark-theme .dropdown-menu,
+body.dark-theme .kebab-dropdown {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4) !important;
 }
 
-body.dark-theme .dropdown-menu .dropdown-item {
-    color: #f4f7fe !important;
-    border-bottom-color: #1b254b !important;
+body.dark-theme .dropdown-menu .dropdown-item,
+body.dark-theme .kebab-dropdown .kebab-item {
+    color: #f8fafc !important;
 }
 
-body.dark-theme .dropdown-menu .dropdown-item:hover {
-    background: #1b254b !important;
+body.dark-theme .dropdown-menu .dropdown-item:hover,
+body.dark-theme .kebab-dropdown .kebab-item:hover {
+    background: #334155 !important;
+    color: #60a5fa !important;
+}
+
+body.dark-theme .dropdown-menu .dropdown-item.danger:hover,
+body.dark-theme .kebab-dropdown .kebab-item.danger:hover {
+    background: #450a0a !important;
+    color: #fca5a5 !important;
 }
 
 /* ======================================================
@@ -2016,12 +2098,15 @@ body.dark-theme .multi-select-option-row:hover {
 /* ======================================================
    ADMIN ROUNDED PILL BUTTON SYSTEM (LIGHT & DARK THEME)
    ====================================================== */
-button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn),
-.btn,
-.action-btn,
+/* ======================================================
+   ADMIN ROUNDED PILL BUTTON SYSTEM (LIGHT & DARK THEME)
+   ====================================================== */
+button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(.kebab-item),
+.btn:not(.dropdown-item):not(.kebab-item),
+.action-btn:not(.dropdown-item):not(.kebab-item),
 .add-btn,
 .save-btn,
-.delete-btn,
+.delete-btn:not(.dropdown-item):not(.kebab-item),
 .modal-btn {
     background: #ffffff !important;
     color: #0f172a !important;
@@ -2039,12 +2124,12 @@ button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn),
     transition: all 0.2s ease !important;
 }
 
-button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):hover,
-.btn:hover,
-.action-btn:hover,
+button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(.kebab-item):hover,
+.btn:not(.dropdown-item):not(.kebab-item):hover,
+.action-btn:not(.dropdown-item):not(.kebab-item):hover,
 .add-btn:hover,
 .save-btn:hover,
-.delete-btn:hover,
+.delete-btn:not(.dropdown-item):not(.kebab-item):hover,
 .modal-btn:hover {
     background: #f8fafc !important;
     border-color: #cbd5e1 !important;
@@ -2052,19 +2137,19 @@ button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):hover,
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
 }
 
-button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):active,
-.btn:active {
+button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(.kebab-item):active,
+.btn:not(.dropdown-item):not(.kebab-item):active {
     transform: translateY(0) !important;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
 }
 
 /* Dark Theme Overrides for Admin Buttons */
-body.dark-theme button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn),
-body.dark-theme .btn,
-body.dark-theme .action-btn,
+body.dark-theme button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(.kebab-item),
+body.dark-theme .btn:not(.dropdown-item):not(.kebab-item),
+body.dark-theme .action-btn:not(.dropdown-item):not(.kebab-item),
 body.dark-theme .add-btn,
 body.dark-theme .save-btn,
-body.dark-theme .delete-btn,
+body.dark-theme .delete-btn:not(.dropdown-item):not(.kebab-item),
 body.dark-theme .modal-btn {
     background: #1e293b !important;
     color: #f8fafc !important;
@@ -2072,12 +2157,12 @@ body.dark-theme .modal-btn {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
 }
 
-body.dark-theme button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):hover,
-body.dark-theme .btn:hover,
-body.dark-theme .action-btn:hover,
+body.dark-theme button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(.kebab-item):hover,
+body.dark-theme .btn:not(.dropdown-item):not(.kebab-item):hover,
+body.dark-theme .action-btn:not(.dropdown-item):not(.kebab-item):hover,
 body.dark-theme .add-btn:hover,
 body.dark-theme .save-btn:hover,
-body.dark-theme .delete-btn:hover,
+body.dark-theme .delete-btn:not(.dropdown-item):not(.kebab-item):hover,
 body.dark-theme .modal-btn:hover {
     background: #334155 !important;
     border-color: #475569 !important;
@@ -2098,4 +2183,83 @@ body.dark-theme .delete-btn {
     background: #450a0a !important;
     color: #fca5a5 !important;
     border-color: #7f1d1d !important;
+}
+
+/* ======================================================
+   ROUNDED MODE TOGGLE CONTAINER (MANAGE SCORE TAB)
+   ====================================================== */
+.register-mode-toggle {
+    display: inline-flex !important;
+    background: var(--input-bg, #f1f5f9) !important;
+    border: 1px solid var(--border-color, #e2e8f0) !important;
+    border-radius: 30px !important;
+    padding: 4px !important;
+    gap: 4px !important;
+}
+
+.toggle-mode-btn {
+    background: transparent !important;
+    color: var(--text-gray, #64748b) !important;
+    border: none !important;
+    border-radius: 24px !important;
+    padding: 8px 18px !important;
+    font-size: 13.5px !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    box-shadow: none !important;
+}
+
+.toggle-mode-btn:hover {
+    color: var(--text-dark, #0f172a) !important;
+    background: rgba(255, 255, 255, 0.5) !important;
+    transform: none !important;
+}
+
+.toggle-mode-btn.active {
+    background: #ffffff !important;
+    color: var(--primary-blue, #1e5eff) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+body.dark-theme .register-mode-toggle {
+    background: #0b1437 !important;
+    border-color: #1b254b !important;
+}
+
+body.dark-theme .toggle-mode-btn {
+    color: #94a3b8 !important;
+}
+
+body.dark-theme .toggle-mode-btn.active {
+    background: #1e293b !important;
+    color: #60a5fa !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* ======================================================
+   MODERN CUSTOM DROPDOWN STYLING SYSTEM
+   ====================================================== */
+select {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%231e5eff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 14px center !important;
+    background-size: 16px !important;
+    padding-right: 40px !important;
+    border-radius: 12px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+}
+
+select:hover {
+    border-color: var(--primary-blue, #1e5eff) !important;
+    background-color: var(--card-bg, #ffffff) !important;
+}
+
+body.dark-theme select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2360a5fa' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
 }

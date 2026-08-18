@@ -16,7 +16,9 @@
     --kebab-hover: #e2e8f0;
 }
 
-body.dark-mode {
+body.dark-mode,
+body.dark-theme,
+.dark-theme {
     --bg-color: #0f172a;
     --card-bg: #1e293b;
     --border-color: #334155;

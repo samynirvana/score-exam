@@ -34,6 +34,12 @@ themeToggleBtn?.addEventListener('click', () => {
     themeToggleBtn.innerText = isDark ? 'Light Mode' : 'Dark Mode';
 });
 
+document.getElementById('studentLogoutBtn')?.addEventListener('click', () => {
+    sessionStorage.removeItem('studentLoggedInSession');
+    sessionStorage.removeItem('studentTimelineSession');
+    window.location.href = 'index.html';
+});
+
 // Auto-fill and verify if logged in via Student Portal Session
 window.addEventListener('DOMContentLoaded', async () => {
     const savedLoggedIn = sessionStorage.getItem('studentLoggedInSession') || sessionStorage.getItem('studentTimelineSession');
