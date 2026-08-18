@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teacher Admin Dashboard</title>
@@ -315,88 +316,96 @@
         <!-- TAB: Manage Score -->
         <div id="tab-manage-scores" class="tab-content">
             
-            <!-- 1. Add Scores Directly Panel -->
+            <!-- Combined Score Input Panel -->
             <div class="box" style="margin-bottom: 24px;">
-                <h3 style="margin-top:0; margin-bottom: 16px;">Add Scores Directly</h3>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="directSubjectSelect">Subject:</label>
-                        <select id="directSubjectSelect"><option value="">-- Select Subject --</option></select>
-                    </div>
-                    <div class="form-group">
-                        <label for="directClassSelect">Class:</label>
-                        <select id="directClassSelect"><option value="">-- Select Class --</option></select>
-                    </div>
-                    <div class="form-group">
-                        <label for="directQuizSelect">Quiz Name:</label>
-                        <select id="directQuizSelect"><option value="">-- Select Quiz --</option></select>
-                    </div>
-                    <div style="flex: 0 0 auto;">
-                        <button id="loadDirectStudentsBtn" style="background: var(--primary-blue);">Load Class Roster</button>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 12px;">
+                    <h3 style="margin: 0;" id="scoreInputHeaderTitle">Input scores</h3>
+                    <div class="register-mode-toggle">
+                        <button type="button" class="toggle-mode-btn active" id="btnScoreInputSingle" onclick="setScoreInputMode('single')">Input scores</button>
+                        <button type="button" class="toggle-mode-btn" id="btnScoreInputBulk" onclick="setScoreInputMode('bulk')">Multiple Input Score</button>
                     </div>
                 </div>
 
-                <div id="directScoreContainer" class="hidden" style="margin-top: 20px;">
-                    <hr style="border: 0; border-top: 1px solid var(--border-color); margin-bottom: 15px;">
-                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                        <table id="directScoreTable">
-                            <thead>
-                                <tr>
-                                    <th style="width: 20%;">Student Code</th>
-                                    <th>Student Name</th>
-                                    <th style="width: 30%;">Score Input</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
+                <!-- Single / Direct Score Input Mode -->
+                <div id="scoreInputSingleView">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="directSubjectSelect">Subject:</label>
+                            <select id="directSubjectSelect"><option value="">-- Select Subject --</option></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="directClassSelect">Class:</label>
+                            <select id="directClassSelect"><option value="">-- Select Class --</option></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="directQuizSelect">Quiz Name:</label>
+                            <select id="directQuizSelect"><option value="">-- Select Quiz --</option></select>
+                        </div>
+                        <div style="flex: 0 0 auto;">
+                            <button id="loadDirectStudentsBtn" style="background: var(--primary-blue);">Load Class Roster</button>
+                        </div>
                     </div>
-                    <button id="saveDirectScoresBtn" style="background: #10b981; margin-top: 15px; width: 100%;">Save All Scores to Ledger</button>
-                </div>
-            </div>
 
-                    <!-- 2. Bulk Update Scores Panel -->
-            <div class="box" style="margin-bottom: 24px;">
-                <h3 style="margin-top:0; margin-bottom: 8px;">Bulk Update Scores</h3>
-                <p style="font-size: 13px; color: var(--text-gray); margin-bottom: 16px;">
-                    Select a Subject, Class, and Quiz to download an auto-populated Excel template. Fill in the scores, then upload the file back to update the ledger.
-                </p>
-                
-                <!-- Step A: Choose Options & Download Template -->
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="bulkSubjectSelect">Subject:</label>
-                        <select id="bulkSubjectSelect">
-                            <option value="">-- Select Subject --</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="bulkClassSelect">Class:</label>
-                        <select id="bulkClassSelect">
-                            <option value="">-- Select Class --</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="bulkQuizSelect">Quiz Name:</label>
-                        <select id="bulkQuizSelect">
-                            <option value="">-- Select Quiz --</option>
-                        </select>
-                    </div>
-                    <div style="flex: 0 0 auto;">
-                        <button id="downloadTemplateBtn" style="background: #10b981;">Download Template</button>
+                    <div id="directScoreContainer" class="hidden" style="margin-top: 20px;">
+                        <hr style="border: 0; border-top: 1px solid var(--border-color); margin-bottom: 15px;">
+                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                            <table id="directScoreTable">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 20%;">Student Code</th>
+                                        <th>Student Name</th>
+                                        <th style="width: 30%;">Score Input</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <button id="saveDirectScoresBtn" style="background: #10b981; margin-top: 15px; width: 100%;">Save All Scores to Ledger</button>
                     </div>
                 </div>
 
-                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 16px 0;">
-
-                <!-- Step B: Upload Completed File -->
-                <div class="form-row">
-                    <div class="form-group" style="flex: 2;">
-                        <label for="excelFile">Select Completed Excel / CSV File:</label>
-                        <input type="file" id="excelFile" accept=".xlsx, .xls, .csv">
+                <!-- Bulk Update / Multiple Input Score Mode -->
+                <div id="scoreInputBulkView" class="hidden">
+                    <p style="font-size: 13px; color: var(--text-gray); margin-top: 0; margin-bottom: 16px;">
+                        Select a Subject, Class, and Quiz to download an auto-populated Excel template. Fill in the scores, then upload the file back to update the ledger.
+                    </p>
+                    
+                    <!-- Step A: Choose Options & Download Template -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="bulkSubjectSelect">Subject:</label>
+                            <select id="bulkSubjectSelect">
+                                <option value="">-- Select Subject --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="bulkClassSelect">Class:</label>
+                            <select id="bulkClassSelect">
+                                <option value="">-- Select Class --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="bulkQuizSelect">Quiz Name:</label>
+                            <select id="bulkQuizSelect">
+                                <option value="">-- Select Quiz --</option>
+                            </select>
+                        </div>
+                        <div style="flex: 0 0 auto;">
+                            <button id="downloadTemplateBtn" style="background: #10b981;">Download Template</button>
+                        </div>
                     </div>
-                    <div style="flex: 0 0 auto;">
-                        <button id="uploadExcelBtn" style="background: var(--primary-blue);">Upload & Process</button>
+
+                    <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 16px 0;">
+
+                    <!-- Step B: Upload Completed File -->
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 2;">
+                            <label for="excelFile">Select Completed Excel / CSV File:</label>
+                            <input type="file" id="excelFile" accept=".xlsx, .xls, .csv">
+                        </div>
+                        <div style="flex: 0 0 auto;">
+                            <button id="uploadExcelBtn" style="background: var(--primary-blue);">Upload & Process</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -518,41 +527,33 @@
 
                         </div>
                     </div>
-            <!-- RESTORED: Top 10 Positive & Negative Reasons Box -->
+            <!-- Top 10 Positive & Negative Reasons Diagram (Visualized) -->
                     <div class="box" style="grid-column: 1 / -1;">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                             <div>
-                                <h3 style="margin-top: 0; color: #10b981;">Top 10 Positive Reasons</h3>
-                                <div class="table-responsive" style="max-height: 300px;">
-                                    <table id="topPositiveTable">
-                                        <thead>
-                                            <tr>
-                                                <th>Reason / Event</th>
-                                                <th>Frequency</th>
-                                                <th>Points</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody></tbody>
-                                    </table>
-                                </div>
+                                <h3 style="margin: 0;">Top 10 Behavior Analytics Diagram</h3>
+                                <p style="font-size: 13px; color: var(--text-gray); margin: 4px 0 0 0;">Visualized breakdown of top positive and negative conduct reasons.</p>
                             </div>
-                            <div>
-                                <h3 style="margin-top: 0; color: #e02d2d;">Top 10 Negative Reasons</h3>
-                                <div class="table-responsive" style="max-height: 300px;">
-                                    <table id="topNegativeTable">
-                                        <thead>
-                                            <tr>
-                                                <th>Reason / Event</th>
-                                                <th>Frequency</th>
-                                                <th>Points</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody></tbody>
-                                    </table>
+                            <button type="button" id="btnToggleBehaviorCharts" onclick="toggleBehaviorCharts()" style="width: auto; padding: 8px 16px; font-size: 13px; background: var(--primary-blue);">Show Diagram</button>
+                        </div>
+                        <div id="containerBehaviorCharts" class="hidden" style="margin-top: 20px;">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
+                                <div style="background: var(--input-bg); padding: 18px; border-radius: 12px; border: 1px solid var(--border-color);">
+                                    <h4 style="margin-top: 0; color: #10b981; font-size: 15px; margin-bottom: 12px; text-align: center;">Top 10 Positive Reasons (Points)</h4>
+                                    <div style="position: relative; height: 260px; width: 100%;">
+                                        <canvas id="positiveReasonsChart"></canvas>
+                                    </div>
+                                </div>
+                                <div style="background: var(--input-bg); padding: 18px; border-radius: 12px; border: 1px solid var(--border-color);">
+                                    <h4 style="margin-top: 0; color: #e02d2d; font-size: 15px; margin-bottom: 12px; text-align: center;">Top 10 Negative Reasons (Deductions)</h4>
+                                    <div style="position: relative; height: 260px; width: 100%;">
+                                        <canvas id="negativeReasonsChart"></canvas>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+
                     <!-- Full Behavior Ledger Table -->
                     <div class="box" style="grid-column: 1 / -1;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
@@ -560,7 +561,7 @@
                         </div>
                         <div class="table-responsive" style="max-height: 400px;">
                             <table id="behaviorTabPointsTable">
-                                <thead><tr><th>Student Code</th><th>Student Name</th><th>Class</th><th>Total Points</th><th>Action</th></tr></thead>
+                                <thead><tr><th>Student Name</th><th>Class</th><th>Total Points</th><th>Action</th></tr></thead>
                                 <tbody></tbody>
                             </table>
                         </div>
@@ -666,29 +667,48 @@
 
                         <!-- Active Classes -->
                         <div class="box" style="grid-column: 1 / -1;">
-                            <h3 style="margin-top: 0;">Active Classes</h3>
-                            <p style="font-size: 13px; color: var(--text-gray);">Classes are automatically populated based on registered Student profiles.</p>
-                            <div class="table-responsive" style="margin-top: 15px; max-height: 250px;">
-                                <table id="classesTable">
-                                    <thead><tr><th>Class Name</th><th>Source</th></tr></thead>
-                                    <tbody></tbody>
-                                </table>
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                                <div>
+                                    <h3 style="margin: 0;">Active Classes</h3>
+                                    <p style="font-size: 13px; color: var(--text-gray); margin: 4px 0 0 0;">Classes are automatically populated based on registered Student profiles.</p>
+                                </div>
+                                <button type="button" id="btnToggleClassesTable" onclick="toggleActiveClassesTable()" style="width: auto; padding: 8px 16px; font-size: 13px; background: var(--primary-blue);">Show Table</button>
+                            </div>
+                            <div id="containerClassesTable" class="hidden" style="margin-top: 15px;">
+                                <div class="table-responsive" style="max-height: 250px;">
+                                    <table id="classesTable">
+                                        <thead><tr><th>Class Name</th><th>Source</th></tr></thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- TEACHER SECTION -->
                     <div id="db-section-teachers" class="db-section-group" style="grid-column: 1 / -1; display: contents;">
-                        <!-- 2. Provision Teacher Account -->
+                        <!-- 2. Register Teacher -->
                         <div class="box" style="grid-column: 1 / -1;">
-                            <h3>2. Provision Teacher Account</h3>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
-                                <input type="text" id="newTeacherName" placeholder="Teacher Full Name">
-                                <input type="email" id="newTeacherEmail" placeholder="Teacher Email Address">
-                                <input type="password" id="newTeacherPassword" placeholder="Login Password">
-                                <input type="text" id="newTeacherSubject" placeholder="Subject Specialty">
+                            <h3 style="margin-top: 0; margin-bottom: 16px;">Register Teacher</h3>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+                                <div>
+                                    <label style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Teacher Full Name</label>
+                                    <input type="text" id="newTeacherName" placeholder="Teacher Full Name" style="margin: 0 !important;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Teacher Email Address</label>
+                                    <input type="email" id="newTeacherEmail" placeholder="Teacher Email Address" style="margin: 0 !important;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Login Password</label>
+                                    <input type="password" id="newTeacherPassword" placeholder="Login Password" style="margin: 0 !important;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Subject Specialty</label>
+                                    <input type="text" id="newTeacherSubject" placeholder="Subject Specialty" style="margin: 0 !important;">
+                                </div>
                             </div>
-                            <button id="createTeacherBtn" style="background: #f59e0b; margin-top: 12px;">Register Teacher</button>
+                            <button id="createTeacherBtn" style="background: #f59e0b; margin-top: 18px; width: auto; padding: 10px 24px;">Register Teacher</button>
                         </div>
 
                         <!-- TEACHERS MASTER DIRECTORY -->
@@ -713,13 +733,20 @@
 
                         <!-- Active Subjects -->
                         <div class="box" style="grid-column: 1 / -1;">
-                            <h3>Active Subjects</h3>
-                            <p style="font-size: 13px; color: var(--text-gray);">Subjects are automatically populated based on registered Teacher accounts.</p>
-                            <div class="table-responsive" style="margin-top: 15px; max-height: 250px;">
-                                <table id="subjectsTable">
-                                    <thead><tr><th>Subject Name</th><th>Source</th></tr></thead>
-                                    <tbody></tbody>
-                                </table>
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                                <div>
+                                    <h3 style="margin: 0;">Active Subjects</h3>
+                                    <p style="font-size: 13px; color: var(--text-gray); margin: 4px 0 0 0;">Subjects are automatically populated based on registered Teacher accounts.</p>
+                                </div>
+                                <button type="button" id="btnToggleSubjectsTable" onclick="toggleActiveSubjectsTable()" style="width: auto; padding: 8px 16px; font-size: 13px; background: var(--primary-blue);">Show Table</button>
+                            </div>
+                            <div id="containerSubjectsTable" class="hidden" style="margin-top: 15px;">
+                                <div class="table-responsive" style="max-height: 250px;">
+                                    <table id="subjectsTable">
+                                        <thead><tr><th>Subject Name</th><th>Source</th></tr></thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -733,18 +760,24 @@
                             
                             <input type="text" id="newManualQuiz" placeholder="Enter Offline Exam Name (e.g., Midterm Paper)">
                             
-                            <div class="form-row" style="margin-top: 8px; margin-bottom: 12px;">
-                                <div class="form-group">
-                                    <label for="newManualQuizSubject">Subject:</label>
-                                    <select id="newManualQuizSubject">
+                            <div class="form-row" style="margin-top: 8px; margin-bottom: 12px; display: flex; gap: 16px; flex-wrap: wrap;">
+                                <div class="form-group" style="flex: 1; min-width: 220px;">
+                                    <label for="newManualQuizSubject" style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Subject:</label>
+                                    <select id="newManualQuizSubject" style="margin: 0 !important;">
                                         <option value="">-- Select Subject --</option>
                                     </select>
                                 </div>
-                                <div class="form-group">
-                                    <label for="newManualQuizClass">Target Class:</label>
-                                    <select id="newManualQuizClass">
-                                        <option value="">-- Select Target Class --</option>
-                                    </select>
+                                <div class="form-group" style="flex: 1; min-width: 220px;">
+                                    <label style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Target Class:</label>
+                                    <div class="multi-select-dropdown" id="manualQuizClassDropdown">
+                                        <div class="multi-select-trigger" onclick="toggleMultiSelectDropdown('manualQuizClassDropdown')">
+                                            <span class="multi-select-label" id="manualQuizClassLabel">-- Select Target Class --</span>
+                                            <svg class="dropdown-arrow-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                        </div>
+                                        <div class="multi-select-options" id="manualQuizClassOptions">
+                                            <!-- Checkboxes injected dynamically -->
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 

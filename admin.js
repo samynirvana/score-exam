@@ -248,6 +248,29 @@ window.setStudentRegMode = function(mode) {
     }
 };
 
+// --- SCORE INPUT MODE SWITCHER ---
+window.setScoreInputMode = function(mode) {
+    const singleView = document.getElementById('scoreInputSingleView');
+    const bulkView = document.getElementById('scoreInputBulkView');
+    const btnSingle = document.getElementById('btnScoreInputSingle');
+    const btnBulk = document.getElementById('btnScoreInputBulk');
+    const titleEl = document.getElementById('scoreInputHeaderTitle');
+
+    if (mode === 'bulk') {
+        if (singleView) singleView.classList.add('hidden');
+        if (bulkView) bulkView.classList.remove('hidden');
+        if (btnSingle) btnSingle.classList.remove('active');
+        if (btnBulk) btnBulk.classList.add('active');
+        if (titleEl) titleEl.innerText = 'Multiple Input Score';
+    } else {
+        if (bulkView) bulkView.classList.add('hidden');
+        if (singleView) singleView.classList.remove('hidden');
+        if (btnBulk) btnBulk.classList.remove('active');
+        if (btnSingle) btnSingle.classList.add('active');
+        if (titleEl) titleEl.innerText = 'Input scores';
+    }
+};
+
 // --- VIEW STUDENT CODE MODAL ---
 window.viewStudentCode = function(studentId, studentName, studentClass) {
     const modal = document.getElementById('studentCodeModal');
@@ -2383,14 +2406,14 @@ window.loadSystemDatabases = async function() {
                     const data = doc.data();
                     const sub = data.subject || data.Subject || data.course; 
                     if (data.role === 'teacher' && sub && sub !== "Unassigned") {
-                        uniqueSubjects.add(sub);
+                        sub.split(',').map(s => s.trim()).filter(Boolean).forEach(s => uniqueSubjects.add(s));
                     }
                 });
             } catch (err) {
                 console.warn("User collection read restricted:", err.message);
             }
         } else if (teacherSubject && teacherSubject !== "Unassigned") {
-            uniqueSubjects.add(teacherSubject);
+            teacherSubject.split(',').map(s => s.trim()).filter(Boolean).forEach(s => uniqueSubjects.add(s));
         }
 
         // Loop and populate subject options
@@ -2436,8 +2459,31 @@ window.loadSystemDatabases = async function() {
                 if (studentClass) uniqueClasses.add(studentClass);
             });
 
-            // Loop and populate class options
-            Array.from(uniqueClasses).sort().forEach(name => {
+            const sortedClasses = Array.from(uniqueClasses).sort();
+
+            // Populate multi-select checkbox options for Manual Offline Exam
+            const manualQuizOptionsContainer = document.getElementById("manualQuizClassOptions");
+            if (manualQuizOptionsContainer) {
+                let optionsHtml = `
+                    <label class="multi-select-option-row">
+                        <input type="checkbox" value="All Classes" onchange="onManualQuizClassCheckboxChange()">
+                        <span>All Classes</span>
+                    </label>
+                `;
+                sortedClasses.forEach(name => {
+                    optionsHtml += `
+                        <label class="multi-select-option-row">
+                            <input type="checkbox" value="${name}" onchange="onManualQuizClassCheckboxChange()">
+                            <span>${name}</span>
+                        </label>
+                    `;
+                });
+                manualQuizOptionsContainer.innerHTML = optionsHtml;
+                updateManualQuizClassLabel();
+            }
+
+            // Loop and populate class options for standard select elements
+            sortedClasses.forEach(name => {
                 if(classTbody) classTbody.innerHTML += `<tr><td><strong>${name}</strong></td><td><span style="background: #ecfdf5; color: #10b981; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Student Linked</span></td></tr>`;
                 if(classSelect) classSelect.innerHTML += `<option value="${name}">${name}</option>`;
                 if(ledgerClassSelect) ledgerClassSelect.innerHTML += `<option value="${name}">${name}</option>`;
@@ -2524,6 +2570,79 @@ window.loadSystemDatabases = async function() {
     }
 };
 
+// --- MULTI-SELECT CHECKBOX DROPDOWN LOGIC ---
+window.toggleMultiSelectDropdown = function(dropdownId) {
+    const dropdown = document.getElementById(dropdownId);
+    if (!dropdown) return;
+    const isOpen = dropdown.classList.contains('open');
+    document.querySelectorAll('.multi-select-dropdown').forEach(d => d.classList.remove('open'));
+    if (!isOpen) dropdown.classList.add('open');
+};
+
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.multi-select-dropdown')) {
+        document.querySelectorAll('.multi-select-dropdown').forEach(d => d.classList.remove('open'));
+    }
+});
+
+window.onManualQuizClassCheckboxChange = function() {
+    updateManualQuizClassLabel();
+};
+
+function getSelectedManualQuizClasses() {
+    const checkboxes = document.querySelectorAll('#manualQuizClassOptions input[type="checkbox"]:checked');
+    const selected = Array.from(checkboxes).map(cb => cb.value);
+    return selected;
+}
+
+function updateManualQuizClassLabel() {
+    const label = document.getElementById('manualQuizClassLabel');
+    if (!label) return;
+    const selected = getSelectedManualQuizClasses();
+    if (selected.length === 0) {
+        label.innerText = '-- Select Target Class --';
+    } else if (selected.includes('All Classes')) {
+        label.innerText = 'All Classes';
+    } else if (selected.length === 1) {
+        label.innerText = selected[0];
+    } else {
+        label.innerText = `${selected.length} Classes Selected (${selected.join(', ')})`;
+    }
+}
+
+// --- ACTIVE CLASSES & SUBJECTS SHOW/HIDE TOGGLE LOGIC ---
+window.toggleActiveClassesTable = function() {
+    const container = document.getElementById('containerClassesTable');
+    const btn = document.getElementById('btnToggleClassesTable');
+    if (!container || !btn) return;
+
+    if (container.classList.contains('hidden')) {
+        container.classList.remove('hidden');
+        btn.innerText = 'Hide Table';
+        btn.style.background = '#64748b';
+    } else {
+        container.classList.add('hidden');
+        btn.innerText = 'Show Table';
+        btn.style.background = 'var(--primary-blue)';
+    }
+};
+
+window.toggleActiveSubjectsTable = function() {
+    const container = document.getElementById('containerSubjectsTable');
+    const btn = document.getElementById('btnToggleSubjectsTable');
+    if (!container || !btn) return;
+
+    if (container.classList.contains('hidden')) {
+        container.classList.remove('hidden');
+        btn.innerText = 'Hide Table';
+        btn.style.background = '#64748b';
+    } else {
+        container.classList.add('hidden');
+        btn.innerText = 'Show Table';
+        btn.style.background = 'var(--primary-blue)';
+    }
+};
+
 // --- DATABASE INITIALIZATION EVENT LISTENERS ---
 document.addEventListener("DOMContentLoaded", () => {
     // Initial system load on page boot
@@ -2545,16 +2664,16 @@ document.addEventListener("DOMContentLoaded", () => {
 async function addManualQuiz() {
     const input = document.getElementById('newManualQuiz');
     const subjectSelect = document.getElementById('newManualQuizSubject');
-    const classSelect = document.getElementById('newManualQuizClass');
     const submitBtn = document.querySelector("button[onclick='addManualQuiz()']");
 
     const examName = input ? input.value.trim() : "";
     const subject = subjectSelect ? subjectSelect.value : "";
-    const targetClass = classSelect ? classSelect.value : "";
+    const selectedClasses = getSelectedManualQuizClasses();
+    const targetClassStr = selectedClasses.includes("All Classes") ? "All Classes" : selectedClasses.join(", ");
 
     // 1. Validate Form Inputs
-    if (!examName || !subject || !targetClass) {
-        alert("Please enter an Exam Name and select both a Subject and Target Class.");
+    if (!examName || !subject || selectedClasses.length === 0) {
+        alert("Please enter an Exam Name, select a Subject, and check at least one Target Class.");
         return;
     }
 
@@ -2570,12 +2689,12 @@ async function addManualQuiz() {
             collection(db, "system_quizzes"),
             where("name", "==", examName),
             where("subject", "==", subject),
-            where("targetClass", "==", targetClass)
+            where("targetClass", "==", targetClassStr)
         );
         const dupSnap = await getDocs(dupQuery);
 
         if (!dupSnap.empty) {
-            alert(`Duplicate Exam Blocked!\nAn offline exam named "${examName}" already exists for ${subject} (${targetClass}).`);
+            alert(`Duplicate Exam Blocked!\nAn offline exam named "${examName}" already exists for ${subject} (${targetClassStr}).`);
             return;
         }
 
@@ -2583,16 +2702,18 @@ async function addManualQuiz() {
         await addDoc(collection(db, "system_quizzes"), {
             name: examName,
             subject: subject,
-            targetClass: targetClass,
+            targetClass: targetClassStr,
+            targetClassesList: selectedClasses,
             createdAt: new Date().toISOString()
         });
         
-        alert(`Offline exam "${examName}" added successfully!`);
+        alert(`Offline exam "${examName}" added successfully for target classes: ${targetClassStr}!`);
         
         // Reset Inputs
         input.value = "";
         subjectSelect.value = "";
-        classSelect.value = "";
+        document.querySelectorAll('#manualQuizClassOptions input[type="checkbox"]').forEach(cb => cb.checked = false);
+        updateManualQuizClassLabel();
         
         // Refresh Table Data
         if (typeof window.loadSystemDatabases === "function") {
@@ -2958,68 +3079,138 @@ async function refreshBehaviorTabLedgers() {
 
         uniquePastReasons = Array.from(reasonsSet);
 
-        // --- Render Full Ledger in Behavior Tab ---
+        // --- Render Full Ledger in Behavior Tab (without student code column) ---
         const ledgerTbody = document.querySelector("#behaviorTabPointsTable tbody");
-            if (ledgerTbody) {
-                ledgerTbody.innerHTML = "";
-                Object.values(studentTotals)
-                    .sort((a, b) => b.total - a.total)
-                    .forEach(info => {
-                        const color = info.total > 0 ? '#28a745' : (info.total < 0 ? '#dc3545' : '#333');
-                        const sign = info.total > 0 ? '+' : '';
-                        
-                        // Declare safeName before using it in the inline HTML string below
-                        const safeName = (info.name || '').replace(/'/g, "\\'");
+        if (ledgerTbody) {
+            ledgerTbody.innerHTML = "";
+            Object.values(studentTotals)
+                .sort((a, b) => b.total - a.total)
+                .forEach(info => {
+                    const color = info.total > 0 ? '#28a745' : (info.total < 0 ? '#dc3545' : '#333');
+                    const sign = info.total > 0 ? '+' : '';
+                    const safeName = (info.name || '').replace(/'/g, "\\'");
 
-                        ledgerTbody.innerHTML += `<tr>
-                            <td><strong>${info.code}</strong></td>
-                            <td>${info.name}</td>
-                            <td><strong>${info.sClass}</strong></td>
-                            <td><strong style="color: ${color};">${sign}${info.total}</strong></td>
-                            <td>
-                                <div class="kebab-menu">
-                                    <button class="kebab-btn" onclick="toggleMenu(event, 'bhv-${info.code}')">⋮</button>
-                                    <div id="menu-bhv-${info.code}" class="dropdown-menu">
-                                        <button class="dropdown-item" onclick="openBehaviorHistoryModal('${info.code}', '${safeName}')">View History</button>
-                                    </div>
+                    ledgerTbody.innerHTML += `<tr>
+                        <td><strong>${info.name || 'N/A'}</strong></td>
+                        <td><strong>${info.sClass || 'N/A'}</strong></td>
+                        <td><strong style="color: ${color};">${sign}${info.total}</strong></td>
+                        <td>
+                            <div class="kebab-menu">
+                                <button class="kebab-btn" onclick="toggleMenu(event, 'bhv-${info.code}')">⋮</button>
+                                <div id="menu-bhv-${info.code}" class="dropdown-menu">
+                                    <button class="dropdown-item" onclick="openBehaviorHistoryModal('${info.code}', '${safeName}')">View History</button>
                                 </div>
-                            </td>
-                        </tr>`;
-                    });
+                            </div>
+                        </td>
+                    </tr>`;
+                });
         }
 
-        // --- Render Top 10 Positive Reasons ---
-        const posTbody = document.querySelector("#topPositiveTable tbody");
-        if (posTbody) {
-            const topPos = Object.values(reasonStats)
-                .filter(r => r.posPts > 0)
-                .sort((a, b) => b.posPts - a.posPts)
-                .slice(0, 10);
-            
-            posTbody.innerHTML = topPos.length === 0 ? "<tr><td colspan='3'>No data</td></tr>" : "";
-            topPos.forEach(r => {
-                posTbody.innerHTML += `<tr><td>${r.text}</td><td>${r.count}x</td><td style="color:#10b981; font-weight:bold;">+${r.posPts}</td></tr>`;
-            });
-        }
-
-        // --- Render Top 10 Negative Reasons ---
-        const negTbody = document.querySelector("#topNegativeTable tbody");
-        if (negTbody) {
-            const topNeg = Object.values(reasonStats)
-                .filter(r => r.negPts > 0)
-                .sort((a, b) => b.negPts - a.negPts)
-                .slice(0, 10);
-                
-            negTbody.innerHTML = topNeg.length === 0 ? "<tr><td colspan='3'>No data</td></tr>" : "";
-            topNeg.forEach(r => {
-                negTbody.innerHTML += `<tr><td>${r.text}</td><td>${r.count}x</td><td style="color:#e02d2d; font-weight:bold;">-${r.negPts}</td></tr>`;
-            });
-        }
+        // --- Render Behavior Analytics Bar Charts (Chart.js) ---
+        renderBehaviorCharts(reasonStats);
 
     } catch(e) {
         console.error("Error generating behavior stats: ", e);
     }
 }
+
+let posChartInstance = null;
+let negChartInstance = null;
+
+function renderBehaviorCharts(reasonStats) {
+    if (typeof Chart === 'undefined') return;
+
+    const topPos = Object.values(reasonStats)
+        .filter(r => r.posPts > 0)
+        .sort((a, b) => b.posPts - a.posPts)
+        .slice(0, 10);
+
+    const topNeg = Object.values(reasonStats)
+        .filter(r => r.negPts > 0)
+        .sort((a, b) => b.negPts - a.negPts)
+        .slice(0, 10);
+
+    // 1. Positive Chart
+    const posCanvas = document.getElementById('positiveReasonsChart');
+    if (posCanvas) {
+        if (posChartInstance) posChartInstance.destroy();
+        posChartInstance = new Chart(posCanvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: topPos.map(r => r.text),
+                datasets: [{
+                    label: 'Points Earned (+)',
+                    data: topPos.map(r => r.posPts),
+                    backgroundColor: 'rgba(16, 185, 129, 0.7)',
+                    borderColor: '#10b981',
+                    borderWidth: 1,
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                    y: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    // 2. Negative Chart
+    const negCanvas = document.getElementById('negativeReasonsChart');
+    if (negCanvas) {
+        if (negChartInstance) negChartInstance.destroy();
+        negChartInstance = new Chart(negCanvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: topNeg.map(r => r.text),
+                datasets: [{
+                    label: 'Points Deducted (-)',
+                    data: topNeg.map(r => r.negPts),
+                    backgroundColor: 'rgba(224, 45, 45, 0.7)',
+                    borderColor: '#e02d2d',
+                    borderWidth: 1,
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                    y: { grid: { display: false } }
+                }
+            }
+        });
+    }
+}
+
+window.toggleBehaviorCharts = function() {
+    const container = document.getElementById('containerBehaviorCharts');
+    const btn = document.getElementById('btnToggleBehaviorCharts');
+    if (!container || !btn) return;
+
+    if (container.classList.contains('hidden')) {
+        container.classList.remove('hidden');
+        btn.innerText = 'Hide Diagram';
+        btn.style.background = '#64748b';
+        if (typeof refreshBehaviorTabLedgers === 'function') refreshBehaviorTabLedgers();
+    } else {
+        container.classList.add('hidden');
+        btn.innerText = 'Show Diagram';
+        btn.style.background = 'var(--primary-blue)';
+    }
+};
 
 // 2. Autocomplete Filter Logic
 function setupAutocomplete(inputElement, listElement, dataProvider) {
@@ -3322,6 +3513,7 @@ async function loadTeachersDirectory() {
                             <div class="kebab-menu">
                                 <button class="kebab-btn" onclick="toggleMenu(event, 'teacher-${teacherId}')">⋮</button>
                                 <div id="menu-teacher-${teacherId}" class="dropdown-menu">
+                                    <button class="dropdown-item" onclick="editTeacherSubjectSpecialty('${teacherId}', '${safeName}', '${safeSubject}')">✏️ Edit Subject Specialty</button>
                                     <button class="dropdown-item" onclick="editTeacherProfile('${teacherId}', '${safeName}', '${safeSubject}')">Edit Details</button>
                                     <button class="dropdown-item" onclick="sendTeacherPasswordReset('${teacherEmail}')">Send Password Reset Email</button>
                                     <button class="dropdown-item danger" onclick="deleteTeacherAccount('${teacherId}', '${safeName}')">Delete Account</button>
@@ -3342,11 +3534,36 @@ async function loadTeachersDirectory() {
     }
 }
 
+window.editTeacherSubjectSpecialty = async function(uid, currentName, currentSubject) {
+    const promptMsg = `Modify Subject Specialty for ${currentName}:\n(For multiple subjects, separate with commas, e.g., "English G10, English G11, Seni Rupa")`;
+    const newSubject = prompt(promptMsg, currentSubject);
+    if (newSubject === null) return;
+
+    if (!newSubject.trim()) {
+        alert("Subject Specialty cannot be left empty.");
+        return;
+    }
+
+    try {
+        await updateDoc(doc(db, "users", uid), {
+            subject: newSubject.trim()
+        });
+
+        alert(`Subject specialty updated successfully for ${currentName}!\nAssigned Subjects: ${newSubject.trim()}`);
+        loadTeachersDirectory();
+        if (typeof window.loadSystemDatabases === "function") {
+            window.loadSystemDatabases();
+        }
+    } catch (e) {
+        alert("Error updating subject specialty: " + e.message);
+    }
+};
+
 window.editTeacherProfile = async function(uid, currentName, currentSubject) {
     const newName = prompt("Modify Teacher Full Name:", currentName);
     if (newName === null) return;
 
-    const newSubject = prompt("Modify Subject Specialty:", currentSubject);
+    const newSubject = prompt("Modify Subject Specialty (comma separated for multiple):", currentSubject);
     if (newSubject === null) return;
 
     if (!newName.trim() || !newSubject.trim()) {
@@ -3827,5 +4044,6 @@ window.inlineAdjustPoint = inlineAdjustPoint;
 document.getElementById('sortStudents')?.addEventListener('change', loadStudentsDirectory);
 document.getElementById('sortScores')?.addEventListener('change', loadAdminTable);
 document.getElementById('sortPoints')?.addEventListener('change', loadPointsTable);
-document.getElementById('postNewsBtn')?.addEventListener('click', addNewsUpdate);
+window.editTeacherSubjectSpecialty = editTeacherSubjectSpecialty;
+window.editTeacherProfile = editTeacherProfile;
 window.deleteNewsUpdate = deleteNewsUpdate;

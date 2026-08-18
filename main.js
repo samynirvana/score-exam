@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, query, where, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, query, where, getDocs, doc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyD3oiOHwHUfMhTPjEp8Ku8-qlbRKlGX0Gg",
@@ -13,6 +14,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 
 let cachedExamScores = [];
 
@@ -50,19 +52,131 @@ themeToggleBtn?.addEventListener('click', () => {
     applyTheme(newTheme);
 });
 
-// --- UNIFIED SEARCH FUNCTIONALITY ---
-async function searchUnifiedStudentData() {
-    const codeInput = document.getElementById('studentCode').value.toUpperCase().trim();
-    const profileCard = document.getElementById('profileResultCard');
-    const errorMessage = document.getElementById('errorMessage');
+// --- STUDENT LOGIN & SESSION SYSTEM ---
+let currentLoggedInStudent = null;
 
-    profileCard.classList.add('hidden');
-    errorMessage.classList.add('hidden');
+async function checkStudentSession() {
+    const saved = sessionStorage.getItem('studentLoggedInSession');
+    const overlay = document.getElementById('studentLoginOverlay');
+    
+    if (saved) {
+        currentLoggedInStudent = JSON.parse(saved);
+        if (overlay) overlay.style.display = 'none';
+        fetchStudentUnifiedData(currentLoggedInStudent.code);
+    } else {
+        if (overlay) overlay.style.display = 'flex';
+    }
+}
+
+// Student Login Button Click Handler
+document.getElementById('studentLoginBtn')?.addEventListener('click', handleStudentLogin);
+document.getElementById('loginStudentPassword')?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') handleStudentLogin();
+});
+document.getElementById('loginStudentUsername')?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') handleStudentLogin();
+});
+
+async function handleStudentLogin() {
+    const rawUser = document.getElementById('loginStudentUsername').value.trim();
+    const rawPass = document.getElementById('loginStudentPassword').value.trim();
+    const errBox = document.getElementById('loginErrorMessage');
+
+    if (errBox) errBox.classList.add('hidden');
+
+    if (!rawUser || !rawPass) {
+        if (errBox) {
+            errBox.innerText = "Please fill out both username and password fields.";
+            errBox.classList.remove('hidden');
+        }
+        return;
+    }
+
+    // 1. TEACHER / ADMIN LOGIN (If email address entered)
+    if (rawUser.includes('@')) {
+        try {
+            await signInWithEmailAndPassword(auth, rawUser, rawPass);
+            window.location.href = "admin.html";
+            return;
+        } catch (err) {
+            console.error("Staff Login Error:", err);
+            if (errBox) {
+                errBox.innerText = "Staff Login Failed: Invalid email or password.";
+                errBox.classList.remove('hidden');
+            }
+            return;
+        }
+    }
+
+    // 2. STUDENT LOGIN (Unique code)
+    const userIn = rawUser.toUpperCase();
+    const passIn = rawPass.toUpperCase();
+
+    if (userIn !== passIn) {
+        if (errBox) {
+            errBox.innerText = "For students, your Username and Password must both be your 5-character student code.";
+            errBox.classList.remove('hidden');
+        }
+        return;
+    }
+
+    try {
+        const studentRef = doc(db, "students", userIn);
+        const studentSnap = await getDoc(studentRef);
+
+        if (!studentSnap.exists()) {
+            if (errBox) {
+                errBox.innerText = `Student code "${userIn}" not found in database.`;
+                errBox.classList.remove('hidden');
+            }
+            return;
+        }
+
+        const sData = studentSnap.data();
+        currentLoggedInStudent = {
+            code: userIn,
+            name: sData.studentName || 'Student',
+            studentClass: sData.studentClass || sData.class || 'Unassigned'
+        };
+
+        // Save session in sessionStorage so it persists across page navigation (Quiz, Timeline, etc.)
+        sessionStorage.setItem('studentLoggedInSession', JSON.stringify(currentLoggedInStudent));
+        sessionStorage.setItem('studentTimelineSession', JSON.stringify({
+            type: 'student',
+            name: currentLoggedInStudent.name,
+            code: currentLoggedInStudent.code,
+            studentClass: currentLoggedInStudent.studentClass
+        }));
+
+        const overlay = document.getElementById('studentLoginOverlay');
+        if (overlay) overlay.style.display = 'none';
+
+        fetchStudentUnifiedData(userIn);
+
+    } catch (err) {
+        console.error("Student login error:", err);
+        if (errBox) {
+            errBox.innerText = "Connection error. Please try logging in again.";
+            errBox.classList.remove('hidden');
+        }
+    }
+}
+
+// Student Logout Handler
+document.getElementById('studentLogoutBtn')?.addEventListener('click', () => {
+    sessionStorage.removeItem('studentLoggedInSession');
+    sessionStorage.removeItem('studentTimelineSession');
+    location.reload();
+});
+
+// Auto-fetch profile for logged in code
+async function fetchStudentUnifiedData(codeInput) {
+    const profileCard = document.getElementById('profileResultCard');
+    if (profileCard) profileCard.classList.add('hidden');
 
     if (!codeInput) return;
 
     try {
-        // Query both Exam Scores and Behavior Points simultaneously
         const scoreQuery = query(collection(db, "exam_scores"), where("studentCode", "==", codeInput));
         const pointQuery = query(collection(db, "student_points"), where("studentCode", "==", codeInput));
 
@@ -71,18 +185,10 @@ async function searchUnifiedStudentData() {
             getDocs(pointQuery)
         ]);
 
-        if (scoreSnap.empty && pointSnap.empty) {
-            errorMessage.innerText = `No records found for student code "${codeInput}".`;
-            errorMessage.classList.remove('hidden');
-            return;
-        }
-
-        renderUnifiedProfile(scoreSnap, pointSnap);
+        renderUnifiedProfile(scoreSnap, pointSnap, codeInput);
 
     } catch (error) {
         console.error("Profile lookup error:", error);
-        errorMessage.innerText = "An error occurred during lookup processing.";
-        errorMessage.classList.remove('hidden');
     }
 }
 // --- UPDATED STUDENT PROFILE & DROPDOWN SCORE FILTER LOGIC ---
@@ -91,72 +197,95 @@ function renderUnifiedProfile(scoreSnap, pointSnap) {
     let studentClass = "";
     let totalBehaviorPoints = 0;
 
-    // 1. Process Behavior Points
-    const behaviorTbody = document.getElementById('behaviorTbody');
-    behaviorTbody.innerHTML = "";
+    // 1. Process Behavior Points into Modern Activity Cards
+    const behaviorFeed = document.getElementById('behaviorActivityFeed');
+    if (behaviorFeed) behaviorFeed.innerHTML = "";
 
     if (!pointSnap.empty) {
-        pointSnap.forEach((doc) => {
-            const data = doc.data();
+        pointSnap.forEach((docSnap) => {
+            const data = docSnap.data();
             if (!studentName && data.studentName) studentName = data.studentName;
             if (!studentClass && data.studentClass) studentClass = data.studentClass;
 
             const pts = parseFloat(data.points) || 0;
             totalBehaviorPoints += pts;
 
-            const color = pts > 0 ? '#10b981' : (pts < 0 ? '#e02d2d' : 'var(--text-dark)');
-            const sign = pts > 0 ? '+' : '';
+            const isPositive = pts > 0;
+            const isNeutral = pts === 0;
 
-            behaviorTbody.innerHTML += `
-                <tr>
-                    <td><strong>${data.reason || 'Point Adjustment'}</strong></td>
-                    <td style="text-align: right;"><strong style="color: ${color}; font-size: 14px;">${sign}${pts}</strong></td>
-                </tr>
-            `;
+            const badgeBg = isPositive ? '#ecfdf5' : (isNeutral ? '#f1f5f9' : '#fef2f2');
+            const badgeColor = isPositive ? '#10b981' : (isNeutral ? '#64748b' : '#ef4444');
+            const badgeBorder = isPositive ? '#a7f3d0' : (isNeutral ? '#e2e8f0' : '#fca5a5');
+            const sign = isPositive ? '+' : '';
+
+            // Icon SVG based on Merit vs Demerit
+            const iconSvg = isPositive
+                ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>`
+                : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>`;
+
+            if (behaviorFeed) {
+                behaviorFeed.innerHTML += `
+                    <div style="background: var(--card-bg, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: 14px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 14px; transition: transform 0.15s ease, box-shadow 0.15s ease;" onmouseenter="this.style.transform='translateX(4px)';" onmouseleave="this.style.transform='translateX(0)';">
+                        <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+                            <div style="width: 36px; height: 36px; border-radius: 10px; background: ${badgeBg}; color: ${badgeColor}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                ${iconSvg}
+                            </div>
+                            <div style="min-width: 0;">
+                                <h4 style="margin: 0; font-size: 14.5px; font-weight: 700; color: var(--text-dark, #0f172a); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${data.reason || 'Point Adjustment'}</h4>
+                                <p style="margin: 2px 0 0 0; font-size: 12px; color: var(--text-gray, #64748b);">${data.timestamp ? new Date(data.timestamp).toLocaleDateString(undefined, {month:'short', day:'numeric'}) : 'Behavior Event'}</p>
+                            </div>
+                        </div>
+
+                        <div style="background: ${badgeBg}; color: ${badgeColor}; border: 1px solid ${badgeBorder}; font-size: 15px; font-weight: 800; padding: 4px 12px; border-radius: 8px; flex-shrink: 0; white-space: nowrap;">
+                            ${sign}${pts} pts
+                        </div>
+                    </div>
+                `;
+            }
         });
     } else {
-        behaviorTbody.innerHTML = `<tr><td colspan="2" style="text-align:center; color:var(--text-gray);">No behavior points logged.</td></tr>`;
+        if (behaviorFeed) {
+            behaviorFeed.innerHTML = `<div style="text-align:center; color:var(--text-gray); padding: 32px 16px; background: var(--card-bg); border-radius: 12px; border: 1px dashed var(--border-color); font-size: 13.5px;">No behavior point records logged yet.</div>`;
+        }
     }
 
-    // 2. Process Exam Scores & Build Dropdown Filter Options
-    cachedExamScores = [];
-    const filterDropdown = document.getElementById('examScoreDropdown');
-    const optionsSet = new Set();
-
+    // 2. Process student name & class from scores snap if available
     if (!scoreSnap.empty) {
         scoreSnap.forEach((doc) => {
             const data = doc.data();
             if (!studentName && data.studentName) studentName = data.studentName;
             if (!studentClass && data.studentClass) studentClass = data.studentClass;
-
-            cachedExamScores.push(data);
-
-            const title = data.examName || data.quizName;
-            if (title) optionsSet.add(title);
         });
-
-        // Set default dropdown prompt (No quiz chosen yet)
-        filterDropdown.innerHTML = '<option value="">-- Choose a Quiz / Exam --</option>';
-        Array.from(optionsSet).sort().forEach(item => {
-            filterDropdown.innerHTML += `<option value="${item}">${item}</option>`;
-        });
-
-        // Load empty prompt state by default
-        renderExamScoresTable("");
-    } else {
-        filterDropdown.innerHTML = '<option value="">-- Choose a Quiz / Exam --</option>';
-        document.getElementById('scoresTbody').innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-gray); padding: 20px;">No exam scores logged for this student.</td></tr>`;
     }
 
     // 3. Update Banner Headers & Behavior Badge
-    document.getElementById('studentNameDisplay').innerText = studentName || "Student Profile";
-    document.getElementById('studentClassDisplay').innerText = `Class: ${studentClass || 'Unassigned'}`;
+    const displayName = studentName || (currentLoggedInStudent ? currentLoggedInStudent.name : "Student Profile");
+    const displayClass = studentClass || (currentLoggedInStudent ? currentLoggedInStudent.studentClass : 'Unassigned');
+
+    const nameDisp = document.getElementById('studentNameDisplay');
+    if (nameDisp) nameDisp.innerText = displayName;
+    
+    const classDisp = document.getElementById('studentClassDisplay');
+    if (classDisp) classDisp.innerText = `Class: ${displayClass}`;
+
+    // Update Greeting Banner & Sidebar Profile
+    const greetingEl = document.querySelector('.greeting-title');
+    if (greetingEl) greetingEl.innerText = `Good morning, ${displayName.split(' ')[0]} 👋`;
+
+    const sidebarNameEl = document.getElementById('sidebarStudentName');
+    if (sidebarNameEl) sidebarNameEl.innerText = displayName;
+
+    const sidebarClassEl = document.getElementById('sidebarStudentClass');
+    if (sidebarClassEl) sidebarClassEl.innerText = `Class: ${displayClass}`;
 
     const heroBadge = document.getElementById('heroTotalPoints');
-    heroBadge.innerText = (totalBehaviorPoints > 0 ? '+' : '') + totalBehaviorPoints;
-    heroBadge.style.color = totalBehaviorPoints >= 0 ? '#10b981' : '#f87171';
+    if (heroBadge) {
+        heroBadge.innerText = (totalBehaviorPoints > 0 ? '+' : '') + totalBehaviorPoints;
+        heroBadge.style.color = totalBehaviorPoints >= 0 ? '#10b981' : '#f87171';
+    }
 
-    document.getElementById('profileResultCard').classList.remove('hidden');
+    const profileCard = document.getElementById('profileResultCard');
+    if (profileCard) profileCard.classList.remove('hidden');
 }
 
 function renderExamScoresTable(filterValue) {
@@ -202,14 +331,8 @@ function renderExamScoresTable(filterValue) {
 }
 
 // Dropdown change listener
-document.getElementById('examScoreDropdown').addEventListener('change', (e) => {
+document.getElementById('examScoreDropdown')?.addEventListener('change', (e) => {
     renderExamScoresTable(e.target.value);
-});
-
-// Search listeners
-document.getElementById('searchBtn').addEventListener('click', searchUnifiedStudentData);
-document.getElementById('studentCode').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') searchUnifiedStudentData();
 });
 
 // --- UPDATED REAL-TIME SCHOOL NOTICES LISTENER ---
@@ -260,5 +383,6 @@ function loadNewsTicker() {
     }
 }
 
-// Initialize real-time news on load
+// Initialize on load
+checkStudentSession();
 loadNewsTicker();

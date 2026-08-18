@@ -1,70 +1,20 @@
-/* ======================================================
-   STUDENT PORTAL SPECIFIC STYLES & MOBILE OVERRIDES
-   ====================================================== */
-
-/* --- Full Document Scroll Reset (Fixes iOS Touch Lock) --- */
-*, *::before, *::after {
-    box-sizing: border-box !important;
-}
-
-html, body {
-    height: auto !important;
-    min-height: 100% !important;
-    max-width: 100vw !important;
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-    display: block !important;
-    position: relative !important;
-    -webkit-overflow-scrolling: touch !important;
-}
-
 .app-container {
-    height: auto !important;
-    min-height: 100vh !important;
-    display: block !important;
-    width: 100% !important;
-    max-width: 100vw !important;
-    overflow-x: hidden !important;
+    display: flex !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    overflow: hidden !important;
 }
 
 .main-wrapper {
-    height: auto !important;
-    min-height: 0 !important;
-    overflow: visible !important;
-    padding: 20px 24px 40px !important;
-    max-width: 1200px !important;
-    margin: 0 auto !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-    display: block !important;
-}
-
-/* --- Header & Branding --- */
-.student-header {
-    padding: 12px 20px !important;
-    border-bottom: 1px solid var(--border-color);
-    background: var(--card-bg);
-    width: 100% !important;
-    max-width: 100vw !important;
-    box-sizing: border-box !important;
+    flex: 1 !important;
     display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-}
-
-.student-brand {
-    border: none;
-    padding: 0;
-    margin: 0;
-}
-
-.brand-badge {
-    background: #ffffff;
-    padding: 8px 12px;
-    border-radius: 8px;
-    font-weight: bold;
-    color: #0b1437;
-    font-size: 16px;
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    height: 100vh !important;
+    padding: 0 32px 40px !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
 }
 
 /* --- Quick Links Grid --- */
@@ -172,13 +122,6 @@ html, body {
 }
 
 /* --- Dashboard Grid & Cards --- */
-.dashboard-grid {
-    display: grid !important;
-    grid-template-columns: 2fr 1fr !important;
-    gap: 20px !important;
-    width: 100% !important;
-}
-
 .box {
     width: 100% !important;
     max-width: 100% !important;
@@ -481,4 +424,294 @@ th, td {
     max-height: 26px !important;
     object-fit: contain !important;
     display: block;
+}
+
+/* ======================================================
+   REDESIGNED STUDENT PORTAL SIDEBAR & HERO BANNER
+   ====================================================== */
+.student-sidebar {
+    width: 260px !important;
+    min-width: 260px !important;
+    background: #061838 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    border-right: none !important;
+    height: 100vh !important;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.08);
+}
+
+.student-greeting-banner {
+    background-color: #ffffff;
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 20px;
+    padding: 32px 36px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+    min-height: 160px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
+}
+
+.dark-theme .student-greeting-banner {
+    background-color: #0f172a;
+    border-color: #1e293b;
+}
+
+.greeting-text-container {
+    z-index: 2;
+    max-width: 55%;
+    position: relative;
+}
+
+.greeting-title {
+    margin: 0 0 6px 0;
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text-dark, #0f172a);
+    letter-spacing: -0.5px;
+}
+
+.dark-theme .greeting-title {
+    color: #ffffff;
+}
+
+.greeting-subtitle {
+    margin: 0;
+    font-size: 15px;
+    color: var(--text-gray, #64748b);
+    font-weight: 500;
+}
+
+.school-building-img-wrapper {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.school-building-img {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 60%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center right;
+    -webkit-mask-image: linear-gradient(to left, rgba(0, 0, 0, 1) 40%, rgba(0, 0, 0, 0) 100%);
+    mask-image: linear-gradient(to left, rgba(0, 0, 0, 1) 40%, rgba(0, 0, 0, 0) 100%);
+}
+
+/* Quick Cards Row */
+.quick-cards-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.quick-card-box {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 22px;
+    border-radius: 16px;
+    text-decoration: none;
+    position: relative;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.quick-card-box:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+.blue-card {
+    background: #eff6ff;
+    border-color: #dbeafe;
+}
+
+.dark-theme .blue-card {
+    background: #172554;
+    border-color: #1e40af;
+}
+
+.green-card {
+    background: #f0fdf4;
+    border-color: #dcfce7;
+}
+
+.dark-theme .green-card {
+    background: #052e16;
+    border-color: #166534;
+}
+
+.quick-card-icon-box {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.blue-icon {
+    background: #2563eb;
+    color: #ffffff;
+}
+
+.green-icon {
+    background: #16a34a;
+    color: #ffffff;
+}
+
+.quick-card-title {
+    margin: 0 0 4px 0;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.blue-title {
+    color: #1d4ed8;
+}
+
+.dark-theme .blue-title {
+    color: #60a5fa;
+}
+
+.green-title {
+    color: #15803d;
+}
+
+.dark-theme .green-title {
+    color: #4ade80;
+}
+
+.quick-card-desc {
+    margin: 0;
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.dark-theme .quick-card-desc {
+    color: #94a3b8;
+}
+
+.quick-card-arrow {
+    margin-left: auto;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.quick-card-box:hover .quick-card-arrow {
+    transform: translateX(4px);
+}
+
+.blue-arrow { color: #2563eb; }
+.green-arrow { color: #16a34a; }
+
+/* ======================================================
+   ROUNDED PILL BUTTON STYLING SYSTEM (LIGHT & DARK THEME)
+   ====================================================== */
+button, 
+.btn-pill,
+.teacher-btn,
+.theme-toggle-btn,
+#studentLoginBtn,
+#submitPostBtn,
+#verifyBtn,
+#startSelectedQuizBtn,
+#submitQuizBtn,
+#loginBtn {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border: 1.5px solid #e2e8f0 !important;
+    border-radius: 24px !important;
+    padding: 10px 22px !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02) !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+}
+
+button:hover,
+.btn-pill:hover,
+.teacher-btn:hover,
+.theme-toggle-btn:hover,
+#studentLoginBtn:hover,
+#submitPostBtn:hover,
+#verifyBtn:hover,
+#startSelectedQuizBtn:hover,
+#submitQuizBtn:hover,
+#loginBtn:hover {
+    background: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+}
+
+button:active,
+.btn-pill:active {
+    transform: translateY(0) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Dark Theme Button Overrides */
+.dark-theme button,
+.dark-theme .btn-pill,
+.dark-theme .teacher-btn,
+.dark-theme .theme-toggle-btn,
+.dark-theme #studentLoginBtn,
+.dark-theme #submitPostBtn,
+.dark-theme #verifyBtn,
+.dark-theme #startSelectedQuizBtn,
+.dark-theme #submitQuizBtn,
+.dark-theme #loginBtn {
+    background: #1e293b !important;
+    color: #f8fafc !important;
+    border-color: #334155 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+.dark-theme button:hover,
+.dark-theme .btn-pill:hover,
+.dark-theme .teacher-btn:hover,
+.dark-theme .theme-toggle-btn:hover,
+.dark-theme #studentLoginBtn:hover,
+.dark-theme #submitPostBtn:hover,
+.dark-theme #verifyBtn:hover,
+.dark-theme #startSelectedQuizBtn:hover,
+.dark-theme #submitQuizBtn:hover,
+.dark-theme #loginBtn:hover {
+    background: #334155 !important;
+    border-color: #475569 !important;
+}
+
+/* Danger / Logout Button Pill Variant */
+#studentLogoutBtn,
+#logoutBtn {
+    background: #fef2f2 !important;
+    color: #ef4444 !important;
+    border-color: #fca5a5 !important;
+}
+
+.dark-theme #studentLogoutBtn,
+.dark-theme #logoutBtn {
+    background: #450a0a !important;
+    color: #fca5a5 !important;
+    border-color: #7f1d1d !important;
 }

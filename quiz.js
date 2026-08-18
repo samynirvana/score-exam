@@ -34,30 +34,53 @@ themeToggleBtn?.addEventListener('click', () => {
     themeToggleBtn.innerText = isDark ? 'Light Mode' : 'Dark Mode';
 });
 
+// Auto-fill and verify if logged in via Student Portal Session
+window.addEventListener('DOMContentLoaded', async () => {
+    const savedLoggedIn = sessionStorage.getItem('studentLoggedInSession') || sessionStorage.getItem('studentTimelineSession');
+    if (savedLoggedIn) {
+        try {
+            const session = JSON.parse(savedLoggedIn);
+            const code = session.code;
+            if (code) {
+                const codeInput = document.getElementById('studentCodeInput');
+                if (codeInput) codeInput.value = code;
+                await verifyStudentCodeByCode(code);
+            }
+        } catch (e) { console.error("Session auto-verify error:", e); }
+    }
+});
+
 // --- STEP 1: VERIFY CODE & OPEN POPUP ---
-document.getElementById('verifyBtn').addEventListener('click', verifyStudentCode);
-document.getElementById('studentCodeInput').addEventListener('keypress', (e) => {
+document.getElementById('verifyBtn')?.addEventListener('click', verifyStudentCode);
+document.getElementById('studentCodeInput')?.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') verifyStudentCode();
 });
 
 async function verifyStudentCode() {
     const codeInput = document.getElementById('studentCodeInput');
-    const authError = document.getElementById('authErrorMessage');
-    const code = codeInput.value.toUpperCase().trim();
+    const code = codeInput ? codeInput.value.toUpperCase().trim() : '';
+    await verifyStudentCodeByCode(code);
+}
 
-    authError.classList.add('hidden');
+async function verifyStudentCodeByCode(code) {
+    const authError = document.getElementById('authErrorMessage');
+    if (authError) authError.classList.add('hidden');
 
     if (!code) {
-        authError.innerText = "Please enter your 5-character student code.";
-        authError.classList.remove('hidden');
+        if (authError) {
+            authError.innerText = "Please enter your 5-character student code.";
+            authError.classList.remove('hidden');
+        }
         return;
     }
 
     try {
         const snap = await getDoc(doc(db, "students", code));
         if (!snap.exists()) {
-            authError.innerText = `Invalid Student Code "${code}". Please try again.`;
-            authError.classList.remove('hidden');
+            if (authError) {
+                authError.innerText = `Invalid Student Code "${code}". Please try again.`;
+                authError.classList.remove('hidden');
+            }
             return;
         }
 
@@ -73,8 +96,10 @@ async function verifyStudentCode() {
 
     } catch (err) {
         console.error("Authentication error:", err);
-        authError.innerText = "Connection error. Please try again.";
-        authError.classList.remove('hidden');
+        if (authError) {
+            authError.innerText = "Connection error. Please try again.";
+            authError.classList.remove('hidden');
+        }
     }
 }
 

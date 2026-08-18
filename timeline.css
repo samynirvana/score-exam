@@ -39,13 +39,13 @@ body.dark-mode {
 }
 
 body {
-    background-color: var(--bg-color) !important;
+    background-color: var(--bg-color);
     color: var(--text-main);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 16px;
     line-height: 1.5;
     margin: 0;
-    padding: 20px 12px;
+    padding: 0;
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
@@ -129,18 +129,22 @@ input, textarea, button {
 .timeline-post { 
     background: var(--card-bg); 
     padding: 20px; 
-    border-radius: 12px; 
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04); 
-    margin-bottom: 20px; 
+    border-radius: 16px; 
+    margin-bottom: 16px; 
     border: 1px solid var(--border-color); 
-    transition: border-color 0.2s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03); 
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.post-sender-row {
+.post:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.post-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
 }
 
 .sender-info-wrapper {

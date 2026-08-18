@@ -11,80 +11,155 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
     
     <!-- External Stylesheets -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="admin.css">
+    <link rel="stylesheet" href="student.css">
     <link rel="stylesheet" href="timeline.css">
 </head>
 <body>
-<div class="page-wrapper">
+<div class="app-container" style="display: flex; height: 100vh; overflow: hidden;">
     
-    <!-- LOGIN SCREEN -->
-    <div id="loginScreen" class="login-box">
-        <h2 style="color: var(--primary-color); margin-top: 0;">Timeline Access</h2>
-        <div style="background: var(--comment-bg); padding: 14px; border-radius: 8px; font-size: 14px; color: var(--text-muted); margin-bottom: 16px; text-align: left; border: 1px solid var(--border-color);">
-            <strong>Students:</strong> Enter your 5-Character code as BOTH Username and Password.<br><br>
-            <strong>Teachers/Admin:</strong> Login with registered Email and Password.
+    <!-- LEFT SIDEBAR -->
+    <nav class="sidebar student-sidebar">
+        <div class="brand">
+            <div style="background: #ffffff; padding: 6px; border-radius: 10px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <img src="https://lh3.googleusercontent.com/d/1o_7O1hdx1SJOXfoFw9ZKxpl4zSOD_VYd" alt="Logo" style="width: 100%; height: 100%; object-fit: contain;">
+            </div>
+            <div>
+                <h2 style="margin: 0; font-size: 15px; font-weight: 800; color: #ffffff; letter-spacing: 0.5px;">MITRA KASIH SCHOOL</h2>
+                <p style="margin: 2px 0 0 0; font-size: 12px; color: var(--text-gray);">Student Portal</p>
+            </div>
         </div>
-        <input type="text" id="loginUsername" placeholder="Username / Code / Email">
-        <input type="password" id="loginPassword" placeholder="Password">
-        <button id="loginBtn">Secure Login</button>
-        <a href="index.html" style="display: block; margin-top: 16px; font-size: 14px; color: var(--text-muted); text-decoration: none;">&larr; Back to Portal</a>
-    </div>
-
-    <!-- MAIN TIMELINE APP -->
-    <div id="timelineApp" class="container timeline-container hidden">
         
-        <div class="top-nav">
-            <a href="index.html" style="color: var(--primary-color); text-decoration: none; font-size: 15px; font-weight: 600;">&larr; Back to Portal</a>
-            <div class="nav-controls">
-                
-                <!-- Dark Mode Button with Separated Image and Text Span -->
-                <button id="darkModeToggle" class="theme-toggle-btn">
-                    <img id="themeToggleIcon" src="https://lh3.googleusercontent.com/d/YOUR_DARK_MODE_ICON_FILE_ID" alt="Theme" class="btn-icon">
-                    <span id="themeToggleText">Dark</span>
-                </button>
+        <div class="menu-bar">
+            <a href="index.html" class="menu-btn" style="text-decoration: none;">
+                <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                <span class="menu-label">Dashboard</span>
+            </a>
 
-                <div class="notif-wrapper">
-                    <button id="notifToggleBtn" class="notif-btn">Alerts <span id="notifBadge" class="notif-badge">0</span></button>
-                    <div id="notifDropdown" class="notif-dropdown">
-                        <div style="padding: 12px; text-align: center; font-size: 13px; color: var(--text-muted);">Loading notifications...</div>
+            <a href="quiz.html" class="menu-btn" style="text-decoration: none;">
+                <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                <span class="menu-label">Online Quiz</span>
+            </a>
+
+            <a href="timeline.html" class="menu-btn active" style="text-decoration: none;">
+                <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="8" y1="6" x2="21" y2="6"></line>
+                    <line x1="8" y1="12" x2="21" y2="12"></line>
+                    <line x1="8" y1="18" x2="21" y2="18"></line>
+                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                </svg>
+                <span class="menu-label">Classroom Timeline</span>
+            </a>
+
+            <a href="index.html#myProfileCard" class="menu-btn" style="text-decoration: none;">
+                <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span class="menu-label">My Profile</span>
+            </a>
+
+            <a href="scores.html" class="menu-btn" style="text-decoration: none;">
+                <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                    <line x1="8" y1="21" x2="16" y2="21"></line>
+                    <line x1="12" y1="17" x2="12" y2="21"></line>
+                </svg>
+                <span class="menu-label">My Scores</span>
+            </a>
+        </div>
+
+        <!-- USER PROFILE BOTTOM -->
+        <div class="user-profile-bottom" style="margin-top: auto; padding: 18px 20px; display: flex; align-items: center; gap: 12px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <div style="width: 38px; height: 38px; background: #1e5eff; color: #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; flex-shrink: 0;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+            </div>
+            <div style="overflow: hidden; flex: 1;">
+                <h4 id="sidebarStudentName" style="margin: 0; font-size: 14px; font-weight: 700; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Student Portal</h4>
+                <p id="sidebarStudentClass" style="margin: 2px 0 0 0; font-size: 12px; color: var(--text-gray);">Logged in</p>
+            </div>
+            <button id="studentLogoutBtn" title="Logout" style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; padding: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+            </button>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="main-wrapper" style="flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 0 32px 40px; max-width: 100% !important;">
+        
+        <!-- MAIN TIMELINE APP -->
+        <div id="timelineApp" class="container timeline-container" style="max-width: 680px; margin: 0 auto; width: 100%;">
+            
+            <!-- TOP FEED BAR (THREADS STYLE HEADER) -->
+            <div style="position: sticky; top: 0; z-index: 10; backdrop-filter: blur(12px); background: rgba(244, 247, 254, 0.85); padding: 18px 0; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <div>
+                    <h2 class="timeline-heading" style="margin: 0; font-size: 22px; font-weight: 800;">Classroom Feed</h2>
+                    <p style="font-size: 13px; color: #10b981; margin: 2px 0 0 0; font-weight: 600;">
+                        Connected as: <span id="currentUserDisplay"></span>
+                    </p>
+                </div>
+                <div class="nav-controls" style="display: flex; align-items: center; gap: 10px;">
+                    <button id="darkModeToggle" class="theme-toggle-btn" style="padding: 6px 12px; font-size: 13px;">
+                        <span id="themeToggleText">Dark</span>
+                    </button>
+
+                    <div class="notif-wrapper" style="position: relative;">
+                        <button id="notifToggleBtn" class="notif-btn" style="padding: 6px 12px; font-size: 13px;">Alerts <span id="notifBadge" class="notif-badge">0</span></button>
+                        <div id="notifDropdown" class="notif-dropdown">
+                            <div style="padding: 12px; text-align: center; font-size: 13px; color: var(--text-muted);">Loading notifications...</div>
+                        </div>
+                    </div>
+
+                    <button id="logoutBtn" style="background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600;">Logout</button>
+                </div>
+            </div>
+
+            <!-- POST CREATION CARD (TWITTER / THREADS COMPOSER STYLE) -->
+            <div class="post-box" style="background: var(--card-bg); border-radius: 16px; border: 1px solid var(--border-color); padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 24px;">
+                <div style="display: flex; gap: 14px;">
+                    <div style="width: 42px; height: 42px; border-radius: 50%; background: #eff6ff; color: #1e5eff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid #bfdbfe;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                    </div>
+                    <div style="flex: 1;">
+                        <textarea id="postMessage" placeholder="Start a discussion or post an update... (Type @ to mention someone)" style="width: 100%; border: none; background: transparent; resize: none; min-height: 80px; font-size: 15px; outline: none; padding: 4px 0; color: var(--text-main);"></textarea>
+                        
+                        <div class="post-options-row" style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+                            <div class="target-selector-wrapper" style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted);">
+                                <span>Audience:</span>
+                                <select id="postTargetClass" style="padding: 4px 10px; border-radius: 8px; font-size: 13px; font-weight: 600;">
+                                    <option value="All">All Classes</option>
+                                </select>
+                            </div>
+                            <button id="submitPostBtn" style="background: #1e5eff; color: white; border: none; padding: 8px 20px; border-radius: 20px; font-weight: 700; font-size: 14px; cursor: pointer;">Post</button>
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                <button id="logoutBtn" style="background: #ef4444; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; min-height: 40px;">Logout</button>
+            <!-- TIMELINE FEED CONTAINER -->
+            <div id="timelineFeed">
+                <!-- Posts injected dynamically via JS -->
             </div>
         </div>
-        
-        <div style="text-align: center; margin-bottom: 12px;">
-            <!-- Updated Header Font & Text -->
-            <h2 class="timeline-heading">Timeline</h2>
-            <p style="font-size: 14px; color: #10b981; margin: 0; font-weight: 600;">
-                Logged in as: <span id="currentUserDisplay"></span>
-            </p>
-        </div>
-        
-        <!-- POST CREATION BOX -->
-        <div class="post-box">
-            <textarea id="postMessage" placeholder="What would you like to share with the class? (Type @ to mention someone)"></textarea>
-            
-            <div class="post-options-row">
-                <div class="target-selector-wrapper">
-                    <label for="postTargetClass">
-                        <img src="https://lh3.googleusercontent.com/d/1PpLvL3BNycZKdg_fzuIhMvUN1kUadf0d" alt="Classes" class="inline-icon">
-                        Audience:
-                    </label>
-                    <select id="postTargetClass">
-                        <option value="All">All Classes</option>
-                        <!-- Classes will be dynamically populated via JavaScript -->
-                    </select>
-                </div>
-                <button id="submitPostBtn">Post to Timeline</button>
-            </div>
-        </div>
-
-        <div id="timelineFeed">
-            <!-- Posts injected dynamically via JS -->
-        </div>
-    </div>
+    </main>
 </div>
 
 <div id="mentionPopup" class="mention-popup hidden"></div>

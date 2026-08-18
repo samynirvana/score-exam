@@ -98,10 +98,18 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 window.onload = () => {
-    const savedStudent = sessionStorage.getItem('studentTimelineSession');
-    if (savedStudent) {
-        currentUser = JSON.parse(savedStudent);
-        showTimelineApp();
+    const savedSession = sessionStorage.getItem('studentLoggedInSession') || sessionStorage.getItem('studentTimelineSession');
+    if (savedSession) {
+        try {
+            currentUser = JSON.parse(savedSession);
+            if (currentUser && currentUser.code) {
+                // Normalise role object format
+                if (!currentUser.type) currentUser.type = 'student';
+                showTimelineApp();
+            }
+        } catch (e) {
+            console.error("Timeline session parse error:", e);
+        }
     }
 };
 
@@ -152,18 +160,49 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
     }
 });
 
-document.getElementById('logoutBtn').addEventListener('click', async () => {
+async function showTimelineApp() {
+    const loginOverlay = document.getElementById('loginScreen');
+    if (loginOverlay) loginOverlay.style.display = 'none';
+
+    const appEl = document.getElementById('timelineApp');
+    if (appEl) appEl.classList.remove('hidden');
+
+    const badgeHTML = currentUser.type === 'staff' ? ` <span class="staff-badge">✓</span>` : '';
+    const classBadgeHTML = currentUser.studentClass ? ` (${currentUser.studentClass})` : '';
+    const nameDisp = document.getElementById('currentUserDisplay');
+    if (nameDisp) nameDisp.innerHTML = currentUser.name + badgeHTML + classBadgeHTML;
+
+    const sidebarName = document.getElementById('sidebarStudentName');
+    const sidebarClass = document.getElementById('sidebarStudentClass');
+    if (sidebarName) sidebarName.innerText = currentUser.name;
+    if (sidebarClass) sidebarClass.innerText = currentUser.studentClass ? `Class: ${currentUser.studentClass}` : 'Logged in';
+
+    await fetchAllNames();
+    await populateClassDropdown();
+    loadPosts();
+    loadNotifications();
+}
+
+function handleTimelineLogout() {
     sessionStorage.removeItem('studentTimelineSession');
+    sessionStorage.removeItem('studentLoggedInSession');
     currentUser = null;
     if (unsubscribePosts) unsubscribePosts(); 
     if (unsubscribeNotifs) unsubscribeNotifs();
-    if (auth.currentUser) await signOut(auth);
+    if (auth.currentUser) signOut(auth);
     
-    document.getElementById('timelineApp').classList.add('hidden');
-    document.getElementById('loginScreen').classList.remove('hidden');
-    document.getElementById('loginUsername').value = '';
-    document.getElementById('loginPassword').value = '';
-});
+    document.getElementById('timelineApp')?.classList.add('hidden');
+    const loginOverlay = document.getElementById('loginScreen');
+    if (loginOverlay) loginOverlay.style.display = 'flex';
+
+    const uIn = document.getElementById('loginUsername');
+    const pIn = document.getElementById('loginPassword');
+    if (uIn) uIn.value = '';
+    if (pIn) pIn.value = '';
+}
+
+document.getElementById('logoutBtn')?.addEventListener('click', handleTimelineLogout);
+document.getElementById('studentLogoutBtn')?.addEventListener('click', handleTimelineLogout);
 
 // --- 3. @MENTION AUTOCOMPLETE ---
 
@@ -663,18 +702,4 @@ async function populateClassDropdown() {
             console.warn("Could not load classes dropdown list:", e);
         }
     }
-}
-
-function showTimelineApp() {
-    document.getElementById('loginScreen').classList.add('hidden');
-    document.getElementById('timelineApp').classList.remove('hidden');
-    
-    const badgeHTML = currentUser.type === 'staff' ? ` <span class="staff-badge">✓</span>` : '';
-    const classBadgeHTML = currentUser.studentClass ? ` (${currentUser.studentClass})` : '';
-    document.getElementById('currentUserDisplay').innerHTML = currentUser.name + badgeHTML + classBadgeHTML;
-    
-    fetchAllNames(); 
-    populateClassDropdown(); // Dynamically builds options based on Student vs Staff role
-    loadPosts();
-    loadNotifications();
 }
