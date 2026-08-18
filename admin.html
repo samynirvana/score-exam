@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teacher Admin Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="admin.css?v=101">
+    <link rel="stylesheet" href="admin.css?v=103">
 </head>
 <body>
 
@@ -206,118 +206,105 @@
                         </div>
                     </div>
 
-                <!-- Main Layout Grid mimicking the Image -->
-                <div class="dashboard-grid">
-    
-                    <!-- LEFT COLUMN CONTAINER -->
-                    <div class="dashboard-col">
-                        
-                        <!-- Box 1: Student Directory -->
-                        <div class="box">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
-                                <h3 style="margin: 0;">Student Master Directory</h3>
-                                <div style="display: flex; gap: 10px; align-items: center; flex: 1; justify-content: flex-end;">
-                                    <input type="text" id="searchStudents" placeholder="Search students..." style="width: 170px;">
-                                    
-                                    <label for="filterClass" style="font-size: 12px; white-space: nowrap;">Class:</label>
-                                    <select id="filterClass">
-                                        <option value="all">All Classes</option>
-                                    </select>
+                <!-- Balanced 2-Column Dashboard Overview Grid -->
+                <div class="dashboard-overview-grid">
+                    
+                    <!-- LEFT PANEL: Quick Actions -->
+                    <div class="box dashboard-panel">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <div>
+                                <h3 style="margin: 0; font-size: 18px; font-weight: 700;">Quick Actions</h3>
+                                <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-gray);">Frequently used administrative shortcuts</p>
+                            </div>
+                            <span style="background: rgba(30, 94, 255, 0.1); color: var(--primary-blue); font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px;">4 Actions</span>
+                        </div>
 
-                                    <label for="sortStudents" style="font-size: 12px; white-space: nowrap;">Sort by:</label>
-                                    <select id="sortStudents">
-                                        <option value="code">Code</option>
-                                        <option value="name">Name</option>
-                                        <option value="studentClass">Class</option>
-                                    </select>
+                        <div class="quick-actions-list">
+                            <!-- 1. Register New Student -->
+                            <div class="quick-action-item" onclick="document.getElementById('subtabStudents') ? document.getElementById('subtabStudents').click() : document.getElementById('menuAdminOnly').click()">
+                                <div class="stat-icon" style="background: #eef2ff; width: 44px; height: 44px;">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1e5eff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="9" cy="7" r="4"></circle>
+                                        <line x1="19" y1="8" x2="19" y2="14"></line>
+                                        <line x1="22" y1="11" x2="16" y2="11"></line>
+                                    </svg>
                                 </div>
+                                <div style="flex: 1;">
+                                    <h4 style="margin: 0; font-size: 14.5px; font-weight: 600;">Register New Student</h4>
+                                    <p style="margin: 3px 0 0 0; font-size: 12.5px; color: var(--text-gray);">Add student & generate access code</p>
+                                </div>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                             </div>
-                            <div class="table-responsive" style="max-height: 350px;">
-                                <table id="studentsTable">
-                                    <thead>
-                                        <tr>
-                                            <th>Code</th>
-                                            <th>Student Name</th>
-                                            <th>Class</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody></tbody>
-                                </table>
+
+                            <!-- 2. Bulk Upload Scores -->
+                            <div class="quick-action-item" onclick="document.getElementById('menuManageScore').click()">
+                                <div class="stat-icon" style="background: #f5f3ff; width: 44px; height: 44px;">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                                        <polyline points="10 9 9 9 8 9"></polyline>
+                                    </svg>
+                                </div>
+                                <div style="flex: 1;">
+                                    <h4 style="margin: 0; font-size: 14.5px; font-weight: 600;">Bulk Upload Scores (Excel)</h4>
+                                    <p style="margin: 3px 0 0 0; font-size: 12.5px; color: var(--text-gray);">Upload exam scores in bulk spreadsheet</p>
+                                </div>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                            </div>
+
+                            <!-- 3. Record Behavior Points -->
+                            <div class="quick-action-item" onclick="document.getElementById('menuManageBehavior').click()">
+                                <div class="stat-icon" style="background: #fffbeb; width: 44px; height: 44px;">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                                    </svg>
+                                </div>
+                                <div style="flex: 1;">
+                                    <h4 style="margin: 0; font-size: 14.5px; font-weight: 600;">Record Behavior Points</h4>
+                                    <p style="margin: 3px 0 0 0; font-size: 12.5px; color: var(--text-gray);">Add or deduct student conduct points</p>
+                                </div>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                            </div>
+
+                            <!-- 4. Create a Quiz (NEW) -->
+                            <div class="quick-action-item" onclick="document.getElementById('menuManageQuizzes').click()">
+                                <div class="stat-icon" style="background: #fdf4ff; width: 44px; height: 44px;">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d946ef" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M12 20h9"></path>
+                                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                                    </svg>
+                                </div>
+                                <div style="flex: 1;">
+                                    <h4 style="margin: 0; font-size: 14.5px; font-weight: 600;">Create a Quiz</h4>
+                                    <p style="margin: 3px 0 0 0; font-size: 12.5px; color: var(--text-gray);">Build & publish interactive quizzes</p>
+                                </div>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                             </div>
                         </div>
-
-                        <!-- Box 2: Behavior Ledger -->
-                        <div class="box">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                                <h3 style="margin: 0;">Student Behavior Points Ledger</h3>
-                                <select id="sortPoints">
-                                    <option value="default">Default</option>
-                                    <option value="name">Name (A-Z)</option>
-                                    <option value="class">Class</option>
-                                    <option value="pointsDesc">Highest Point</option>
-                                    <option value="pointsAsc">Lowest Point</option>
-                                </select>
-                            </div>
-                            <div class="table-responsive" style="max-height: 350px;">
-                                <table id="pointsTable">
-                                    <thead><tr><th>Student Code</th><th>Student Name</th><th>Class</th><th>Total Points</th><th>Action</th></tr></thead>
-                                    <tbody></tbody>
-                                </table>
-                            </div>
-                        </div>
-
                     </div>
 
-                    <!-- RIGHT COLUMN CONTAINER -->
-                    <div class="dashboard-col">
+                    <!-- RIGHT PANEL: Active News & Notices -->
+                    <div class="box dashboard-panel">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <div>
+                                <h3 style="margin: 0; font-size: 18px; font-weight: 700;">Active News & Notices</h3>
+                                <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-gray);">School announcements & bulletins</p>
+                            </div>
+                            <a href="#" onclick="document.getElementById('menuNewsOnly').click(); return false;" style="font-size: 13px; font-weight: 600; color: var(--primary-blue); text-decoration: none; display: flex; align-items: center; gap: 4px;">
+                                View All →
+                            </a>
+                        </div>
                         
-                        <!-- Box 3: Quick Actions -->
-                        <div class="box">
-                            <h3 style="margin: 0 0 16px 0;">Quick Actions</h3>
-                            
-                            <div class="quick-action-item" onclick="document.querySelector('[data-tab=\'tab-view-ledgers\']').click()">
-                                <div class="stat-icon" style="background: #eef2ff; width: 40px; height: 40px;">
-                                    <img src="https://lh3.googleusercontent.com/d/1wU--DpQ8zJXiKPi87YGX0yrdoX5tPSUJ" alt="Register" class="stat-icon-img">
-                                </div>
-                                <div style="flex: 1;">
-                                    <h4 style="margin: 0; font-size: 14px;">Register New Student</h4>
-                                    <p style="margin: 0; font-size: 12px; color: var(--text-gray);">Add a new student to the system</p>
-                                </div>
-                            </div>
-
-                            <div class="quick-action-item" onclick="document.querySelector('[data-tab=\'tab-manage-scores\']').click()">
-                                <div class="stat-icon" style="background: #f5f3ff; width: 40px; height: 40px;">
-                                    <img src="https://lh3.googleusercontent.com/d/1brvgCoXM3f0-EdWU_IBBKajMoTqN4SWP" alt="Scores" class="stat-icon-img">
-                                </div>
-                                <div style="flex: 1;">
-                                    <h4 style="margin: 0; font-size: 14px;">Bulk Upload Scores (Excel)</h4>
-                                    <p style="margin: 0; font-size: 12px; color: var(--text-gray);">Upload exam scores in bulk</p>
-                                </div>
-                            </div>
-
-                            <div class="quick-action-item" onclick="document.querySelector('[data-tab=\'tab-manage-behavior\']').click()">
-                                <div class="stat-icon" style="background: #fffbeb; width: 40px; height: 40px;">
-                                    <img src="https://lh3.googleusercontent.com/d/1UHsOQgU3N6Fk2Z18hctdamP_oJ7nHjQn" alt="Behavior" class="stat-icon-img">
-                                </div>
-                                <div style="flex: 1;">
-                                    <h4 style="margin: 0; font-size: 14px;">Record Behavior Points</h4>
-                                    <p style="margin: 0; font-size: 12px; color: var(--text-gray);">Add or subtract behavior points</p>
-                                </div>
-                            </div>
+                        <div class="table-responsive" style="flex: 1; min-height: 220px; max-height: 280px; border: none; overflow-y: auto; margin-bottom: 16px;" id="dashboard-news-container">
+                            <!-- Populated dynamically via JS -->
                         </div>
-
-                        <!-- Box 4: Active News / Notice -->
-                        <div class="box">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                                <h3 style="margin: 0;">Active News / Notice</h3>
-                                <a href="#" onclick="document.querySelector('[data-tab=\'tab-manage-news\']').click()" style="font-size: 13px; color: var(--primary-blue); text-decoration: none;">View All</a>
-                            </div>
-                            
-                            <div class="table-responsive" style="max-height: 250px; border: none; overflow-y: auto;" id="dashboard-news-container"></div>
-                            <button onclick="document.querySelector('[data-tab=\'tab-manage-news\']').click()" style="margin-top: 10px;">+ Post News / Notice</button>
-                        </div>
-
+                        
+                        <button onclick="document.getElementById('menuNewsOnly').click()" style="margin-top: auto; width: 100%; background: var(--primary-blue); font-weight: 600; padding: 12px; border-radius: 10px;">
+                            + Post News / Notice
+                        </button>
                     </div>
 
                 </div>
@@ -584,85 +571,96 @@
 
           <!-- TAB 4: Databases (Unified User & Database Management) -->
             <div id="tab-view-ledgers" class="tab-content admin-only-view">
-                
-                <!-- Sub-tab Navigation Pill Bar -->
-                <div class="db-subtab-nav">
-                    <button class="db-pill-btn active" onclick="switchDbView('all')" id="pillDbAll">
-                        <svg class="db-pill-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="3" width="7" height="7" rx="1"></rect>
-                            <rect x="14" y="3" width="7" height="7" rx="1"></rect>
-                            <rect x="14" y="14" width="7" height="7" rx="1"></rect>
-                            <rect x="3" y="14" width="7" height="7" rx="1"></rect>
-                        </svg>
-                        All Databases
-                    </button>
-                    <button class="db-pill-btn" onclick="switchDbView('students')" id="pillDbStudents">
-                        <svg class="db-pill-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="9" cy="7" r="4"></circle>
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                        </svg>
-                        Students Database
-                    </button>
-                    <button class="db-pill-btn" onclick="switchDbView('teachers')" id="pillDbTeachers">
-                        <svg class="db-pill-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
-                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
-                        </svg>
-                        Teacher Database
-                    </button>
-                    <button class="db-pill-btn" onclick="switchDbView('quizzes')" id="pillDbQuizzes">
-                        <svg class="db-pill-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                        </svg>
-                        Quiz Database
-                    </button>
-                </div>
-
                 <div class="dashboard-grid">
                     
                     <!-- STUDENTS SECTION -->
                     <div id="db-section-students" class="db-section-group" style="grid-column: 1 / -1; display: contents;">
-                        <!-- 1. Register Single Student -->
-                        <div class="box">
-                            <h3>1. Register Single Student</h3>
-                            <input type="text" id="newStudentName" placeholder="Full Student Name">
-                            <input type="text" id="newStudentClass" placeholder="Class Room (e.g., Grade 7A)">
-                            <button id="registerStudentBtn">Generate Student Code</button>
-                        </div>
-                        <!-- Bulk Register Students with Excel -->
-                        <div class="box">
-                            <h3>Bulk Register Students (Excel)</h3>
-                            <p style="font-size: 13px; color: var(--text-gray); margin-bottom: 12px;">
-                                Upload an Excel (.xlsx, .csv) file containing columns for <strong>Student Name</strong> and <strong>Class</strong>.
-                            </p>
-                            <input type="file" id="bulkStudentsFile" accept=".xlsx, .xls, .csv" style="margin-bottom: 12px;">
-                            <button id="uploadBulkStudentsBtn" style="background: var(--primary-blue);">Upload & Process Bulk Students</button>
+                        <!-- Register Student (Combined Single & Bulk with Switcher) -->
+                        <div class="box" style="grid-column: 1 / -1;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 12px;">
+                                <h3 style="margin: 0;">Register Student</h3>
+                                <div class="register-mode-toggle">
+                                    <button type="button" class="toggle-mode-btn active" id="btnModeSingle" onclick="setStudentRegMode('single')">Single Student</button>
+                                    <button type="button" class="toggle-mode-btn" id="btnModeBulk" onclick="setStudentRegMode('bulk')">Bulk Register (Excel)</button>
+                                </div>
+                            </div>
+
+                            <!-- Single Student Mode -->
+                            <div id="studentRegSingleForm">
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 16px;">
+                                    <div>
+                                        <label style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Full Student Name</label>
+                                        <input type="text" id="newStudentName" placeholder="Full Student Name">
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Class Room</label>
+                                        <input type="text" id="newStudentClass" placeholder="Class Room (e.g., Grade 7A)">
+                                    </div>
+                                </div>
+                                <button id="registerStudentBtn" style="background: var(--primary-blue); width: auto; padding: 10px 24px;">Generate Student Code</button>
+                            </div>
+
+                            <!-- Bulk Register Mode -->
+                            <div id="studentRegBulkForm" class="hidden">
+                                <p style="font-size: 13px; color: var(--text-gray); margin-top: 0; margin-bottom: 12px;">
+                                    Upload an Excel (.xlsx, .csv) file containing columns for <strong>Student Name</strong> and <strong>Class</strong>.
+                                </p>
+                                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                                    <input type="file" id="bulkStudentsFile" accept=".xlsx, .xls, .csv" style="max-width: 320px; margin: 0;">
+                                    <button id="uploadBulkStudentsBtn" style="background: var(--primary-blue); width: auto; padding: 10px 24px; margin: 0;">Upload & Process Bulk Students</button>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- STUDENTS MASTER DIRECTORY -->
                         <div class="box" style="grid-column: 1 / -1;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
-                                <h3 style="margin: 0;">Students Master Directory</h3>
-                                <input type="text" id="searchDbStudents" placeholder="Search students..." oninput="renderDbStudentsTable()" style="width: 200px; margin: 0; padding: 6px 12px; font-size: 13px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <h3 style="margin: 0;">Students Master Directory</h3>
+                                    <span id="dbStudentsCountBadge" style="background: rgba(30, 94, 255, 0.1); color: var(--primary-blue); font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 12px;">0</span>
+                                </div>
+                                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                    <!-- Search Input -->
+                                    <input type="text" id="searchDbStudents" placeholder="Search students..." oninput="onDbStudentSearchChange()" style="width: 180px; margin: 0; padding: 8px 12px; font-size: 13px;">
+                                    
+                                    <!-- Filter Class Dropdown -->
+                                    <select id="filterDbStudentClass" onchange="onDbStudentFilterChange()" style="width: auto; min-width: 130px; margin: 0; padding: 8px 12px; font-size: 13px;">
+                                        <option value="all">All Classes</option>
+                                    </select>
+
+                                    <!-- Rows Per Page Dropdown -->
+                                    <select id="dbStudentsPerPage" onchange="onDbStudentPerPageChange()" style="width: auto; margin: 0; padding: 8px 12px; font-size: 13px;">
+                                        <option value="10">Show 10</option>
+                                        <option value="20">Show 20</option>
+                                        <option value="50">Show 50</option>
+                                        <option value="all">Show All</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div class="table-responsive" style="max-height: 350px;">
+
+                            <div class="table-responsive" style="max-height: 450px;">
                                 <table id="dbStudentsDirectoryTable">
                                     <thead>
                                         <tr>
-                                            <th>Code</th>
                                             <th>Student Name</th>
                                             <th>Class</th>
-                                            <th>Actions</th>
+                                            <th style="width: 80px; text-align: center;">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <!-- Populated via JavaScript -->
                                     </tbody>
                                 </table>
+                            </div>
+
+                            <!-- Pagination Controls -->
+                            <div class="db-pagination-container" id="dbStudentsPagination">
+                                <div class="db-pagination-info" id="dbStudentsPageInfo">
+                                    Showing 0 to 0 of 0 students
+                                </div>
+                                <div class="db-pagination-buttons" id="dbStudentsPageButtons">
+                                    <!-- Page buttons injected via JS -->
+                                </div>
                             </div>
                         </div>
 
@@ -1008,11 +1006,41 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Modal for Viewing Student Unique Code -->
+                <div id="studentCodeModal" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); z-index:1200; display:flex; justify-content:center; align-items:center; backdrop-filter: blur(4px);">
+                    <div class="box" style="width: 90%; max-width: 400px; position: relative; text-align: center; padding: 28px 24px; border-radius: 16px; box-shadow: 0 12px 36px rgba(0,0,0,0.25);">
+                        <button onclick="closeStudentCodeModal()" style="position:absolute; right:15px; top:15px; width:auto; background:#64748b; color:white; padding: 6px 12px; font-size: 12px; border-radius: 6px; border:none; cursor:pointer;">Close</button>
+                        
+                        <div style="width: 52px; height: 52px; border-radius: 50%; background: #eef2ff; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                        </div>
+                        
+                        <h3 style="margin: 0 0 4px; font-size: 18px; color: var(--text-dark);" id="modalStudentCodeName">Student Name</h3>
+                        <p style="margin: 0 0 18px; font-size: 13px; color: var(--text-gray);" id="modalStudentCodeClass">Class Room</p>
+                        
+                        <div style="background: #f8fafc; border: 2px dashed #cbd5e1; padding: 16px; border-radius: 12px; margin-bottom: 20px;">
+                            <p style="margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-gray); font-weight: 700;">Unique Student Code</p>
+                            <div id="modalDisplayStudentCode" style="font-family: monospace; font-size: 26px; font-weight: 800; letter-spacing: 4px; color: var(--primary-blue);">ABC12</div>
+                        </div>
+
+                        <button id="copyStudentCodeBtn" onclick="copyStudentCodeToClipboard()" style="background: var(--primary-blue); width: 100%; padding: 11px 16px; font-weight: 600; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            <span id="copyBtnText">Copy Code</span>
+                        </button>
+                    </div>
+                </div>
         </main>
     </div>
 
 
     <!-- Make sure admin.js is imported last -->
-    <script type="module" src="admin.js?v=101"></script>
+    <script type="module" src="admin.js?v=103"></script>
 </body>
 </html>

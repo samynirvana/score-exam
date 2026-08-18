@@ -228,45 +228,245 @@ window.generateNewUniqueCode = async function(oldCode) {
     }
 };
 
+// --- STUDENT REGISTRATION MODE SWITCHER ---
+window.setStudentRegMode = function(mode) {
+    const singleForm = document.getElementById('studentRegSingleForm');
+    const bulkForm = document.getElementById('studentRegBulkForm');
+    const btnSingle = document.getElementById('btnModeSingle');
+    const btnBulk = document.getElementById('btnModeBulk');
+
+    if (mode === 'bulk') {
+        if (singleForm) singleForm.classList.add('hidden');
+        if (bulkForm) bulkForm.classList.remove('hidden');
+        if (btnSingle) btnSingle.classList.remove('active');
+        if (btnBulk) btnBulk.classList.add('active');
+    } else {
+        if (bulkForm) bulkForm.classList.add('hidden');
+        if (singleForm) singleForm.classList.remove('hidden');
+        if (btnBulk) btnBulk.classList.remove('active');
+        if (btnSingle) btnSingle.classList.add('active');
+    }
+};
+
+// --- VIEW STUDENT CODE MODAL ---
+window.viewStudentCode = function(studentId, studentName, studentClass) {
+    const modal = document.getElementById('studentCodeModal');
+    const nameEl = document.getElementById('modalStudentCodeName');
+    const classEl = document.getElementById('modalStudentCodeClass');
+    const codeEl = document.getElementById('modalDisplayStudentCode');
+    const copyBtnText = document.getElementById('copyBtnText');
+
+    if (nameEl) nameEl.innerText = studentName || 'Student';
+    if (classEl) classEl.innerText = studentClass ? `Class: ${studentClass}` : 'Class: N/A';
+    if (codeEl) codeEl.innerText = studentId;
+    if (copyBtnText) copyBtnText.innerText = 'Copy Code';
+
+    if (modal) modal.classList.remove('hidden');
+};
+
+window.closeStudentCodeModal = function() {
+    const modal = document.getElementById('studentCodeModal');
+    if (modal) modal.classList.add('hidden');
+};
+
+window.copyStudentCodeToClipboard = async function() {
+    const codeEl = document.getElementById('modalDisplayStudentCode');
+    const copyBtnText = document.getElementById('copyBtnText');
+    if (!codeEl) return;
+
+    try {
+        await navigator.clipboard.writeText(codeEl.innerText.trim());
+        if (copyBtnText) {
+            copyBtnText.innerText = 'Copied!';
+            setTimeout(() => {
+                if (copyBtnText) copyBtnText.innerText = 'Copy Code';
+            }, 2000);
+        }
+    } catch (err) {
+        // Fallback for older browsers
+        const textarea = document.createElement('textarea');
+        textarea.value = codeEl.innerText.trim();
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        if (copyBtnText) {
+            copyBtnText.innerText = 'Copied!';
+            setTimeout(() => {
+                if (copyBtnText) copyBtnText.innerText = 'Copy Code';
+            }, 2000);
+        }
+    }
+};
+
+// --- NATURAL STUDENT SORTING ---
+function compareStudentsByClassAndName(a, b) {
+    const classA = (a.studentClass || '').trim();
+    const classB = (b.studentClass || '').trim();
+    
+    // Natural alphanumeric class compare (e.g. Grade 7A < Grade 7B < Grade 10A < Grade 12)
+    const classComp = classA.localeCompare(classB, undefined, { numeric: true, sensitivity: 'base' });
+    if (classComp !== 0) return classComp;
+    
+    // Within same class, compare student names alphabetically (A to Z)
+    const nameA = (a.studentName || '').trim();
+    const nameB = (b.studentName || '').trim();
+    return nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
+}
+
+// --- STUDENTS MASTER DIRECTORY (DATABASES TAB) ---
+let dbStudentsCurrentPage = 1;
+
+window.onDbStudentSearchChange = debounce(() => {
+    dbStudentsCurrentPage = 1;
+    renderDbStudentsTable();
+}, 200);
+
+window.onDbStudentFilterChange = function() {
+    dbStudentsCurrentPage = 1;
+    renderDbStudentsTable();
+};
+
+window.onDbStudentPerPageChange = function() {
+    dbStudentsCurrentPage = 1;
+    renderDbStudentsTable();
+};
+
+window.goToDbStudentsPage = function(pageNum) {
+    dbStudentsCurrentPage = pageNum;
+    renderDbStudentsTable();
+};
+
 window.renderDbStudentsTable = function() {
     const searchInput = document.getElementById('searchDbStudents');
-    const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    const classFilter = document.getElementById('filterDbStudentClass');
+    const perPageSelect = document.getElementById('dbStudentsPerPage');
     const tbody = document.querySelector("#dbStudentsDirectoryTable tbody");
+    const countBadge = document.getElementById('dbStudentsCountBadge');
+    const pageInfo = document.getElementById('dbStudentsPageInfo');
+    const pageButtons = document.getElementById('dbStudentsPageButtons');
     
     if (!tbody) return;
 
-    const filtered = allStudentsData.filter(s => {
-        return !searchTerm ||
+    const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    const selectedClass = classFilter ? classFilter.value : 'all';
+    const perPageVal = perPageSelect ? perPageSelect.value : '10';
+
+    // 1. Filter students
+    let filtered = allStudentsData.filter(s => {
+        const matchesSearch = !searchTerm ||
                (s.studentName && s.studentName.toLowerCase().includes(searchTerm)) ||
                (s.studentClass && s.studentClass.toLowerCase().includes(searchTerm)) ||
                (s.id && s.id.toLowerCase().includes(searchTerm));
+        
+        const matchesClass = (selectedClass === 'all') || (s.studentClass === selectedClass);
+
+        return matchesSearch && matchesClass;
     });
 
+    // 2. Sort: lower class first, then student name A-Z
+    filtered.sort(compareStudentsByClassAndName);
+
+    // Update total count badge
+    if (countBadge) countBadge.innerText = filtered.length;
+
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: var(--text-gray);">No matching students found.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding: 30px; color: var(--text-gray);">No matching students found.</td></tr>`;
+        if (pageInfo) pageInfo.innerText = 'Showing 0 to 0 of 0 students';
+        if (pageButtons) pageButtons.innerHTML = '';
         return;
     }
 
-    // Batch HTML creation in memory
-    const rowsHtml = filtered.map(student => `
+    // 3. Calculate Pagination
+    const perPage = perPageVal === 'all' ? filtered.length : parseInt(perPageVal, 10) || 10;
+    const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+
+    if (dbStudentsCurrentPage > totalPages) {
+        dbStudentsCurrentPage = totalPages;
+    }
+    if (dbStudentsCurrentPage < 1) {
+        dbStudentsCurrentPage = 1;
+    }
+
+    const startIndex = (dbStudentsCurrentPage - 1) * perPage;
+    const endIndex = Math.min(filtered.length, startIndex + perPage);
+    const paginatedStudents = filtered.slice(startIndex, endIndex);
+
+    // 4. Render Table Rows (without code column)
+    const rowsHtml = paginatedStudents.map(student => {
+        const safeName = (student.studentName || 'Student').replace(/'/g, "\\'");
+        const safeClass = (student.studentClass || '').replace(/'/g, "\\'");
+
+        return `
         <tr>
-            <td><strong style="letter-spacing: 1px;">${student.id}</strong></td>
-            <td>${student.studentName || 'N/A'}</td>
+            <td><strong style="font-weight: 600; color: var(--text-dark);">${student.studentName || 'N/A'}</strong></td>
             <td><span style="color: var(--primary-blue); font-weight: 600;">${student.studentClass || 'N/A'}</span></td>
-            <td>
+            <td style="text-align: center;">
                 <div class="kebab-menu">
                     <button class="kebab-btn" onclick="toggleMenu(event, 'dbstudent-${student.id}')">⋮</button>
                     <div id="menu-dbstudent-${student.id}" class="dropdown-menu">
-                        <button class="dropdown-item" onclick="editStudentProfile('${student.id}')">Edit Student Profile</button>
-                        <button class="dropdown-item" onclick="generateNewUniqueCode('${student.id}')">Generate New Code</button>
-                        <button class="dropdown-item danger" onclick="deleteStudentProfile('${student.id}')">Delete Student</button>
+                        <button class="dropdown-item" onclick="viewStudentCode('${student.id}', '${safeName}', '${safeClass}')">👁️ View Student Code</button>
+                        <button class="dropdown-item" onclick="editStudentProfile('${student.id}')">✏️ Edit Student Profile</button>
+                        <button class="dropdown-item" onclick="generateNewUniqueCode('${student.id}')">🔄 Generate New Code</button>
+                        <button class="dropdown-item danger" onclick="deleteStudentProfile('${student.id}')">🗑️ Delete Student</button>
                     </div>
                 </div>
             </td>
         </tr>
-    `);
+        `;
+    });
 
     tbody.innerHTML = rowsHtml.join('');
+
+    // 5. Render Pagination Info & Buttons
+    if (pageInfo) {
+        pageInfo.innerText = `Showing ${startIndex + 1} to ${endIndex} of ${filtered.length} students`;
+    }
+
+    if (pageButtons) {
+        if (totalPages <= 1) {
+            pageButtons.innerHTML = '';
+        } else {
+            let btnsHtml = `
+                <button class="db-page-btn" ${dbStudentsCurrentPage === 1 ? 'disabled' : ''} onclick="goToDbStudentsPage(${dbStudentsCurrentPage - 1})">
+                    &larr; Prev
+                </button>
+            `;
+
+            // Smart page number buttons
+            let startP = Math.max(1, dbStudentsCurrentPage - 2);
+            let endP = Math.min(totalPages, startP + 4);
+            if (endP - startP < 4) {
+                startP = Math.max(1, endP - 4);
+            }
+
+            if (startP > 1) {
+                btnsHtml += `<button class="db-page-btn" onclick="goToDbStudentsPage(1)">1</button>`;
+                if (startP > 2) btnsHtml += `<span style="padding: 0 4px; color: var(--text-gray);">...</span>`;
+            }
+
+            for (let p = startP; p <= endP; p++) {
+                btnsHtml += `
+                    <button class="db-page-btn ${p === dbStudentsCurrentPage ? 'active' : ''}" onclick="goToDbStudentsPage(${p})">
+                        ${p}
+                    </button>
+                `;
+            }
+
+            if (endP < totalPages) {
+                if (endP < totalPages - 1) btnsHtml += `<span style="padding: 0 4px; color: var(--text-gray);">...</span>`;
+                btnsHtml += `<button class="db-page-btn" onclick="goToDbStudentsPage(${totalPages})">${totalPages}</button>`;
+            }
+
+            btnsHtml += `
+                <button class="db-page-btn" ${dbStudentsCurrentPage === totalPages ? 'disabled' : ''} onclick="goToDbStudentsPage(${dbStudentsCurrentPage + 1})">
+                    Next &rarr;
+                </button>
+            `;
+
+            pageButtons.innerHTML = btnsHtml;
+        }
+    }
 };
 
 function generateRandomCode(length = 5) {
@@ -350,21 +550,57 @@ async function loadStudentsDirectory() {
             const data = doc.data();
             allStudentsData.push({ id: doc.id, ...data });
             
-            // IMPORTANT: Make sure 'data.studentClass' matches your exact Firebase field!
             if (data.studentClass) { 
-                classesSet.add(data.studentClass);
+                classesSet.add(data.studentClass.trim());
             }
         });
 
-        // Populate the filter dropdown with unique classes
-        const filterDropdown = document.getElementById('filterClass');
-        filterDropdown.innerHTML = '<option value="all">All Classes</option>';
-        
-        Array.from(classesSet).sort().forEach(className => {
-            filterDropdown.innerHTML += `<option value="${className}">${className}</option>`;
-        });
+        // Naturally sort classes (e.g., Grade 7A, Grade 7B, Grade 10A, Grade 12)
+        const sortedClasses = Array.from(classesSet).filter(Boolean).sort((a, b) => 
+            a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+        );
 
-        renderStudentsTable();
+        // Populate Database Class Filter dropdown
+        const dbClassFilter = document.getElementById('filterDbStudentClass');
+        if (dbClassFilter) {
+            const currentSelected = dbClassFilter.value;
+            let optionsHtml = '<option value="all">All Classes</option>';
+            sortedClasses.forEach(className => {
+                optionsHtml += `<option value="${className}">${className}</option>`;
+            });
+            dbClassFilter.innerHTML = optionsHtml;
+            if (sortedClasses.includes(currentSelected)) {
+                dbClassFilter.value = currentSelected;
+            }
+        }
+
+        // Populate legacy filterClass dropdown if present
+        const filterDropdown = document.getElementById('filterClass');
+        if (filterDropdown) {
+            filterDropdown.innerHTML = '<option value="all">All Classes</option>';
+            sortedClasses.forEach(className => {
+                filterDropdown.innerHTML += `<option value="${className}">${className}</option>`;
+            });
+        }
+
+        // Populate Active Classes Table
+        const classesTbody = document.querySelector("#classesTable tbody");
+        if (classesTbody) {
+            if (sortedClasses.length === 0) {
+                classesTbody.innerHTML = `<tr><td colspan="2" style="text-align: center; color: var(--text-gray);">No classes found.</td></tr>`;
+            } else {
+                classesTbody.innerHTML = sortedClasses.map(cls => `
+                    <tr>
+                        <td><strong>${cls}</strong></td>
+                        <td><span style="color: #64748b; font-size: 13px;">Auto-detected from Students</span></td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        if (typeof renderStudentsTable === "function") {
+            renderStudentsTable();
+        }
         if (typeof renderDbStudentsTable === "function") {
             renderDbStudentsTable();
         }
@@ -810,21 +1046,10 @@ document.getElementById('filterPointsClass')?.addEventListener('change', loadPoi
 
 // --- TAB & SUB-TAB NAVIGATION LOGIC ---
 window.switchDbView = function(viewName) {
-    const validViews = ['all', 'students', 'teachers', 'quizzes'];
-    if (!validViews.includes(viewName)) viewName = 'all';
+    const validViews = ['students', 'teachers', 'quizzes', 'all'];
+    if (!validViews.includes(viewName)) viewName = 'students';
 
-    // 1. Update In-Page Sub-tab Pills
-    const pillMap = {
-        'all': 'pillDbAll',
-        'students': 'pillDbStudents',
-        'teachers': 'pillDbTeachers',
-        'quizzes': 'pillDbQuizzes'
-    };
-    document.querySelectorAll('.db-pill-btn').forEach(btn => btn.classList.remove('active'));
-    const activePill = document.getElementById(pillMap[viewName]);
-    if (activePill) activePill.classList.add('active');
-
-    // 2. Update Sidebar Submenu Active States
+    // 1. Update Sidebar Submenu Active States
     document.querySelectorAll('.submenu-btn').forEach(btn => btn.classList.remove('active'));
     const subtabMap = {
         'students': 'subtabStudents',
@@ -836,7 +1061,7 @@ window.switchDbView = function(viewName) {
         if (activeSubBtn) activeSubBtn.classList.add('active');
     }
 
-    // 3. Show/Hide Database Section Groups
+    // 2. Show/Hide Database Section Groups
     const secStudents = document.getElementById('db-section-students');
     const secTeachers = document.getElementById('db-section-teachers');
     const secQuizzes = document.getElementById('db-section-quizzes');
@@ -867,6 +1092,11 @@ document.querySelectorAll('.menu-btn').forEach(button => {
                 } else {
                     dbGroup.classList.add('open');
                 }
+            }
+            // If no subtab is active, default to students view
+            const activeSub = document.querySelector('.submenu-btn.active');
+            if (!activeSub) {
+                window.switchDbView('students');
             }
         } else {
             // Close database dropdown when navigating to a different main tab
@@ -1946,12 +2176,12 @@ function renderStudentsTable() {
 // Attach debounced event listener (200ms delay)
 document.getElementById('searchStudents')?.addEventListener('input', debounce(renderStudentsTable, 200));
 
-// 3. New Event Listener for the Class Filter
-document.getElementById('filterClass').addEventListener('change', renderStudentsTable);
+// 3. Event Listener for the Class Filter
+document.getElementById('filterClass')?.addEventListener('change', renderStudentsTable);
 
-// (Keep your existing search and sort listeners here)
-document.getElementById('searchStudents').addEventListener('input', renderStudentsTable);
-document.getElementById('sortStudents').addEventListener('change', renderStudentsTable);
+// Search and sort listeners
+document.getElementById('searchStudents')?.addEventListener('input', renderStudentsTable);
+document.getElementById('sortStudents')?.addEventListener('change', renderStudentsTable);
 
 
 // 4. Function to toggle the code visibility
@@ -1969,8 +2199,8 @@ window.toggleCodeVisibility = function(studentId) {
 };
 
 // 3. Event Listeners for Search and Sort
-document.getElementById('searchStudents').addEventListener('input', renderStudentsTable);
-document.getElementById('sortStudents').addEventListener('change', renderStudentsTable);
+document.getElementById('searchStudents')?.addEventListener('input', renderStudentsTable);
+document.getElementById('sortStudents')?.addEventListener('change', renderStudentsTable);
 
 // 4. Menu Toggle Logic (Attach to window so inline HTML onclick works)
 window.toggleMenu = function(event, id) {
