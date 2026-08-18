@@ -507,7 +507,8 @@ th, td {
     z-index: 1;
 }
 
-.school-building-img {
+.school-building-img,
+.school-building-video {
     position: absolute;
     right: 0;
     top: 0;
@@ -822,7 +823,8 @@ button:active,
         font-size: 20px !important;
     }
 
-    .school-building-img {
+    .school-building-img,
+    .school-building-video {
         width: 45% !important;
         opacity: 0.2 !important;
     }

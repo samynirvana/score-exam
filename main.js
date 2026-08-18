@@ -275,8 +275,7 @@ function renderUnifiedProfile(scoreSnap, pointSnap) {
     if (classDisp) classDisp.innerText = `Class: ${displayClass}`;
 
     // Update Greeting Banner & Sidebar Profile
-    const greetingEl = document.querySelector('.greeting-title');
-    if (greetingEl) greetingEl.innerText = `Good morning, ${displayName.split(' ')[0]} 👋`;
+    updateGreetingBanner(displayName);
 
     const sidebarNameEl = document.getElementById('sidebarStudentName');
     if (sidebarNameEl) sidebarNameEl.innerText = displayName;
@@ -389,6 +388,26 @@ function loadNewsTicker() {
     }
 }
 
+function getTimeBasedGreeting(displayName) {
+    const hour = new Date().getHours();
+    let timeGreeting = "Good morning";
+    if (hour >= 12 && hour < 17) {
+        timeGreeting = "Good afternoon";
+    } else if (hour >= 17 || hour < 5) {
+        timeGreeting = "Good evening";
+    }
+    const namePart = displayName ? displayName.split(' ')[0] : 'Student';
+    return `${timeGreeting}, ${namePart} 👋`;
+}
+
+function updateGreetingBanner(displayName) {
+    const greetingEl = document.querySelector('.greeting-title');
+    if (greetingEl) {
+        greetingEl.innerText = getTimeBasedGreeting(displayName);
+    }
+}
+
 // Initialize on load
+updateGreetingBanner();
 checkStudentSession();
 loadNewsTicker();
