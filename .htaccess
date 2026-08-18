@@ -1,0 +1,27 @@
+# ==============================================================================
+# CPANEL & APACHE CACHE PREVENTION CONFIGURATION
+# Forces mobile browsers, Safari, Chrome, and iOS devices to always fetch the 
+# latest code versions without stale cached HTML, CSS, or JS files.
+# ==============================================================================
+
+<IfModule mod_headers.c>
+    # Disable caching for all HTML web pages
+    <FilesMatch "\.(html|htm)$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate, max-age=0"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
+    </FilesMatch>
+    
+    # Disable caching for stylesheet and javascript files
+    <FilesMatch "\.(css|js)$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate, max-age=0"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
+    </FilesMatch>
+</IfModule>
+
+# Disable ETag headers to prevent stale 304 Not Modified responses
+<IfModule mod_headers.c>
+    Header unset ETag
+</IfModule>
+FileETag None
