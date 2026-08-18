@@ -914,3 +914,161 @@ button:active,
         padding: 12px 10px 24px !important;
     }
 }
+
+/* ======================================================
+   MOBILE KEBAB TOPBAR NAVIGATION SYSTEM (<= 768px)
+   ====================================================== */
+
+.sidebar,
+.student-sidebar {
+    overflow: visible !important;
+}
+
+.mobile-kebab-container {
+    display: none;
+    position: relative;
+    z-index: 999999;
+}
+
+.mobile-kebab-btn {
+    background: #1e5eff !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 10px !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    box-shadow: 0 4px 12px rgba(30, 94, 255, 0.4) !important;
+    outline: none !important;
+    padding: 0 !important;
+    transition: transform 0.1s ease, background 0.2s ease !important;
+}
+
+.mobile-kebab-btn:active {
+    transform: scale(0.92) !important;
+}
+
+.mobile-kebab-btn svg {
+    width: 20px !important;
+    height: 20px !important;
+    stroke: #ffffff !important;
+    fill: none !important;
+    pointer-events: none !important;
+}
+
+.mobile-topbar-dropdown {
+    position: fixed !important;
+    top: 54px !important;
+    right: 12px !important;
+    width: 240px !important;
+    max-width: calc(100vw - 24px) !important;
+    background: var(--card-bg, #ffffff) !important;
+    border: 1px solid var(--border-color, #e2e8f0) !important;
+    border-radius: 16px !important;
+    padding: 12px !important;
+    box-shadow: 0 20px 45px -5px rgba(0, 0, 0, 0.45) !important;
+    z-index: 999999 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    animation: kebabDropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@keyframes kebabDropdownFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.mobile-topbar-dropdown.hidden {
+    display: none !important;
+}
+
+.kebab-group-label {
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    letter-spacing: 1px !important;
+    color: var(--text-gray, #64748b) !important;
+    padding: 6px 10px 4px !important;
+    text-transform: uppercase !important;
+}
+
+.kebab-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 10px 12px !important;
+    border-radius: 10px !important;
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    color: var(--text-dark, #0f172a) !important;
+    text-decoration: none !important;
+    background: transparent !important;
+    border: none !important;
+    width: 100% !important;
+    text-align: left !important;
+    cursor: pointer !important;
+    transition: background 0.15s, color 0.15s !important;
+    box-sizing: border-box !important;
+}
+
+.kebab-item:hover,
+.kebab-item.active {
+    background: var(--input-bg, #f1f5f9) !important;
+    color: var(--primary-blue, #1e5eff) !important;
+}
+
+.kebab-item.active {
+    font-weight: 700 !important;
+}
+
+.kebab-divider {
+    height: 1px !important;
+    background: var(--border-color, #e2e8f0) !important;
+    margin: 4px 0 !important;
+}
+
+.kebab-btn-danger {
+    color: #ef4444 !important;
+}
+
+.kebab-btn-danger:hover {
+    background: rgba(239, 68, 68, 0.1) !important;
+}
+
+/* RESPONSIVE HIDING/SHOWING OF TOPBAR ON MOBILE (<= 768px) */
+@media screen and (max-width: 768px) {
+    .brand > div:first-child {
+        width: 32px !important;
+        height: 32px !important;
+        padding: 4px !important;
+        border-radius: 8px !important;
+    }
+
+    .brand h2 {
+        font-size: 13px !important;
+    }
+
+    .brand p {
+        font-size: 10px !important;
+    }
+
+    .desktop-menu-bar,
+    .desktop-user-actions {
+        display: none !important;
+    }
+
+    .mobile-kebab-container {
+        display: block !important;
+    }
+}
