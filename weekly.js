@@ -119,15 +119,16 @@ document.getElementById('btnLogout')?.addEventListener('click', () => {
 });
 
 // Main Navigation Event Listeners
-document.getElementById('btnClassView')?.addEventListener('click', (e) => switchTab('classView', e.target));
-document.getElementById('btnTeacherView')?.addEventListener('click', (e) => switchTab('teacherView', e.target));
-document.getElementById('btnAdminView')?.addEventListener('click', (e) => switchTab('adminView', e.target));
+document.getElementById('btnClassView')?.addEventListener('click', (e) => switchTab('classView', e.currentTarget));
+document.getElementById('btnTeacherView')?.addEventListener('click', (e) => switchTab('teacherView', e.currentTarget));
+document.getElementById('btnAdminView')?.addEventListener('click', (e) => switchTab('adminView', e.currentTarget));
 
 function switchTab(tabId, targetBtn) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
   document.getElementById(tabId)?.classList.add('active');
-  targetBtn?.classList.add('active');
+  const btn = targetBtn?.closest ? targetBtn.closest('.tab-btn') : targetBtn;
+  btn?.classList.add('active');
 }
 
 // Helper to retrieve slot assignments normalized as an array
@@ -158,6 +159,44 @@ document.getElementById('resourceType')?.addEventListener('change', (e) => {
   }
 });
 
+function sortWeeks(weekKeys) {
+  return weekKeys.slice().sort((a, b) => {
+    const numA = parseInt(a.replace(/\D/g, ''), 10);
+    const numB = parseInt(b.replace(/\D/g, ''), 10);
+    if (!isNaN(numA) && !isNaN(numB)) {
+      return numA - numB;
+    }
+    return a.localeCompare(b, undefined, { numeric: true });
+  });
+}
+
+function formatModernDateRange(startDateStr, endDateStr) {
+  if (!startDateStr || !endDateStr) return 'Dates: -';
+  const p1 = startDateStr.split('-');
+  const p2 = endDateStr.split('-');
+  
+  if (p1.length !== 3 || p2.length !== 3) {
+    return `${startDateStr} to ${endDateStr}`;
+  }
+
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const d1 = parseInt(p1[2], 10);
+  const m1 = months[parseInt(p1[1], 10) - 1];
+  const y1 = p1[0];
+
+  const d2 = parseInt(p2[2], 10);
+  const m2 = months[parseInt(p2[1], 10) - 1];
+  const y2 = p2[0];
+
+  if (y1 === y2 && m1 === m2) {
+    return `${d1} – ${d2} ${m1} ${y1}`;
+  } else if (y1 === y2) {
+    return `${d1} ${m1} – ${d2} ${m2} ${y1}`;
+  } else {
+    return `${d1} ${m1} ${y1} – ${d2} ${m2} ${y2}`;
+  }
+}
+
 // Populate Calendar Select Boxes
 function populateCalendarSelects() {
   const years = Object.keys(academicCalendar);
@@ -182,9 +221,11 @@ function populateCalendarSelects() {
     if (currTheme && themes.includes(currTheme)) themeSel.value = currTheme;
 
     const selectedTheme = themeSel.value;
-    const weeks = selectedYear && selectedTheme && academicCalendar[selectedYear][selectedTheme] 
+    const rawWeeks = selectedYear && selectedTheme && academicCalendar[selectedYear][selectedTheme] 
       ? Object.keys(academicCalendar[selectedYear][selectedTheme]) 
       : [];
+
+    const weeks = sortWeeks(rawWeeks);
 
     const currWeek = weekSel.value;
     weekSel.innerHTML = weeks.map(w => `<option value="${w}">${w}</option>`).join('');
@@ -195,9 +236,10 @@ function populateCalendarSelects() {
     if (badge) {
       if (selectedYear && selectedTheme && selectedWeek && academicCalendar[selectedYear]?.[selectedTheme]?.[selectedWeek]) {
         const info = academicCalendar[selectedYear][selectedTheme][selectedWeek];
-        badge.textContent = `Dates: ${info.startDate} to ${info.endDate}`;
+        const formattedRange = formatModernDateRange(info.startDate, info.endDate);
+        badge.innerHTML = `<span class="badge-icon">📅</span> <span>${formattedRange}</span>`;
       } else {
-        badge.textContent = "Dates: -";
+        badge.innerHTML = `<span class="badge-icon">📅</span> <span>Dates: -</span>`;
       }
     }
   });
@@ -365,7 +407,11 @@ function populateAdminSelects() {
       .map(s => `<option value="${s.id}">Period ${s.period} (${s.time})</option>`).join('');
   }
 
-  const classSelects = [document.getElementById('adminClassSelect'), document.getElementById('classSelectView')];
+  const classSelects = [
+    document.getElementById('adminClassSelect'), 
+    document.getElementById('classSelectView'),
+    document.getElementById('manageClassSelect')
+  ];
   classSelects.forEach(select => {
     if (select) {
       const currentVal = select.value;
@@ -391,6 +437,7 @@ function populateAdminSelects() {
   });
 
   renderEntityTables();
+  renderManageScheduleTable();
 }
 
 function renderEntityTables() {
@@ -409,16 +456,16 @@ function renderEntityTables() {
       const isHomeTeacher = type === 'teachers' && appEntities.homeTeachers[item];
 
       if (isHomeTeacher) {
-        homeBadge = `<br><small style="color: #2563eb;">(Home Teacher: ${appEntities.homeTeachers[item]})</small>`;
+        homeBadge = `<br><span class="hometeacher-pill">⭐ Home Teacher: ${appEntities.homeTeachers[item]}</span>`;
       }
 
       tr.innerHTML = `
-        <td style="text-align: left; padding-left: 12px;">
-          <strong>${item}</strong>${homeBadge}
+        <td style="text-align: left; padding: 10px 14px;">
+          <strong style="color: #0f172a; font-weight: 700;">${item}</strong>${homeBadge}
         </td>
-        <td>
+        <td style="text-align: center; width: 70px; padding: 8px 14px;">
           <div class="kebab-menu">
-            <button class="kebab-btn">⋮</button>
+            <button class="kebab-btn" title="Actions">⋮</button>
             <div class="kebab-dropdown">
               ${type === 'teachers' ? (
                 isHomeTeacher 
@@ -550,11 +597,12 @@ function getActiveCalendarPrefix(viewType = 'class') {
 function getSubjectGroupType(subjectName) {
   if (!subjectName) return 'regular';
   const name = subjectName.toLowerCase();
-  if (name.includes('religion') || name.includes('islam') || name.includes('christian') || 
-      name.includes('catholic') || name.includes('buddha') || name.includes('hindu')) {
+  if (name.includes('religion') || name.includes('agama') || name.includes('islam') || 
+      name.includes('christian') || name.includes('kristen') || name.includes('catholic') || 
+      name.includes('katolik') || name.includes('buddha') || name.includes('hindu')) {
     return 'religion';
   }
-  if (name.includes('art') || name.includes('music')) {
+  if (name.includes('art') || name.includes('music') || name.includes('seni')) {
     return 'art';
   }
   return 'regular';
@@ -566,6 +614,65 @@ function isSameSubjectGroup(sub1, sub2) {
   const type2 = getSubjectGroupType(sub2);
   if (type1 !== 'regular' && type1 === type2) return true;
   return false;
+}
+
+const distinctPastelPalettes = [
+  { bg: "#E0F2FE", border: "#bae6fd", text: "#0f172a" }, // 0: Sky Blue
+  { bg: "#F3E8FF", border: "#e9d5ff", text: "#0f172a" }, // 1: Soft Purple
+  { bg: "#D1FAE5", border: "#a7f3d0", text: "#0f172a" }, // 2: Mint / Emerald
+  { bg: "#FFE4E6", border: "#fecdd3", text: "#0f172a" }, // 3: Soft Rose
+  { bg: "#E0E7FF", border: "#c7d2fe", text: "#0f172a" }, // 4: Soft Indigo
+  { bg: "#FFEDD5", border: "#fed7aa", text: "#0f172a" }, // 5: Soft Orange
+  { bg: "#ECFCCB", border: "#d9f99d", text: "#0f172a" }, // 6: Soft Lime
+  { bg: "#CFFAFE", border: "#a5f3fc", text: "#0f172a" }, // 7: Soft Cyan
+  { bg: "#FCE7F3", border: "#fbcfe8", text: "#0f172a" }, // 8: Soft Pink / Fuchsia
+  { bg: "#EDE9FE", border: "#ddd6fe", text: "#0f172a" }, // 9: Soft Violet
+  { bg: "#FEF9C3", border: "#fef08a", text: "#0f172a" }, // 10: Soft Yellow
+  { bg: "#FFDAD6", border: "#ffb4ab", text: "#0f172a" }, // 11: Soft Coral
+  { bg: "#E6E6FA", border: "#d8bfd8", text: "#0f172a" }, // 12: Soft Lavender
+  { bg: "#D0F0C0", border: "#a2e8dd", text: "#0f172a" }  // 13: Soft Tea Green
+];
+
+const dynamicSubjectColorMap = {};
+
+function getSubjectPastelStyle(subjectName) {
+  if (!subjectName) return '';
+  const key = subjectName.trim().toLowerCase();
+  const groupType = getSubjectGroupType(subjectName);
+
+  // Group Overrides: All Religion subjects get identical Soft Teal color
+  if (groupType === 'religion') {
+    const p = { bg: "#CCFBF1", border: "#99f6e4", text: "#0f172a" };
+    return `background-color: ${p.bg}; border: 1px solid ${p.border}; color: ${p.text};`;
+  }
+
+  // Group Overrides: All Art & Music subjects get identical Soft Amber color
+  if (groupType === 'art') {
+    const p = { bg: "#FEF3C7", border: "#fde68a", text: "#0f172a" };
+    return `background-color: ${p.bg}; border: 1px solid ${p.border}; color: ${p.text};`;
+  }
+
+  if (!dynamicSubjectColorMap[key]) {
+    const subjectsList = appEntities.subjects || [];
+    const registeredIndex = subjectsList.findIndex(
+      s => s.trim().toLowerCase() === key
+    );
+
+    let assignedIdx;
+    if (registeredIndex !== -1) {
+      assignedIdx = registeredIndex % distinctPastelPalettes.length;
+    } else {
+      let hash = 0;
+      for (let i = 0; i < key.length; i++) {
+        hash = key.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      assignedIdx = Math.abs(hash) % distinctPastelPalettes.length;
+    }
+    dynamicSubjectColorMap[key] = distinctPastelPalettes[assignedIdx];
+  }
+  
+  const p = dynamicSubjectColorMap[key];
+  return `background-color: ${p.bg}; border: 1px solid ${p.border}; color: ${p.text};`;
 }
 
 function renderClassSchedule() {
@@ -585,10 +692,10 @@ function renderClassSchedule() {
 
     if (slot.isBreak) {
       tr.className = 'break-row';
-      tr.innerHTML = `<td>${slot.time}</td><td colspan="5">${slot.label}</td>`;
+      tr.innerHTML = `<td class="time-cell break-time">${slot.time}</td><td colspan="5" class="break-label"><span class="break-pill">${slot.label}</span></td>`;
       days.forEach(day => skipCells[day] = 0);
     } else {
-      let html = `<td><strong>${slot.time}</strong><br><small>Period ${slot.period}</small></td>`;
+      let html = `<td class="time-cell"><div class="time-range">${slot.time}</div><div class="period-badge">Period ${slot.period}</div></td>`;
 
       days.forEach(day => {
         if (skipCells[day] > 0) {
@@ -624,39 +731,53 @@ function renderClassSchedule() {
           if (rowspan > 1) skipCells[day] = rowspan - 1;
 
           let cellContent = '';
+          let cellStyle = '';
+
           if (primaryGroup === 'religion' || primaryGroup === 'art') {
             const groupTitle = primaryGroup === 'religion' ? 'RELIGION' : 'ART & MUSIC';
-            cellContent = `<span class="subject-title">${groupTitle}</span>`;
+            cellStyle = getSubjectPastelStyle(primaryGroup);
 
+            let itemsHtml = '';
             slotEntries.forEach(entry => {
               const matKey = `${calPrefix}_${selectedClass}_${day}_${entry.subject}`;
               const matInfo = materialsData[matKey] || {};
               const linkHtml = matInfo.link ? `<a href="${matInfo.link}" target="_blank" class="resource-link">🔗 Link</a>` : '';
+              const itemPastelStyle = getSubjectPastelStyle(entry.subject);
 
-              cellContent += `
-                <div style="margin-top: 6px; padding-top: 4px; border-top: 1px dashed #cbd5e1;">
-                  <span class="teacher-tag"><strong>${entry.subject}</strong> (${entry.teacher})</span>
-                  <div class="material-text">${matInfo.material || 'No material entered'}</div>
+              itemsHtml += `
+                <div class="group-item" style="${itemPastelStyle}">
+                  <div class="group-subject"><strong>${entry.subject}</strong></div>
+                  ${matInfo.material ? `<div class="material-text">${matInfo.material}</div>` : ''}
                   ${linkHtml}
                 </div>`;
             });
+
+            cellContent = `
+              <div class="subject-card group-card">
+                <span class="group-header-badge">${groupTitle}</span>
+                <div class="group-items">
+                  ${itemsHtml}
+                </div>
+              </div>`;
           } else {
             const entry = slotEntries[0];
             const matKey = `${calPrefix}_${selectedClass}_${day}_${entry.subject}`;
             const matInfo = materialsData[matKey] || {};
             const linkHtml = matInfo.link ? `<a href="${matInfo.link}" target="_blank" class="resource-link">🔗 Link</a>` : '';
+            cellStyle = getSubjectPastelStyle(entry.subject);
 
             cellContent = `
-              <span class="subject-title">${entry.subject}</span>
-              <span class="teacher-tag">${entry.teacher}</span>
-              <div class="material-text">${matInfo.material || ''}</div>
-              ${linkHtml}`;
+              <div class="subject-card">
+                <span class="subject-title">${entry.subject}</span>
+                ${matInfo.material ? `<div class="material-text">${matInfo.material}</div>` : ''}
+                ${linkHtml}
+              </div>`;
           }
 
           const rowspanAttr = rowspan > 1 ? ` rowspan="${rowspan}"` : '';
-          html += `<td${rowspanAttr}>${cellContent}</td>`;
+          html += `<td${rowspanAttr} class="subject-cell" style="${cellStyle}">${cellContent}</td>`;
         } else {
-          html += `<td>-</td>`;
+          html += `<td><span class="empty-dash">-</span></td>`;
         }
       });
 
@@ -670,10 +791,13 @@ function renderClassSchedule() {
   const noteText = classNotesData[notesKey] || 'No notes for this week.';
 
   const notesTr = document.createElement('tr');
+  notesTr.className = 'notes-row';
   notesTr.innerHTML = `
-    <td style="background-color: #f1f5f9; font-weight: bold; text-align: center;">NOTES</td>
-    <td colspan="5" style="text-align: left; padding: 12px; background-color: #f8fafc; font-style: italic; color: #334155; white-space: pre-line;">
-      ${noteText}
+    <td class="notes-header-cell">
+      <div class="notes-title">📝 NOTES</div>
+    </td>
+    <td colspan="5" class="notes-content-cell">
+      <div class="notes-box">${noteText}</div>
     </td>
   `;
   tbody.appendChild(notesTr);
@@ -682,6 +806,317 @@ function renderClassSchedule() {
 document.getElementById('btnPrintPDF')?.addEventListener('click', () => {
   window.print();
 });
+
+document.getElementById('btnDownloadExcel')?.addEventListener('click', exportWeeklyToExcel);
+
+function exportWeeklyToExcel() {
+  if (typeof XLSX === 'undefined') {
+    alert('Excel export library is loading or unavailable. Please refresh the page and try again.');
+    return;
+  }
+
+  const schoolYear = document.getElementById('classYearSelect')?.value || '';
+  const theme = document.getElementById('classThemeSelect')?.value || '';
+  const week = document.getElementById('classWeekSelect')?.value || '';
+  const dates = document.getElementById('classDateBadge')?.textContent || '';
+  const className = document.getElementById('classSelectView')?.value || '';
+
+  const table = document.querySelector('#printableArea table');
+  if (!table) {
+    alert('No schedule table found to export.');
+    return;
+  }
+
+  // --- Excel Color Palette & Style Definitions matching Class View ---
+  const COLORS = {
+    titleBg: "1E293B",     // Slate 800
+    titleText: "FFFFFF",
+    metaBg: "EFF6FF",      // Blue 50
+    metaBorder: "BFDBFE",  // Blue 200
+    metaText: "1E40AF",    // Blue 800
+    headerBg: "F1F5F9",    // Slate 100
+    headerText: "0F172A",  // Slate 900
+    breakBg: "E2E8F0",     // Slate 200
+    breakText: "1E293B",   // Slate 800
+    border: "CBD5E1",      // Slate 300
+    cellBg: "FFFFFF",
+    cellText: "0F172A",
+    notesBg: "F8FAFC",     // Slate 50
+    notesText: "334155",   // Slate 700
+    mutedText: "94A3B8"    // Slate 400
+  };
+
+  const THIN_BORDER = {
+    top: { style: "thin", color: { rgb: COLORS.border } },
+    bottom: { style: "thin", color: { rgb: COLORS.border } },
+    left: { style: "thin", color: { rgb: COLORS.border } },
+    right: { style: "thin", color: { rgb: COLORS.border } }
+  };
+
+  const STYLES = {
+    title: {
+      fill: { fgColor: { rgb: COLORS.titleBg } },
+      font: { name: "Calibri", sz: 14, bold: true, color: { rgb: COLORS.titleText } },
+      alignment: { horizontal: "center", vertical: "center" }
+    },
+    meta: {
+      fill: { fgColor: { rgb: COLORS.metaBg } },
+      font: { name: "Calibri", sz: 10, bold: true, color: { rgb: COLORS.metaText } },
+      alignment: { horizontal: "center", vertical: "center" },
+      border: {
+        top: { style: "thin", color: { rgb: COLORS.metaBorder } },
+        bottom: { style: "thin", color: { rgb: COLORS.metaBorder } },
+        left: { style: "thin", color: { rgb: COLORS.metaBorder } },
+        right: { style: "thin", color: { rgb: COLORS.metaBorder } }
+      }
+    },
+    tableHeader: {
+      fill: { fgColor: { rgb: COLORS.headerBg } },
+      font: { name: "Calibri", sz: 11, bold: true, color: { rgb: COLORS.headerText } },
+      alignment: { horizontal: "center", vertical: "center", wrapText: true },
+      border: THIN_BORDER
+    },
+    breakRow: {
+      fill: { fgColor: { rgb: COLORS.breakBg } },
+      font: { name: "Calibri", sz: 11, bold: true, color: { rgb: COLORS.breakText } },
+      alignment: { horizontal: "center", vertical: "center" },
+      border: THIN_BORDER
+    },
+    timeCell: {
+      fill: { fgColor: { rgb: COLORS.headerBg } },
+      font: { name: "Calibri", sz: 10, bold: true, color: { rgb: COLORS.headerText } },
+      alignment: { horizontal: "center", vertical: "center", wrapText: true },
+      border: THIN_BORDER
+    },
+    scheduleCell: {
+      fill: { fgColor: { rgb: COLORS.cellBg } },
+      font: { name: "Calibri", sz: 10, color: { rgb: COLORS.cellText } },
+      alignment: { horizontal: "center", vertical: "center", wrapText: true },
+      border: THIN_BORDER
+    },
+    emptyCell: {
+      fill: { fgColor: { rgb: COLORS.cellBg } },
+      font: { name: "Calibri", sz: 10, color: { rgb: COLORS.mutedText } },
+      alignment: { horizontal: "center", vertical: "center" },
+      border: THIN_BORDER
+    },
+    notesHeader: {
+      fill: { fgColor: { rgb: COLORS.headerBg } },
+      font: { name: "Calibri", sz: 10, bold: true, color: { rgb: COLORS.headerText } },
+      alignment: { horizontal: "center", vertical: "center" },
+      border: THIN_BORDER
+    },
+    notesContent: {
+      fill: { fgColor: { rgb: COLORS.notesBg } },
+      font: { name: "Calibri", sz: 10, italic: true, color: { rgb: COLORS.notesText } },
+      alignment: { horizontal: "left", vertical: "center", wrapText: true },
+      border: THIN_BORDER
+    }
+  };
+
+  // Helper to cleanly extract text from HTML cells
+  function parseCellContent(cell) {
+    if (cell.tagName.toLowerCase() === 'th') {
+      const small = cell.querySelector('small');
+      if (small) {
+        const main = cell.childNodes[0]?.textContent?.trim() || '';
+        return `${main}\n${small.textContent.trim()}`;
+      }
+      return cell.textContent.trim();
+    }
+
+    if (cell.querySelector('strong') && cell.querySelector('small')) {
+      const strong = cell.querySelector('strong').textContent.trim();
+      const small = cell.querySelector('small').textContent.trim();
+      return `${strong}\n${small}`;
+    }
+
+    const titleElem = cell.querySelector('.subject-title');
+    if (titleElem) {
+      const mainTitle = titleElem.textContent.trim();
+      if (mainTitle === 'RELIGION' || mainTitle === 'ART & MUSIC') {
+        const lines = [mainTitle];
+        const subDivs = cell.querySelectorAll('div');
+        subDivs.forEach(div => {
+          const tTag = div.querySelector('.teacher-tag')?.textContent.trim();
+          const mText = div.querySelector('.material-text')?.textContent.trim();
+          const link = div.querySelector('.resource-link')?.href;
+          if (tTag) lines.push(`• ${tTag}`);
+          if (mText && mText !== 'No material entered') lines.push(`  ${mText}`);
+          if (link) lines.push(`  Link: ${link}`);
+        });
+        return lines.join('\n');
+      } else {
+        const lines = [mainTitle];
+        const teacher = cell.querySelector('.teacher-tag')?.textContent.trim();
+        const mat = cell.querySelector('.material-text')?.textContent.trim();
+        const link = cell.querySelector('.resource-link')?.href;
+
+        if (teacher) lines.push(teacher);
+        if (mat && mat !== 'No material entered') lines.push(mat);
+        if (link) lines.push(`Link: ${link}`);
+        return lines.join('\n');
+      }
+    }
+
+    return cell.textContent.trim();
+  }
+
+  // Parse table structure handling rowspans & colspans
+  const tableRows = Array.from(table.querySelectorAll('tr'));
+  const grid = [];
+  const merges = [];
+  const rowSkip = {};
+
+  tableRows.forEach((tr, rIdx) => {
+    grid[rIdx] = grid[rIdx] || [];
+    let cIdx = 0;
+    const isBreak = tr.classList.contains('break-row');
+
+    Array.from(tr.children).forEach((cell) => {
+      while (rowSkip[cIdx] > 0) {
+        rowSkip[cIdx]--;
+        cIdx++;
+      }
+
+      const rowspan = parseInt(cell.getAttribute('rowspan') || '1', 10);
+      const colspan = parseInt(cell.getAttribute('colspan') || '1', 10);
+      const isHeader = cell.tagName.toLowerCase() === 'th';
+      const text = parseCellContent(cell);
+
+      grid[rIdx][cIdx] = {
+        text,
+        rowspan,
+        colspan,
+        isHeader,
+        isBreak,
+        isNotes: text === 'NOTES' || (cIdx === 0 && rIdx === tableRows.length - 1)
+      };
+
+      if (rowspan > 1 || colspan > 1) {
+        merges.push({
+          s: { r: rIdx, c: cIdx },
+          e: { r: rIdx + rowspan - 1, c: cIdx + colspan - 1 }
+        });
+      }
+
+      if (rowspan > 1) {
+        for (let c = cIdx; c < cIdx + colspan; c++) {
+          rowSkip[c] = (rowSkip[c] || 0) + (rowspan - 1);
+        }
+      }
+
+      cIdx += colspan;
+    });
+  });
+
+  // Construct styled worksheet
+  const ws = {};
+  ws['!merges'] = [];
+  ws['!rows'] = [];
+
+  const rowOffset = 3; // Space for Header Title & Metadata
+
+  // 1. Title Row (Row 0)
+  const titleText = `SCHOOL WEEKLY SCHEDULE - ${className || 'Class'}`;
+  for (let c = 0; c < 6; c++) {
+    const cellRef = XLSX.utils.encode_cell({ r: 0, c });
+    ws[cellRef] = { v: c === 0 ? titleText : '', t: 's', s: STYLES.title };
+  }
+  ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 5 } });
+  ws['!rows'][0] = { hpt: 30 };
+
+  // 2. Metadata Row (Row 1)
+  const metaText = `School Year: ${schoolYear}   |   Theme: ${theme}   |   Week: ${week}   |   ${dates}`;
+  for (let c = 0; c < 6; c++) {
+    const cellRef = XLSX.utils.encode_cell({ r: 1, c });
+    ws[cellRef] = { v: c === 0 ? metaText : '', t: 's', s: STYLES.meta };
+  }
+  ws['!merges'].push({ s: { r: 1, c: 0 }, e: { r: 1, c: 5 } });
+  ws['!rows'][1] = { hpt: 24 };
+
+  // Row 2 Spacer
+  ws['!rows'][2] = { hpt: 10 };
+
+  // 3. Grid Rows (Row 3+)
+  grid.forEach((row, rIdx) => {
+    const excelR = rIdx + rowOffset;
+    const isFirstRow = rIdx === 0;
+    const isLastRow = rIdx === grid.length - 1;
+
+    // Set custom row height
+    if (isFirstRow) ws['!rows'][excelR] = { hpt: 28 };
+    else if (row[0]?.isBreak) ws['!rows'][excelR] = { hpt: 22 };
+    else if (isLastRow) ws['!rows'][excelR] = { hpt: 40 };
+    else ws['!rows'][excelR] = { hpt: 55 };
+
+    row.forEach((cellData, cIdx) => {
+      if (!cellData) return;
+
+      // Select cell style
+      let style = STYLES.scheduleCell;
+      if (isFirstRow) {
+        style = STYLES.tableHeader;
+      } else if (cellData.isBreak) {
+        style = STYLES.breakRow;
+      } else if (isLastRow && cIdx === 0) {
+        style = STYLES.notesHeader;
+      } else if (isLastRow && cIdx > 0) {
+        style = STYLES.notesContent;
+      } else if (cIdx === 0) {
+        style = STYLES.timeCell;
+      } else if (cellData.text === '-') {
+        style = STYLES.emptyCell;
+      }
+
+      // Populate cell and all merged sub-cells for full border & fill coverage
+      const rSpan = cellData.rowspan || 1;
+      const cSpan = cellData.colspan || 1;
+
+      for (let dr = 0; dr < rSpan; dr++) {
+        for (let dc = 0; dc < cSpan; dc++) {
+          const targetR = excelR + dr;
+          const targetC = cIdx + dc;
+          const cellRef = XLSX.utils.encode_cell({ r: targetR, c: targetC });
+          const val = (dr === 0 && dc === 0) ? cellData.text : '';
+          ws[cellRef] = { v: val, t: 's', s: style };
+        }
+      }
+    });
+  });
+
+  // Shift grid merges to match rowOffset
+  merges.forEach(m => {
+    ws['!merges'].push({
+      s: { r: m.s.r + rowOffset, c: m.s.c },
+      e: { r: m.e.r + rowOffset, c: m.e.c }
+    });
+  });
+
+  // Column Widths
+  ws['!cols'] = [
+    { wch: 18 }, // TIME
+    { wch: 32 }, // MONDAY
+    { wch: 32 }, // TUESDAY
+    { wch: 32 }, // WEDNESDAY
+    { wch: 32 }, // THURSDAY
+    { wch: 32 }  // FRIDAY
+  ];
+
+  // Set !ref range
+  const totalRows = grid.length + rowOffset;
+  ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: totalRows - 1, c: 5 } });
+
+  // Download XLSX
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Weekly Schedule");
+
+  const safeClass = className.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const safeWeek = week.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const fileName = `Weekly_Schedule_${safeClass || 'Class'}_${safeWeek || 'Export'}.xlsx`;
+
+  XLSX.writeFile(wb, fileName);
+}
 
 function renderTeacherView() {
   const selectElem = document.getElementById('teacherSelectView');
@@ -1064,6 +1499,7 @@ document.getElementById('assignSlotForm')?.addEventListener('submit', async (e) 
     await setDoc(doc(db, "schedules", "masterSchedules"), masterSchedules);
     renderClassSchedule();
     renderTeacherView();
+    renderManageScheduleTable();
     alert(`Successfully assigned ${subject} (${teacher}) to ${className} on ${day}!`);
   } catch (err) {
     alert("Error updating schedule: " + err.message);
@@ -1122,6 +1558,7 @@ onSnapshot(doc(db, "schedules", "masterSchedules"), (docSnap) => {
   if (docSnap.exists()) masterSchedules = docSnap.data();
   renderClassSchedule();
   renderTeacherView();
+  renderManageScheduleTable();
 });
 
 onSnapshot(doc(db, "schedules", "materialsData"), (docSnap) => {
