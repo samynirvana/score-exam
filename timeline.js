@@ -184,6 +184,7 @@ async function showTimelineApp() {
     await populateClassDropdown();
     loadPosts();
     loadNotifications();
+    initDMSystem();
 }
 
 function handleTimelineLogout() {
@@ -211,30 +212,48 @@ document.getElementById('studentLogoutBtn')?.addEventListener('click', handleTim
 
 async function fetchAllNames() {
     let names = [];
+    let directory = [];
     try {
         const usersSnap = await getDocs(collection(db, "users"));
-        usersSnap.forEach(doc => {
-            const data = doc.data();
+        usersSnap.forEach(docSnap => {
+            const data = docSnap.data();
             if (data.email) {
                 const rawName = data.email.split('@')[0];
                 const teacherName = rawName.replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                names.push(data.role === 'admin' ? 'Administrator' : teacherName);
+                const name = data.role === 'admin' ? 'Administrator' : teacherName;
+                names.push(name);
+                directory.push({
+                    name: name,
+                    code: data.email,
+                    role: data.role === 'admin' ? 'Super Admin' : 'Teacher',
+                    studentClass: 'Staff'
+                });
             }
         });
     } catch (e) {
-        console.warn("Could not load users directory for mentions.", e);
+        console.warn("Could not load users directory.", e);
     }
     
     try {
         const studentsSnap = await getDocs(collection(db, "students"));
-        studentsSnap.forEach(doc => {
-            if (doc.data().studentName) names.push(doc.data().studentName);
+        studentsSnap.forEach(docSnap => {
+            const sData = docSnap.data();
+            if (sData.studentName) {
+                names.push(sData.studentName);
+                directory.push({
+                    name: sData.studentName,
+                    code: docSnap.id,
+                    role: 'Student',
+                    studentClass: sData.studentClass || sData.class || 'Student'
+                });
+            }
         });
     } catch (e) {
-        console.warn("Could not load students directory for mentions.", e);
+        console.warn("Could not load students directory.", e);
     }
     
     allUserNames = [...new Set(names)];
+    allUserDirectory = directory;
 }
 
 document.addEventListener('input', (e) => {
@@ -716,4 +735,499 @@ async function populateClassDropdown() {
             console.warn("Could not load classes dropdown list:", e);
         }
     }
+}
+
+// --- 7. REAL-TIME DIRECT MESSAGING (DM) SYSTEM ---
+
+let allUserDirectory = []; 
+let currentChatPartner = null; 
+let unsubscribeDMMessages = null;
+let unsubscribeDMThreads = null;
+
+function initDMSystem() {
+    if (!currentUser) return;
+
+    const nameEl = document.getElementById('dmHeaderUserName');
+    if (nameEl) nameEl.innerText = currentUser.name;
+
+    const floatBtn = document.getElementById('dmFloatingBtn');
+    const widget = document.getElementById('dmPopupWidget');
+    const closeBtn = document.getElementById('dmCloseWidgetBtn');
+    const newChatBtn = document.getElementById('dmNewChatBtn');
+    const backBtn = document.getElementById('dmBackToThreadsBtn');
+    const leaveBtn = document.getElementById('dmLeaveChatroomBtn');
+    const searchInput = document.getElementById('dmContactSearchInput');
+    const msgForm = document.getElementById('dmMessageForm');
+
+    floatBtn?.addEventListener('click', () => {
+        widget?.classList.toggle('hidden');
+        if (!widget?.classList.contains('hidden')) {
+            showDMView('threads');
+        }
+    });
+
+    closeBtn?.addEventListener('click', () => {
+        widget?.classList.add('hidden');
+    });
+
+    newChatBtn?.addEventListener('click', () => {
+        showDMView('contacts');
+        renderDMContactsList('');
+    });
+
+    backBtn?.addEventListener('click', () => {
+        showDMView('threads');
+    });
+
+    leaveBtn?.addEventListener('click', () => {
+        if (unsubscribeDMMessages) unsubscribeDMMessages();
+        currentChatPartner = null;
+        showDMView('threads');
+    });
+
+    searchInput?.addEventListener('input', (e) => {
+        renderDMContactsList(e.target.value.trim().toLowerCase());
+    });
+
+    msgForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const input = document.getElementById('dmMessageInput');
+        const text = input ? input.value.trim() : '';
+        if (!text || !currentChatPartner || !currentUser) return;
+
+        const newMsgDoc = {
+            participants: [currentUser.code, currentChatPartner.code].sort(),
+            senderCode: currentUser.code,
+            senderName: currentUser.name,
+            receiverCode: currentChatPartner.code,
+            receiverName: currentChatPartner.name,
+            message: text,
+            timestamp: new Date().toISOString(),
+            read: false
+        };
+
+        try {
+            await addDoc(collection(db, "direct_messages"), newMsgDoc);
+        } catch (err) {
+            // Fallback to local session storage if Firestore rules restrict direct_messages collection
+            saveLocalDM(newMsgDoc);
+            renderLocalDMMessagesStream();
+            renderLocalDMThreads();
+        }
+
+        if (input) input.value = '';
+    });
+
+    window.deleteDMChatroom = async function(partnerCode, partnerName) {
+        const targetCode = partnerCode || currentChatPartner?.code;
+        const targetName = partnerName || currentChatPartner?.name || 'this chatroom';
+        if (!currentUser || !targetCode) return;
+
+        const ok = confirm(`Delete chatroom with ${targetName}? It will be removed from your chat list.`);
+        if (!ok) return;
+
+        const pair = [currentUser.code, targetCode].sort();
+
+        try {
+            const q = query(collection(db, "direct_messages"), where("participants", "==", pair));
+            const snap = await getDocs(q);
+            snap.forEach(docSnap => {
+                const data = docSnap.data();
+                const existingHidden = data.hiddenFor || [];
+                if (!existingHidden.includes(currentUser.code)) {
+                    updateDoc(doc(db, "direct_messages", docSnap.id), {
+                        hiddenFor: [...existingHidden, currentUser.code]
+                    }).catch(() => {});
+                }
+            });
+        } catch (err) {
+            console.warn("Firestore delete chat notice:", err);
+        }
+
+        const localList = getLocalDMMessages();
+        localList.forEach(m => {
+            if ((m.senderCode === currentUser.code && m.receiverCode === targetCode) ||
+                (m.senderCode === targetCode && m.receiverCode === currentUser.code)) {
+                if (!m.hiddenFor) m.hiddenFor = [];
+                if (!m.hiddenFor.includes(currentUser.code)) m.hiddenFor.push(currentUser.code);
+            }
+        });
+        sessionStorage.setItem('local_direct_messages', JSON.stringify(localList));
+
+        if (currentChatPartner && currentChatPartner.code === targetCode) {
+            if (unsubscribeDMMessages) unsubscribeDMMessages();
+            currentChatPartner = null;
+            showDMView('threads');
+        }
+
+        subscribeDMThreads();
+    };
+
+    const deleteChatBtn = document.getElementById('dmDeleteChatroomBtn');
+    deleteChatBtn?.addEventListener('click', () => {
+        if (currentChatPartner) window.deleteDMChatroom(currentChatPartner.code, currentChatPartner.name);
+    });
+
+    subscribeDMThreads();
+}
+
+// In-Memory & Local Session Storage Fallback for DM
+function getLocalDMMessages() {
+    try {
+        const stored = sessionStorage.getItem('local_direct_messages');
+        return stored ? JSON.parse(stored) : [];
+    } catch(e) { return []; }
+}
+
+function saveLocalDM(msgDoc) {
+    const list = getLocalDMMessages();
+    list.push(msgDoc);
+    sessionStorage.setItem('local_direct_messages', JSON.stringify(list));
+}
+
+function showDMView(viewName) {
+    const threadsView = document.getElementById('dmThreadsView');
+    const contactsView = document.getElementById('dmContactsView');
+    const chatroomView = document.getElementById('dmChatroomView');
+
+    threadsView?.classList.add('hidden');
+    contactsView?.classList.add('hidden');
+    chatroomView?.classList.add('hidden');
+
+    if (viewName === 'threads') {
+        threadsView?.classList.remove('hidden');
+    } else if (viewName === 'contacts') {
+        contactsView?.classList.remove('hidden');
+    } else if (viewName === 'chatroom') {
+        chatroomView?.classList.remove('hidden');
+    }
+}
+
+function subscribeDMThreads() {
+    if (!currentUser) return;
+    if (unsubscribeDMThreads) unsubscribeDMThreads();
+
+    try {
+        const q = query(
+            collection(db, "direct_messages"),
+            where("participants", "array-contains", currentUser.code)
+        );
+
+        unsubscribeDMThreads = onSnapshot(q, (snapshot) => {
+            const threadsListEl = document.getElementById('dmThreadsList');
+            const totalBadgeEl = document.getElementById('dmUnreadTotalBadge');
+            if (!threadsListEl) return;
+
+            let messagesList = [];
+            snapshot.forEach(docSnap => messagesList.push({ id: docSnap.id, ...docSnap.data() }));
+
+            // Merge local fallback messages if any exist
+            const localMsgs = getLocalDMMessages().filter(m => m.participants.includes(currentUser.code));
+            messagesList = [...messagesList, ...localMsgs];
+
+            // Filter out messages hidden for currentUser
+            messagesList = messagesList.filter(data => !(data.hiddenFor && data.hiddenFor.includes(currentUser.code)));
+
+            messagesList.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            let threadsMap = new Map();
+            let totalUnread = 0;
+
+            messagesList.forEach(data => {
+                const partnerCode = data.senderCode === currentUser.code ? data.receiverCode : data.senderCode;
+                const partnerName = data.senderCode === currentUser.code ? data.receiverName : data.senderName;
+
+                if (!threadsMap.has(partnerCode)) {
+                    threadsMap.set(partnerCode, {
+                        partnerCode: partnerCode,
+                        partnerName: partnerName,
+                        lastMessage: data.message,
+                        timestamp: data.timestamp,
+                        unread: (!data.read && data.receiverCode === currentUser.code) ? 1 : 0
+                    });
+                } else if (!data.read && data.receiverCode === currentUser.code) {
+                    threadsMap.get(partnerCode).unread += 1;
+                }
+
+                if (!data.read && data.receiverCode === currentUser.code) {
+                    totalUnread++;
+                }
+            });
+
+            if (totalBadgeEl) {
+                if (totalUnread > 0) {
+                    totalBadgeEl.innerText = totalUnread;
+                    totalBadgeEl.classList.remove('hidden');
+                } else {
+                    totalBadgeEl.classList.add('hidden');
+                }
+            }
+
+            if (threadsMap.size === 0) {
+                threadsListEl.innerHTML = `<div class="dm-empty-state">No conversations yet. Click "+ Add Chat" to start a direct message!</div>`;
+                return;
+            }
+
+            threadsListEl.innerHTML = '';
+            threadsMap.forEach(thread => {
+                const initial = thread.partnerName ? thread.partnerName.charAt(0).toUpperCase() : '?';
+                const dateStr = formatTimeAgo(thread.timestamp);
+                const unreadHTML = thread.unread > 0 ? `<span class="dm-unread-badge">${thread.unread}</span>` : '';
+                const safeCode = (thread.partnerCode || 'user').replace(/[^a-zA-Z0-9]/g, '_');
+
+                const item = document.createElement('div');
+                item.className = 'dm-thread-item';
+                item.innerHTML = `
+                    <div class="dm-contact-avatar">${initial}</div>
+                    <div class="dm-contact-info">
+                        <div class="dm-contact-name">${thread.partnerName}</div>
+                        <div class="dm-preview-text">${thread.lastMessage}</div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 4px;">
+                        <div style="text-align: right;">
+                            <div style="font-size: 10px; color: var(--text-muted);">${dateStr}</div>
+                            ${unreadHTML}
+                        </div>
+                        <div class="kebab-wrapper" style="position: relative;" onclick="event.stopPropagation();">
+                            <button class="dm-icon-btn thread-kebab-btn" onclick="toggleKebabMenu(event, 'dmThreadKebab_${safeCode}')" title="Options" style="color: var(--text-muted) !important; font-size: 16px !important; padding: 2px 6px !important;">&#8942;</button>
+                            <div class="kebab-dropdown hidden" id="dmThreadKebab_${safeCode}">
+                                <button class="kebab-item delete-item" onclick="deleteDMChatroom('${thread.partnerCode}', '${thread.partnerName.replace(/'/g, "\\'")}')" style="color: #ef4444 !important;">🗑 Delete Chat</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                item.onclick = () => {
+                    const found = allUserDirectory.find(u => u.code === thread.partnerCode) || {
+                        name: thread.partnerName,
+                        code: thread.partnerCode,
+                        role: 'User'
+                    };
+                    openDMChatroom(found);
+                };
+
+                threadsListEl.appendChild(item);
+            });
+        }, (err) => {
+            renderLocalDMThreads();
+        });
+    } catch (e) {
+        renderLocalDMThreads();
+    }
+}
+
+function renderLocalDMThreads() {
+    if (!currentUser) return;
+    const threadsListEl = document.getElementById('dmThreadsList');
+    if (!threadsListEl) return;
+
+    let localMsgs = getLocalDMMessages().filter(m => m.participants.includes(currentUser.code));
+    localMsgs = localMsgs.filter(m => !(m.hiddenFor && m.hiddenFor.includes(currentUser.code)));
+    localMsgs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    let threadsMap = new Map();
+    localMsgs.forEach(data => {
+        const partnerCode = data.senderCode === currentUser.code ? data.receiverCode : data.senderCode;
+        const partnerName = data.senderCode === currentUser.code ? data.receiverName : data.senderName;
+        if (!threadsMap.has(partnerCode)) {
+            threadsMap.set(partnerCode, {
+                partnerCode: partnerCode,
+                partnerName: partnerName,
+                lastMessage: data.message,
+                timestamp: data.timestamp,
+                unread: 0
+            });
+        }
+    });
+
+    if (threadsMap.size === 0) {
+        threadsListEl.innerHTML = `<div class="dm-empty-state">No conversations yet. Click "+ Add Chat" to start a direct message!</div>`;
+        return;
+    }
+
+    threadsListEl.innerHTML = '';
+    threadsMap.forEach(thread => {
+        const initial = thread.partnerName ? thread.partnerName.charAt(0).toUpperCase() : '?';
+        const dateStr = formatTimeAgo(thread.timestamp);
+        const safeCode = (thread.partnerCode || 'user').replace(/[^a-zA-Z0-9]/g, '_');
+
+        const item = document.createElement('div');
+        item.className = 'dm-thread-item';
+        item.innerHTML = `
+            <div class="dm-contact-avatar">${initial}</div>
+            <div class="dm-contact-info">
+                <div class="dm-contact-name">${thread.partnerName}</div>
+                <div class="dm-preview-text">${thread.lastMessage}</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 4px;">
+                <div style="text-align: right;">
+                    <div style="font-size: 10px; color: var(--text-muted);">${dateStr}</div>
+                </div>
+                <div class="kebab-wrapper" style="position: relative;" onclick="event.stopPropagation();">
+                    <button class="dm-icon-btn thread-kebab-btn" onclick="toggleKebabMenu(event, 'dmThreadKebab_${safeCode}')" title="Options" style="color: var(--text-muted) !important; font-size: 16px !important; padding: 2px 6px !important;">&#8942;</button>
+                    <div class="kebab-dropdown hidden" id="dmThreadKebab_${safeCode}">
+                        <button class="kebab-item delete-item" onclick="deleteDMChatroom('${thread.partnerCode}', '${thread.partnerName.replace(/'/g, "\\'")}')" style="color: #ef4444 !important;">🗑 Delete Chat</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        item.onclick = () => {
+            const found = allUserDirectory.find(u => u.code === thread.partnerCode) || {
+                name: thread.partnerName,
+                code: thread.partnerCode,
+                role: 'User'
+            };
+            openDMChatroom(found);
+        };
+
+        threadsListEl.appendChild(item);
+    });
+}
+
+function renderDMContactsList(filterStr) {
+    const listEl = document.getElementById('dmContactsList');
+    if (!listEl) return;
+
+    const filtered = allUserDirectory.filter(u => {
+        if (u.code === currentUser.code) return false; 
+        if (!filterStr) return true;
+        return u.name.toLowerCase().includes(filterStr) || u.role.toLowerCase().includes(filterStr);
+    });
+
+    if (filtered.length === 0) {
+        listEl.innerHTML = `<div class="dm-empty-state">No contacts found matching "${filterStr}".</div>`;
+        return;
+    }
+
+    listEl.innerHTML = '';
+    filtered.forEach(contact => {
+        const initial = contact.name ? contact.name.charAt(0).toUpperCase() : '?';
+        const item = document.createElement('div');
+        item.className = 'dm-contact-item';
+        item.innerHTML = `
+            <div class="dm-contact-avatar">${initial}</div>
+            <div class="dm-contact-info">
+                <div class="dm-contact-name">${contact.name}</div>
+                <div class="dm-preview-text">${contact.role}${contact.studentClass ? ' • ' + contact.studentClass : ''}</div>
+            </div>
+            <button class="dm-new-chat-btn">Chat</button>
+        `;
+
+        item.onclick = () => openDMChatroom(contact);
+        listEl.appendChild(item);
+    });
+}
+
+function openDMChatroom(partner) {
+    if (!partner || !currentUser) return;
+    currentChatPartner = partner;
+
+    const nameEl = document.getElementById('dmChatPartnerName');
+    const roleEl = document.getElementById('dmChatPartnerRole');
+    if (nameEl) nameEl.innerText = partner.name;
+    if (roleEl) roleEl.innerText = partner.role || 'User';
+
+    showDMView('chatroom');
+    subscribeDMMessagesStream();
+}
+
+function subscribeDMMessagesStream() {
+    if (!currentUser || !currentChatPartner) return;
+    if (unsubscribeDMMessages) unsubscribeDMMessages();
+
+    const pair = [currentUser.code, currentChatPartner.code].sort();
+
+    try {
+        const q = query(
+            collection(db, "direct_messages"),
+            where("participants", "==", pair)
+        );
+
+        unsubscribeDMMessages = onSnapshot(q, (snapshot) => {
+            const streamEl = document.getElementById('dmMessagesStream');
+            if (!streamEl) return;
+
+            let messages = [];
+            snapshot.forEach(docSnap => messages.push({ docId: docSnap.id, ...docSnap.data() }));
+
+            // Merge local fallback messages
+            const localMsgs = getLocalDMMessages().filter(m => 
+                (m.senderCode === currentUser.code && m.receiverCode === currentChatPartner.code) ||
+                (m.senderCode === currentChatPartner.code && m.receiverCode === currentUser.code)
+            );
+            messages = [...messages, ...localMsgs];
+
+            // Filter out messages hidden for currentUser
+            messages = messages.filter(m => !(m.hiddenFor && m.hiddenFor.includes(currentUser.code)));
+
+            if (messages.length === 0) {
+                streamEl.innerHTML = `<div class="dm-empty-state">No messages yet. Send a message to start chatting with ${currentChatPartner.name}!</div>`;
+                return;
+            }
+
+            messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+            streamEl.innerHTML = '';
+            messages.forEach(data => {
+                if (data.docId && !data.read && data.receiverCode === currentUser.code) {
+                    updateDoc(doc(db, "direct_messages", data.docId), { read: true }).catch(() => {});
+                }
+
+                const isSent = data.senderCode === currentUser.code;
+                const msgClass = isSent ? 'dm-msg-sent' : 'dm-msg-received';
+                const timeStr = formatTimeAgo(data.timestamp);
+
+                const div = document.createElement('div');
+                div.className = `dm-message-bubble ${msgClass}`;
+                div.innerHTML = `
+                    <div>${data.message}</div>
+                    <div class="dm-msg-time">${timeStr}</div>
+                `;
+                streamEl.appendChild(div);
+            });
+
+            streamEl.scrollTop = streamEl.scrollHeight;
+        }, (err) => {
+            renderLocalDMMessagesStream();
+        });
+    } catch (e) {
+        renderLocalDMMessagesStream();
+    }
+}
+
+function renderLocalDMMessagesStream() {
+    if (!currentUser || !currentChatPartner) return;
+    const streamEl = document.getElementById('dmMessagesStream');
+    if (!streamEl) return;
+
+    let localMsgs = getLocalDMMessages().filter(m => 
+        (m.senderCode === currentUser.code && m.receiverCode === currentChatPartner.code) ||
+        (m.senderCode === currentChatPartner.code && m.receiverCode === currentUser.code)
+    );
+    localMsgs = localMsgs.filter(m => !(m.hiddenFor && m.hiddenFor.includes(currentUser.code)));
+
+    if (localMsgs.length === 0) {
+        streamEl.innerHTML = `<div class="dm-empty-state">No messages yet. Send a message to start chatting with ${currentChatPartner.name}!</div>`;
+        return;
+    }
+
+    localMsgs.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+    streamEl.innerHTML = '';
+    localMsgs.forEach(data => {
+        const isSent = data.senderCode === currentUser.code;
+        const msgClass = isSent ? 'dm-msg-sent' : 'dm-msg-received';
+        const timeStr = formatTimeAgo(data.timestamp);
+
+        const div = document.createElement('div');
+        div.className = `dm-message-bubble ${msgClass}`;
+        div.innerHTML = `
+            <div>${data.message}</div>
+            <div class="dm-msg-time">${timeStr}</div>
+        `;
+        streamEl.appendChild(div);
+    });
+
+    streamEl.scrollTop = streamEl.scrollHeight;
 }

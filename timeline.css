@@ -627,12 +627,448 @@ input, textarea, button {
     object-fit: contain;
 }
 
-.inline-icon {
-    width: 18px;
-    height: 18px;
-    vertical-align: middle;
-    margin-right: 6px;
-    object-fit: contain;
+/* ==========================================================================
+   9. DIRECT MESSAGING (DM) FLOATING WIDGET & CHAT DRAWER
+   ========================================================================== */
+.dm-floating-btn {
+    position: fixed !important;
+    bottom: 24px !important;
+    right: 24px !important;
+    z-index: 1000 !important;
+    background: #1e5eff !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 30px !important;
+    padding: 10px 18px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    box-shadow: 0 6px 20px rgba(30, 94, 255, 0.35) !important;
+    cursor: pointer !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+    margin: 0 !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    width: auto !important;
+}
+
+.dm-floating-btn:hover {
+    background: #113f9f !important;
+    color: #ffffff !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 24px rgba(30, 94, 255, 0.45) !important;
+}
+
+.dm-unread-badge {
+    background: #ef4444 !important;
+    color: #ffffff !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    padding: 2px 7px !important;
+    border-radius: 12px !important;
+    line-height: 1 !important;
+}
+
+.dm-popup-widget {
+    position: fixed !important;
+    bottom: 76px !important;
+    right: 24px !important;
+    width: 360px !important;
+    height: 480px !important;
+    max-width: calc(100vw - 32px) !important;
+    max-height: calc(100vh - 90px) !important;
+    background: var(--card-bg) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.2) !important;
+    z-index: 1001 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    transition: all 0.25s ease !important;
+}
+
+.dm-popup-widget.hidden {
+    display: none !important;
+}
+
+#dmPopupWidget button {
+    box-sizing: border-box !important;
+    line-height: 1 !important;
+    text-transform: none !important;
+    letter-spacing: normal !important;
+    margin: 0 !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.dm-widget-header {
+    background: #0b1437 !important;
+    color: #ffffff !important;
+    padding: 10px 14px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.dm-user-info {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+.dm-status-dot {
+    width: 8px !important;
+    height: 8px !important;
+    border-radius: 50% !important;
+    background: #10b981 !important;
+    box-shadow: 0 0 6px #10b981 !important;
+}
+
+.dm-user-name {
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    color: #ffffff !important;
+}
+
+.dm-subtitle {
+    font-size: 11px !important;
+    opacity: 0.75 !important;
+    color: #a0aec0 !important;
+}
+
+.dm-header-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+#dmPopupWidget .dm-new-chat-btn {
+    background: #1e5eff !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 5px 12px !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    width: auto !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+}
+
+#dmPopupWidget .dm-new-chat-btn:hover {
+    background: #113f9f !important;
+    color: #ffffff !important;
+}
+
+#dmPopupWidget .dm-icon-btn {
+    background: transparent !important;
+    color: #ffffff !important;
+    border: none !important;
+    font-size: 18px !important;
+    width: 28px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+#dmPopupWidget .dm-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.15) !important;
+    color: #ffffff !important;
+}
+
+.dm-view-section {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    background: var(--card-bg) !important;
+}
+
+.dm-view-section.hidden {
+    display: none !important;
+}
+
+/* THREADS & CONTACTS LISTS */
+.dm-threads-list,
+.dm-contacts-list {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    padding: 4px 0 !important;
+}
+
+.dm-thread-item,
+.dm-contact-item {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 10px 14px !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    cursor: pointer !important;
+    transition: background 0.15s !important;
+}
+
+.dm-thread-item:hover,
+.dm-contact-item:hover {
+    background: var(--comment-bg) !important;
+}
+
+.dm-contact-avatar {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 50% !important;
+    background: var(--avatar-bg) !important;
+    color: var(--avatar-text) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-weight: 700 !important;
+    font-size: 14px !important;
+    flex-shrink: 0 !important;
+}
+
+.dm-contact-info {
+    flex: 1 !important;
+    margin: 0 10px !important;
+    overflow: hidden !important;
+}
+
+.dm-contact-name {
+    font-size: 13.5px !important;
+    font-weight: 700 !important;
+    color: var(--text-main) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.dm-preview-text {
+    font-size: 11.5px !important;
+    color: var(--text-muted) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    margin-top: 2px !important;
+}
+
+#dmContactsList .dm-new-chat-btn,
+.dm-contact-item .dm-new-chat-btn {
+    background: #1e5eff !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 4px 10px !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    height: 26px !important;
+    min-height: 26px !important;
+    width: auto !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+}
+
+.dm-search-bar {
+    padding: 8px 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    background: var(--card-bg) !important;
+}
+
+.dm-search-bar input {
+    flex: 1 !important;
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    border-radius: 14px !important;
+    border: 1px solid var(--border-color) !important;
+    background: var(--input-bg) !important;
+    color: var(--text-main) !important;
+    outline: none !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    margin: 0 !important;
+}
+
+#dmPopupWidget .dm-back-btn {
+    background: transparent !important;
+    border: none !important;
+    color: #1e5eff !important;
+    font-size: 12.5px !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    padding: 4px 8px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    width: auto !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 6px !important;
+}
+
+#dmPopupWidget .dm-back-btn:hover {
+    background: var(--comment-bg) !important;
+}
+
+/* CHATROOM STREAM */
+.dm-chatroom-bar {
+    padding: 8px 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    background: var(--comment-bg) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+.dm-partner-info { flex: 1 !important; }
+
+.dm-partner-name {
+    font-size: 13.5px !important;
+    font-weight: 700 !important;
+    color: var(--text-main) !important;
+}
+
+.dm-partner-role {
+    font-size: 11px !important;
+    color: var(--text-muted) !important;
+}
+
+#dmPopupWidget .kebab-dropdown {
+    position: absolute !important;
+    top: 32px !important;
+    right: 0 !important;
+    background: var(--card-bg) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2) !important;
+    z-index: 1005 !important;
+    min-width: 130px !important;
+    padding: 4px 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+#dmPopupWidget .kebab-dropdown.hidden {
+    display: none !important;
+}
+
+#dmPopupWidget .kebab-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    width: 100% !important;
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: var(--text-main) !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    cursor: pointer !important;
+    text-align: left !important;
+}
+
+#dmPopupWidget .kebab-item:hover {
+    background: var(--comment-bg) !important;
+}
+
+.dm-messages-stream {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    padding: 12px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+}
+
+.dm-message-bubble {
+    max-width: 80% !important;
+    padding: 8px 12px !important;
+    border-radius: 14px !important;
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+    word-break: break-word !important;
+}
+
+.dm-msg-sent {
+    align-self: flex-end !important;
+    background: #1e5eff !important;
+    color: #ffffff !important;
+    border-bottom-right-radius: 3px !important;
+}
+
+.dm-msg-received {
+    align-self: flex-start !important;
+    background: var(--comment-bg) !important;
+    color: var(--text-main) !important;
+    border: 1px solid var(--border-color) !important;
+    border-bottom-left-radius: 3px !important;
+}
+
+.dm-msg-time {
+    font-size: 9.5px !important;
+    opacity: 0.75 !important;
+    margin-top: 3px !important;
+    text-align: right !important;
+}
+
+.dm-message-input-bar {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 8px 12px !important;
+    border-top: 1px solid var(--border-color) !important;
+    background: var(--card-bg) !important;
+}
+
+.dm-message-input-bar input {
+    flex: 1 !important;
+    padding: 6px 12px !important;
+    font-size: 13px !important;
+    border-radius: 18px !important;
+    border: 1px solid var(--border-color) !important;
+    background: var(--input-bg) !important;
+    color: var(--text-main) !important;
+    outline: none !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    margin: 0 !important;
+}
+
+.dm-message-input-bar button {
+    background: #1e5eff !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 18px !important;
+    padding: 0 14px !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    width: auto !important;
+    cursor: pointer !important;
+}
+
+.dm-empty-state {
+    padding: 20px 14px !important;
+    text-align: center !important;
+    font-size: 12.5px !important;
+    color: var(--text-muted) !important;
 }
 
 .action-icon {

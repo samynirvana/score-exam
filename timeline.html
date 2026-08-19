@@ -21,7 +21,7 @@
     <!-- External Stylesheets -->
     <link rel="stylesheet" href="admin.css?v=305">
     <link rel="stylesheet" href="student.css?v=305">
-    <link rel="stylesheet" href="timeline.css?v=307">
+    <link rel="stylesheet" href="timeline.css?v=311">
 </head>
 
 <body>
@@ -90,7 +90,8 @@
             </div>
 
             <!-- USER PROFILE & ACTIONS RIGHT -->
-            <div class="user-profile-bottom desktop-user-actions" style="display: flex; align-items: center; gap: 12px; margin: 0;">
+            <div class="user-profile-bottom desktop-user-actions"
+                style="display: flex; align-items: center; gap: 12px; margin: 0;">
                 <button id="darkModeToggle" class="theme-toggle-btn" style="padding: 6px 12px; font-size: 13px;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         stroke-linecap="round" stroke-linejoin="round">
@@ -129,7 +130,8 @@
             <!-- MOBILE KEBAB MENU BUTTON & DROPDOWN (VISIBLE ON <= 768px) -->
             <div class="mobile-kebab-container">
                 <button id="mobileTopbarKebabBtn" class="mobile-kebab-btn" aria-label="Toggle Menu">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round">
                         <line x1="3" y1="6" x2="21" y2="6"></line>
                         <line x1="3" y1="12" x2="21" y2="12"></line>
                         <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -139,38 +141,85 @@
                 <div id="mobileTopbarDropdown" class="mobile-topbar-dropdown hidden">
                     <div class="kebab-group-label">NAVIGATION</div>
                     <a href="index.html" class="kebab-item nav-dashboard">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                        </svg>
                         <span>Dashboard</span>
                     </a>
                     <a href="quiz.html" class="kebab-item nav-quiz">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                        </svg>
                         <span>Online Quiz</span>
                     </a>
                     <a href="timeline.html" class="kebab-item nav-timeline">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="8" y1="6" x2="21" y2="6"></line>
+                            <line x1="8" y1="12" x2="21" y2="12"></line>
+                            <line x1="8" y1="18" x2="21" y2="18"></line>
+                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                        </svg>
                         <span>Classroom Feed</span>
                     </a>
                     <a href="index.html#myProfileCard" class="kebab-item nav-profile">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
                         <span>My Profile</span>
                     </a>
                     <a href="scores.html" class="kebab-item nav-scores">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                            <line x1="8" y1="21" x2="16" y2="21"></line>
+                            <line x1="12" y1="17" x2="12" y2="21"></line>
+                        </svg>
                         <span>My Scores</span>
                     </a>
 
                     <div class="kebab-divider"></div>
                     <div class="kebab-group-label">ACTIONS</div>
                     <button id="mobileKebabThemeBtn" class="kebab-item">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
                         <span id="mobileKebabThemeText">Dark Mode</span>
                     </button>
                     <button onclick="window.location.href='admin.html'" class="kebab-item">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                            <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+                        </svg>
                         <span>For Teacher</span>
                     </button>
                     <button id="mobileKebabLogoutBtn" class="kebab-item kebab-btn-danger">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
                         <span>Logout</span>
                     </button>
                 </div>
@@ -253,7 +302,79 @@
 
     <div id="mentionPopup" class="mention-popup hidden"></div>
 
-    <script type="module" src="timeline.js?v=306"></script>
+    <!-- FLOATING DIRECT MESSAGE LAUNCHER BUTTON (BOTTOM RIGHT) -->
+    <button id="dmFloatingBtn" class="dm-floating-btn" aria-label="Direct Message">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span>Direct Message</span>
+        <span id="dmUnreadTotalBadge" class="dm-unread-badge hidden">0</span>
+    </button>
+
+    <!-- DIRECT MESSAGE POPUP WIDGET / MODAL DRAWER -->
+    <div id="dmPopupWidget" class="dm-popup-widget hidden">
+        <!-- HEADER -->
+        <div class="dm-widget-header">
+            <div class="dm-user-info">
+                <div class="dm-status-dot"></div>
+                <div>
+                    <div class="dm-user-name" id="dmHeaderUserName">Loading...</div>
+                    <div class="dm-subtitle">Direct Messages</div>
+                </div>
+            </div>
+            <div class="dm-header-actions">
+                <button id="dmNewChatBtn" class="dm-new-chat-btn" title="Start New Chat">+ Add Chat</button>
+                <button id="dmCloseWidgetBtn" class="dm-icon-btn" title="Minimize">&times;</button>
+            </div>
+        </div>
+
+        <!-- VIEW 1: CONVERSATIONS LIST THREADS -->
+        <div id="dmThreadsView" class="dm-view-section">
+            <div id="dmThreadsList" class="dm-threads-list">
+                <div class="dm-empty-state">Loading messages...</div>
+            </div>
+        </div>
+
+        <!-- VIEW 2: CONTACT SELECTOR / PICKER (NEW CHAT) -->
+        <div id="dmContactsView" class="dm-view-section hidden">
+            <div class="dm-search-bar">
+                <input type="text" id="dmContactSearchInput" placeholder="Search student or teacher name...">
+                <button id="dmBackToThreadsBtn" class="dm-back-btn">&larr; Back</button>
+            </div>
+            <div id="dmContactsList" class="dm-contacts-list">
+                <div class="dm-empty-state">Loading users directory...</div>
+            </div>
+        </div>
+
+        <!-- VIEW 3: ACTIVE CHATROOM MESSAGES STREAM -->
+        <div id="dmChatroomView" class="dm-view-section hidden">
+            <div class="dm-chatroom-bar">
+                <button id="dmLeaveChatroomBtn" class="dm-back-btn">&larr;</button>
+                <div class="dm-partner-info">
+                    <div class="dm-partner-name" id="dmChatPartnerName">Chat Partner</div>
+                    <div class="dm-partner-role" id="dmChatPartnerRole">Student</div>
+                </div>
+                <div class="kebab-wrapper" style="position: relative;">
+                    <button class="dm-icon-btn" id="dmChatroomKebabBtn"
+                        onclick="toggleKebabMenu(event, 'dmChatroomKebabMenu')" title="Options">&#8942;</button>
+                    <div class="kebab-dropdown hidden" id="dmChatroomKebabMenu">
+                        <button class="kebab-item delete-item" id="dmDeleteChatroomBtn"
+                            style="color: #ef4444 !important;">🗑 Delete Chat</button>
+                    </div>
+                </div>
+            </div>
+            <div id="dmMessagesStream" class="dm-messages-stream">
+                <div class="dm-empty-state">No messages yet. Send a message to start chatting!</div>
+            </div>
+            <form id="dmMessageForm" class="dm-message-input-bar">
+                <input type="text" id="dmMessageInput" placeholder="Write a message..." autocomplete="off">
+                <button type="submit" id="dmSendMsgBtn">Send</button>
+            </form>
+        </div>
+    </div>
+
+    <script type="module" src="timeline.js?v=313"></script>
     <script type="module" src="studentNav.js?v=305"></script>
 </body>
 
