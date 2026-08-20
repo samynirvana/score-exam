@@ -5,7 +5,8 @@ import {
   signInWithEmailAndPassword, 
   signOut, 
   onAuthStateChanged, 
-  createUserWithEmailAndPassword 
+  createUserWithEmailAndPassword,
+  updatePassword
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 
@@ -46,6 +47,35 @@ const timeSlots = [
   { id: 12, time: "15.15 - 15.30", isBreak: true, label: "CLOSING" }
 ];
 
+// Friday Middle School (Grade 7, Grade 8, Grade 9) Period Schedule Map
+const fridayMiddleSchoolSlots = {
+  1: { start: "07.40", end: "08.20" },
+  2: { start: "08.20", end: "09.00" },
+  3: { start: "09.00", end: "09.40" },
+  4: { start: "09.40", end: "09.55", isBreak: true },
+  5: { start: "09.55", end: "10.35" },
+  6: { start: "10.35", end: "11.05" },
+  7: { start: "11.05", end: "11.40" }
+};
+
+function isMiddleSchoolClass(className) {
+  if (!className) return false;
+  const match = className.match(/(\d+)/);
+  if (match) {
+    const num = parseInt(match[1], 10);
+    return num >= 7 && num <= 9;
+  }
+  return false;
+}
+
+function getFridayMiddleSchoolTime(slotId, rowspan = 1) {
+  const startSlot = fridayMiddleSchoolSlots[slotId];
+  if (!startSlot) return null;
+  const endSlotId = slotId + (rowspan - 1);
+  const endSlot = fridayMiddleSchoolSlots[endSlotId] || startSlot;
+  return `${startSlot.start} - ${endSlot.end}`;
+}
+
 const dailyUniforms = {
   MONDAY: "Seragam Putih Biru",
   TUESDAY: "Seragam Kotak-Kotak",
@@ -61,32 +91,163 @@ let masterSchedules = {};
 let materialsData = {};
 let academicCalendar = {};
 
+function isTeacherUser() {
+  const user = auth.currentUser;
+  if (!user || !user.email) return false;
+  const emailLower = user.email.toLowerCase();
+  if (emailLower === 'adm@gc.com') return false;
+
+  if (appEntities.teacherEmails) {
+    const teacherName = Object.keys(appEntities.teacherEmails).find(
+      name => (appEntities.teacherEmails[name] || '').toLowerCase() === emailLower
+    );
+    if (teacherName) return true;
+  }
+  return false;
+}
+
+function getLoggedInTeacherName() {
+  const user = auth.currentUser;
+  if (!user || !user.email) return null;
+  const emailLower = user.email.toLowerCase();
+
+  if (appEntities.teacherEmails) {
+    return Object.keys(appEntities.teacherEmails).find(
+      name => (appEntities.teacherEmails[name] || '').toLowerCase() === emailLower
+    ) || null;
+  }
+  return null;
+}
+
+function checkUserRoleAccess() {
+  const user = auth.currentUser;
+  const btnAdminView = document.getElementById('btnAdminView');
+  const teacherSelectContainer = document.getElementById('teacherSelectContainer');
+
+  if (!user) return;
+
+  if (isTeacherUser()) {
+    // Hide Admin Dashboard button for Teachers
+    if (btnAdminView) btnAdminView.style.display = 'none';
+
+    // Hide Teacher Select dropdown container for Teachers
+    if (teacherSelectContainer) teacherSelectContainer.style.display = 'none';
+
+    // Lock Teacher Select dropdown to logged-in teacher's name
+    const tName = getLoggedInTeacherName();
+    const tSelect = document.getElementById('teacherSelectView');
+    if (tSelect && tName) {
+      tSelect.value = tName;
+      renderTeacherView();
+    }
+
+    // Switch away if currently on Admin View tab
+    const adminTab = document.getElementById('adminView');
+    if (adminTab && adminTab.classList.contains('active')) {
+      switchTab('classView', document.getElementById('btnClassView'));
+    }
+  } else {
+    // Admin User: Show Admin tab and Teacher dropdown
+    if (btnAdminView) btnAdminView.style.display = 'inline-flex';
+    if (teacherSelectContainer) teacherSelectContainer.style.display = 'flex';
+  }
+}
+
 // Firebase Auth State Observer
 onAuthStateChanged(auth, (user) => {
   const loginModal = document.getElementById('loginModal');
   const appMain = document.getElementById('appMain');
   const userDisplayEmail = document.getElementById('userDisplayEmail');
+  const userDisplayEmailText = document.getElementById('userDisplayEmailText');
 
   if (user) {
     if (loginModal) loginModal.style.display = 'none';
     if (appMain) appMain.style.display = 'block';
+    if (userDisplayEmailText) userDisplayEmailText.textContent = `Logged in as: ${user.email}`;
     if (userDisplayEmail) userDisplayEmail.textContent = `Logged in as: ${user.email}`;
 
-    if (appEntities.teacherEmails) {
-      const teacherName = Object.keys(appEntities.teacherEmails).find(
-        name => appEntities.teacherEmails[name] === user.email
-      );
-      if (teacherName) {
-        const tSelect = document.getElementById('teacherSelectView');
-        if (tSelect) {
-          tSelect.value = teacherName;
-          renderTeacherView();
-        }
-      }
-    }
+    checkUserRoleAccess();
   } else {
     if (loginModal) loginModal.style.display = 'flex';
     if (appMain) appMain.style.display = 'none';
+  }
+});
+
+// Change Password Modal Trigger & Submission Handlers
+const openChangePasswordModal = () => {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  const modal = document.getElementById('changePasswordModal');
+  const subLabel = document.getElementById('changePasswordSubLabel');
+  const msgDiv = document.getElementById('changePasswordMsg');
+  const newPass = document.getElementById('newPasswordInput');
+  const confirmPass = document.getElementById('confirmPasswordInput');
+
+  if (subLabel) subLabel.textContent = `Update account password for ${user.email}`;
+  if (msgDiv) msgDiv.style.display = 'none';
+  if (newPass) newPass.value = '';
+  if (confirmPass) confirmPass.value = '';
+
+  if (modal) modal.style.display = 'flex';
+};
+
+document.getElementById('userDisplayEmailBtn')?.addEventListener('click', openChangePasswordModal);
+document.getElementById('userDisplayEmail')?.addEventListener('click', openChangePasswordModal);
+
+document.getElementById('btnCancelChangePassword')?.addEventListener('click', () => {
+  const modal = document.getElementById('changePasswordModal');
+  if (modal) modal.style.display = 'none';
+});
+
+document.getElementById('changePasswordForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const user = auth.currentUser;
+  if (!user) return;
+
+  const newPass = document.getElementById('newPasswordInput')?.value || '';
+  const confirmPass = document.getElementById('confirmPasswordInput')?.value || '';
+  const msgDiv = document.getElementById('changePasswordMsg');
+  const submitBtn = document.getElementById('btnSubmitChangePassword');
+
+  if (!msgDiv || !submitBtn) return;
+
+  msgDiv.style.display = 'none';
+
+  if (newPass !== confirmPass) {
+    msgDiv.textContent = 'Passwords do not match. Please re-enter confirm password.';
+    msgDiv.style.cssText = 'display: block; background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; margin-top: 12px;';
+    return;
+  }
+
+  if (newPass.length < 6) {
+    msgDiv.textContent = 'Password must be at least 6 characters long.';
+    msgDiv.style.cssText = 'display: block; background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; margin-top: 12px;';
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Updating...';
+
+  try {
+    await updatePassword(user, newPass);
+    msgDiv.textContent = 'Password updated successfully!';
+    msgDiv.style.cssText = 'display: block; background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; margin-top: 12px;';
+
+    setTimeout(() => {
+      const modal = document.getElementById('changePasswordModal');
+      if (modal) modal.style.display = 'none';
+    }, 1500);
+  } catch (err) {
+    if (err.code === 'auth/requires-recent-login') {
+      msgDiv.textContent = 'Security Requirement: Please sign out and sign in again before updating your password.';
+    } else {
+      msgDiv.textContent = err.message ? err.message.replace('Firebase: ', '') : 'Failed to update password.';
+    }
+    msgDiv.style.cssText = 'display: block; background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; margin-top: 12px;';
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Update Password';
   }
 });
 
@@ -124,6 +285,11 @@ document.getElementById('btnTeacherView')?.addEventListener('click', (e) => swit
 document.getElementById('btnAdminView')?.addEventListener('click', (e) => switchTab('adminView', e.currentTarget));
 
 function switchTab(tabId, targetBtn) {
+  if (tabId === 'adminView' && isTeacherUser()) {
+    alert("Access Denied: Only administrators can access the Admin Dashboard.");
+    return;
+  }
+
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
   document.getElementById(tabId)?.classList.add('active');
@@ -234,12 +400,13 @@ function populateCalendarSelects() {
     const selectedWeek = weekSel.value;
     const badge = document.getElementById(`${prefix}DateBadge`);
     if (badge) {
+      const calSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
       if (selectedYear && selectedTheme && selectedWeek && academicCalendar[selectedYear]?.[selectedTheme]?.[selectedWeek]) {
         const info = academicCalendar[selectedYear][selectedTheme][selectedWeek];
         const formattedRange = formatModernDateRange(info.startDate, info.endDate);
-        badge.innerHTML = `<span class="badge-icon">📅</span> <span>${formattedRange}</span>`;
+        badge.innerHTML = `<span class="badge-icon">${calSvg}</span> <span>${formattedRange}</span>`;
       } else {
-        badge.innerHTML = `<span class="badge-icon">📅</span> <span>Dates: -</span>`;
+        badge.innerHTML = `<span class="badge-icon">${calSvg}</span> <span>Dates: -</span>`;
       }
     }
   });
@@ -399,13 +566,33 @@ document.getElementById('calendarForm')?.addEventListener('submit', async (e) =>
   });
 });
 
-function populateAdminSelects() {
+function updateAdminPeriodSelectOptions() {
   const periodSelect = document.getElementById('adminPeriodSelect');
-  if (periodSelect && periodSelect.children.length === 0) {
-    periodSelect.innerHTML = timeSlots
-      .filter(s => !s.isBreak)
-      .map(s => `<option value="${s.id}">Period ${s.period} (${s.time})</option>`).join('');
+  const classVal = document.getElementById('adminClassSelect')?.value || '';
+  const dayVal = document.getElementById('adminDaySelect')?.value || '';
+  if (!periodSelect) return;
+
+  const currentVal = periodSelect.value;
+  const isFriMS = dayVal === 'FRIDAY' && isMiddleSchoolClass(classVal);
+
+  periodSelect.innerHTML = timeSlots
+    .filter(s => !s.isBreak)
+    .map(s => {
+      let timeStr = s.time;
+      if (isFriMS) {
+        const friTime = getFridayMiddleSchoolTime(s.id);
+        if (friTime) timeStr = `${friTime} [Fri MS]`;
+      }
+      return `<option value="${s.id}">Period ${s.period} (${timeStr})</option>`;
+    }).join('');
+
+  if (currentVal && Array.from(periodSelect.options).some(o => o.value === currentVal)) {
+    periodSelect.value = currentVal;
   }
+}
+
+function populateAdminSelects() {
+  updateAdminPeriodSelectOptions();
 
   const classSelects = [
     document.getElementById('adminClassSelect'), 
@@ -438,25 +625,44 @@ function populateAdminSelects() {
 
   renderEntityTables();
   renderManageScheduleTable();
+  checkUserRoleAccess();
 }
+
+const entityPageMap = {
+  teachers: 1,
+  classes: 1,
+  subjects: 1
+};
+const ENTITY_PAGE_SIZE = 10;
 
 function renderEntityTables() {
   const types = ['teachers', 'classes', 'subjects'];
   if (!appEntities.homeTeachers) appEntities.homeTeachers = {};
 
   types.forEach(type => {
-    const tbodyId = `table${type.charAt(0).toUpperCase() + type.slice(1)}`;
+    const capitalizeType = type.charAt(0).toUpperCase() + type.slice(1);
+    const tbodyId = `table${capitalizeType}`;
     const tbody = document.getElementById(tbodyId);
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    appEntities[type].forEach(item => {
+    const allItems = appEntities[type] || [];
+    const totalItems = allItems.length;
+    const totalPages = Math.ceil(totalItems / ENTITY_PAGE_SIZE) || 1;
+
+    if (entityPageMap[type] > totalPages) entityPageMap[type] = totalPages;
+    if (entityPageMap[type] < 1) entityPageMap[type] = 1;
+
+    const startIdx = (entityPageMap[type] - 1) * ENTITY_PAGE_SIZE;
+    const pageItems = allItems.slice(startIdx, startIdx + ENTITY_PAGE_SIZE);
+
+    pageItems.forEach(item => {
       const tr = document.createElement('tr');
       let homeBadge = '';
       const isHomeTeacher = type === 'teachers' && appEntities.homeTeachers[item];
 
       if (isHomeTeacher) {
-        homeBadge = `<br><span class="hometeacher-pill">⭐ Home Teacher: ${appEntities.homeTeachers[item]}</span>`;
+        homeBadge = `<br><span class="hometeacher-pill">Home Teacher: ${appEntities.homeTeachers[item]}</span>`;
       }
 
       tr.innerHTML = `
@@ -480,6 +686,14 @@ function renderEntityTables() {
       `;
       tbody.appendChild(tr);
     });
+
+    const pageInfo = document.getElementById(`pageInfo${capitalizeType}`);
+    const btnPrev = document.getElementById(`btnPrev${capitalizeType}`);
+    const btnNext = document.getElementById(`btnNext${capitalizeType}`);
+
+    if (pageInfo) pageInfo.textContent = `Page ${entityPageMap[type]} of ${totalPages}`;
+    if (btnPrev) btnPrev.disabled = entityPageMap[type] <= 1;
+    if (btnNext) btnNext.disabled = entityPageMap[type] >= totalPages;
   });
 
   document.querySelectorAll('.kebab-btn').forEach(btn => {
@@ -508,6 +722,24 @@ function renderEntityTables() {
     btn.addEventListener('click', (e) => deleteEntity(e.target.dataset.type, e.target.dataset.name));
   });
 }
+
+// Entity Table Pagination Button Listeners
+['Teachers', 'Classes', 'Subjects'].forEach(typeKey => {
+  const type = typeKey.toLowerCase();
+  document.getElementById(`btnPrev${typeKey}`)?.addEventListener('click', () => {
+    if (entityPageMap[type] > 1) {
+      entityPageMap[type]--;
+      renderEntityTables();
+    }
+  });
+  document.getElementById(`btnNext${typeKey}`)?.addEventListener('click', () => {
+    const totalPages = Math.ceil((appEntities[type]?.length || 0) / ENTITY_PAGE_SIZE) || 1;
+    if (entityPageMap[type] < totalPages) {
+      entityPageMap[type]++;
+      renderEntityTables();
+    }
+  });
+});
 
 async function setHomeTeacher(teacherName) {
   const availableClasses = appEntities.classes.join(', ');
@@ -635,21 +867,19 @@ const distinctPastelPalettes = [
 
 const dynamicSubjectColorMap = {};
 
-function getSubjectPastelStyle(subjectName) {
-  if (!subjectName) return '';
+function getSubjectPastelObject(subjectName) {
+  if (!subjectName) return { bg: "#FFFFFF", border: "#CBD5E1", text: "#0F172A" };
   const key = subjectName.trim().toLowerCase();
   const groupType = getSubjectGroupType(subjectName);
 
   // Group Overrides: All Religion subjects get identical Soft Teal color
   if (groupType === 'religion') {
-    const p = { bg: "#CCFBF1", border: "#99f6e4", text: "#0f172a" };
-    return `background-color: ${p.bg}; border: 1px solid ${p.border}; color: ${p.text};`;
+    return { bg: "#CCFBF1", border: "#99f6e4", text: "#0f172a" };
   }
 
   // Group Overrides: All Art & Music subjects get identical Soft Amber color
   if (groupType === 'art') {
-    const p = { bg: "#FEF3C7", border: "#fde68a", text: "#0f172a" };
-    return `background-color: ${p.bg}; border: 1px solid ${p.border}; color: ${p.text};`;
+    return { bg: "#FEF3C7", border: "#fde68a", text: "#0f172a" };
   }
 
   if (!dynamicSubjectColorMap[key]) {
@@ -670,8 +900,11 @@ function getSubjectPastelStyle(subjectName) {
     }
     dynamicSubjectColorMap[key] = distinctPastelPalettes[assignedIdx];
   }
-  
-  const p = dynamicSubjectColorMap[key];
+  return dynamicSubjectColorMap[key];
+}
+
+function getSubjectPastelStyle(subjectName) {
+  const p = getSubjectPastelObject(subjectName);
   return `background-color: ${p.bg}; border: 1px solid ${p.border}; color: ${p.text};`;
 }
 
@@ -683,16 +916,58 @@ function renderClassSchedule() {
   if (!tbody) return;
   tbody.innerHTML = '';
 
+  const printClass = document.getElementById('printClassName');
+  if (printClass) printClass.textContent = selectedClass || '';
+  const printYear = document.getElementById('printMetaYear');
+  if (printYear) printYear.textContent = document.getElementById('classYearSelect')?.value || '';
+  const printTheme = document.getElementById('printMetaTheme');
+  if (printTheme) printTheme.textContent = document.getElementById('classThemeSelect')?.value || '';
+  const printWeek = document.getElementById('printMetaWeek');
+  if (printWeek) printWeek.textContent = document.getElementById('classWeekSelect')?.value || '';
+  const printDates = document.getElementById('printMetaDates');
+  if (printDates) printDates.textContent = document.getElementById('classDateBadge')?.textContent || '';
+
   const days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
   const calPrefix = getActiveCalendarPrefix('class');
   const skipCells = { MONDAY: 0, TUESDAY: 0, WEDNESDAY: 0, THURSDAY: 0, FRIDAY: 0 };
+
+  const clockSvg = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:3px; vertical-align:middle;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+  const linkSvg = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:3px; vertical-align:middle;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
+  const noteSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px; vertical-align:middle;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`;
 
   timeSlots.forEach((slot, sIndex) => {
     const tr = document.createElement('tr');
 
     if (slot.isBreak) {
       tr.className = 'break-row';
-      tr.innerHTML = `<td class="time-cell break-time">${slot.time}</td><td colspan="5" class="break-label"><span class="break-pill">${slot.label}</span></td>`;
+      let html = `<td class="time-cell break-time">${slot.time}</td>`;
+
+      if (slot.id === 0) {
+        html += `<td colspan="5" class="break-label"><span class="break-pill">${slot.label}</span></td>`;
+      } else if (slot.id === 4) {
+        // BREAK: Combine Mon-Thu (colspan=4), Friday separate
+        html += `<td colspan="4" class="break-label"><span class="break-pill">BREAK</span></td>`;
+        if (isMiddleSchoolClass(selectedClass)) {
+          html += `<td class="break-label break-day-cell">
+            <span class="break-pill">BREAK</span>
+            <div class="friday-break-note" style="margin-top: 4px; font-weight: 700; color: #be123c; background: #fff1f2; padding: 2px 6px; border-radius: 4px; border: 1px solid #fecdd3; font-size: 10px; display: inline-block;">09.40 - 09.55</div>
+          </td>`;
+        } else {
+          html += `<td class="break-label break-day-cell"><span class="break-pill">BREAK</span></td>`;
+        }
+      } else if (slot.id === 8) {
+        // LUNCH: Combine Mon-Thu (colspan=4), Friday changes to CLOSING
+        html += `<td colspan="4" class="break-label"><span class="break-pill">LUNCH</span></td>`;
+        html += `<td class="break-label break-day-cell"><span class="break-pill">CLOSING</span></td>`;
+      } else if (slot.id === 12) {
+        // CLOSING: Combine Mon-Thu (colspan=4), Friday closing text removed
+        html += `<td colspan="4" class="break-label"><span class="break-pill">CLOSING</span></td>`;
+        html += `<td class="break-label break-day-cell"><span class="empty-dash">-</span></td>`;
+      } else {
+        html += `<td colspan="5" class="break-label"><span class="break-pill">${slot.label}</span></td>`;
+      }
+
+      tr.innerHTML = html;
       days.forEach(day => skipCells[day] = 0);
     } else {
       let html = `<td class="time-cell"><div class="time-range">${slot.time}</div><div class="period-badge">Period ${slot.period}</div></td>`;
@@ -730,6 +1005,14 @@ function renderClassSchedule() {
 
           if (rowspan > 1) skipCells[day] = rowspan - 1;
 
+          let friTimeBadge = '';
+          if (day === 'FRIDAY' && isMiddleSchoolClass(selectedClass)) {
+            const friTime = getFridayMiddleSchoolTime(slot.id, rowspan);
+            if (friTime) {
+              friTimeBadge = `<div class="friday-time-pill">${clockSvg}${friTime}</div>`;
+            }
+          }
+
           let cellContent = '';
           let cellStyle = '';
 
@@ -741,7 +1024,7 @@ function renderClassSchedule() {
             slotEntries.forEach(entry => {
               const matKey = `${calPrefix}_${selectedClass}_${day}_${entry.subject}`;
               const matInfo = materialsData[matKey] || {};
-              const linkHtml = matInfo.link ? `<a href="${matInfo.link}" target="_blank" class="resource-link">🔗 Link</a>` : '';
+              const linkHtml = matInfo.link ? `<a href="${matInfo.link}" target="_blank" class="resource-link">${linkSvg}Link</a>` : '';
               const itemPastelStyle = getSubjectPastelStyle(entry.subject);
 
               itemsHtml += `
@@ -754,6 +1037,7 @@ function renderClassSchedule() {
 
             cellContent = `
               <div class="subject-card group-card">
+                ${friTimeBadge}
                 <span class="group-header-badge">${groupTitle}</span>
                 <div class="group-items">
                   ${itemsHtml}
@@ -763,11 +1047,12 @@ function renderClassSchedule() {
             const entry = slotEntries[0];
             const matKey = `${calPrefix}_${selectedClass}_${day}_${entry.subject}`;
             const matInfo = materialsData[matKey] || {};
-            const linkHtml = matInfo.link ? `<a href="${matInfo.link}" target="_blank" class="resource-link">🔗 Link</a>` : '';
+            const linkHtml = matInfo.link ? `<a href="${matInfo.link}" target="_blank" class="resource-link">${linkSvg}Link</a>` : '';
             cellStyle = getSubjectPastelStyle(entry.subject);
 
             cellContent = `
               <div class="subject-card">
+                ${friTimeBadge}
                 <span class="subject-title">${entry.subject}</span>
                 ${matInfo.material ? `<div class="material-text">${matInfo.material}</div>` : ''}
                 ${linkHtml}
@@ -777,7 +1062,16 @@ function renderClassSchedule() {
           const rowspanAttr = rowspan > 1 ? ` rowspan="${rowspan}"` : '';
           html += `<td${rowspanAttr} class="subject-cell" style="${cellStyle}">${cellContent}</td>`;
         } else {
-          html += `<td><span class="empty-dash">-</span></td>`;
+          if (day === 'FRIDAY' && isMiddleSchoolClass(selectedClass)) {
+            const friTime = getFridayMiddleSchoolTime(slot.id, 1);
+            if (friTime) {
+              html += `<td class="subject-cell"><div class="friday-time-pill" style="opacity:0.85;">${clockSvg}${friTime}</div><br><span class="empty-dash">-</span></td>`;
+            } else {
+              html += `<td><span class="empty-dash">-</span></td>`;
+            }
+          } else {
+            html += `<td><span class="empty-dash">-</span></td>`;
+          }
         }
       });
 
@@ -794,7 +1088,7 @@ function renderClassSchedule() {
   notesTr.className = 'notes-row';
   notesTr.innerHTML = `
     <td class="notes-header-cell">
-      <div class="notes-title">📝 NOTES</div>
+      <div class="notes-title">${noteSvg}NOTES</div>
     </td>
     <td colspan="5" class="notes-content-cell">
       <div class="notes-box">${noteText}</div>
@@ -808,6 +1102,28 @@ document.getElementById('btnPrintPDF')?.addEventListener('click', () => {
 });
 
 document.getElementById('btnDownloadExcel')?.addEventListener('click', exportWeeklyToExcel);
+
+document.getElementById('btnTeacherPrintPDF')?.addEventListener('click', () => {
+  const teacherName = document.getElementById('teacherSelectView')?.value || '';
+  const printName = document.getElementById('printTeacherName');
+  if (printName) printName.textContent = teacherName;
+
+  const printYear = document.getElementById('printTeacherMetaYear');
+  if (printYear) printYear.textContent = document.getElementById('teacherYearSelect')?.value || '';
+
+  const printTheme = document.getElementById('printTeacherMetaTheme');
+  if (printTheme) printTheme.textContent = document.getElementById('teacherThemeSelect')?.value || '';
+
+  const printWeek = document.getElementById('printTeacherMetaWeek');
+  if (printWeek) printWeek.textContent = document.getElementById('teacherWeekSelect')?.value || '';
+
+  const printDates = document.getElementById('printTeacherMetaDates');
+  if (printDates) printDates.textContent = document.getElementById('teacherDateBadge')?.textContent || '';
+
+  window.print();
+});
+
+document.getElementById('btnTeacherDownloadExcel')?.addEventListener('click', exportTeacherToExcel);
 
 function exportWeeklyToExcel() {
   if (typeof XLSX === 'undefined') {
@@ -827,139 +1143,210 @@ function exportWeeklyToExcel() {
     return;
   }
 
-  // --- Excel Color Palette & Style Definitions matching Class View ---
-  const COLORS = {
-    titleBg: "1E293B",     // Slate 800
-    titleText: "FFFFFF",
-    metaBg: "EFF6FF",      // Blue 50
-    metaBorder: "BFDBFE",  // Blue 200
-    metaText: "1E40AF",    // Blue 800
-    headerBg: "F1F5F9",    // Slate 100
-    headerText: "0F172A",  // Slate 900
-    breakBg: "E2E8F0",     // Slate 200
-    breakText: "1E293B",   // Slate 800
-    border: "CBD5E1",      // Slate 300
-    cellBg: "FFFFFF",
-    cellText: "0F172A",
-    notesBg: "F8FAFC",     // Slate 50
-    notesText: "334155",   // Slate 700
-    mutedText: "94A3B8"    // Slate 400
-  };
+  function createExcelStyle(bgHex, borderHex, textHex, options = {}) {
+    const cleanBg = (bgHex || "FFFFFF").replace('#', '').toUpperCase();
+    const cleanBorder = (borderHex || "CBD5E1").replace('#', '').toUpperCase();
+    const cleanText = (textHex || "0F172A").replace('#', '').toUpperCase();
 
-  const THIN_BORDER = {
-    top: { style: "thin", color: { rgb: COLORS.border } },
-    bottom: { style: "thin", color: { rgb: COLORS.border } },
-    left: { style: "thin", color: { rgb: COLORS.border } },
-    right: { style: "thin", color: { rgb: COLORS.border } }
-  };
-
-  const STYLES = {
-    title: {
-      fill: { fgColor: { rgb: COLORS.titleBg } },
-      font: { name: "Calibri", sz: 14, bold: true, color: { rgb: COLORS.titleText } },
-      alignment: { horizontal: "center", vertical: "center" }
-    },
-    meta: {
-      fill: { fgColor: { rgb: COLORS.metaBg } },
-      font: { name: "Calibri", sz: 10, bold: true, color: { rgb: COLORS.metaText } },
-      alignment: { horizontal: "center", vertical: "center" },
+    return {
+      fill: {
+        fgColor: { rgb: cleanBg }
+      },
+      font: {
+        name: "Calibri",
+        sz: options.fontSize || 10,
+        bold: !!options.bold,
+        italic: !!options.italic,
+        color: { rgb: cleanText }
+      },
+      alignment: {
+        horizontal: options.align || "center",
+        vertical: "center",
+        wrapText: true
+      },
       border: {
-        top: { style: "thin", color: { rgb: COLORS.metaBorder } },
-        bottom: { style: "thin", color: { rgb: COLORS.metaBorder } },
-        left: { style: "thin", color: { rgb: COLORS.metaBorder } },
-        right: { style: "thin", color: { rgb: COLORS.metaBorder } }
+        top: { style: "thin", color: { rgb: cleanBorder } },
+        bottom: { style: "thin", color: { rgb: cleanBorder } },
+        left: { style: "thin", color: { rgb: cleanBorder } },
+        right: { style: "thin", color: { rgb: cleanBorder } }
       }
-    },
-    tableHeader: {
-      fill: { fgColor: { rgb: COLORS.headerBg } },
-      font: { name: "Calibri", sz: 11, bold: true, color: { rgb: COLORS.headerText } },
-      alignment: { horizontal: "center", vertical: "center", wrapText: true },
-      border: THIN_BORDER
-    },
-    breakRow: {
-      fill: { fgColor: { rgb: COLORS.breakBg } },
-      font: { name: "Calibri", sz: 11, bold: true, color: { rgb: COLORS.breakText } },
-      alignment: { horizontal: "center", vertical: "center" },
-      border: THIN_BORDER
-    },
-    timeCell: {
-      fill: { fgColor: { rgb: COLORS.headerBg } },
-      font: { name: "Calibri", sz: 10, bold: true, color: { rgb: COLORS.headerText } },
-      alignment: { horizontal: "center", vertical: "center", wrapText: true },
-      border: THIN_BORDER
-    },
-    scheduleCell: {
-      fill: { fgColor: { rgb: COLORS.cellBg } },
-      font: { name: "Calibri", sz: 10, color: { rgb: COLORS.cellText } },
-      alignment: { horizontal: "center", vertical: "center", wrapText: true },
-      border: THIN_BORDER
-    },
-    emptyCell: {
-      fill: { fgColor: { rgb: COLORS.cellBg } },
-      font: { name: "Calibri", sz: 10, color: { rgb: COLORS.mutedText } },
-      alignment: { horizontal: "center", vertical: "center" },
-      border: THIN_BORDER
-    },
-    notesHeader: {
-      fill: { fgColor: { rgb: COLORS.headerBg } },
-      font: { name: "Calibri", sz: 10, bold: true, color: { rgb: COLORS.headerText } },
-      alignment: { horizontal: "center", vertical: "center" },
-      border: THIN_BORDER
-    },
-    notesContent: {
-      fill: { fgColor: { rgb: COLORS.notesBg } },
-      font: { name: "Calibri", sz: 10, italic: true, color: { rgb: COLORS.notesText } },
-      alignment: { horizontal: "left", vertical: "center", wrapText: true },
-      border: THIN_BORDER
-    }
-  };
+    };
+  }
 
-  // Helper to cleanly extract text from HTML cells
-  function parseCellContent(cell) {
-    if (cell.tagName.toLowerCase() === 'th') {
-      const small = cell.querySelector('small');
-      if (small) {
-        const main = cell.childNodes[0]?.textContent?.trim() || '';
-        return `${main}\n${small.textContent.trim()}`;
+  // Parse HTML cell content into structured cell descriptor with pastel colors
+  function parseCellData(cell) {
+    const tagName = cell.tagName.toLowerCase();
+
+    // 1. Table Headers (th)
+    if (tagName === 'th') {
+      const dayName = cell.querySelector('.day-name')?.textContent.trim();
+      const uniform = cell.querySelector('.uniform-badge')?.textContent.trim();
+      const friBadge = cell.querySelector('.friday-header-badge');
+      const friMs = friBadge && friBadge.style.display !== 'none' ? friBadge.textContent.trim() : null;
+
+      let text = cell.textContent.trim();
+      if (dayName) {
+        const parts = [dayName];
+        if (uniform) parts.push(uniform);
+        if (friMs) parts.push(friMs);
+        text = parts.join('\n');
       }
-      return cell.textContent.trim();
+      return {
+        text,
+        bgHex: "F1F5F9",
+        borderHex: "CBD5E1",
+        textHex: "0F172A",
+        bold: true,
+        fontSize: 11,
+        align: "center"
+      };
     }
 
-    if (cell.querySelector('strong') && cell.querySelector('small')) {
-      const strong = cell.querySelector('strong').textContent.trim();
-      const small = cell.querySelector('small').textContent.trim();
-      return `${strong}\n${small}`;
-    }
+    // 2. Time Column Cell (.time-cell)
+    if (cell.classList.contains('time-cell')) {
+      const timeRange = cell.querySelector('.time-range')?.textContent.trim();
+      const periodBadge = cell.querySelector('.period-badge')?.textContent.trim();
 
-    const titleElem = cell.querySelector('.subject-title');
-    if (titleElem) {
-      const mainTitle = titleElem.textContent.trim();
-      if (mainTitle === 'RELIGION' || mainTitle === 'ART & MUSIC') {
-        const lines = [mainTitle];
-        const subDivs = cell.querySelectorAll('div');
-        subDivs.forEach(div => {
-          const tTag = div.querySelector('.teacher-tag')?.textContent.trim();
-          const mText = div.querySelector('.material-text')?.textContent.trim();
-          const link = div.querySelector('.resource-link')?.href;
-          if (tTag) lines.push(`• ${tTag}`);
-          if (mText && mText !== 'No material entered') lines.push(`  ${mText}`);
-          if (link) lines.push(`  Link: ${link}`);
-        });
-        return lines.join('\n');
-      } else {
-        const lines = [mainTitle];
-        const teacher = cell.querySelector('.teacher-tag')?.textContent.trim();
-        const mat = cell.querySelector('.material-text')?.textContent.trim();
-        const link = cell.querySelector('.resource-link')?.href;
-
-        if (teacher) lines.push(teacher);
-        if (mat && mat !== 'No material entered') lines.push(mat);
-        if (link) lines.push(`Link: ${link}`);
-        return lines.join('\n');
+      let text = cell.textContent.trim();
+      if (timeRange && periodBadge) {
+        text = `${timeRange}\n${periodBadge}`;
       }
+      return {
+        text,
+        bgHex: "F8FAFC",
+        borderHex: "CBD5E1",
+        textHex: "0F172A",
+        bold: true,
+        fontSize: 10,
+        align: "center"
+      };
     }
 
-    return cell.textContent.trim();
+    // 3. Break Rows & Notes Header
+    if (cell.classList.contains('break-time') || cell.classList.contains('break-label')) {
+      return {
+        text: cell.textContent.trim(),
+        bgHex: "E2E8F0",
+        borderHex: "CBD5E1",
+        textHex: "1E293B",
+        bold: true,
+        fontSize: 10,
+        align: "center"
+      };
+    }
+
+    if (cell.classList.contains('notes-header-cell')) {
+      return {
+        text: cell.textContent.trim(),
+        bgHex: "F1F5F9",
+        borderHex: "CBD5E1",
+        textHex: "0F172A",
+        bold: true,
+        fontSize: 10,
+        align: "center"
+      };
+    }
+
+    if (cell.classList.contains('notes-content-cell')) {
+      const noteText = cell.querySelector('.notes-box')?.textContent.trim() || cell.textContent.trim();
+      return {
+        text: noteText,
+        bgHex: "F8FAFC",
+        borderHex: "CBD5E1",
+        textHex: "334155",
+        italic: true,
+        fontSize: 10,
+        align: "left"
+      };
+    }
+
+    // 4. Group Subject Card (.group-card for Religion / Art & Music)
+    const groupCard = cell.querySelector('.group-card');
+    if (groupCard) {
+      const friTime = cell.querySelector('.friday-time-pill')?.textContent.trim();
+      const groupHeader = cell.querySelector('.group-header-badge')?.textContent.trim() || '';
+      const items = cell.querySelectorAll('.group-item');
+
+      const lines = [];
+      if (friTime) lines.push(friTime);
+      if (groupHeader) lines.push(`-- ${groupHeader} --`);
+
+      items.forEach(item => {
+        const subj = item.querySelector('.group-subject')?.textContent.trim() || item.querySelector('strong')?.textContent.trim() || '';
+        const mat = item.querySelector('.material-text')?.textContent.trim();
+        const link = item.querySelector('.resource-link')?.href;
+
+        let itemLine = `• ${subj}`;
+        if (mat && mat !== 'No material entered') itemLine += ` (${mat})`;
+        if (link) itemLine += ` [Link: ${link}]`;
+        lines.push(itemLine);
+      });
+
+      const pastel = getSubjectPastelObject(groupHeader);
+      return {
+        text: lines.join('\n'),
+        bgHex: pastel.bg,
+        borderHex: pastel.border,
+        textHex: pastel.text,
+        bold: true,
+        fontSize: 10,
+        align: "center"
+      };
+    }
+
+    // 5. Regular Subject Card (.subject-card)
+    const subjectCard = cell.querySelector('.subject-card');
+    if (subjectCard) {
+      const friTime = cell.querySelector('.friday-time-pill')?.textContent.trim();
+      const titleElem = cell.querySelector('.subject-title')?.textContent.trim();
+      const teacher = cell.querySelector('.teacher-tag')?.textContent.trim();
+      const mat = cell.querySelector('.material-text')?.textContent.trim();
+      const link = cell.querySelector('.resource-link')?.href;
+
+      const lines = [];
+      if (friTime) lines.push(friTime);
+      if (titleElem) lines.push(titleElem);
+      if (teacher) lines.push(teacher);
+      if (mat && mat !== 'No material entered') lines.push(mat);
+      if (link) lines.push(`Link: ${link}`);
+
+      const pastel = getSubjectPastelObject(titleElem);
+      return {
+        text: lines.join('\n'),
+        bgHex: pastel.bg,
+        borderHex: pastel.border,
+        textHex: pastel.text,
+        bold: true,
+        fontSize: 10,
+        align: "center"
+      };
+    }
+
+    // 6. Empty or Dash Cells
+    const friTimeOnly = cell.querySelector('.friday-time-pill')?.textContent.trim();
+    if (cell.querySelector('.empty-dash') || cell.textContent.trim() === '-') {
+      const lines = [];
+      if (friTimeOnly) lines.push(friTimeOnly);
+      lines.push('-');
+      return {
+        text: lines.join('\n'),
+        bgHex: "FFFFFF",
+        borderHex: "CBD5E1",
+        textHex: "94A3B8",
+        fontSize: 10,
+        align: "center"
+      };
+    }
+
+    // Fallback
+    return {
+      text: cell.textContent.trim(),
+      bgHex: "FFFFFF",
+      borderHex: "CBD5E1",
+      textHex: "0F172A",
+      fontSize: 10,
+      align: "center"
+    };
   }
 
   // Parse table structure handling rowspans & colspans
@@ -981,16 +1368,13 @@ function exportWeeklyToExcel() {
 
       const rowspan = parseInt(cell.getAttribute('rowspan') || '1', 10);
       const colspan = parseInt(cell.getAttribute('colspan') || '1', 10);
-      const isHeader = cell.tagName.toLowerCase() === 'th';
-      const text = parseCellContent(cell);
+      const parsedData = parseCellData(cell);
 
       grid[rIdx][cIdx] = {
-        text,
+        ...parsedData,
         rowspan,
         colspan,
-        isHeader,
-        isBreak,
-        isNotes: text === 'NOTES' || (cIdx === 0 && rIdx === tableRows.length - 1)
+        isBreak
       };
 
       if (rowspan > 1 || colspan > 1) {
@@ -1017,23 +1401,25 @@ function exportWeeklyToExcel() {
 
   const rowOffset = 3; // Space for Header Title & Metadata
 
-  // 1. Title Row (Row 0)
+  // 1. Title Banner (Row 0)
   const titleText = `SCHOOL WEEKLY SCHEDULE - ${className || 'Class'}`;
+  const titleStyle = createExcelStyle("1E293B", "1E293B", "FFFFFF", { fontSize: 14, bold: true, align: "center" });
   for (let c = 0; c < 6; c++) {
     const cellRef = XLSX.utils.encode_cell({ r: 0, c });
-    ws[cellRef] = { v: c === 0 ? titleText : '', t: 's', s: STYLES.title };
+    ws[cellRef] = { v: c === 0 ? titleText : '', t: 's', s: titleStyle };
   }
   ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 5 } });
-  ws['!rows'][0] = { hpt: 30 };
+  ws['!rows'][0] = { hpt: 32 };
 
-  // 2. Metadata Row (Row 1)
+  // 2. Metadata Banner (Row 1)
   const metaText = `School Year: ${schoolYear}   |   Theme: ${theme}   |   Week: ${week}   |   ${dates}`;
+  const metaStyle = createExcelStyle("EFF6FF", "BFDBFE", "1E40AF", { fontSize: 10, bold: true, align: "center" });
   for (let c = 0; c < 6; c++) {
     const cellRef = XLSX.utils.encode_cell({ r: 1, c });
-    ws[cellRef] = { v: c === 0 ? metaText : '', t: 's', s: STYLES.meta };
+    ws[cellRef] = { v: c === 0 ? metaText : '', t: 's', s: metaStyle };
   }
   ws['!merges'].push({ s: { r: 1, c: 0 }, e: { r: 1, c: 5 } });
-  ws['!rows'][1] = { hpt: 24 };
+  ws['!rows'][1] = { hpt: 26 };
 
   // Row 2 Spacer
   ws['!rows'][2] = { hpt: 10 };
@@ -1044,32 +1430,30 @@ function exportWeeklyToExcel() {
     const isFirstRow = rIdx === 0;
     const isLastRow = rIdx === grid.length - 1;
 
-    // Set custom row height
-    if (isFirstRow) ws['!rows'][excelR] = { hpt: 28 };
-    else if (row[0]?.isBreak) ws['!rows'][excelR] = { hpt: 22 };
-    else if (isLastRow) ws['!rows'][excelR] = { hpt: 40 };
-    else ws['!rows'][excelR] = { hpt: 55 };
+    // Determine row height dynamically based on max line count
+    let maxLines = 1;
+    row.forEach(cellData => {
+      if (cellData && cellData.text) {
+        const linesCount = cellData.text.split('\n').length;
+        if (linesCount > maxLines) maxLines = linesCount;
+      }
+    });
+
+    if (isFirstRow) ws['!rows'][excelR] = { hpt: 34 };
+    else if (row[0]?.isBreak) ws['!rows'][excelR] = { hpt: 24 };
+    else if (isLastRow) ws['!rows'][excelR] = { hpt: 48 };
+    else ws['!rows'][excelR] = { hpt: Math.max(52, maxLines * 18) };
 
     row.forEach((cellData, cIdx) => {
       if (!cellData) return;
 
-      // Select cell style
-      let style = STYLES.scheduleCell;
-      if (isFirstRow) {
-        style = STYLES.tableHeader;
-      } else if (cellData.isBreak) {
-        style = STYLES.breakRow;
-      } else if (isLastRow && cIdx === 0) {
-        style = STYLES.notesHeader;
-      } else if (isLastRow && cIdx > 0) {
-        style = STYLES.notesContent;
-      } else if (cIdx === 0) {
-        style = STYLES.timeCell;
-      } else if (cellData.text === '-') {
-        style = STYLES.emptyCell;
-      }
+      const style = createExcelStyle(cellData.bgHex, cellData.borderHex, cellData.textHex, {
+        fontSize: cellData.fontSize || 10,
+        bold: cellData.bold,
+        italic: cellData.italic,
+        align: cellData.align || "center"
+      });
 
-      // Populate cell and all merged sub-cells for full border & fill coverage
       const rSpan = cellData.rowspan || 1;
       const cSpan = cellData.colspan || 1;
 
@@ -1093,14 +1477,14 @@ function exportWeeklyToExcel() {
     });
   });
 
-  // Column Widths
+  // Column Widths matching web table proportion
   ws['!cols'] = [
-    { wch: 18 }, // TIME
-    { wch: 32 }, // MONDAY
-    { wch: 32 }, // TUESDAY
-    { wch: 32 }, // WEDNESDAY
-    { wch: 32 }, // THURSDAY
-    { wch: 32 }  // FRIDAY
+    { wch: 20 }, // TIME
+    { wch: 30 }, // MONDAY
+    { wch: 30 }, // TUESDAY
+    { wch: 30 }, // WEDNESDAY
+    { wch: 30 }, // THURSDAY
+    { wch: 30 }  // FRIDAY
   ];
 
   // Set !ref range
@@ -1116,6 +1500,251 @@ function exportWeeklyToExcel() {
   const fileName = `Weekly_Schedule_${safeClass || 'Class'}_${safeWeek || 'Export'}.xlsx`;
 
   XLSX.writeFile(wb, fileName);
+}
+
+function exportTeacherToExcel() {
+  if (typeof XLSX === 'undefined') {
+    alert('Excel export library is loading or unavailable. Please refresh the page and try again.');
+    return;
+  }
+
+  const schoolYear = document.getElementById('teacherYearSelect')?.value || '';
+  const theme = document.getElementById('teacherThemeSelect')?.value || '';
+  const week = document.getElementById('teacherWeekSelect')?.value || '';
+  const dates = document.getElementById('teacherDateBadge')?.textContent || '';
+  const teacherName = document.getElementById('teacherSelectView')?.value || 'Teacher';
+
+  const table = document.querySelector('#teacherView .schedule-side table');
+  if (!table) {
+    alert('No teacher schedule table found to export.');
+    return;
+  }
+
+  function createExcelStyle(bgHex, borderHex, textHex, options = {}) {
+    const cleanBg = (bgHex || "FFFFFF").replace('#', '').toUpperCase();
+    const cleanBorder = (borderHex || "CBD5E1").replace('#', '').toUpperCase();
+    const cleanText = (textHex || "0F172A").replace('#', '').toUpperCase();
+
+    return {
+      fill: { fgColor: { rgb: cleanBg } },
+      font: {
+        name: "Calibri",
+        sz: options.fontSize || 10,
+        bold: !!options.bold,
+        italic: !!options.italic,
+        color: { rgb: cleanText }
+      },
+      alignment: {
+        horizontal: options.align || "center",
+        vertical: "center",
+        wrapText: true
+      },
+      border: {
+        top: { style: "thin", color: { rgb: cleanBorder } },
+        bottom: { style: "thin", color: { rgb: cleanBorder } },
+        left: { style: "thin", color: { rgb: cleanBorder } },
+        right: { style: "thin", color: { rgb: cleanBorder } }
+      }
+    };
+  }
+
+  function parseCellData(cell) {
+    if (!cell) return null;
+    let text = cell.innerText ? cell.innerText.trim() : '';
+
+    const isBreak = cell.classList.contains('break-label') || cell.classList.contains('break-time') || cell.parentElement?.classList.contains('break-row');
+    const isHeader = cell.tagName === 'TH';
+
+    let bgHex = "FFFFFF";
+    let borderHex = "CBD5E1";
+    let textHex = "0F172A";
+
+    if (isHeader) {
+      bgHex = "F8FAFC";
+      borderHex = "94A3B8";
+      textHex = "0F172A";
+    } else if (isBreak) {
+      bgHex = "F1F5F9";
+      borderHex = "CBD5E1";
+      textHex = "475569";
+    } else {
+      const computedBg = window.getComputedStyle(cell).backgroundColor;
+      if (computedBg && computedBg !== 'rgba(0, 0, 0, 0)' && computedBg !== 'transparent') {
+        const rgb = computedBg.match(/\d+/g);
+        if (rgb && rgb.length >= 3) {
+          bgHex = ((1 << 24) + (parseInt(rgb[0]) << 16) + (parseInt(rgb[1]) << 8) + parseInt(rgb[2])).toString(16).slice(1).toUpperCase();
+        }
+      }
+    }
+
+    const rowspan = parseInt(cell.getAttribute('rowspan') || '1', 10);
+    const colspan = parseInt(cell.getAttribute('colspan') || '1', 10);
+
+    return {
+      text,
+      bgHex,
+      borderHex,
+      textHex,
+      rowspan,
+      colspan,
+      isHeader,
+      isBreak,
+      bold: isHeader || isBreak,
+      fontSize: isHeader ? 11 : 10
+    };
+  }
+
+  const rows = Array.from(table.querySelectorAll('tr'));
+  const grid = [];
+  const merges = [];
+
+  rows.forEach((tr, rIdx) => {
+    if (!grid[rIdx]) grid[rIdx] = [];
+    let colCursor = 0;
+
+    const cells = Array.from(tr.querySelectorAll('th, td'));
+    cells.forEach(cell => {
+      while (grid[rIdx][colCursor]) {
+        colCursor++;
+      }
+
+      const cellData = parseCellData(cell);
+      grid[rIdx][colCursor] = cellData;
+
+      if (cellData.rowspan > 1 || cellData.colspan > 1) {
+        merges.push({
+          s: { r: rIdx, c: colCursor },
+          e: { r: rIdx + cellData.rowspan - 1, c: colCursor + cellData.colspan - 1 }
+        });
+        for (let dr = 0; dr < cellData.rowspan; dr++) {
+          for (let dc = 0; dc < cellData.colspan; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            if (!grid[rIdx + dr]) grid[rIdx + dr] = [];
+            grid[rIdx + dr][colCursor + dc] = { placeholder: true, bgHex: cellData.bgHex, borderHex: cellData.borderHex, textHex: cellData.textHex };
+          }
+        }
+      }
+      colCursor += cellData.colspan;
+    });
+  });
+
+  const ws = {};
+  ws['!merges'] = [];
+
+  const bannerTitle = `TEACHER SCHEDULE - ${teacherName.toUpperCase()}`;
+  const bannerMeta = `${schoolYear} | ${theme} | ${week} | ${dates}`;
+
+  ws['A1'] = {
+    v: bannerTitle,
+    t: 's',
+    s: createExcelStyle("1E293B", "1E293B", "FFFFFF", { fontSize: 14, bold: true, align: "center" })
+  };
+  ws['A2'] = {
+    v: bannerMeta,
+    t: 's',
+    s: createExcelStyle("F8FAFC", "CBD5E1", "475569", { fontSize: 10, bold: true, italic: true, align: "center" })
+  };
+
+  ws['!merges'].push(
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } },
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } }
+  );
+
+  const rowOffset = 3;
+  ws['!rows'] = [
+    { hpt: 30 },
+    { hpt: 22 },
+    { hpt: 10 }
+  ];
+
+  grid.forEach((row, rIdx) => {
+    const excelR = rIdx + rowOffset;
+
+    let maxLines = 1;
+    row.forEach(cellData => {
+      if (cellData && cellData.text) {
+        const linesCount = cellData.text.split('\n').length;
+        if (linesCount > maxLines) maxLines = linesCount;
+      }
+    });
+
+    const isFirstRow = rIdx === 0;
+    const isLastRow = rIdx === grid.length - 1;
+
+    if (isFirstRow) ws['!rows'][excelR] = { hpt: 34 };
+    else if (row[0]?.isBreak) ws['!rows'][excelR] = { hpt: 24 };
+    else if (isLastRow) ws['!rows'][excelR] = { hpt: 48 };
+    else ws['!rows'][excelR] = { hpt: Math.max(52, maxLines * 18) };
+
+    row.forEach((cellData, cIdx) => {
+      if (!cellData) return;
+
+      const style = createExcelStyle(cellData.bgHex, cellData.borderHex, cellData.textHex, {
+        fontSize: cellData.fontSize || 10,
+        bold: cellData.bold,
+        italic: cellData.italic,
+        align: cellData.align || "center"
+      });
+
+      const rSpan = cellData.rowspan || 1;
+      const cSpan = cellData.colspan || 1;
+
+      for (let dr = 0; dr < rSpan; dr++) {
+        for (let dc = 0; dc < cSpan; dc++) {
+          const targetR = excelR + dr;
+          const targetC = cIdx + dc;
+          const cellRef = XLSX.utils.encode_cell({ r: targetR, c: targetC });
+          const val = (dr === 0 && dc === 0) ? cellData.text : '';
+          ws[cellRef] = { v: val, t: 's', s: style };
+        }
+      }
+    });
+  });
+
+  merges.forEach(m => {
+    ws['!merges'].push({
+      s: { r: m.s.r + rowOffset, c: m.s.c },
+      e: { r: m.e.r + rowOffset, c: m.e.c }
+    });
+  });
+
+  ws['!cols'] = [
+    { wch: 20 },
+    { wch: 30 },
+    { wch: 30 },
+    { wch: 30 },
+    { wch: 30 },
+    { wch: 30 }
+  ];
+
+  const totalRows = grid.length + rowOffset;
+  ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: totalRows - 1, c: 5 } });
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Teacher Schedule");
+
+  const safeTeacher = teacherName.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const safeWeek = week.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const fileName = `Teacher_Schedule_${safeTeacher || 'Teacher'}_${safeWeek || 'Export'}.xlsx`;
+
+  XLSX.writeFile(wb, fileName);
+}
+
+function getTeacherSlotAssignment(teacherName, day, slotId) {
+  let result = null;
+  Object.keys(masterSchedules).forEach(className => {
+    const slotEntries = getSlotAssignments(className, day, slotId);
+    slotEntries.forEach(entry => {
+      if (entry.teacher === teacherName) {
+        result = {
+          subject: entry.subject,
+          className: className,
+          entry: entry
+        };
+      }
+    });
+  });
+  return result;
 }
 
 function renderTeacherView() {
@@ -1146,25 +1775,79 @@ function renderTeacherView() {
   const tbodyGrid = document.getElementById('teacherScheduleBody');
   if (tbodyGrid) {
     tbodyGrid.innerHTML = '';
-    timeSlots.forEach(slot => {
+    const skipCellsTeacher = { MONDAY: 0, TUESDAY: 0, WEDNESDAY: 0, THURSDAY: 0, FRIDAY: 0 };
+
+    timeSlots.forEach((slot, sIndex) => {
       const tr = document.createElement('tr');
       if (slot.isBreak) {
         tr.className = 'break-row';
-        tr.innerHTML = `<td>${slot.time}</td><td colspan="5">${slot.label}</td>`;
+        if (slot.id === 0) {
+          tr.innerHTML = `<td>${slot.time}</td><td colspan="5">${slot.label}</td>`;
+        } else if (slot.id === 4) {
+          tr.innerHTML = `<td>${slot.time}</td><td colspan="4">BREAK</td><td>BREAK</td>`;
+        } else if (slot.id === 8) {
+          tr.innerHTML = `<td>${slot.time}</td><td colspan="4">LUNCH</td><td>CLOSING</td>`;
+        } else if (slot.id === 12) {
+          tr.innerHTML = `<td>${slot.time}</td><td colspan="4">CLOSING</td><td>-</td>`;
+        } else {
+          tr.innerHTML = `<td>${slot.time}</td><td colspan="5">${slot.label}</td>`;
+        }
+        days.forEach(day => skipCellsTeacher[day] = 0);
       } else {
         let html = `<td><strong>${slot.time}</strong></td>`;
+
         days.forEach(day => {
-          let assignedInfo = "";
-          Object.keys(masterSchedules).forEach(className => {
-            const slotEntries = getSlotAssignments(className, day, slot.id);
-            slotEntries.forEach(entry => {
-              if (entry.teacher === selectedTeacher) {
-                assignedInfo = `<strong>${entry.subject}</strong><br><small>${className}</small>`;
+          if (skipCellsTeacher[day] > 0) {
+            skipCellsTeacher[day]--;
+            return;
+          }
+
+          const currentAssign = getTeacherSlotAssignment(selectedTeacher, day, slot.id);
+
+          if (currentAssign) {
+            const { subject, className } = currentAssign;
+            let rowspan = 1;
+
+            for (let i = sIndex + 1; i < timeSlots.length; i++) {
+              const nextSlot = timeSlots[i];
+              if (nextSlot.isBreak) break;
+
+              const nextAssign = getTeacherSlotAssignment(selectedTeacher, day, nextSlot.id);
+              if (nextAssign && nextAssign.subject === subject && nextAssign.className === className) {
+                rowspan++;
+              } else {
+                break;
               }
-            });
-          });
-          html += `<td>${assignedInfo}</td>`;
+            }
+
+            if (rowspan > 1) {
+              skipCellsTeacher[day] = rowspan - 1;
+            }
+
+            let friTag = "";
+            if (day === "FRIDAY" && isMiddleSchoolClass(className)) {
+              const friTime = getFridayMiddleSchoolTime(slot.id, rowspan);
+              if (friTime) {
+                const clockIcon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px; vertical-align:middle;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+                friTag = `<div class="friday-time-pill" style="margin-bottom:3px; font-size:0.68rem; padding:1px 5px;">${clockIcon}${friTime}</div><br>`;
+              }
+            }
+
+            const matKey = `${calPrefix}_${className}_${day}_${subject}`;
+            const matInfo = materialsData[matKey] || {};
+            const matText = matInfo.material ? `<div style="font-size:0.75rem; margin-top:3px; font-weight:500;">${matInfo.material}</div>` : '';
+            const linkHtml = matInfo.link ? `<a href="${matInfo.link}" target="_blank" class="resource-link" style="margin-top:3px; display:inline-block; font-size:0.7rem;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px; vertical-align:middle;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Link</a>` : '';
+
+            const cellStyle = getSubjectPastelStyle(subject);
+            const assignedInfo = `${friTag}<div style="font-weight:700; font-size:0.85rem;">${subject}</div><div style="font-size:0.75rem; opacity:0.85; font-weight:600;">${className}</div>${matText}${linkHtml}`;
+            const rowspanAttr = rowspan > 1 ? ` rowspan="${rowspan}"` : '';
+
+            html += `<td${rowspanAttr} style="${cellStyle}">${assignedInfo}</td>`;
+          } else {
+            html += `<td></td>`;
+          }
         });
+
         tr.innerHTML = html;
       }
       tbodyGrid.appendChild(tr);
@@ -1285,9 +1968,14 @@ function renderManageScheduleTable() {
 
     slotAssignments.forEach((assignment, index) => {
       entryCount++;
+      let timeText = slot.time;
+      if (selectedDay === 'FRIDAY' && isMiddleSchoolClass(selectedClass)) {
+        const friTime = getFridayMiddleSchoolTime(slot.id);
+        if (friTime) timeText = `${friTime} <span style="color:#e11d48; font-weight:700;">(Fri MS)</span>`;
+      }
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td style="padding: 8px;"><strong>Period ${slot.period}</strong><br><small>${slot.time}</small></td>
+        <td style="padding: 8px;"><strong>Period ${slot.period}</strong><br><small>${timeText}</small></td>
         <td style="padding: 8px;">${assignment.subject}</td>
         <td style="padding: 8px;">${assignment.teacher}</td>
         <td style="padding: 8px; text-align: center;">
@@ -1517,6 +2205,10 @@ document.getElementById('saveMaterialsBtn')?.addEventListener('click', async () 
 
 document.getElementById('classSelectView')?.addEventListener('change', renderClassSchedule);
 document.getElementById('teacherSelectView')?.addEventListener('change', renderTeacherView);
+document.getElementById('adminClassSelect')?.addEventListener('change', updateAdminPeriodSelectOptions);
+document.getElementById('adminDaySelect')?.addEventListener('change', updateAdminPeriodSelectOptions);
+document.getElementById('manageClassSelect')?.addEventListener('change', renderManageScheduleTable);
+document.getElementById('manageDaySelect')?.addEventListener('change', renderManageScheduleTable);
 
 // Firebase Real-time Synchronization Snapshots
 onSnapshot(doc(db, "config", "academicCalendar"), (docSnap) => {
@@ -1674,8 +2366,8 @@ document.getElementById('btnCreateTempWeekly')?.addEventListener('click', () => 
         <small style="color: #64748b;">${weekInfo} | Edits here are isolated and will not overwrite live database data.</small>
       </div>
       <div>
-        <button class="btn btn-print" onclick="window.print()">🖨️ Print Draft Directly</button>
-        <button class="btn btn-save" onclick="saveDraft()">💾 Save Draft Locally</button>
+        <button class="btn btn-print" onclick="window.print()">Print Draft Directly</button>
+        <button class="btn btn-save" onclick="saveDraft()">Save Draft Locally</button>
       </div>
     </div>
     <table id="draftTable">

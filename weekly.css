@@ -130,14 +130,27 @@ button, input, select, textarea {
   gap: 12px;
 }
 
-.user-email-badge {
+.user-email-badge,
+.user-email-btn {
+  display: inline-flex;
+  align-items: center;
   font-size: 12px;
   font-weight: 600;
-  color: #475569;
+  color: #334155;
   background: #f8fafc;
-  padding: 6px 12px;
-  border-radius: 6px;
-  border: 1px solid #e2e8f0;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.user-email-btn:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.12);
 }
 
 .user-email-badge:empty {
@@ -300,6 +313,16 @@ button, input, select, textarea {
 }
 
 .schedule-side { flex: 65%; overflow-x: auto; }
+.schedule-side .schedule-table {
+  border: 1px solid #94a3b8;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.schedule-side .schedule-table td,
+.schedule-side .schedule-table th {
+  border-bottom: 1px solid #cbd5e1;
+  border-right: 1px solid #cbd5e1;
+}
 .material-side { flex: 35%; }
 
 /* Material Table Styling */
@@ -416,6 +439,35 @@ button, input, select, textarea {
   font-weight: 600;
   margin-top: 4px;
   letter-spacing: normal;
+}
+
+.friday-header-badge {
+  display: inline-block;
+  background: #fff1f2;
+  color: #e11d48;
+  border: 1px solid #fecdd3;
+  border-radius: 10px;
+  font-size: 9.5px;
+  font-weight: 800;
+  margin-top: 4px;
+  padding: 2px 6px;
+  letter-spacing: 0.2px;
+}
+
+.friday-time-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #fff1f2;
+  color: #e11d48;
+  border: 1px solid #fecdd3;
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  letter-spacing: 0.2px;
+  box-shadow: 0 1px 2px rgba(225, 29, 72, 0.08);
 }
 
 /* Table Rows & Cells */
@@ -929,6 +981,45 @@ select:focus {
   border: 1px solid #bfdbfe;
 }
 
+/* Pagination Bar for Database Entity Tables */
+.table-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border-top: 1px solid #cbd5e1;
+}
+
+.page-btn {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 800;
+  padding: 3px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.page-btn:hover:not(:disabled) {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+.page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.page-info {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #475569;
+}
+
 .save-btn {
   margin-top: 14px;
   padding: 11px 20px;
@@ -957,21 +1048,20 @@ select:focus {
 }
 
 .kebab-btn {
-  background: #f1f5f9;
-  border: 1px solid #cbd5e1;
-  font-size: 14px;
+  background: transparent;
+  border: none;
+  font-size: 16px;
   font-weight: 800;
   cursor: pointer;
-  padding: 5px 10px;
-  border-radius: 6px;
-  color: #475569;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: #64748b;
   transition: all 0.2s ease;
 }
 
 .kebab-btn:hover {
-  background-color: #e2e8f0;
+  background-color: #f1f5f9;
   color: #0f172a;
-  border-color: #94a3b8;
 }
 
 .kebab-dropdown {
@@ -1064,16 +1154,71 @@ select:focus {
   display: block;
 }
 
-/* Print PDF Formatting Rules */
+.print-header-banner {
+  display: none;
+}
+
+/* Print PDF Formatting Rules matching Class View exactly */
 @media print {
-  /* Hide navigation buttons, topbar, filter controls, and admin panels */
-  .tab-btn, .subtab-btn, .filter-bar, button, .kebab-menu, #btnAdminView, #btnTeacherView, .app-topbar {
+  @page {
+    size: landscape;
+    margin: 8mm;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Hide navigation buttons, topbar, filter controls, admin panels, and side materials */
+  .app-topbar,
+  .nav-tabs,
+  .filter-bar,
+  .tab-btn,
+  .subtab-btn,
+  .action-btn,
+  .kebab-menu,
+  .material-side,
+  #homeTeacherSection,
+  #btnAdminView,
+  #btnTeacherView,
+  .modal-overlay,
+  button {
     display: none !important;
+  }
+
+  .schedule-side {
+    flex: 100% !important;
+    width: 100% !important;
   }
 
   body {
     background-color: #ffffff !important;
-    font-size: 11pt;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .print-header-banner {
+    display: block !important;
+    text-align: center !important;
+    margin-bottom: 16px !important;
+    padding-bottom: 8px !important;
+    border-bottom: 2px solid #e2e8f0 !important;
+  }
+
+  .print-title {
+    font-size: 16pt !important;
+    font-weight: 800 !important;
+    color: #0f172a !important;
+  }
+
+  .print-meta {
+    font-size: 10pt !important;
+    font-weight: 600 !important;
+    color: #475569 !important;
+    margin-top: 4px !important;
   }
 
   .schedule-container, #printableArea {
@@ -1081,21 +1226,90 @@ select:focus {
     margin: 0 !important;
     padding: 0 !important;
     box-shadow: none !important;
+    border: none !important;
+    background: transparent !important;
   }
 
-  table {
-    page-break-inside: auto;
+  .schedule-table {
     width: 100% !important;
+    border-collapse: collapse !important;
+    page-break-inside: auto;
   }
 
-  tr {
+  .schedule-table tr {
     page-break-inside: avoid;
     page-break-after: auto;
   }
 
-  td, th {
-    border: 1px solid #000000 !important;
-    padding: 6px !important;
+  .schedule-table th {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+    padding: 8px 6px !important;
+  }
+
+  .schedule-table td {
+    border: 1px solid #cbd5e1 !important;
+    padding: 8px 6px !important;
+  }
+
+  .subject-cell {
+    padding: 8px 6px !important;
+  }
+
+  .subject-card {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .group-header-badge {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+  }
+
+  .group-item {
+    border-radius: 6px !important;
+    padding: 4px 8px !important;
+  }
+
+  .friday-time-pill {
+    background: #fff1f2 !important;
+    color: #e11d48 !important;
+    border: 1px solid #fecdd3 !important;
+  }
+
+  .friday-header-badge {
+    background: #fff1f2 !important;
+    color: #e11d48 !important;
+    border: 1px solid #fecdd3 !important;
+  }
+
+  .uniform-badge {
+    background: #e2e8f0 !important;
+    color: #475569 !important;
+  }
+
+  .period-badge {
+    background: #e2e8f0 !important;
+    color: #475569 !important;
+  }
+
+  .break-pill {
+    background: #e2e8f0 !important;
+    color: #334155 !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+
+  .notes-row td {
+    background-color: #f8fafc !important;
+  }
+
+  .notes-box {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
   }
 }
 
