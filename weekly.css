@@ -645,9 +645,17 @@ button, input, select, textarea {
   color: #0f172a !important;
 }
 
+.group-header-badge.split-badge {
+  background: #eff6ff;
+  color: #1d4ed8 !important;
+  border-color: #bfdbfe;
+}
+
 .teacher-sub {
-  color: #64748b;
+  color: #475569;
   font-size: 10.5px;
+  font-weight: 600;
+  margin-top: 1px;
 }
 
 /* Empty Cell Styling */

@@ -848,6 +848,26 @@ function isSameSubjectGroup(sub1, sub2) {
   return false;
 }
 
+function areSlotAssignmentsMatching(entries1, entries2) {
+  if (!entries1 || !entries2) return false;
+  if (entries1.length !== entries2.length) return false;
+  if (entries1.length === 0) return false;
+
+  if (entries1.length === 1) {
+    const sub1 = entries1[0].subject;
+    const sub2 = entries2[0].subject;
+    const g1 = getSubjectGroupType(sub1);
+    const g2 = getSubjectGroupType(sub2);
+    if (isSameSubjectGroup(sub1, sub2)) return true;
+    if (g1 !== 'regular' && g1 === g2) return true;
+    return false;
+  }
+
+  const subjects1 = entries1.map(e => e.subject).sort();
+  const subjects2 = entries2.map(e => e.subject).sort();
+  return subjects1.every((s, idx) => s === subjects2[idx]);
+}
+
 const distinctPastelPalettes = [
   { bg: "#E0F2FE", border: "#bae6fd", text: "#0f172a" }, // 0: Sky Blue
   { bg: "#F3E8FF", border: "#e9d5ff", text: "#0f172a" }, // 1: Soft Purple
@@ -990,14 +1010,8 @@ function renderClassSchedule() {
             if (nextSlot.isBreak) break;
 
             const nextEntries = getSlotAssignments(selectedClass, day, nextSlot.id);
-            if (nextEntries.length > 0) {
-              const nextGroup = getSubjectGroupType(nextEntries[0].subject);
-              if (isSameSubjectGroup(primarySubject, nextEntries[0].subject) || 
-                 (primaryGroup !== 'regular' && primaryGroup === nextGroup)) {
-                rowspan++;
-              } else {
-                break;
-              }
+            if (areSlotAssignmentsMatching(slotEntries, nextEntries)) {
+              rowspan++;
             } else {
               break;
             }
@@ -1016,9 +1030,23 @@ function renderClassSchedule() {
           let cellContent = '';
           let cellStyle = '';
 
-          if (primaryGroup === 'religion' || primaryGroup === 'art') {
-            const groupTitle = primaryGroup === 'religion' ? 'RELIGION' : 'ART & MUSIC';
-            cellStyle = getSubjectPastelStyle(primaryGroup);
+          const isMultiOrGroup = slotEntries.length > 1 || primaryGroup === 'religion' || primaryGroup === 'art';
+
+          if (isMultiOrGroup) {
+            let groupTitle = 'IPA / IPS MAJOR';
+            let badgeClass = 'group-header-badge split-badge';
+
+            if (primaryGroup === 'religion') {
+              groupTitle = 'RELIGION';
+              badgeClass = 'group-header-badge';
+            } else if (primaryGroup === 'art') {
+              groupTitle = 'ART & MUSIC';
+              badgeClass = 'group-header-badge';
+            }
+
+            cellStyle = (slotEntries.length > 1 && primaryGroup === 'regular')
+              ? 'background-color: #f8fafc; border: 1px solid #cbd5e1; color: #0f172a;'
+              : getSubjectPastelStyle(primaryGroup);
 
             let itemsHtml = '';
             slotEntries.forEach(entry => {
@@ -1026,10 +1054,12 @@ function renderClassSchedule() {
               const matInfo = materialsData[matKey] || {};
               const linkHtml = matInfo.link ? `<a href="${matInfo.link}" target="_blank" class="resource-link">${linkSvg}Link</a>` : '';
               const itemPastelStyle = getSubjectPastelStyle(entry.subject);
+              const teacherHtml = entry.teacher ? `<div class="teacher-sub">${entry.teacher}</div>` : '';
 
               itemsHtml += `
                 <div class="group-item" style="${itemPastelStyle}">
                   <div class="group-subject"><strong>${entry.subject}</strong></div>
+                  ${teacherHtml}
                   ${matInfo.material ? `<div class="material-text">${matInfo.material}</div>` : ''}
                   ${linkHtml}
                 </div>`;
@@ -1038,7 +1068,7 @@ function renderClassSchedule() {
             cellContent = `
               <div class="subject-card group-card">
                 ${friTimeBadge}
-                <span class="group-header-badge">${groupTitle}</span>
+                <span class="${badgeClass}">${groupTitle}</span>
                 <div class="group-items">
                   ${itemsHtml}
                 </div>
@@ -1048,12 +1078,14 @@ function renderClassSchedule() {
             const matKey = `${calPrefix}_${selectedClass}_${day}_${entry.subject}`;
             const matInfo = materialsData[matKey] || {};
             const linkHtml = matInfo.link ? `<a href="${matInfo.link}" target="_blank" class="resource-link">${linkSvg}Link</a>` : '';
+            const teacherHtml = entry.teacher ? `<div class="teacher-tag">${entry.teacher}</div>` : '';
             cellStyle = getSubjectPastelStyle(entry.subject);
 
             cellContent = `
               <div class="subject-card">
                 ${friTimeBadge}
                 <span class="subject-title">${entry.subject}</span>
+                ${teacherHtml}
                 ${matInfo.material ? `<div class="material-text">${matInfo.material}</div>` : ''}
                 ${linkHtml}
               </div>`;
@@ -1273,10 +1305,12 @@ function exportWeeklyToExcel() {
 
       items.forEach(item => {
         const subj = item.querySelector('.group-subject')?.textContent.trim() || item.querySelector('strong')?.textContent.trim() || '';
+        const teacher = item.querySelector('.teacher-sub')?.textContent.trim() || '';
         const mat = item.querySelector('.material-text')?.textContent.trim();
         const link = item.querySelector('.resource-link')?.href;
 
         let itemLine = `• ${subj}`;
+        if (teacher) itemLine += ` (${teacher})`;
         if (mat && mat !== 'No material entered') itemLine += ` (${mat})`;
         if (link) itemLine += ` [Link: ${link}]`;
         lines.push(itemLine);
@@ -2147,6 +2181,7 @@ document.getElementById('assignSlotForm')?.addEventListener('submit', async (e) 
   const day = document.getElementById('adminDaySelect').value;
   const startSlotId = parseInt(document.getElementById('adminPeriodSelect').value);
   const duration = parseInt(document.getElementById('adminDurationSelect').value);
+  const assignMode = document.getElementById('adminAssignMode')?.value || 'append';
   const subject = document.getElementById('adminSubjectSelect').value;
   const teacher = document.getElementById('adminTeacherSelect').value;
 
@@ -2166,7 +2201,7 @@ document.getElementById('assignSlotForm')?.addEventListener('submit', async (e) 
     if (!timeSlots[currentSlotId].isBreak) {
       const existingAssignments = getSlotAssignments(className, day, currentSlotId);
 
-      if (groupType !== 'regular') {
+      if (assignMode === 'append' || groupType !== 'regular') {
         const alreadyExists = existingAssignments.some(
           item => item.teacher === teacher && item.subject === subject
         );
