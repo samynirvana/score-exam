@@ -68,6 +68,18 @@ function isMiddleSchoolClass(className) {
   return false;
 }
 
+function isHighSchoolClass(className) {
+  if (!className) return false;
+  const lower = className.toLowerCase();
+  if (lower.includes('g10') || lower.includes('g11') || lower.includes('g12') || lower.includes('high school') || lower.includes('sma')) return true;
+  const match = className.match(/(\d+)/);
+  if (match) {
+    const num = parseInt(match[1], 10);
+    return num >= 10 && num <= 12;
+  }
+  return false;
+}
+
 function getFridayMiddleSchoolTime(slotId, rowspan = 1) {
   const startSlot = fridayMiddleSchoolSlots[slotId];
   if (!startSlot) return null;
@@ -83,6 +95,20 @@ const dailyUniforms = {
   THURSDAY: "Seragam Kotak-Kotak",
   FRIDAY: "Seragam Pramuka/Batik Jumat"
 };
+
+function updateUniformBadges(selectedClass) {
+  const isHS = isHighSchoolClass(selectedClass);
+  const monWedUniform = isHS ? "Seragam Putih Abu" : "Seragam Putih Biru";
+
+  const badges = document.querySelectorAll('#printableArea thead .uniform-badge');
+  if (badges && badges.length >= 5) {
+    badges[0].textContent = monWedUniform; // Monday
+    badges[1].textContent = "Seragam Kotak-Kotak"; // Tuesday
+    badges[2].textContent = monWedUniform; // Wednesday
+    badges[3].textContent = "Seragam Kotak-Kotak"; // Thursday
+    badges[4].textContent = "Seragam Pramuka/Batik Jumat"; // Friday
+  }
+}
 
 // Application State
 let appEntities = { teachers: [], classes: [], subjects: [], homeTeachers: {}, teacherEmails: {} };
@@ -936,6 +962,8 @@ function renderClassSchedule() {
   if (!tbody) return;
   tbody.innerHTML = '';
 
+  updateUniformBadges(selectedClass);
+
   const printClass = document.getElementById('printClassName');
   if (printClass) printClass.textContent = selectedClass || '';
   const printYear = document.getElementById('printMetaYear');
@@ -950,6 +978,7 @@ function renderClassSchedule() {
   const days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
   const calPrefix = getActiveCalendarPrefix('class');
   const skipCells = { MONDAY: 0, TUESDAY: 0, WEDNESDAY: 0, THURSDAY: 0, FRIDAY: 0 };
+  const showTeacher = !isHighSchoolClass(selectedClass);
 
   const clockSvg = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:3px; vertical-align:middle;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
   const linkSvg = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:3px; vertical-align:middle;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
@@ -976,9 +1005,9 @@ function renderClassSchedule() {
           html += `<td class="break-label break-day-cell"><span class="break-pill">BREAK</span></td>`;
         }
       } else if (slot.id === 8) {
-        // LUNCH: Combine Mon-Thu (colspan=4), Friday changes to CLOSING
+        // LUNCH: Combine Mon-Thu (colspan=4), Friday shows empty dash '-' (CLOSING is now in Period 6)
         html += `<td colspan="4" class="break-label"><span class="break-pill">LUNCH</span></td>`;
-        html += `<td class="break-label break-day-cell"><span class="break-pill">CLOSING</span></td>`;
+        html += `<td class="break-label break-day-cell"><span class="empty-dash">-</span></td>`;
       } else if (slot.id === 12) {
         // CLOSING: Combine Mon-Thu (colspan=4), Friday closing text removed
         html += `<td colspan="4" class="break-label"><span class="break-pill">CLOSING</span></td>`;
@@ -1044,6 +1073,8 @@ function renderClassSchedule() {
               badgeClass = 'group-header-badge';
             }
 
+            const groupBadgeHtml = (groupTitle === 'IPA / IPS MAJOR') ? '' : `<span class="${badgeClass}">${groupTitle}</span>`;
+
             cellStyle = (slotEntries.length > 1 && primaryGroup === 'regular')
               ? 'background-color: #f8fafc; border: 1px solid #cbd5e1; color: #0f172a;'
               : getSubjectPastelStyle(primaryGroup);
@@ -1054,7 +1085,7 @@ function renderClassSchedule() {
               const matInfo = materialsData[matKey] || {};
               const linkHtml = matInfo.link ? `<a href="${matInfo.link}" target="_blank" class="resource-link">${linkSvg}Link</a>` : '';
               const itemPastelStyle = getSubjectPastelStyle(entry.subject);
-              const teacherHtml = entry.teacher ? `<div class="teacher-sub">${entry.teacher}</div>` : '';
+              const teacherHtml = (entry.teacher && showTeacher) ? `<div class="teacher-sub">${entry.teacher}</div>` : '';
 
               itemsHtml += `
                 <div class="group-item" style="${itemPastelStyle}">
@@ -1068,7 +1099,7 @@ function renderClassSchedule() {
             cellContent = `
               <div class="subject-card group-card">
                 ${friTimeBadge}
-                <span class="${badgeClass}">${groupTitle}</span>
+                ${groupBadgeHtml}
                 <div class="group-items">
                   ${itemsHtml}
                 </div>
@@ -1078,7 +1109,7 @@ function renderClassSchedule() {
             const matKey = `${calPrefix}_${selectedClass}_${day}_${entry.subject}`;
             const matInfo = materialsData[matKey] || {};
             const linkHtml = matInfo.link ? `<a href="${matInfo.link}" target="_blank" class="resource-link">${linkSvg}Link</a>` : '';
-            const teacherHtml = entry.teacher ? `<div class="teacher-tag">${entry.teacher}</div>` : '';
+            const teacherHtml = (entry.teacher && showTeacher) ? `<div class="teacher-tag">${entry.teacher}</div>` : '';
             cellStyle = getSubjectPastelStyle(entry.subject);
 
             cellContent = `
@@ -1094,10 +1125,16 @@ function renderClassSchedule() {
           const rowspanAttr = rowspan > 1 ? ` rowspan="${rowspan}"` : '';
           html += `<td${rowspanAttr} class="subject-cell" style="${cellStyle}">${cellContent}</td>`;
         } else {
-          if (day === 'FRIDAY' && isMiddleSchoolClass(selectedClass)) {
-            const friTime = getFridayMiddleSchoolTime(slot.id, 1);
-            if (friTime) {
-              html += `<td class="subject-cell"><div class="friday-time-pill" style="opacity:0.85;">${clockSvg}${friTime}</div><br><span class="empty-dash">-</span></td>`;
+          if (day === 'FRIDAY') {
+            if (slot.id === 7) { // Period 6 (11.40 - 12.25)
+              html += `<td class="break-label break-day-cell" style="text-align:center; vertical-align:middle;"><span class="break-pill">CLOSING</span></td>`;
+            } else if (isMiddleSchoolClass(selectedClass)) {
+              const friTime = getFridayMiddleSchoolTime(slot.id, 1);
+              if (friTime) {
+                html += `<td class="subject-cell"><div class="friday-time-pill" style="opacity:0.85;">${clockSvg}${friTime}</div><br><span class="empty-dash">-</span></td>`;
+              } else {
+                html += `<td><span class="empty-dash">-</span></td>`;
+              }
             } else {
               html += `<td><span class="empty-dash">-</span></td>`;
             }
