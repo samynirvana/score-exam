@@ -3,17 +3,17 @@ import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, creat
 import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, where, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyD3oiOHwHUfMhTPjEp8Ku8-qlbRKlGX0Gg",
-    authDomain: "students-score-395b2.firebaseapp.com",
-    projectId: "students-score-395b2",
-    storageBucket: "students-score-395b2.firebasestorage.app",
-    messagingSenderId: "189447167056",
-    appId: "1:189447167056:web:4526e218132977bc3f4555",
-    measurementId: "G-97WSSH0BNE",
+    apiKey: "AIzaSyB3TY9M4oUG7xxCgxR6bSJB0K9ivcP5RQI",
+    authDomain: "syamserverlist.firebaseapp.com",
+    projectId: "syamserverlist",
+    storageBucket: "syamserverlist.firebasestorage.app",
+    messagingSenderId: "468852816088",
+    appId: "1:468852816088:web:b72bcb0c4fee837d983fad",
+    measurementId: "G-2YHY6V3JH1"
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const db = getFirestore(app, "mrsyamdb");
 const auth = getAuth(app);
 
 // --- UTILITY: DEBOUNCE FUNCTION ---
@@ -1242,9 +1242,102 @@ async function resetStudentPoints(studentCode) {
 // --- NEWS & NOTICE MANAGEMENT LOGIC ---
 let currentEditNewsId = null;
 
+window.onNewsClassCheckboxChange = function(changedInput) {
+    const optionsContainer = document.getElementById('newsClassOptions');
+    if (!optionsContainer) return;
+
+    const allCb = optionsContainer.querySelector('input[value="all"]');
+    const classCbs = Array.from(optionsContainer.querySelectorAll('input[type="checkbox"]:not([value="all"])'));
+
+    if (changedInput.value === 'all') {
+        if (changedInput.checked) {
+            classCbs.forEach(cb => cb.checked = false);
+        } else {
+            const anyChecked = classCbs.some(cb => cb.checked);
+            if (!anyChecked) changedInput.checked = true;
+        }
+    } else {
+        if (changedInput.checked && allCb) {
+            allCb.checked = false;
+        } else {
+            const anyChecked = classCbs.some(cb => cb.checked);
+            if (!anyChecked && allCb) {
+                allCb.checked = true;
+            }
+        }
+    }
+    updateNewsClassLabel();
+};
+
+function getSelectedNewsClasses() {
+    const checkboxes = document.querySelectorAll('#newsClassOptions input[type="checkbox"]:checked');
+    const selected = Array.from(checkboxes).map(cb => cb.value);
+    if (selected.length === 0 || selected.includes('all')) return ['all'];
+    return selected;
+}
+
+function updateNewsClassLabel() {
+    const label = document.getElementById('newsClassLabel');
+    if (!label) return;
+    const selected = getSelectedNewsClasses();
+    if (selected.includes('all')) {
+        label.innerText = 'All Classes';
+    } else if (selected.length === 1) {
+        label.innerText = selected[0];
+    } else {
+        label.innerText = `${selected.length} Classes Selected (${selected.join(', ')})`;
+    }
+}
+window.updateNewsClassLabel = updateNewsClassLabel;
+
+async function populateNewsClassDropdown() {
+    const optionsContainer = document.getElementById('newsClassOptions');
+    if (!optionsContainer) return;
+
+    try {
+        let classesSet = new Set();
+        const studentsSnap = await getDocs(collection(db, "students"));
+        studentsSnap.forEach(doc => {
+            const s = doc.data();
+            const cls = s.studentClass || s.class;
+            if (cls) classesSet.add(cls.trim());
+        });
+
+        const sortedClasses = Array.from(classesSet).filter(Boolean).sort((a, b) => 
+            a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+        );
+
+        const currentSelected = getSelectedNewsClasses();
+
+        let html = `
+            <label class="multi-select-option-row">
+                <input type="checkbox" value="all" onchange="onNewsClassCheckboxChange(this)" ${currentSelected.includes('all') || currentSelected.length === 0 ? 'checked' : ''}>
+                <strong>All Classes</strong>
+            </label>
+        `;
+
+        sortedClasses.forEach(cls => {
+            const isChecked = currentSelected.includes(cls) && !currentSelected.includes('all');
+            html += `
+                <label class="multi-select-option-row">
+                    <input type="checkbox" value="${cls}" onchange="onNewsClassCheckboxChange(this)" ${isChecked ? 'checked' : ''}>
+                    <span>${cls}</span>
+                </label>
+            `;
+        });
+
+        optionsContainer.innerHTML = html;
+        updateNewsClassLabel();
+    } catch (e) {
+        console.error("Error populating news class dropdown:", e);
+    }
+}
+
 async function addNewsUpdate() {
     const title = document.getElementById('newsTitle').value.trim();
     const content = document.getElementById('newsContent').value.trim();
+    const targetClasses = getSelectedNewsClasses();
+    const btn = document.getElementById('postNewsBtn');
 
     if (!title || !content) {
         alert("Please provide both a title and content for the notice.");
@@ -1252,24 +1345,30 @@ async function addNewsUpdate() {
     }
 
     try {
+        if (btn) btn.disabled = true;
+
         if (currentEditNewsId) {
             // Update existing notice
             await updateDoc(doc(db, "news_updates", currentEditNewsId), {
                 title: title,
-                content: content
+                content: content,
+                targetClasses: targetClasses
             });
             alert("Notice updated successfully!");
             
             // Reset form UI
             currentEditNewsId = null;
-            document.getElementById('postNewsBtn').innerText = "Post Notice";
-            document.getElementById('postNewsBtn').style.background = "var(--primary-blue)";
+            if (btn) {
+                btn.innerText = "Post Notice";
+                btn.style.background = "var(--primary-blue)";
+            }
             document.getElementById('newsFormTitle').innerText = "Post News / Notice";
         } else {
             // Create new notice
             await addDoc(collection(db, "news_updates"), {
                 title: title,
                 content: content,
+                targetClasses: targetClasses,
                 status: 'active', // Added status tracker
                 timestamp: new Date().toISOString()
             });
@@ -1278,15 +1377,28 @@ async function addNewsUpdate() {
         
         document.getElementById('newsTitle').value = "";
         document.getElementById('newsContent').value = "";
+
+        // Reset class dropdown checklist to All Classes
+        const optionsContainer = document.getElementById('newsClassOptions');
+        if (optionsContainer) {
+            optionsContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                cb.checked = (cb.value === 'all');
+            });
+            updateNewsClassLabel();
+        }
+
         loadNewsTable();
         updateDashboardStats();
     } catch (e) {
         alert("Error saving news: " + e.message);
+    } finally {
+        if (btn) btn.disabled = false;
     }
 }
 
 async function loadNewsTable() {
     try {
+        await populateNewsClassDropdown();
         const querySnapshot = await getDocs(collection(db, "news_updates"));
         
         const dashboardContainer = document.getElementById("dashboard-news-container");
@@ -1312,6 +1424,10 @@ async function loadNewsTable() {
             const dateStr = dateObj.toLocaleDateString();
             const status = news.status || 'active';
 
+            const targetArr = Array.isArray(news.targetClasses) ? news.targetClasses : ['all'];
+            const targetDisplay = targetArr.includes('all') ? 'All Classes' : targetArr.join(', ');
+            const encodedTarget = encodeURIComponent(JSON.stringify(targetArr));
+
             // Escape single and double quotes safely for inline HTML handlers
             const safeTitle = (news.title || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
             const safeContent = (news.content || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
@@ -1324,12 +1440,13 @@ async function loadNewsTable() {
                 manageTbody.innerHTML += `<tr>
                     <td>${dateStr}</td>
                     <td><strong>${news.title}</strong></td>
+                    <td><span style="font-size: 12px; font-weight: 600; color: var(--primary-blue);">${targetDisplay}</span></td>
                     <td><span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; background: ${badgeBg}; color: ${badgeText};">${status.toUpperCase()}</span></td>
                     <td>
                         <div class="kebab-menu">
                             <button class="kebab-btn" onclick="toggleMenu(event, 'news-${news.id}')">⋮</button>
                             <div id="menu-news-${news.id}" class="dropdown-menu">
-                                <button class="dropdown-item" onclick="editNewsUpdate('${news.id}', '${safeTitle}', '${safeContent}')">Edit Notice</button>
+                                <button class="dropdown-item" onclick="editNewsUpdate('${news.id}', '${safeTitle}', '${safeContent}', '${encodedTarget}')">Edit Notice</button>
                                 <button class="dropdown-item" onclick="toggleArchiveNews('${news.id}', '${status}')">${status === 'active' ? 'Archive' : 'Unarchive'}</button>
                                 <button class="dropdown-item danger" onclick="deleteNewsUpdate('${news.id}')">Delete Notice</button>
                             </div>
@@ -1340,11 +1457,12 @@ async function loadNewsTable() {
 
             // 2. Populate Dashboard (Shows active notices)
             if (dashboardContainer && status === 'active' && activeCount < 3) {
+                const targetTag = targetArr.includes('all') ? '' : `<span style="font-size: 10px; background: #e0e7ff; color: #4338ca; padding: 2px 6px; border-radius: 4px; font-weight: 600; margin-left: 6px;">${targetDisplay}</span>`;
                 dashboardContainer.innerHTML += `
                     <div class="notice-item">
                         <div class="notice-date">${month}<br>${day}</div>
                         <div class="notice-content">
-                            <h4>${news.title}</h4>
+                            <h4>${news.title} ${targetTag}</h4>
                             <p>${news.content}</p>
                         </div>
                     </div>
@@ -1387,17 +1505,37 @@ async function toggleArchiveNews(docId, currentStatus) {
 }
 
 // Window bindings for inline HTML clicks
-window.editNewsUpdate = function(id, title, content) {
+window.editNewsUpdate = function(id, title, content, targetClassesJson) {
     currentEditNewsId = id;
     document.getElementById('newsTitle').value = title;
     document.getElementById('newsContent').value = content;
+
+    let targetClasses = ['all'];
+    if (targetClassesJson) {
+        try {
+            targetClasses = JSON.parse(decodeURIComponent(targetClassesJson));
+        } catch (e) {
+            targetClasses = ['all'];
+        }
+    }
+
+    const optionsContainer = document.getElementById('newsClassOptions');
+    if (optionsContainer) {
+        optionsContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.checked = targetClasses.includes(cb.value);
+        });
+        updateNewsClassLabel();
+    }
     
     document.getElementById('newsFormTitle').innerText = "Edit Notice";
     const btn = document.getElementById('postNewsBtn');
-    btn.innerText = "Update Notice";
-    btn.style.background = "#f59e0b"; 
+    if (btn) {
+        btn.innerText = "Update Notice";
+        btn.style.background = "#f59e0b"; 
+    }
 };
 
+window.addNewsUpdate = addNewsUpdate;
 window.toggleArchiveNews = toggleArchiveNews;
 window.deleteNewsUpdate = deleteNewsUpdate;
 
@@ -3640,9 +3778,17 @@ async function filterDirectQuizzes() {
                 const title = data.title || data.quizName || "";
                 const qSubject = (data.subject || "").trim().toLowerCase();
                 const qClass = (data.targetClass || "").trim().toLowerCase();
+                const targetList = Array.isArray(data.targetClassesList) ? data.targetClassesList.map(c => c.toLowerCase()) : [];
 
                 const matchesSubject = !qSubject || qSubject === selectedSubject || selectedSubject.includes(qSubject) || qSubject.includes(selectedSubject);
-                const matchesClass = !qClass || qClass === selectedClass || qClass === "all classes" || qClass === "all";
+                const matchesClass = !qClass || 
+                                     qClass === selectedClass || 
+                                     qClass === "all classes" || 
+                                     qClass === "all" || 
+                                     qClass.includes("all classes") || 
+                                     qClass.includes("all") || 
+                                     qClass.includes(selectedClass) || 
+                                     targetList.includes(selectedClass);
 
                 if (title && matchesSubject && matchesClass) {
                     quizSelect.innerHTML += `<option value="${title}">${title} (Digital)</option>`;
@@ -3660,9 +3806,17 @@ async function filterDirectQuizzes() {
                 const title = data.name || "";
                 const qSubject = (data.subject || "").trim().toLowerCase();
                 const qClass = (data.targetClass || "").trim().toLowerCase();
+                const targetList = Array.isArray(data.targetClassesList) ? data.targetClassesList.map(c => c.toLowerCase()) : [];
 
                 const matchesSubject = !qSubject || qSubject === selectedSubject || selectedSubject.includes(qSubject) || qSubject.includes(selectedSubject);
-                const matchesClass = !qClass || qClass === selectedClass || qClass === "all classes" || qClass === "all";
+                const matchesClass = !qClass || 
+                                     qClass === selectedClass || 
+                                     qClass === "all classes" || 
+                                     qClass === "all" || 
+                                     qClass.includes("all classes") || 
+                                     qClass.includes("all") || 
+                                     qClass.includes(selectedClass) || 
+                                     targetList.includes(selectedClass);
 
                 if (title && matchesSubject && matchesClass) {
                     quizSelect.innerHTML += `<option value="${title}">${title} (Offline)</option>`;
@@ -3701,9 +3855,17 @@ async function filterLedgerQuizzes() {
                 const title = data.title || data.quizName || "";
                 const qSubject = (data.subject || "").trim().toLowerCase();
                 const qClass = (data.targetClass || "").trim().toLowerCase();
+                const targetList = Array.isArray(data.targetClassesList) ? data.targetClassesList.map(c => c.toLowerCase()) : [];
 
                 const matchesSubject = !qSubject || qSubject === selectedSubject || selectedSubject.includes(qSubject) || qSubject.includes(selectedSubject);
-                const matchesClass = !qClass || qClass === selectedClass || qClass === "all classes" || qClass === "all";
+                const matchesClass = !qClass || 
+                                     qClass === selectedClass || 
+                                     qClass === "all classes" || 
+                                     qClass === "all" || 
+                                     qClass.includes("all classes") || 
+                                     qClass.includes("all") || 
+                                     qClass.includes(selectedClass) || 
+                                     targetList.includes(selectedClass);
 
                 if (title && matchesSubject && matchesClass) {
                     quizSelect.innerHTML += `<option value="${title}">${title} (Digital)</option>`;
@@ -3721,9 +3883,17 @@ async function filterLedgerQuizzes() {
                 const title = data.name || "";
                 const qSubject = (data.subject || "").trim().toLowerCase();
                 const qClass = (data.targetClass || "").trim().toLowerCase();
+                const targetList = Array.isArray(data.targetClassesList) ? data.targetClassesList.map(c => c.toLowerCase()) : [];
 
                 const matchesSubject = !qSubject || qSubject === selectedSubject || selectedSubject.includes(qSubject) || qSubject.includes(selectedSubject);
-                const matchesClass = !qClass || qClass === selectedClass || qClass === "all classes" || qClass === "all";
+                const matchesClass = !qClass || 
+                                     qClass === selectedClass || 
+                                     qClass === "all classes" || 
+                                     qClass === "all" || 
+                                     qClass.includes("all classes") || 
+                                     qClass.includes("all") || 
+                                     qClass.includes(selectedClass) || 
+                                     targetList.includes(selectedClass);
 
                 if (title && matchesSubject && matchesClass) {
                     quizSelect.innerHTML += `<option value="${title}">${title} (Offline)</option>`;
@@ -3761,9 +3931,17 @@ async function filterBulkQuizzes() {
             const title = data.title || data.quizName || "";
             const qSubject = (data.subject || "").trim().toLowerCase();
             const qClass = (data.targetClass || "").trim().toLowerCase();
+            const targetList = Array.isArray(data.targetClassesList) ? data.targetClassesList.map(c => c.toLowerCase()) : [];
 
             const matchesSubject = !qSubject || qSubject === selectedSubject || selectedSubject.includes(qSubject);
-            const matchesClass = !qClass || qClass === selectedClass || qClass === "all classes" || qClass === "all";
+            const matchesClass = !qClass || 
+                                 qClass === selectedClass || 
+                                 qClass === "all classes" || 
+                                 qClass === "all" || 
+                                 qClass.includes("all classes") || 
+                                 qClass.includes("all") || 
+                                 qClass.includes(selectedClass) || 
+                                 targetList.includes(selectedClass);
 
             if (title && matchesSubject && matchesClass) {
                 quizSelect.innerHTML += `<option value="${title}">${title} (Digital)</option>`;
@@ -3777,9 +3955,17 @@ async function filterBulkQuizzes() {
             const title = data.name || "";
             const qSubject = (data.subject || "").trim().toLowerCase();
             const qClass = (data.targetClass || "").trim().toLowerCase();
+            const targetList = Array.isArray(data.targetClassesList) ? data.targetClassesList.map(c => c.toLowerCase()) : [];
 
             const matchesSubject = !qSubject || qSubject === selectedSubject || selectedSubject.includes(qSubject);
-            const matchesClass = !qClass || qClass === selectedClass || qClass === "all classes" || qClass === "all";
+            const matchesClass = !qClass || 
+                                 qClass === selectedClass || 
+                                 qClass === "all classes" || 
+                                 qClass === "all" || 
+                                 qClass.includes("all classes") || 
+                                 qClass.includes("all") || 
+                                 qClass.includes(selectedClass) || 
+                                 targetList.includes(selectedClass);
 
             if (title && matchesSubject && matchesClass) {
                 quizSelect.innerHTML += `<option value="${title}">${title} (Offline)</option>`;
@@ -4048,3 +4234,5 @@ document.getElementById('sortPoints')?.addEventListener('change', loadPointsTabl
 window.editTeacherSubjectSpecialty = editTeacherSubjectSpecialty;
 window.editTeacherProfile = editTeacherProfile;
 window.deleteNewsUpdate = deleteNewsUpdate;
+window.addNewsUpdate = addNewsUpdate;
+document.getElementById('postNewsBtn')?.addEventListener('click', addNewsUpdate);

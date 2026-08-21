@@ -1,10 +1,10 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { 
-  getAuth, 
-  signInWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged, 
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
   createUserWithEmailAndPassword,
   updatePassword
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -340,7 +340,7 @@ function formatModernDateRange(startDateStr, endDateStr) {
   if (!startDateStr || !endDateStr) return 'Dates: -';
   const p1 = startDateStr.split('-');
   const p2 = endDateStr.split('-');
-  
+
   if (p1.length !== 3 || p2.length !== 3) {
     return `${startDateStr} to ${endDateStr}`;
   }
@@ -378,7 +378,7 @@ function populateCalendarSelects() {
     const currYear = yearSel.value;
     yearSel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
     if (currYear && years.includes(currYear)) yearSel.value = currYear;
-    
+
     const selectedYear = yearSel.value;
     const themes = selectedYear && academicCalendar[selectedYear] ? Object.keys(academicCalendar[selectedYear]) : [];
 
@@ -387,8 +387,8 @@ function populateCalendarSelects() {
     if (currTheme && themes.includes(currTheme)) themeSel.value = currTheme;
 
     const selectedTheme = themeSel.value;
-    const rawWeeks = selectedYear && selectedTheme && academicCalendar[selectedYear][selectedTheme] 
-      ? Object.keys(academicCalendar[selectedYear][selectedTheme]) 
+    const rawWeeks = selectedYear && selectedTheme && academicCalendar[selectedYear][selectedTheme]
+      ? Object.keys(academicCalendar[selectedYear][selectedTheme])
       : [];
 
     const weeks = sortWeeks(rawWeeks);
@@ -426,7 +426,7 @@ function populateAdminCalendarDropdowns() {
 
   const selectedYear = adminYearSel.value;
   const themes = selectedYear && academicCalendar[selectedYear] ? Object.keys(academicCalendar[selectedYear]) : [];
-  
+
   const currTheme = adminThemeSel.value;
   adminThemeSel.innerHTML = themes.map(t => `<option value="${t}">${t}</option>`).join('');
   if (currTheme && themes.includes(currTheme)) adminThemeSel.value = currTheme;
@@ -595,7 +595,7 @@ function populateAdminSelects() {
   updateAdminPeriodSelectOptions();
 
   const classSelects = [
-    document.getElementById('adminClassSelect'), 
+    document.getElementById('adminClassSelect'),
     document.getElementById('classSelectView'),
     document.getElementById('manageClassSelect')
   ];
@@ -613,7 +613,7 @@ function populateAdminSelects() {
     adminSub.innerHTML = appEntities.subjects.map(s => `<option value="${s}">${s}</option>`).join('');
     if (currentVal && appEntities.subjects.includes(currentVal)) adminSub.value = currentVal;
   }
-  
+
   const teacherSelects = [document.getElementById('adminTeacherSelect'), document.getElementById('teacherSelectView')];
   teacherSelects.forEach(select => {
     if (select) {
@@ -674,10 +674,10 @@ function renderEntityTables() {
             <button class="kebab-btn" title="Actions">⋮</button>
             <div class="kebab-dropdown">
               ${type === 'teachers' ? (
-                isHomeTeacher 
-                  ? `<button class="remove-hometeacher-opt" data-name="${item}" style="color: #ef4444;">Remove Home Teacher</button>`
-                  : `<button class="set-hometeacher-opt" data-name="${item}">Set Home Teacher</button>`
-              ) : ''}
+          isHomeTeacher
+            ? `<button class="remove-hometeacher-opt" data-name="${item}" style="color: #ef4444;">Remove Home Teacher</button>`
+            : `<button class="set-hometeacher-opt" data-name="${item}">Set Home Teacher</button>`
+        ) : ''}
               <button class="edit-opt" data-type="${type}" data-name="${item}">Edit</button>
               <button class="delete-opt" data-type="${type}" data-name="${item}">Delete</button>
             </div>
@@ -829,9 +829,9 @@ function getActiveCalendarPrefix(viewType = 'class') {
 function getSubjectGroupType(subjectName) {
   if (!subjectName) return 'regular';
   const name = subjectName.toLowerCase();
-  if (name.includes('religion') || name.includes('agama') || name.includes('islam') || 
-      name.includes('christian') || name.includes('kristen') || name.includes('catholic') || 
-      name.includes('katolik') || name.includes('buddha') || name.includes('hindu')) {
+  if (name.includes('religion') || name.includes('agama') || name.includes('islam') ||
+    name.includes('christian') || name.includes('kristen') || name.includes('catholic') ||
+    name.includes('katolik') || name.includes('buddha') || name.includes('hindu')) {
     return 'religion';
   }
   if (name.includes('art') || name.includes('music') || name.includes('seni')) {
@@ -1887,11 +1887,11 @@ function renderTeacherView() {
       tbodyGrid.appendChild(tr);
     });
   }
-    
+
   const tbodyMat = document.getElementById('materialTableBody');
   if (!tbodyMat) return;
   tbodyMat.innerHTML = '';
-  
+
   let teacherAssignments = [];
   Object.keys(masterSchedules).forEach(className => {
     days.forEach(day => {
@@ -1955,7 +1955,7 @@ function renderTeacherView() {
       const key = e.target.dataset.key;
       const currentLink = materialsData[key]?.link || '';
       const newLink = prompt("Enter web link / resource URL:", currentLink);
-      
+
       if (newLink !== null) {
         if (!materialsData[key]) materialsData[key] = {};
         materialsData[key].link = newLink.trim();
@@ -1981,7 +1981,7 @@ function renderManageScheduleTable() {
   const classSelect = document.getElementById('manageClassSelect');
   const daySelect = document.getElementById('manageDaySelect');
   const tbody = document.getElementById('manageScheduleTableBody');
-  
+
   if (!classSelect || !daySelect || !tbody) return;
 
   const selectedClass = classSelect.value;
@@ -2117,7 +2117,7 @@ document.getElementById('manageClassSelect')?.addEventListener('change', renderM
 document.getElementById('manageDaySelect')?.addEventListener('change', renderManageScheduleTable);
 
 const originalPopulateAdminSelects = populateAdminSelects;
-populateAdminSelects = function() {
+populateAdminSelects = function () {
   if (typeof originalPopulateAdminSelects === 'function') originalPopulateAdminSelects();
 
   const manageClassSel = document.getElementById('manageClassSelect');
@@ -2152,7 +2152,7 @@ document.getElementById('addResourceForm')?.addEventListener('submit', async (e)
 
     try {
       await createUserWithEmailAndPassword(secondaryAuth, email, password);
-      
+
       if (!appEntities.teacherEmails) appEntities.teacherEmails = {};
       appEntities.teacherEmails[name] = email;
     } catch (err) {

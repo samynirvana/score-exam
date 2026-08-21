@@ -828,6 +828,24 @@
                             <h3 id="newsFormTitle">Post News / Notice</h3>
                             <input type="text" id="newsTitle" placeholder="Notice Title">
                             <textarea id="newsContent" rows="4" placeholder="Enter notice details here..."></textarea>
+                            
+                            <!-- Multi-Select Target Class Checklist Dropdown -->
+                            <div class="form-group" style="margin-top: 12px; margin-bottom: 16px;">
+                                <label style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Target Class(es):</label>
+                                <div class="multi-select-dropdown" id="newsClassDropdown">
+                                    <div class="multi-select-trigger" onclick="toggleMultiSelectDropdown('newsClassDropdown')">
+                                        <span class="multi-select-label" id="newsClassLabel">All Classes</span>
+                                        <svg class="dropdown-arrow-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                    </div>
+                                    <div class="multi-select-options" id="newsClassOptions">
+                                        <label class="multi-select-option-row">
+                                            <input type="checkbox" value="all" onchange="onNewsClassCheckboxChange(this)" checked>
+                                            <strong>All Classes</strong>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
                             <button id="postNewsBtn">Post Notice</button>
                         </div>
                         
@@ -840,6 +858,7 @@
                                         <tr>
                                             <th>Date</th>
                                             <th>Title</th>
+                                            <th>Target Class</th>
                                             <th>Status</th>
                                             <th>Actions</th>
                                         </tr>

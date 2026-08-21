@@ -3,17 +3,17 @@ import { getFirestore, collection, query, where, getDocs, doc, getDoc, onSnapsho
 import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyD3oiOHwHUfMhTPjEp8Ku8-qlbRKlGX0Gg",
-    authDomain: "students-score-395b2.firebaseapp.com",
-    projectId: "students-score-395b2",
-    storageBucket: "students-score-395b2.firebasestorage.app",
-    messagingSenderId: "189447167056",
-    appId: "1:189447167056:web:4526e218132977bc3f4555",
-    measurementId: "G-97WSSH0BNE",
+    apiKey: "AIzaSyB3TY9M4oUG7xxCgxR6bSJB0K9ivcP5RQI",
+    authDomain: "syamserverlist.firebaseapp.com",
+    projectId: "syamserverlist",
+    storageBucket: "syamserverlist.firebasestorage.app",
+    messagingSenderId: "468852816088",
+    appId: "1:468852816088:web:b72bcb0c4fee837d983fad",
+    measurementId: "G-2YHY6V3JH1"
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const db = getFirestore(app, "mrsyamdb");
 const auth = getAuth(app);
 
 let cachedExamScores = [];
@@ -63,6 +63,7 @@ async function checkStudentSession() {
         currentLoggedInStudent = JSON.parse(saved);
         if (overlay) overlay.style.display = 'none';
         fetchStudentUnifiedData(currentLoggedInStudent.code);
+        loadNewsTicker();
     } else {
         if (overlay) overlay.style.display = 'flex';
     }
@@ -158,6 +159,7 @@ async function handleStudentLogin() {
         if (overlay) overlay.style.display = 'none';
 
         fetchStudentUnifiedData(userIn);
+        loadNewsTicker();
 
     } catch (err) {
         console.error("Student login error:", err);
@@ -349,6 +351,11 @@ function loadNewsTicker() {
             const newsListContainer = document.getElementById('newsListContainer');
             if (!newsListContainer) return;
 
+            let studentClass = '';
+            if (currentLoggedInStudent && currentLoggedInStudent.studentClass) {
+                studentClass = currentLoggedInStudent.studentClass.trim();
+            }
+
             if (querySnapshot.empty) {
                 newsListContainer.innerHTML = "<p style='color: var(--text-gray); font-size: 13px; text-align: center; padding: 20px 0;'>No active school notices available.</p>";
                 return;
@@ -358,23 +365,41 @@ function loadNewsTicker() {
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
                 if (!data.status || data.status === 'active') {
-                    newsItems.push(data);
+                    const target = data.targetClasses;
+                    const isTargeted = !target || 
+                                       !Array.isArray(target) || 
+                                       target.length === 0 || 
+                                       target.includes('all') || 
+                                       (studentClass && target.includes(studentClass));
+
+                    if (isTargeted) {
+                        newsItems.push(data);
+                    }
                 }
             });
 
             newsItems.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
             newsListContainer.innerHTML = "";
+            if (newsItems.length === 0) {
+                newsListContainer.innerHTML = "<p style='color: var(--text-gray); font-size: 13px; text-align: center; padding: 20px 0;'>No active school notices available for your class.</p>";
+                return;
+            }
+
             newsItems.forEach(news => {
                 const dateObj = new Date(news.timestamp);
                 const month = dateObj.toLocaleString('default', { month: 'short' }).toUpperCase();
                 const day = dateObj.getDate();
                 const dateTag = `${month} ${day}`;
 
+                const targetBadge = (news.targetClasses && !news.targetClasses.includes('all')) 
+                    ? `<span style="font-size: 11px; background: rgba(30, 94, 255, 0.1); color: var(--primary-blue); padding: 2px 8px; border-radius: 6px; font-weight: 600; margin-left: 8px;">Class: ${news.targetClasses.join(', ')}</span>`
+                    : '';
+
                 newsListContainer.innerHTML += `
                     <div class="notice-card">
                         <div class="notice-header">
-                            <h4 class="notice-title">${news.title}</h4>
+                            <h4 class="notice-title">${news.title} ${targetBadge}</h4>
                             <span class="notice-date-tag">${dateTag}</span>
                         </div>
                         <div class="notice-body">${news.content}</div>

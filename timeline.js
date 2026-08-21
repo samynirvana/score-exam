@@ -3,17 +3,17 @@ import { getFirestore, collection, addDoc, query, where, orderBy, onSnapshot, ge
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyD3oiOHwHUfMhTPjEp8Ku8-qlbRKlGX0Gg",
-    authDomain: "students-score-395b2.firebaseapp.com",
-    projectId: "students-score-395b2",
-    storageBucket: "students-score-395b2.firebasestorage.app",
-    messagingSenderId: "189447167056",
-    appId: "1:189447167056:web:4526e218132977bc3f4555",
-    measurementId: "G-97WSSH0BNE",
+    apiKey: "AIzaSyB3TY9M4oUG7xxCgxR6bSJB0K9ivcP5RQI",
+    authDomain: "syamserverlist.firebaseapp.com",
+    projectId: "syamserverlist",
+    storageBucket: "syamserverlist.firebasestorage.app",
+    messagingSenderId: "468852816088",
+    appId: "1:468852816088:web:b72bcb0c4fee837d983fad",
+    measurementId: "G-2YHY6V3JH1"
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const db = getFirestore(app, "mrsyamdb");
 const auth = getAuth(app);
 
 let currentUser = null; 

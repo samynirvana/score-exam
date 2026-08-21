@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firestore Database Migration Tool</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-blue: #1e5eff;
+            --primary-hover: #0043e0;
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --card-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+            --success-green: #10b981;
+            --warning-amber: #f59e0b;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 36px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 800;
+            margin: 0 0 10px 0;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header p {
+            color: var(--text-sub);
+            font-size: 15px;
+            margin: 0;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 28px;
+            margin-bottom: 24px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-top: 0;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .badge {
+            background: rgba(30, 94, 255, 0.2);
+            color: #60a5fa;
+            border: 1px solid rgba(96, 165, 250, 0.3);
+            font-size: 12px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-sub);
+            margin-bottom: 8px;
+        }
+
+        textarea, input[type="text"] {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 12px 14px;
+            color: #ffffff;
+            font-family: monospace;
+            font-size: 13px;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        textarea:focus, input[type="text"]:focus {
+            border-color: var(--primary-blue);
+        }
+
+        .collections-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 14px;
+        }
+
+        .collection-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 10px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 13.5px;
+            transition: background 0.15s ease;
+        }
+
+        .collection-checkbox:hover {
+            background: rgba(30, 94, 255, 0.15);
+        }
+
+        .collection-checkbox input {
+            accent-color: var(--primary-blue);
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .btn-start {
+            width: 100%;
+            background: linear-gradient(135deg, #1e5eff, #4f46e5);
+            color: #ffffff;
+            border: none;
+            border-radius: 14px;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            box-shadow: 0 10px 25px rgba(30, 94, 255, 0.4);
+        }
+
+        .btn-start:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 30px rgba(30, 94, 255, 0.5);
+        }
+
+        .btn-start:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px 0 14px 0;
+            display: none;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #10b981, #3b82f6);
+            transition: width 0.3s ease;
+        }
+
+        .log-console {
+            background: #090d16;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px;
+            font-family: monospace;
+            font-size: 13px;
+            height: 220px;
+            overflow-y: auto;
+            color: #38bdf8;
+            margin-top: 16px;
+        }
+
+        .log-entry { margin-bottom: 6px; }
+        .log-entry.success { color: #4ade80; }
+        .log-entry.error { color: #f87171; }
+        .log-entry.info { color: #38bdf8; }
+        .log-entry.warn { color: #fbbf24; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>🔄 Firestore Database Migration Tool</h1>
+        <p>Safely copy all web data from your source Firestore project to your new target Firestore project.</p>
+    </div>
+
+    <!-- IMPORTANT FIREBASE RULES NOTICE -->
+    <div class="card" style="border: 1px solid var(--warning-amber); background: rgba(245, 158, 11, 0.1);">
+        <div class="card-title" style="color: var(--warning-amber);">
+            <span>⚠️ Important: Ensure Firestore Security Rules on New Project (`photoup-8fbb8`)</span>
+        </div>
+        <p style="font-size: 13.5px; color: #fef08a; margin: 0 0 10px 0; line-height: 1.5;">
+            By default, new Firebase projects lock write permissions. If writes freeze, make sure your new project's Firestore Security Rules allow writes during migration:
+        </p>
+        <div style="background: rgba(0,0,0,0.4); padding: 12px; border-radius: 10px; font-family: monospace; font-size: 12.5px; color: #4ade80;">
+            rules_version = '2';<br>
+            service cloud.firestore {<br>
+            &nbsp;&nbsp;match /databases/{database}/documents {<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;match /{document=**} {<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>allow read, write: if true;</strong><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;}<br>
+            &nbsp;&nbsp;}<br>
+            }
+        </div>
+        <p style="font-size: 12px; color: var(--text-sub); margin: 8px 0 0 0;">(Go to Firebase Console &rarr; Firestore Database &rarr; Rules tab &rarr; Publish)</p>
+    </div>
+
+    <!-- CONFIGURATIONS CARD -->
+    <div class="card">
+        <div class="card-title">
+            <span>1. Firebase Project Configurations</span>
+        </div>
+        <div class="grid-2">
+            <div>
+                <label>Source Database Config (Current Project: <span class="badge">students-score-395b2</span>)</label>
+                <textarea id="sourceConfig" rows="9" readonly></textarea>
+            </div>
+            <div>
+                <label>Target Database Config (Paste New firebaseConfig JS object or JSON)</label>
+                <textarea id="targetConfig" rows="7" placeholder="Paste your new firebaseConfig object here...
+
+Example:
+{
+    apiKey: '...',
+    authDomain: '...',
+    projectId: 'syamserverlist',
+    storageBucket: '...',
+    messagingSenderId: '...',
+    appId: '...'
+}"></textarea>
+                <div style="margin-top: 10px;">
+                    <label>Target Database ID (Default is "(default)", or custom name like "mrsyamdb"):</label>
+                    <input type="text" id="targetDatabaseId" value="mrsyamdb" placeholder="(default) or custom database ID (e.g. mrsyamdb)">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- COLLECTIONS CARD -->
+    <div class="card">
+        <div class="card-title">
+            <span>2. Select Collections to Migrate</span>
+            <button onclick="toggleAllCollections(true)" style="background:none; border:none; color:#60a5fa; cursor:pointer; font-size:12px; font-weight:600;">Select All</button>
+        </div>
+        <div class="collections-grid" id="collectionsContainer">
+            <!-- Dynamically rendered -->
+        </div>
+    </div>
+
+    <!-- MIGRATION CONTROLS -->
+    <div class="card">
+        <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+            <button id="testConnectionBtn" style="flex: 1; background: rgba(255,255,255,0.1); color: #ffffff; border: 1px solid rgba(255,255,255,0.2); border-radius: 14px; padding: 14px; font-weight: 700; cursor: pointer;">
+                🔍 Test Target Database Connection
+            </button>
+            <button class="btn-start" id="startMigrationBtn" style="flex: 2;">
+                Start Full Data Migration 🚀
+            </button>
+        </div>
+        
+        <div class="progress-bar-container" id="progressContainer">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+
+        <div class="log-console" id="logConsole">
+            <div class="log-entry info">Ready to migrate. Enter target firebaseConfig and click "Test Connection" or "Start Full Data Migration".</div>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // Standard Current Firebase Config
+    const CURRENT_SOURCE_CONFIG = {
+        apiKey: "AIzaSyD3oiOHwHUfMhTPjEp8Ku8-qlbRKlGX0Gg",
+        authDomain: "students-score-395b2.firebaseapp.com",
+        projectId: "students-score-395b2",
+        storageBucket: "students-score-395b2.firebasestorage.app",
+        messagingSenderId: "189447167056",
+        appId: "1:189447167056:web:4526e218132977bc3f4555",
+        measurementId: "G-97WSSH0BNE"
+    };
+
+    const COLLECTIONS = [
+        "students",
+        "users",
+        "exam_scores",
+        "student_points",
+        "news_updates",
+        "quizzes",
+        "system_quizzes",
+        "quiz_results",
+        "scores",
+        "timeline_posts",
+        "timeline_comments",
+        "timeline_notifications",
+        "direct_messages"
+    ];
+
+    document.getElementById('sourceConfig').value = JSON.stringify(CURRENT_SOURCE_CONFIG, null, 4);
+
+    // Populate Collections Checkboxes
+    const container = document.getElementById('collectionsContainer');
+    COLLECTIONS.forEach(col => {
+        container.innerHTML += `
+            <label class="collection-checkbox">
+                <input type="checkbox" value="${col}" checked>
+                <span>${col}</span>
+            </label>
+        `;
+    });
+
+    window.toggleAllCollections = function(select) {
+        document.querySelectorAll('#collectionsContainer input[type="checkbox"]').forEach(cb => cb.checked = select);
+    };
+
+    function log(msg, type = 'info') {
+        const consoleEl = document.getElementById('logConsole');
+        const div = document.createElement('div');
+        div.className = `log-entry ${type}`;
+        div.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        consoleEl.appendChild(div);
+        consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    function parseConfig(inputStr) {
+        try {
+            return JSON.parse(inputStr);
+        } catch (e) {
+            try {
+                const cleaned = inputStr
+                    .replace(/const\s+firebaseConfig\s*=\s*/, '')
+                    .replace(/let\s+firebaseConfig\s*=\s*/, '')
+                    .replace(/var\s+firebaseConfig\s*=\s*/, '')
+                    .replace(/;$/, '');
+                return Function(`"use strict"; return (${cleaned});`)();
+            } catch (err) {
+                throw new Error("Invalid configuration object format. Please ensure valid JS object syntax.");
+            }
+        }
+    }
+
+    function getTargetConfig() {
+        const targetStr = document.getElementById('targetConfig').value.trim();
+        if (!targetStr) {
+            alert("Please paste your target Firebase configuration first.");
+            return null;
+        }
+        const targetConfig = parseConfig(targetStr);
+        if (!targetConfig.projectId || !targetConfig.apiKey) {
+            throw new Error("Missing projectId or apiKey in target configuration.");
+        }
+        return targetConfig;
+    }
+
+    // --- FIRESTORE REST API CONVERTERS ---
+    function jsToFirestoreValue(val) {
+        if (val === null || val === undefined) return { nullValue: null };
+        if (typeof val === 'boolean') return { booleanValue: val };
+        if (typeof val === 'number') {
+            if (Number.isInteger(val)) return { integerValue: String(val) };
+            return { doubleValue: val };
+        }
+        if (typeof val === 'string') return { stringValue: val };
+        if (Array.isArray(val)) {
+            return { arrayValue: { values: val.map(jsToFirestoreValue) } };
+        }
+        if (val instanceof Date) return { timestampValue: val.toISOString() };
+        if (typeof val === 'object') {
+            const fields = {};
+            for (const k of Object.keys(val)) {
+                fields[k] = jsToFirestoreValue(val[k]);
+            }
+            return { mapValue: { fields } };
+        }
+        return { stringValue: String(val) };
+    }
+
+    function objectToFirestoreDoc(obj) {
+        const fields = {};
+        for (const key of Object.keys(obj)) {
+            fields[key] = jsToFirestoreValue(obj[key]);
+        }
+        return { fields };
+    }
+
+    function getTargetDatabaseId() {
+        const el = document.getElementById('targetDatabaseId');
+        return el ? (el.value.trim() || '(default)') : '(default)';
+    }
+
+    // Direct HTTP REST write function (Never hangs!)
+    async function httpWriteDocument(targetConfig, collectionName, docId, docData) {
+        const dbId = targetConfig.databaseId || getTargetDatabaseId();
+        const url = `https://firestore.googleapis.com/v1/projects/${targetConfig.projectId}/databases/${dbId}/documents/${collectionName}/${encodeURIComponent(docId)}?key=${targetConfig.apiKey}`;
+        const payload = objectToFirestoreDoc(docData);
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8-second HTTP timeout
+
+        try {
+            const response = await fetch(url, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
+            const data = await response.json();
+            if (!response.ok) {
+                const err = data.error || {};
+                throw new Error(`[HTTP ${response.status}] ${err.status || ''}: ${err.message || JSON.stringify(data)}`);
+            }
+            return data;
+        } catch (err) {
+            clearTimeout(timeoutId);
+            if (err.name === 'AbortError') {
+                throw new Error("HTTP Request Timed Out (8s). Check internet connection or project status.");
+            }
+            throw err;
+        }
+    }
+
+    // TEST CONNECTION BUTTON
+    document.getElementById('testConnectionBtn').addEventListener('click', async () => {
+        let targetConfig;
+        try {
+            targetConfig = getTargetConfig();
+            if (!targetConfig) return;
+
+            const dbId = targetConfig.databaseId || getTargetDatabaseId();
+            log(`Testing write connection to target project "${targetConfig.projectId}" (Database: "${dbId}") via REST API...`, 'info');
+            const testId = "ping_" + Date.now();
+            
+            await httpWriteDocument(targetConfig, "_test_migration", testId, { test: true, timestamp: new Date().toISOString() });
+            log(`✓ WRITE SUCCESS! Test document written to target project "${targetConfig.projectId}" database "${dbId}".`, 'success');
+            
+            // Clean up test document via REST DELETE
+            const delUrl = `https://firestore.googleapis.com/v1/projects/${targetConfig.projectId}/databases/${dbId}/documents/_test_migration/${testId}?key=${targetConfig.apiKey}`;
+            await fetch(delUrl, { method: 'DELETE' });
+            
+            log(`✓ DELETE SUCCESS! Target database "${dbId}" is 100% READY for migration.`, 'success');
+            alert(`✅ Connection Test Successful! Target database "${dbId}" in project "${targetConfig.projectId}" is ready for migration.`);
+        } catch (err) {
+            log(`✕ CONNECTION TEST FAILED: ${err.message}`, 'error');
+            if (err.message.includes('PERMISSION_DENIED') || err.message.includes('403')) {
+                log(`💡 SOLUTION: Firestore Security Rules on database are blocking writes. Go to Firebase Console -> Firestore Database -> Rules tab, set rules to "allow read, write: if true;" and click Publish.`, 'warn');
+            } else if (err.message.includes('NOT_FOUND') || err.message.includes('404')) {
+                log(`💡 SOLUTION: Check your Database ID. If your database is named "${getTargetDatabaseId()}", verify the name in Firebase Console -> Cloud Firestore.`, 'warn');
+            } else if (err.message.includes('API_KEY_INVALID') || err.message.includes('400')) {
+                log(`💡 SOLUTION: The apiKey in your target firebaseConfig is invalid. Check your Project Settings in Firebase Console.`, 'warn');
+            }
+            alert(`Connection Test Failed:\n${err.message}`);
+        }
+    });
+
+    // START MIGRATION BUTTON
+    document.getElementById('startMigrationBtn').addEventListener('click', async () => {
+        let targetConfig;
+        try {
+            targetConfig = getTargetConfig();
+            if (!targetConfig) return;
+        } catch (err) {
+            log("Error parsing target config: " + err.message, 'error');
+            alert("Error parsing target configuration: " + err.message);
+            return;
+        }
+
+        const selectedCollections = Array.from(document.querySelectorAll('#collectionsContainer input[type="checkbox"]:checked')).map(cb => cb.value);
+        if (selectedCollections.length === 0) {
+            alert("Please select at least one collection to migrate.");
+            return;
+        }
+
+        if (!confirm(`Are you ready to copy ${selectedCollections.length} collections to target Firebase project "${targetConfig.projectId}"?`)) {
+            return;
+        }
+
+        const startBtn = document.getElementById('startMigrationBtn');
+        const testBtn = document.getElementById('testConnectionBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+
+        startBtn.disabled = true;
+        testBtn.disabled = true;
+        progressContainer.style.display = 'block';
+        progressBar.style.width = '0%';
+
+        log(`Initializing Source Database (${CURRENT_SOURCE_CONFIG.projectId})...`, 'info');
+        const sourceApp = initializeApp(CURRENT_SOURCE_CONFIG, "SourceApp_" + Date.now());
+        const sourceDb = getFirestore(sourceApp);
+
+        let totalCopied = 0;
+        let totalFailed = 0;
+
+        for (let i = 0; i < selectedCollections.length; i++) {
+            const colName = selectedCollections[i];
+            const percent = Math.round(((i) / selectedCollections.length) * 100);
+            progressBar.style.width = `${percent}%`;
+
+            log(`Fetching collection "${colName}" from source...`, 'info');
+            try {
+                const querySnap = await getDocs(collection(sourceDb, colName));
+
+                if (querySnap.empty) {
+                    log(`Collection "${colName}" is empty. Skipping.`, 'warn');
+                    continue;
+                }
+
+                log(`Found ${querySnap.size} documents in "${colName}". Transferring via HTTP REST...`, 'info');
+
+                let colCopied = 0;
+                let colFailed = 0;
+                const docs = querySnap.docs;
+
+                for (let d = 0; d < docs.length; d++) {
+                    const docSnap = docs[d];
+                    const docId = docSnap.id;
+                    const docData = docSnap.data();
+
+                    try {
+                        await httpWriteDocument(targetConfig, colName, docId, docData);
+                        colCopied++;
+                        totalCopied++;
+                    } catch (docErr) {
+                        colFailed++;
+                        totalFailed++;
+                        log(`Failed doc "${docId}" in "${colName}": ${docErr.message}`, 'error');
+                    }
+
+                    // Log progress every 15 documents or at the end
+                    if ((d + 1) % 15 === 0 || d === docs.length - 1) {
+                        log(`--> "${colName}": ${colCopied}/${docs.length} docs copied...`, 'info');
+                    }
+                }
+
+                log(`✓ Finished "${colName}": ${colCopied}/${querySnap.size} docs copied successfully.`, 'success');
+
+            } catch (colErr) {
+                log(`Error reading collection "${colName}": ${colErr.message}`, 'error');
+            }
+        }
+
+        progressBar.style.width = '100%';
+        startBtn.disabled = false;
+        testBtn.disabled = false;
+        log(`Migration Completed! Total documents copied: ${totalCopied}. Errors: ${totalFailed}.`, totalFailed > 0 ? 'warn' : 'success');
+        
+        if (totalFailed === 0) {
+            alert(`🎉 Success! All ${totalCopied} documents copied to "${targetConfig.projectId}".`);
+        } else {
+            alert(`⚠️ Migration finished with warnings. Copied: ${totalCopied}, Failed: ${totalFailed}. Check log console for details.`);
+        }
+    });
+</script>
+</body>
+</html>
