@@ -1611,70 +1611,96 @@ body.dark-theme .quick-action-item:hover {
     width: 100vw;
     height: 100vh;
     /* Changed to force bounds */
-    z-index: 200;
+    z-index: 2000 !important;
     overflow-y: auto;
     /* Re-enables scrolling */
 }
 
+/* Reset button overrides for Quiz Builder elements */
+.gform-container button {
+    width: auto;
+    font-family: inherit;
+}
+
 .gform-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: white;
-    padding: 12px 24px;
-    border-bottom: 1px solid #dadce0;
-    position: sticky;
-    top: 0;
-    z-index: 100;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    background: var(--card-bg, #ffffff) !important;
+    padding: 0 24px !important;
+    height: 64px !important;
+    min-height: 64px !important;
+    border-bottom: 1px solid var(--border-color, #dadce0) !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+    box-sizing: border-box !important;
 }
 
 .gform-header-left {
-    display: flex;
-    align-items: center;
-    gap: 15px;
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
 }
 
 .gform-title-input {
-    font-size: 18px;
-    border: none;
-    padding: 4px 8px;
-    border-radius: 4px;
-    color: #202124;
-    width: 250px;
+    font-size: 18px !important;
+    border: none !important;
+    padding: 6px 10px !important;
+    border-radius: 6px !important;
+    color: var(--text-dark, #202124) !important;
+    background: transparent !important;
+    width: 250px !important;
 }
 
 .gform-title-input:focus {
-    background: #f1f3f4;
-    outline: none;
-    border-bottom: 2px solid #673ab7;
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
+    background: #f1f3f4 !important;
+    outline: none !important;
+    border-bottom: 2px solid #673ab7 !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
 }
 
 .gform-header-center {
-    display: flex;
-    gap: 20px;
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    bottom: 0;
+    display: flex !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
+    height: 100% !important;
+    position: absolute !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    top: 0 !important;
+    bottom: 0 !important;
 }
 
 .gform-tab {
-    background: none;
-    border: none;
-    font-size: 14px;
-    color: #5f6368;
-    padding: 12px 0;
-    cursor: pointer;
-    font-weight: 500;
-    border-bottom: 3px solid transparent;
-    margin-bottom: -1px;
+    background: transparent !important;
+    border: none !important;
+    font-size: 15px !important;
+    color: var(--text-gray, #5f6368) !important;
+    padding: 0 20px !important;
+    height: 100% !important;
+    width: auto !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    font-weight: 600 !important;
+    border-radius: 0 !important;
+    border-bottom: 3px solid transparent !important;
+    margin-bottom: -1px !important;
+    transition: all 0.2s ease !important;
+}
+
+.gform-tab:hover {
+    color: var(--text-dark, #202124) !important;
+    background: rgba(103, 58, 183, 0.04) !important;
 }
 
 .gform-tab.active {
-    color: #673ab7;
-    border-bottom-color: #673ab7;
+    color: #673ab7 !important;
+    border-bottom-color: #673ab7 !important;
+    background: transparent !important;
 }
 
 .gform-publish-btn {
@@ -1772,34 +1798,44 @@ body.dark-theme .quick-action-item:hover {
 
 /* Floating Toolbar */
 .gform-floating-toolbar {
-    position: absolute;
-    right: -60px;
+    position: absolute !important;
+    right: -58px !important;
     top: 0;
-    background: white;
-    border-radius: 8px;
-    border: 1px solid #dadce0;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    display: flex;
-    flex-direction: column;
-    padding: 8px 4px;
-    gap: 8px;
-    transition: top 0.3s ease;
-    z-index: 10;
+    background: #ffffff !important;
+    border-radius: 12px !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 6px !important;
+    gap: 6px !important;
+    transition: top 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+    z-index: 100 !important;
+    width: auto !important;
 }
 
 .gform-floating-toolbar button {
-    background: none;
-    border: none;
-    color: #5f6368;
-    font-size: 18px;
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #334155 !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    border-radius: 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    transition: all 0.2s ease !important;
+}
+
+.gform-floating-toolbar button:hover {
+    background: #673ab7 !important;
+    border-color: #673ab7 !important;
+    color: #ffffff !important;
+    transform: scale(1.06) !important;
 }
 
 .gform-floating-toolbar button:hover {
@@ -1889,36 +1925,271 @@ body.dark-theme .quick-action-item:hover {
     color: #5f6368;
 }
 
-/* --- Rich Text Toolbar & ContentEditable Adjustments --- */
-.rich-text-toolbar {
-    display: flex;
-    gap: 5px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #dadce0;
-    margin-bottom: 15px;
-    opacity: 0;
-    transition: opacity 0.2s;
+/* --- Floating Rich Text Popup & ContentEditable Styles --- */
+.rich-text-popup {
+    position: fixed !important;
+    z-index: 3000 !important;
+    display: none;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 6px 12px !important;
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 30px !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+    pointer-events: auto !important;
+    width: auto !important;
 }
 
-/* Only show the toolbar when the card is actively selected */
-.active-card .rich-text-toolbar {
-    opacity: 1;
+.rich-text-popup select {
+    background: #f8fafc !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 20px !important;
+    padding: 5px 12px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: #1e293b !important;
+    outline: none !important;
+    cursor: pointer !important;
+    width: auto !important;
 }
 
-.rich-text-toolbar button,
-.rich-text-toolbar select {
-    background: white;
-    border: 1px solid #dadce0;
-    border-radius: 4px;
-    padding: 4px 8px;
-    cursor: pointer;
-    color: #5f6368;
-    font-size: 13px;
+.rich-text-popup select:hover {
+    background: #f1f5f9 !important;
+    border-color: #94a3b8 !important;
 }
 
-.rich-text-toolbar button:hover,
-.rich-text-toolbar select:hover {
-    background: #f1f3f4;
+.rich-text-popup .rt-btn {
+    background: transparent !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 20px !important;
+    min-width: 32px !important;
+    width: 32px !important;
+    height: 32px !important;
+    padding: 0 !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #334155 !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.2s ease !important;
+}
+
+.rich-text-popup .rt-btn:hover {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+    border-color: #94a3b8 !important;
+}
+
+.rich-text-popup .rt-btn:active {
+    background: #e2e8f0 !important;
+}
+
+/* Force SVGs inside buttons and containers to be clearly visible */
+.gform-container svg,
+.rich-text-popup svg {
+    display: inline-block !important;
+    vertical-align: middle !important;
+    stroke: currentColor !important;
+    flex-shrink: 0 !important;
+}
+
+/* Unified icon-btn styles inside Quiz Builder */
+.gform-container .icon-btn,
+.icon-btn {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
+    padding: 0 !important;
+    color: #334155 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+.gform-container .icon-btn:hover,
+.icon-btn:hover {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+    border-color: #94a3b8 !important;
+    transform: translateY(-1px) !important;
+}
+
+.gform-container .icon-btn.duplicate,
+.icon-btn.duplicate {
+    color: #64748b !important;
+}
+
+.gform-container .icon-btn.duplicate:hover,
+.icon-btn.duplicate:hover {
+    background: #eff6ff !important;
+    border-color: #93c5fd !important;
+    color: #2563eb !important;
+}
+
+.gform-container .icon-btn.delete,
+.icon-btn.delete {
+    color: #64748b !important;
+}
+
+.gform-container .icon-btn.delete:hover,
+.icon-btn.delete:hover {
+    background: #fef2f2 !important;
+    border-color: #fca5a5 !important;
+    color: #dc2626 !important;
+}
+
+/* Dark Theme overrides for Quiz Builder */
+body.dark-theme .gform-container {
+    background-color: #0b1437 !important;
+}
+
+body.dark-theme .gform-header {
+    background: #111c44 !important;
+    border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+body.dark-theme .gform-title-input {
+    color: #ffffff !important;
+    background: transparent !important;
+}
+
+body.dark-theme .gform-title-input:focus {
+    background: #1b254b !important;
+}
+
+body.dark-theme .gform-tab {
+    color: #a3aed1 !important;
+}
+
+body.dark-theme .gform-tab:hover {
+    color: #ffffff !important;
+    background: rgba(139, 92, 246, 0.1) !important;
+}
+
+body.dark-theme .gform-tab.active {
+    color: #a78bfa !important;
+    border-bottom-color: #a78bfa !important;
+}
+
+body.dark-theme .gform-card {
+    background: #111c44 !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+body.dark-theme .gform-card.active-card {
+    border-left-color: #6366f1 !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.dark-theme .title-card {
+    border-top-color: #8b5cf6 !important;
+}
+
+body.dark-theme .gform-h1-input {
+    color: #ffffff !important;
+}
+
+body.dark-theme .gform-desc-input {
+    color: #cbd5e1 !important;
+}
+
+body.dark-theme .gform-q-input,
+body.dark-theme .blk-prompt {
+    background: #1b254b !important;
+    color: #ffffff !important;
+    border-bottom-color: #475569 !important;
+}
+
+body.dark-theme .gform-q-input:focus {
+    background: #24305e !important;
+    border-bottom-color: #8b5cf6 !important;
+}
+
+body.dark-theme .gform-opt-input {
+    color: #ffffff !important;
+}
+
+body.dark-theme .gform-type-select {
+    background: #1b254b !important;
+    color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+body.dark-theme .gform-container .icon-btn,
+body.dark-theme .icon-btn {
+    background: #1b254b !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    color: #e2e8f0 !important;
+}
+
+body.dark-theme .gform-container .icon-btn:hover,
+body.dark-theme .icon-btn:hover {
+    background: #24305e !important;
+    color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+body.dark-theme .gform-container .icon-btn.delete,
+body.dark-theme .icon-btn.delete {
+    color: #94a3b8 !important;
+}
+
+body.dark-theme .gform-container .icon-btn.delete:hover,
+body.dark-theme .icon-btn.delete:hover {
+    background: #7f1d1d !important;
+    border-color: #ef4444 !important;
+    color: #fca5a5 !important;
+}
+
+body.dark-theme .gform-floating-toolbar {
+    background: #111c44 !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5) !important;
+}
+
+body.dark-theme .gform-floating-toolbar button {
+    background: #1b254b !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: #e2e8f0 !important;
+}
+
+body.dark-theme .gform-floating-toolbar button:hover {
+    background: #8b5cf6 !important;
+    border-color: #8b5cf6 !important;
+    color: #ffffff !important;
+}
+
+body.dark-theme .rich-text-popup {
+    background: #111c44 !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6) !important;
+}
+
+body.dark-theme .rich-text-popup select {
+    background: #1b254b !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    color: #ffffff !important;
+}
+
+body.dark-theme .rich-text-popup .rt-btn {
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    color: #e2e8f0 !important;
+}
+
+body.dark-theme .rich-text-popup .rt-btn:hover {
+    background: #1b254b !important;
+    color: #ffffff !important;
+    border-color: #8b5cf6 !important;
 }
 
 div.gform-h1-input,
@@ -1968,24 +2239,7 @@ div.gform-q-input:empty:before {
     display: block;
 }
 
-/* Ensure the toolbar has no bottom border when active inside a card */
-.rich-text-toolbar {
-    border-bottom: none;
-    display: flex;
-    gap: 5px;
-    margin-bottom: 15px;
-}
 
-.rich-text-toolbar {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    padding: 8px 12px;
-    background: #f8fafc;
-    border-radius: 6px;
-    border: 1px solid #dadce0;
-    margin-bottom: 12px;
-}
 
 [contenteditable="true"]:empty:before {
     content: attr(data-placeholder);
@@ -2931,12 +3185,9 @@ body.dark-theme .multi-select-option-row:hover {
 }
 
 /* ======================================================
-   ADMIN ROUNDED PILL BUTTON SYSTEM (LIGHT & DARK THEME)
+   ROUNDED PILL BUTTON STYLING SYSTEM (LIGHT & DARK THEME)
    ====================================================== */
-/* ======================================================
-   ADMIN ROUNDED PILL BUTTON SYSTEM (LIGHT & DARK THEME)
-   ====================================================== */
-button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(.kebab-item),
+button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(.kebab-item):not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.card-kebab-btn):not(#profileCardKebabBtn):not(.profile-dropdown-item),
 .btn:not(.dropdown-item):not(.kebab-item),
 .action-btn:not(.dropdown-item):not(.kebab-item),
 .add-btn,
@@ -2959,7 +3210,7 @@ button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(
     transition: all 0.2s ease !important;
 }
 
-button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(.kebab-item):hover,
+button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(.kebab-item):not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.card-kebab-btn):not(#profileCardKebabBtn):not(.profile-dropdown-item):hover,
 .btn:not(.dropdown-item):not(.kebab-item):hover,
 .action-btn:not(.dropdown-item):not(.kebab-item):hover,
 .add-btn:hover,
@@ -2972,14 +3223,14 @@ button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
 }
 
-button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(.kebab-item):active,
+button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(.kebab-item):not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):active,
 .btn:not(.dropdown-item):not(.kebab-item):active {
     transform: translateY(0) !important;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
 }
 
 /* Dark Theme Overrides for Admin Buttons */
-body.dark-theme button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(.kebab-item),
+body.dark-theme button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(.kebab-item):not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.card-kebab-btn):not(#profileCardKebabBtn):not(.profile-dropdown-item),
 body.dark-theme .btn:not(.dropdown-item):not(.kebab-item),
 body.dark-theme .action-btn:not(.dropdown-item):not(.kebab-item),
 body.dark-theme .add-btn,
@@ -2992,7 +3243,7 @@ body.dark-theme .modal-btn {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
 }
 
-body.dark-theme button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(.kebab-item):hover,
+body.dark-theme button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(.kebab-item):not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):hover,
 body.dark-theme .btn:not(.dropdown-item):not(.kebab-item):hover,
 body.dark-theme .action-btn:not(.dropdown-item):not(.kebab-item):hover,
 body.dark-theme .add-btn:hover,
@@ -3001,6 +3252,74 @@ body.dark-theme .delete-btn:not(.dropdown-item):not(.kebab-item):hover,
 body.dark-theme .modal-btn:hover {
     background: #334155 !important;
     border-color: #475569 !important;
+}
+
+/* Mobile Topbar Menu Button System */
+button.mobile-kebab-btn,
+.mobile-kebab-btn,
+#mobileTopbarKebabBtn {
+    background: #1e5eff !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.35) !important;
+    border-radius: 10px !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    cursor: pointer !important;
+    box-shadow: 0 3px 10px rgba(30, 94, 255, 0.45) !important;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+button.mobile-kebab-btn:hover,
+.mobile-kebab-btn:hover,
+#mobileTopbarKebabBtn:hover {
+    background: #2563eb !important;
+    border-color: rgba(255, 255, 255, 0.7) !important;
+    transform: scale(1.05) !important;
+}
+
+button.mobile-kebab-btn:active,
+.mobile-kebab-btn:active,
+#mobileTopbarKebabBtn:active {
+    transform: scale(0.92) !important;
+    background: #1d4ed8 !important;
+}
+
+button.mobile-kebab-btn svg,
+.mobile-kebab-btn svg,
+#mobileTopbarKebabBtn svg {
+    width: 20px !important;
+    height: 20px !important;
+    stroke: #ffffff !important;
+    fill: none !important;
+    stroke-width: 2.2 !important;
+    color: #ffffff !important;
+    pointer-events: none !important;
+    display: block !important;
+}
+
+body.dark-theme button.mobile-kebab-btn,
+body.dark-mode button.mobile-kebab-btn,
+body.dark-theme #mobileTopbarKebabBtn,
+body.dark-mode #mobileTopbarKebabBtn {
+    background: #2563eb !important;
+    border: 1px solid rgba(147, 197, 253, 0.6) !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 14px rgba(37, 99, 235, 0.6) !important;
+}
+
+body.dark-theme button.mobile-kebab-btn svg,
+body.dark-mode button.mobile-kebab-btn svg,
+body.dark-theme #mobileTopbarKebabBtn svg,
+body.dark-mode #mobileTopbarKebabBtn svg {
+    stroke: #ffffff !important;
+    fill: none !important;
+    color: #ffffff !important;
 }
 
 /* Danger / Delete Button Pill Variant */
@@ -3097,4 +3416,74 @@ select:hover {
 
 body.dark-theme select {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2360a5fa' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
+}
+
+/* Action Kebab Button & Popup Menu */
+.card-kebab-btn {
+    background: transparent !important;
+    border: none !important;
+    color: var(--text-gray, #64748b) !important;
+    cursor: pointer !important;
+    padding: 6px !important;
+    border-radius: 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.2s ease !important;
+}
+
+.card-kebab-btn:hover {
+    background: rgba(30, 94, 255, 0.08) !important;
+    color: var(--primary-blue, #1e5eff) !important;
+}
+
+.profile-card-dropdown {
+    position: absolute !important;
+    background: var(--card-bg, #ffffff) !important;
+    border: 1px solid var(--border-color, #e2e8f0) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+    padding: 6px !important;
+    z-index: 9999 !important;
+    min-width: 120px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+}
+
+.profile-dropdown-item {
+    background: transparent !important;
+    border: none !important;
+    color: var(--text-dark, #0f172a) !important;
+    padding: 8px 12px !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    text-align: left !important;
+    transition: background 0.15s ease !important;
+}
+
+.profile-dropdown-item:hover {
+    background: rgba(30, 94, 255, 0.08) !important;
+    color: var(--primary-blue, #1e5eff) !important;
+}
+
+body.dark-theme .profile-card-dropdown {
+    background: #1e293b !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.dark-theme .profile-dropdown-item {
+    color: #e2e8f0 !important;
+}
+
+body.dark-theme .profile-dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #60a5fa !important;
 }

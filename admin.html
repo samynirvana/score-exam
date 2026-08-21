@@ -1,18 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Teacher Admin Dashboard</title>
     <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/1o_7O1hdx1SJOXfoFw9ZKxpl4zSOD_VYd">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="admin.css?v=302">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Inter:wght@400;500;600;700&family=Lato:wght@400;700&family=Lora:wght@400;600&family=Merriweather:wght@400;700&family=Montserrat:wght@400;600;700&family=Nunito:wght@400;600;700&family=Open+Sans:wght@400;600;700&family=Oswald:wght@400;600&family=Playfair+Display:wght@400;700&family=Poppins:wght@400;500;600;700&family=Raleway:wght@400;600;700&family=Roboto:wght@400;500;700&family=Source+Sans+3:wght@400;600;700&family=Ubuntu:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="admin.css?v=320">
 </head>
+
 <body>
 
     <!-- Login Screen -->
@@ -27,23 +34,28 @@
 
     <!-- Main Dashboard Application -->
     <div id="adminDashboard" class="app-container hidden">
-        
+
         <!-- SIDEBAR -->
         <nav class="sidebar">
             <div class="brand">
-    <div style="background: #f0efec; padding: 6px; border-radius: 8px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; box-sizing: border-box; flex-shrink: 0;">
-        <img id="brandLogoImg" src="https://drive.google.com/thumbnail?id=1NLOGftk-CtNp9nxv4MUTqxNQTHdUxce7&sz=s4000" alt="Logo" style="width: 100%; height: 100%; object-fit: contain;">
-    </div>
-    <div>
-        <h2>MITRA KASIH</h2>
-        <p>SCHOOL</p>
-    </div>
-</div>
-            
+                <div
+                    style="background: #f0efec; padding: 6px; border-radius: 8px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; box-sizing: border-box; flex-shrink: 0;">
+                    <img id="brandLogoImg"
+                        src="https://drive.google.com/thumbnail?id=1NLOGftk-CtNp9nxv4MUTqxNQTHdUxce7&sz=s4000"
+                        alt="Logo" style="width: 100%; height: 100%; object-fit: contain;">
+                </div>
+                <div>
+                    <h2>MITRA KASIH</h2>
+                    <p>SCHOOL</p>
+                </div>
+            </div>
+
             <div class="menu-bar">
                 <!-- 1. Dashboard -->
-                <button class="menu-btn active admin-only-view" data-tab="tab-dashboard" data-label="Dashboard" id="menuDashboard">
-                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <button class="menu-btn active admin-only-view" data-tab="tab-dashboard" data-label="Dashboard"
+                    id="menuDashboard">
+                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="3" y="3" width="7" height="9" rx="1.5"></rect>
                         <rect x="14" y="3" width="7" height="5" rx="1.5"></rect>
                         <rect x="14" y="12" width="7" height="9" rx="1.5"></rect>
@@ -54,7 +66,8 @@
 
                 <!-- 2. Manage Score -->
                 <button class="menu-btn" data-tab="tab-manage-scores" data-label="Manage Score" id="menuManageScore">
-                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M9 11l3 3L22 4"></path>
                         <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
                     </svg>
@@ -62,33 +75,42 @@
                 </button>
 
                 <!-- 3. Students Behavior -->
-                <button class="menu-btn" data-tab="tab-manage-behavior" data-label="Students Behavior" id="menuManageBehavior">
-                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <button class="menu-btn" data-tab="tab-manage-behavior" data-label="Students Behavior"
+                    id="menuManageBehavior">
+                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
                         <circle cx="9" cy="7" r="4"></circle>
-                        <polygon points="18 4 19.3 6.7 22.3 7.1 20.1 9.2 20.6 12.2 18 10.8 15.4 12.2 15.9 9.2 13.7 7.1 16.7 6.7 18 4"></polygon>
+                        <polygon
+                            points="18 4 19.3 6.7 22.3 7.1 20.1 9.2 20.6 12.2 18 10.8 15.4 12.2 15.9 9.2 13.7 7.1 16.7 6.7 18 4">
+                        </polygon>
                     </svg>
                     <span class="menu-label">Students Behavior</span>
                 </button>
 
                 <!-- 4. Databases (with sub tabs) -->
                 <div class="menu-item-group admin-only-view" id="groupDatabases">
-                    <button class="menu-btn menu-btn-expandable" data-tab="tab-view-ledgers" data-label="Databases" id="menuAdminOnly">
+                    <button class="menu-btn menu-btn-expandable" data-tab="tab-view-ledgers" data-label="Databases"
+                        id="menuAdminOnly">
                         <span class="menu-btn-content">
-                            <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
                                 <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
                                 <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
                             </svg>
                             <span class="menu-label">Databases</span>
                         </span>
-                        <svg class="submenu-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg class="submenu-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="6 9 12 15 18 9"></polyline>
                         </svg>
                     </button>
                     <div class="submenu" id="databasesSubmenu">
-                        <button class="submenu-btn" data-tab="tab-view-ledgers" data-subtab="students" id="subtabStudents">
-                            <svg class="submenu-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <button class="submenu-btn" data-tab="tab-view-ledgers" data-subtab="students"
+                            id="subtabStudents">
+                            <svg class="submenu-icon" viewBox="0 0 24 24" width="16" height="16" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                                 <circle cx="9" cy="7" r="4"></circle>
                                 <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
@@ -96,15 +118,19 @@
                             </svg>
                             <span>Students</span>
                         </button>
-                        <button class="submenu-btn" data-tab="tab-view-ledgers" data-subtab="teachers" id="subtabTeachers">
-                            <svg class="submenu-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <button class="submenu-btn" data-tab="tab-view-ledgers" data-subtab="teachers"
+                            id="subtabTeachers">
+                            <svg class="submenu-icon" viewBox="0 0 24 24" width="16" height="16" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
                                 <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
                             </svg>
                             <span>Teacher</span>
                         </button>
-                        <button class="submenu-btn" data-tab="tab-view-ledgers" data-subtab="quizzes" id="subtabQuizzes">
-                            <svg class="submenu-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <button class="submenu-btn" data-tab="tab-view-ledgers" data-subtab="quizzes"
+                            id="subtabQuizzes">
+                            <svg class="submenu-icon" viewBox="0 0 24 24" width="16" height="16" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <circle cx="12" cy="12" r="10"></circle>
                                 <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
                                 <line x1="12" y1="17" x2="12.01" y2="17"></line>
@@ -116,7 +142,8 @@
 
                 <!-- 5. News and Notices -->
                 <button class="menu-btn" data-tab="tab-manage-news" data-label="News and Notices" id="menuNewsOnly">
-                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
                         <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
                     </svg>
@@ -124,8 +151,10 @@
                 </button>
 
                 <!-- 6. Create Quizzes -->
-                <button class="menu-btn" data-tab="tab-manage-quizzes" data-label="Create Quizzes" id="menuManageQuizzes">
-                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <button class="menu-btn" data-tab="tab-manage-quizzes" data-label="Create Quizzes"
+                    id="menuManageQuizzes">
+                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                     </svg>
@@ -133,8 +162,10 @@
                 </button>
 
                 <!-- 7. Classroom Timeline -->
-                <a href="timeline.html" class="menu-btn" data-label="Classroom Timeline" id="menuTimeline" style="text-decoration: none;">
-                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <a href="timeline.html" class="menu-btn" data-label="Classroom Timeline" id="menuTimeline"
+                    style="text-decoration: none;">
+                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="8" y1="6" x2="21" y2="6"></line>
                         <line x1="8" y1="12" x2="21" y2="12"></line>
                         <line x1="8" y1="18" x2="21" y2="18"></line>
@@ -147,20 +178,23 @@
             </div>
 
             <!-- USER PROFILE BOTTOM -->
-                <div class="user-profile-bottom">
-                    <div id="userAvatarCircle" style="width: 36px; height: 36px; background: #1e5eff; color: #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; flex-shrink: 0;">
-                        A
-                    </div>
-                    <div style="overflow: hidden;">
-                        <h4 id="sidebarUserName" style="margin: 0; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Administrator</h4>
-                        <p id="sidebarUserRole" style="margin: 0; font-size: 12px; color: var(--text-gray);">Super Admin</p>
-                    </div>
+            <div class="user-profile-bottom">
+                <div id="userAvatarCircle"
+                    style="width: 36px; height: 36px; background: #1e5eff; color: #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; flex-shrink: 0;">
+                    A
                 </div>
+                <div style="overflow: hidden;">
+                    <h4 id="sidebarUserName"
+                        style="margin: 0; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        Administrator</h4>
+                    <p id="sidebarUserRole" style="margin: 0; font-size: 12px; color: var(--text-gray);">Super Admin</p>
+                </div>
+            </div>
         </nav>
 
         <!-- MAIN CONTENT AREA -->
         <main class="main-wrapper">
-            
+
             <!-- TOPBAR -->
             <header class="topbar">
                 <div class="header-title">
@@ -168,80 +202,132 @@
                     <p>Welcome back, Administrator</p>
                 </div>
                 <div class="topbar-actions">
-                   <button id="themeToggleBtn" class="theme-toggle-btn">
-                    <img id="adminThemeIcon" src="https://lh3.googleusercontent.com/d/YOUR_DARK_MODE_ICON_FILE_ID" alt="Theme Icon" class="btn-icon">
-                    <span id="adminThemeText">Dark Mode</span>
-                </button>
+                    <button id="themeToggleBtn" class="theme-toggle-btn">
+                        <img id="adminThemeIcon" src="https://lh3.googleusercontent.com/d/YOUR_DARK_MODE_ICON_FILE_ID"
+                            alt="Theme Icon" class="btn-icon">
+                        <span id="adminThemeText">Dark Mode</span>
+                    </button>
                     <button id="logoutBtn" class="logout-btn">Logout</button>
                 </div>
             </header>
 
             <!-- TAB 0: NEW DASHBOARD OVERVIEW -->
             <div id="tab-dashboard" class="tab-content active admin-only-view">
-                
-               <!-- Stat Cards -->
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-icon" style="background: #eef2ff; color: #1e5eff;">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                            </div>
-                            <div class="stat-info"><p>Total Students</p><h3 id="stat-total-students">...</h3></div>
-                        </div>
 
-                        <div class="stat-card">
-                            <div class="stat-icon" style="background: #ecfdf5; color: #10b981;">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
-                            </div>
-                            <div class="stat-info"><p>Total Teachers</p><h3 id="stat-total-teachers">...</h3></div>
+                <!-- Stat Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #eef2ff; color: #1e5eff;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            </svg>
                         </div>
-
-                        <div class="stat-card">
-                            <div class="stat-icon" style="background: #f5f3ff; color: #8b5cf6;">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>
-                            </div>
-                            <div class="stat-info"><p>Highest Behavior</p><h3 id="stat-highest-behavior" style="font-size: 16px; margin-top: 8px;">...</h3></div>
-                        </div>
-
-                        <div class="stat-card">
-                            <div class="stat-icon" style="background: #fff0f2; color: #ef4444;">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"></polyline><polyline points="16 17 22 17 22 11"></polyline></svg>
-                            </div>
-                            <div class="stat-info"><p>Lowest Behavior</p><h3 id="stat-lowest-behavior" style="font-size: 16px; margin-top: 8px;">...</h3></div>
-                        </div>
-
-                        <div class="stat-card">
-                            <div class="stat-icon" style="background: #f0fdfa; color: #14b8a6;">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                            </div>
-                            <div class="stat-info"><p>News Posted</p><h3 id="stat-total-news">...</h3></div>
-                        </div>
-
-                        <div class="stat-card">
-                            <div class="stat-icon" style="background: #fffbeb; color: #f59e0b;">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                            </div>
-                            <div class="stat-info"><p>Quizzes Created</p><h3 id="stat-total-quizzes">...</h3></div>
+                        <div class="stat-info">
+                            <p>Total Students</p>
+                            <h3 id="stat-total-students">...</h3>
                         </div>
                     </div>
 
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #ecfdf5; color: #10b981;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <p>Total Teachers</p>
+                            <h3 id="stat-total-teachers">...</h3>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #f5f3ff; color: #8b5cf6;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+                                <polyline points="16 7 22 7 22 13"></polyline>
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <p>Highest Behavior</p>
+                            <h3 id="stat-highest-behavior" style="font-size: 16px; margin-top: 8px;">...</h3>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #fff0f2; color: #ef4444;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="22 17 13.5 8.5 8.5 13.5 2 7"></polyline>
+                                <polyline points="16 17 22 17 22 11"></polyline>
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <p>Lowest Behavior</p>
+                            <h3 id="stat-lowest-behavior" style="font-size: 16px; margin-top: 8px;">...</h3>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #f0fdfa; color: #14b8a6;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <p>News Posted</p>
+                            <h3 id="stat-total-news">...</h3>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #fffbeb; color: #f59e0b;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            </svg>
+                        </div>
+                        <div class="stat-info">
+                            <p>Quizzes Created</p>
+                            <h3 id="stat-total-quizzes">...</h3>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Balanced 2-Column Dashboard Overview Grid -->
                 <div class="dashboard-overview-grid">
-                    
+
                     <!-- LEFT PANEL: Quick Actions -->
                     <div class="box dashboard-panel">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                             <div>
                                 <h3 style="margin: 0; font-size: 18px; font-weight: 700;">Quick Actions</h3>
-                                <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-gray);">Frequently used administrative shortcuts</p>
+                                <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-gray);">Frequently used
+                                    administrative shortcuts</p>
                             </div>
-                            <span style="background: rgba(30, 94, 255, 0.1); color: var(--primary-blue); font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px;">4 Actions</span>
+                            <span
+                                style="background: rgba(30, 94, 255, 0.1); color: var(--primary-blue); font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px;">4
+                                Actions</span>
                         </div>
 
                         <div class="quick-actions-list">
                             <!-- 1. Register New Student -->
-                            <div class="quick-action-item" onclick="document.getElementById('subtabStudents') ? document.getElementById('subtabStudents').click() : document.getElementById('menuAdminOnly').click()">
+                            <div class="quick-action-item"
+                                onclick="document.getElementById('subtabStudents') ? document.getElementById('subtabStudents').click() : document.getElementById('menuAdminOnly').click()">
                                 <div class="stat-icon" style="background: #eef2ff; width: 44px; height: 44px;">
-                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1e5eff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1e5eff"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                                         <circle cx="9" cy="7" r="4"></circle>
                                         <line x1="19" y1="8" x2="19" y2="14"></line>
@@ -249,16 +335,22 @@
                                     </svg>
                                 </div>
                                 <div style="flex: 1;">
-                                    <h4 style="margin: 0; font-size: 14.5px; font-weight: 600;">Register New Student</h4>
-                                    <p style="margin: 3px 0 0 0; font-size: 12.5px; color: var(--text-gray);">Add student & generate access code</p>
+                                    <h4 style="margin: 0; font-size: 14.5px; font-weight: 600;">Register New Student
+                                    </h4>
+                                    <p style="margin: 3px 0 0 0; font-size: 12.5px; color: var(--text-gray);">Add
+                                        student & generate access code</p>
                                 </div>
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="9 18 15 12 9 6"></polyline>
+                                </svg>
                             </div>
 
                             <!-- 2. Bulk Upload Scores -->
                             <div class="quick-action-item" onclick="document.getElementById('menuManageScore').click()">
                                 <div class="stat-icon" style="background: #f5f3ff; width: 44px; height: 44px;">
-                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                         <polyline points="14 2 14 8 20 8"></polyline>
                                         <line x1="16" y1="13" x2="8" y2="13"></line>
@@ -267,60 +359,86 @@
                                     </svg>
                                 </div>
                                 <div style="flex: 1;">
-                                    <h4 style="margin: 0; font-size: 14.5px; font-weight: 600;">Bulk Upload Scores (Excel)</h4>
-                                    <p style="margin: 3px 0 0 0; font-size: 12.5px; color: var(--text-gray);">Upload exam scores in bulk spreadsheet</p>
+                                    <h4 style="margin: 0; font-size: 14.5px; font-weight: 600;">Bulk Upload Scores
+                                        (Excel)</h4>
+                                    <p style="margin: 3px 0 0 0; font-size: 12.5px; color: var(--text-gray);">Upload
+                                        exam scores in bulk spreadsheet</p>
                                 </div>
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="9 18 15 12 9 6"></polyline>
+                                </svg>
                             </div>
 
                             <!-- 3. Record Behavior Points -->
-                            <div class="quick-action-item" onclick="document.getElementById('menuManageBehavior').click()">
+                            <div class="quick-action-item"
+                                onclick="document.getElementById('menuManageBehavior').click()">
                                 <div class="stat-icon" style="background: #fffbeb; width: 44px; height: 44px;">
-                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polygon
+                                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                                        </polygon>
                                     </svg>
                                 </div>
                                 <div style="flex: 1;">
-                                    <h4 style="margin: 0; font-size: 14.5px; font-weight: 600;">Record Behavior Points</h4>
-                                    <p style="margin: 3px 0 0 0; font-size: 12.5px; color: var(--text-gray);">Add or deduct student conduct points</p>
+                                    <h4 style="margin: 0; font-size: 14.5px; font-weight: 600;">Record Behavior Points
+                                    </h4>
+                                    <p style="margin: 3px 0 0 0; font-size: 12.5px; color: var(--text-gray);">Add or
+                                        deduct student conduct points</p>
                                 </div>
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="9 18 15 12 9 6"></polyline>
+                                </svg>
                             </div>
 
                             <!-- 4. Create a Quiz (NEW) -->
-                            <div class="quick-action-item" onclick="document.getElementById('menuManageQuizzes').click()">
+                            <div class="quick-action-item"
+                                onclick="document.getElementById('menuManageQuizzes').click()">
                                 <div class="stat-icon" style="background: #fdf4ff; width: 44px; height: 44px;">
-                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d946ef" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d946ef"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M12 20h9"></path>
                                         <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
                                     </svg>
                                 </div>
                                 <div style="flex: 1;">
                                     <h4 style="margin: 0; font-size: 14.5px; font-weight: 600;">Create a Quiz</h4>
-                                    <p style="margin: 3px 0 0 0; font-size: 12.5px; color: var(--text-gray);">Build & publish interactive quizzes</p>
+                                    <p style="margin: 3px 0 0 0; font-size: 12.5px; color: var(--text-gray);">Build &
+                                        publish interactive quizzes</p>
                                 </div>
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="9 18 15 12 9 6"></polyline>
+                                </svg>
                             </div>
                         </div>
                     </div>
 
                     <!-- RIGHT PANEL: Active News & Notices -->
                     <div class="box dashboard-panel">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                             <div>
                                 <h3 style="margin: 0; font-size: 18px; font-weight: 700;">Active News & Notices</h3>
-                                <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-gray);">School announcements & bulletins</p>
+                                <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-gray);">School
+                                    announcements & bulletins</p>
                             </div>
-                            <a href="#" onclick="document.getElementById('menuNewsOnly').click(); return false;" style="font-size: 13px; font-weight: 600; color: var(--primary-blue); text-decoration: none; display: flex; align-items: center; gap: 4px;">
+                            <a href="#" onclick="document.getElementById('menuNewsOnly').click(); return false;"
+                                style="font-size: 13px; font-weight: 600; color: var(--primary-blue); text-decoration: none; display: flex; align-items: center; gap: 4px;">
                                 View All →
                             </a>
                         </div>
-                        
-                        <div class="table-responsive" style="flex: 1; min-height: 220px; max-height: 280px; border: none; overflow-y: auto; margin-bottom: 16px;" id="dashboard-news-container">
+
+                        <div class="table-responsive"
+                            style="flex: 1; min-height: 220px; max-height: 280px; border: none; overflow-y: auto; margin-bottom: 16px;"
+                            id="dashboard-news-container">
                             <!-- Populated dynamically via JS -->
                         </div>
-                        
-                        <button onclick="document.getElementById('menuNewsOnly').click()" style="margin-top: auto; width: 100%; background: var(--primary-blue); font-weight: 600; padding: 12px; border-radius: 10px;">
+
+                        <button onclick="document.getElementById('menuNewsOnly').click()"
+                            style="margin-top: auto; width: 100%; background: var(--primary-blue); font-weight: 600; padding: 12px; border-radius: 10px;">
                             + Post News / Notice
                         </button>
                     </div>
@@ -328,215 +446,226 @@
                 </div>
             </div>
             <!-- Keep your existing tabs hidden securely beneath. When users click sidebar links, these will show -->
-            
 
-        <!-- TAB: Manage Score -->
-        <div id="tab-manage-scores" class="tab-content">
-            
-            <!-- Combined Score Input Panel -->
-            <div class="box" style="margin-bottom: 24px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 12px;">
-                    <h3 style="margin: 0;" id="scoreInputHeaderTitle">Input scores</h3>
-                    <div class="register-mode-toggle">
-                        <button type="button" class="toggle-mode-btn active" id="btnScoreInputSingle" onclick="setScoreInputMode('single')">Input scores</button>
-                        <button type="button" class="toggle-mode-btn" id="btnScoreInputBulk" onclick="setScoreInputMode('bulk')">Multiple Input Score</button>
+
+            <!-- TAB: Manage Score -->
+            <div id="tab-manage-scores" class="tab-content">
+
+                <!-- Combined Score Input Panel -->
+                <div class="box" style="margin-bottom: 24px;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 12px;">
+                        <h3 style="margin: 0;" id="scoreInputHeaderTitle">Input scores</h3>
+                        <div class="register-mode-toggle">
+                            <button type="button" class="toggle-mode-btn active" id="btnScoreInputSingle"
+                                onclick="setScoreInputMode('single')">Input scores</button>
+                            <button type="button" class="toggle-mode-btn" id="btnScoreInputBulk"
+                                onclick="setScoreInputMode('bulk')">Multiple Input Score</button>
+                        </div>
+                    </div>
+
+                    <!-- Single / Direct Score Input Mode -->
+                    <div id="scoreInputSingleView">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="directSubjectSelect">Subject:</label>
+                                <select id="directSubjectSelect">
+                                    <option value="">-- Select Subject --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="directClassSelect">Class:</label>
+                                <select id="directClassSelect">
+                                    <option value="">-- Select Class --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="directQuizSelect">Quiz Name:</label>
+                                <select id="directQuizSelect">
+                                    <option value="">-- Select Quiz --</option>
+                                </select>
+                            </div>
+                            <div style="flex: 0 0 auto;">
+                                <button id="loadDirectStudentsBtn" style="background: var(--primary-blue);">Load Class
+                                    Roster</button>
+                            </div>
+                        </div>
+
+                        <div id="directScoreContainer" class="hidden" style="margin-top: 20px;">
+                            <hr style="border: 0; border-top: 1px solid var(--border-color); margin-bottom: 15px;">
+                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                <table id="directScoreTable">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 20%;">Student Code</th>
+                                            <th>Student Name</th>
+                                            <th style="width: 30%;">Score Input</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                            <button id="saveDirectScoresBtn"
+                                style="background: #10b981; margin-top: 15px; width: 100%;">Save All Scores to
+                                Ledger</button>
+                        </div>
+                    </div>
+
+                    <!-- Bulk Update / Multiple Input Score Mode -->
+                    <div id="scoreInputBulkView" class="hidden">
+                        <p style="font-size: 13px; color: var(--text-gray); margin-top: 0; margin-bottom: 16px;">
+                            Select a Subject, Class, and Quiz to download an auto-populated Excel template. Fill in the
+                            scores, then upload the file back to update the ledger.
+                        </p>
+
+                        <!-- Step A: Choose Options & Download Template -->
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="bulkSubjectSelect">Subject:</label>
+                                <select id="bulkSubjectSelect">
+                                    <option value="">-- Select Subject --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="bulkClassSelect">Class:</label>
+                                <select id="bulkClassSelect">
+                                    <option value="">-- Select Class --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="bulkQuizSelect">Quiz Name:</label>
+                                <select id="bulkQuizSelect">
+                                    <option value="">-- Select Quiz --</option>
+                                </select>
+                            </div>
+                            <div style="flex: 0 0 auto;">
+                                <button id="downloadTemplateBtn" style="background: #10b981;">Download Template</button>
+                            </div>
+                        </div>
+
+                        <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 16px 0;">
+
+                        <!-- Step B: Upload Completed File -->
+                        <div class="form-row">
+                            <div class="form-group" style="flex: 2;">
+                                <label for="excelFile">Select Completed Excel / CSV File:</label>
+                                <input type="file" id="excelFile" accept=".xlsx, .xls, .csv">
+                            </div>
+                            <div style="flex: 0 0 auto;">
+                                <button id="uploadExcelBtn" style="background: var(--primary-blue);">Upload &
+                                    Process</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Single / Direct Score Input Mode -->
-                <div id="scoreInputSingleView">
+                <!-- 3. View Score Ledger Panel -->
+                <div class="box">
+                    <h3 style="margin-top:0; margin-bottom: 8px;">View Score Ledger</h3>
+                    <p style="font-size: 14px; color: var(--text-gray); margin-bottom: 16px;">Select a specific Subject,
+                        Class, and Quiz/Review to view the student score ledger.</p>
+
                     <div class="form-row">
+                        <!-- ADDED: Subject Dropdown -->
                         <div class="form-group">
-                            <label for="directSubjectSelect">Subject:</label>
-                            <select id="directSubjectSelect"><option value="">-- Select Subject --</option></select>
+                            <label for="ledgerSubjectSelect">Subject:</label>
+                            <select id="ledgerSubjectSelect">
+                                <option value="">-- Choose a Subject --</option>
+                            </select>
                         </div>
+
                         <div class="form-group">
-                            <label for="directClassSelect">Class:</label>
-                            <select id="directClassSelect"><option value="">-- Select Class --</option></select>
+                            <label for="ledgerClassSelect">Class:</label>
+                            <select id="ledgerClassSelect">
+                                <option value="">-- Choose a Class --</option>
+                            </select>
                         </div>
+
+                        <div class="form-group" style="flex: 1.5;">
+                            <label for="ledgerQuizSelect">Quiz / Review:</label>
+                            <select id="ledgerQuizSelect">
+                                <option value="">-- Choose a Quiz / Review --</option>
+                            </select>
+                        </div>
+
                         <div class="form-group">
-                            <label for="directQuizSelect">Quiz Name:</label>
-                            <select id="directQuizSelect"><option value="">-- Select Quiz --</option></select>
+                            <label for="ledgerSortSelect">Sort Order:</label>
+                            <select id="ledgerSortSelect">
+                                <option value="name_asc">Name (A-Z)</option>
+                                <option value="score_desc">Highest Score</option>
+                                <option value="score_asc">Lowest Score</option>
+                            </select>
                         </div>
+
                         <div style="flex: 0 0 auto;">
-                            <button id="loadDirectStudentsBtn" style="background: var(--primary-blue);">Load Class Roster</button>
+                            <button id="viewLedgerBtn" onclick="viewScoreLedger()">View Table</button>
                         </div>
                     </div>
 
-                    <div id="directScoreContainer" class="hidden" style="margin-top: 20px;">
+                    <div id="scoreLedgerContainer" style="display: none;">
                         <hr style="border: 0; border-top: 1px solid var(--border-color); margin-bottom: 15px;">
-                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                            <table id="directScoreTable">
+                        <h4 id="activeLedgerTitle" style="margin-bottom: 15px; color: var(--primary-blue);">Ledger
+                            Results</h4>
+
+                        <div class="table-responsive">
+                            <table id="manageScoreTable">
                                 <thead>
                                     <tr>
-                                        <th style="width: 20%;">Student Code</th>
+                                        <th>Exam</th>
+                                        <th>Subject</th>
                                         <th>Student Name</th>
-                                        <th style="width: 30%;">Score Input</th>
+                                        <th>Class</th>
+                                        <th>Student Code</th>
+                                        <th>Score</th>
+                                        <th>Action</th>
                                     </tr>
                                 </thead>
-                                <tbody></tbody>
+                                <tbody id="manageScoreTbody"></tbody>
                             </table>
                         </div>
-                        <button id="saveDirectScoresBtn" style="background: #10b981; margin-top: 15px; width: 100%;">Save All Scores to Ledger</button>
-                    </div>
-                </div>
-
-                <!-- Bulk Update / Multiple Input Score Mode -->
-                <div id="scoreInputBulkView" class="hidden">
-                    <p style="font-size: 13px; color: var(--text-gray); margin-top: 0; margin-bottom: 16px;">
-                        Select a Subject, Class, and Quiz to download an auto-populated Excel template. Fill in the scores, then upload the file back to update the ledger.
-                    </p>
-                    
-                    <!-- Step A: Choose Options & Download Template -->
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="bulkSubjectSelect">Subject:</label>
-                            <select id="bulkSubjectSelect">
-                                <option value="">-- Select Subject --</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="bulkClassSelect">Class:</label>
-                            <select id="bulkClassSelect">
-                                <option value="">-- Select Class --</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="bulkQuizSelect">Quiz Name:</label>
-                            <select id="bulkQuizSelect">
-                                <option value="">-- Select Quiz --</option>
-                            </select>
-                        </div>
-                        <div style="flex: 0 0 auto;">
-                            <button id="downloadTemplateBtn" style="background: #10b981;">Download Template</button>
-                        </div>
-                    </div>
-
-                    <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 16px 0;">
-
-                    <!-- Step B: Upload Completed File -->
-                    <div class="form-row">
-                        <div class="form-group" style="flex: 2;">
-                            <label for="excelFile">Select Completed Excel / CSV File:</label>
-                            <input type="file" id="excelFile" accept=".xlsx, .xls, .csv">
-                        </div>
-                        <div style="flex: 0 0 auto;">
-                            <button id="uploadExcelBtn" style="background: var(--primary-blue);">Upload & Process</button>
-                        </div>
                     </div>
                 </div>
             </div>
-
-            <!-- 3. View Score Ledger Panel -->
-                    <div class="box">
-            <h3 style="margin-top:0; margin-bottom: 8px;">View Score Ledger</h3>
-            <p style="font-size: 14px; color: var(--text-gray); margin-bottom: 16px;">Select a specific Subject, Class, and Quiz/Review to view the student score ledger.</p>
-            
-            <div class="form-row">
-                <!-- ADDED: Subject Dropdown -->
-                <div class="form-group">
-                    <label for="ledgerSubjectSelect">Subject:</label>
-                    <select id="ledgerSubjectSelect">
-                        <option value="">-- Choose a Subject --</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="ledgerClassSelect">Class:</label>
-                    <select id="ledgerClassSelect">
-                        <option value="">-- Choose a Class --</option>
-                    </select>
-                </div>
-                
-                <div class="form-group" style="flex: 1.5;">
-                    <label for="ledgerQuizSelect">Quiz / Review:</label>
-                    <select id="ledgerQuizSelect">
-                        <option value="">-- Choose a Quiz / Review --</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="ledgerSortSelect">Sort Order:</label>
-                    <select id="ledgerSortSelect">
-                        <option value="name_asc">Name (A-Z)</option>
-                        <option value="score_desc">Highest Score</option>
-                        <option value="score_asc">Lowest Score</option>
-                    </select>
-                </div>
-                
-                <div style="flex: 0 0 auto;">
-                    <button id="viewLedgerBtn" onclick="viewScoreLedger()">View Table</button>
-                </div>
-            </div>
-
-            <div id="scoreLedgerContainer" style="display: none;">
-                <hr style="border: 0; border-top: 1px solid var(--border-color); margin-bottom: 15px;">
-                <h4 id="activeLedgerTitle" style="margin-bottom: 15px; color: var(--primary-blue);">Ledger Results</h4>
-                
-                <div class="table-responsive">
-                    <table id="manageScoreTable">
-                        <thead>
-                            <tr>
-                                <th>Exam</th>
-                                <th>Subject</th>
-                                <th>Student Name</th>
-                                <th>Class</th>
-                                <th>Student Code</th>
-                                <th>Score</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="manageScoreTbody"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        </div>
             <!-- TAB 3: Behavior Points -->
             <div id="tab-manage-behavior" class="tab-content">
                 <div class="dashboard-grid">
-                    
+
                     <!-- Top Box: Form -->
                     <div class="box" style="grid-column: 1 / -1;">
                         <h3 style="margin-top: 0; margin-bottom: 20px;">Manage Behavior Points</h3>
-                        
+
                         <div class="behavior-form-container">
-                            
+
                             <!-- Side-by-Side Inputs for Student Name & Reason -->
                             <div class="behavior-form-row-split">
                                 <!-- Student Name Row -->
                                 <div class="form-group">
                                     <label for="pointStudentName">Student Name:</label>
                                     <div class="autocomplete-container">
-                                        <input type="text" id="pointStudentName" placeholder="Search Student Name..." autocomplete="off">
+                                        <input type="text" id="pointStudentName" placeholder="Search Student Name..."
+                                            autocomplete="off">
                                         <div id="nameAutocompleteList" class="autocomplete-items hidden"></div>
                                     </div>
                                 </div>
-                                
+
                                 <!-- Reason Row -->
                                 <div class="form-group">
                                     <label for="pointReason">Reason / Event:</label>
                                     <div class="autocomplete-container">
-                                        <input type="text" id="pointReason" placeholder="Reason (Type to search past reasons...)" autocomplete="off">
+                                        <input type="text" id="pointReason"
+                                            placeholder="Reason (Type to search past reasons...)" autocomplete="off">
                                         <div id="reasonAutocompleteList" class="autocomplete-items hidden"></div>
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <!-- Behavior Points Input and Action Row -->
                             <div class="form-group">
                                 <label for="customPointValue">Point Amount & Action:</label>
                                 <div class="behavior-action-row">
-                                    <input 
-                                        type="number" 
-                                        id="customPointValue" 
-                                        placeholder="Custom +/- (e.g. 5 or -2)" 
-                                        step="0.1" 
-                                    >
-                                    <button 
-                                        id="saveCustomPointBtn" 
-                                        style="background: var(--purple-header);"
-                                    >
+                                    <input type="number" id="customPointValue" placeholder="Custom +/- (e.g. 5 or -2)"
+                                        step="0.1">
+                                    <button id="saveCustomPointBtn" style="background: var(--purple-header);">
                                         Commit Custom Point
                                     </button>
                                 </div>
@@ -544,25 +673,36 @@
 
                         </div>
                     </div>
-            <!-- Top 10 Positive & Negative Reasons Diagram (Visualized) -->
+                    <!-- Top 10 Positive & Negative Reasons Diagram (Visualized) -->
                     <div class="box" style="grid-column: 1 / -1;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                             <div>
                                 <h3 style="margin: 0;">Top 10 Behavior Analytics Diagram</h3>
-                                <p style="font-size: 13px; color: var(--text-gray); margin: 4px 0 0 0;">Visualized breakdown of top positive and negative conduct reasons.</p>
+                                <p style="font-size: 13px; color: var(--text-gray); margin: 4px 0 0 0;">Visualized
+                                    breakdown of top positive and negative conduct reasons.</p>
                             </div>
-                            <button type="button" id="btnToggleBehaviorCharts" onclick="toggleBehaviorCharts()" style="width: auto; padding: 8px 16px; font-size: 13px; background: var(--primary-blue);">Show Diagram</button>
+                            <button type="button" id="btnToggleBehaviorCharts" onclick="toggleBehaviorCharts()"
+                                style="width: auto; padding: 8px 16px; font-size: 13px; background: var(--primary-blue);">Show
+                                Diagram</button>
                         </div>
                         <div id="containerBehaviorCharts" class="hidden" style="margin-top: 20px;">
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
-                                <div style="background: var(--input-bg); padding: 18px; border-radius: 12px; border: 1px solid var(--border-color);">
-                                    <h4 style="margin-top: 0; color: #10b981; font-size: 15px; margin-bottom: 12px; text-align: center;">Top 10 Positive Reasons (Points)</h4>
+                            <div
+                                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
+                                <div
+                                    style="background: var(--input-bg); padding: 18px; border-radius: 12px; border: 1px solid var(--border-color);">
+                                    <h4
+                                        style="margin-top: 0; color: #10b981; font-size: 15px; margin-bottom: 12px; text-align: center;">
+                                        Top 10 Positive Reasons (Points)</h4>
                                     <div style="position: relative; height: 260px; width: 100%;">
                                         <canvas id="positiveReasonsChart"></canvas>
                                     </div>
                                 </div>
-                                <div style="background: var(--input-bg); padding: 18px; border-radius: 12px; border: 1px solid var(--border-color);">
-                                    <h4 style="margin-top: 0; color: #e02d2d; font-size: 15px; margin-bottom: 12px; text-align: center;">Top 10 Negative Reasons (Deductions)</h4>
+                                <div
+                                    style="background: var(--input-bg); padding: 18px; border-radius: 12px; border: 1px solid var(--border-color);">
+                                    <h4
+                                        style="margin-top: 0; color: #e02d2d; font-size: 15px; margin-bottom: 12px; text-align: center;">
+                                        Top 10 Negative Reasons (Deductions)</h4>
                                     <div style="position: relative; height: 260px; width: 100%;">
                                         <canvas id="negativeReasonsChart"></canvas>
                                     </div>
@@ -573,12 +713,20 @@
 
                     <!-- Full Behavior Ledger Table -->
                     <div class="box" style="grid-column: 1 / -1;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                             <h3 style="margin: 0;">Full Behavior Points Ledger</h3>
                         </div>
                         <div class="table-responsive" style="max-height: 400px;">
                             <table id="behaviorTabPointsTable">
-                                <thead><tr><th>Student Name</th><th>Class</th><th>Total Points</th><th>Action</th></tr></thead>
+                                <thead>
+                                    <tr>
+                                        <th>Student Name</th>
+                                        <th>Class</th>
+                                        <th>Total Points</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
                                 <tbody></tbody>
                             </table>
                         </div>
@@ -587,67 +735,153 @@
                 </div>
             </div>
 
-          <!-- TAB 4: Databases (Unified User & Database Management) -->
+            <!-- TAB 4: Databases (Unified User & Database Management) -->
             <div id="tab-view-ledgers" class="tab-content admin-only-view">
                 <div class="dashboard-grid">
-                    
+
                     <!-- STUDENTS SECTION -->
-                    <div id="db-section-students" class="db-section-group" style="grid-column: 1 / -1; display: contents;">
-                        <!-- Register Student (Combined Single & Bulk with Switcher) -->
+                    <div id="db-section-students" class="db-section-group"
+                        style="grid-column: 1 / -1; display: contents;">
+                        <!-- Register Student (Combined Single, Bulk Excel & Bulk Photos) -->
                         <div class="box" style="grid-column: 1 / -1;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 12px;">
-                                <h3 style="margin: 0;">Register Student</h3>
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 12px;">
+                                <h3 style="margin: 0;">Register Student & Manage Profiles</h3>
                                 <div class="register-mode-toggle">
-                                    <button type="button" class="toggle-mode-btn active" id="btnModeSingle" onclick="setStudentRegMode('single')">Single Student</button>
-                                    <button type="button" class="toggle-mode-btn" id="btnModeBulk" onclick="setStudentRegMode('bulk')">Bulk Register (Excel)</button>
+                                    <button type="button" class="toggle-mode-btn active" id="btnModeSingle"
+                                        onclick="setStudentRegMode('single')">Single Student</button>
+                                    <button type="button" class="toggle-mode-btn" id="btnModeBulk"
+                                        onclick="setStudentRegMode('bulk')">Bulk Register (Excel)</button>
+                                    <button type="button" class="toggle-mode-btn" id="btnModePhotos"
+                                        onclick="setStudentRegMode('photos')">📸 Bulk Photos (Google Drive / Drop)</button>
                                 </div>
                             </div>
 
                             <!-- Single Student Mode -->
                             <div id="studentRegSingleForm">
-                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 16px;">
+                                <div
+                                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 16px;">
                                     <div>
-                                        <label style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Full Student Name</label>
+                                        <label
+                                            style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Full
+                                            Student Name</label>
                                         <input type="text" id="newStudentName" placeholder="Full Student Name">
                                     </div>
                                     <div>
-                                        <label style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Class Room</label>
-                                        <input type="text" id="newStudentClass" placeholder="Class Room (e.g., Grade 7A)">
+                                        <label
+                                            style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Class
+                                            Room</label>
+                                        <input type="text" id="newStudentClass"
+                                            placeholder="Class Room (e.g., Grade 7A)">
+                                    </div>
+                                    <div>
+                                        <label
+                                            style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Date of Birth</label>
+                                        <input type="date" id="newStudentBirthDate">
                                     </div>
                                 </div>
-                                <button id="registerStudentBtn" style="background: var(--primary-blue); width: auto; padding: 10px 24px;">Generate Student Code</button>
+                                <button id="registerStudentBtn"
+                                    style="background: var(--primary-blue); width: auto; padding: 10px 24px;">Generate
+                                    Student Code</button>
                             </div>
 
                             <!-- Bulk Register Mode -->
                             <div id="studentRegBulkForm" class="hidden">
-                                <p style="font-size: 13px; color: var(--text-gray); margin-top: 0; margin-bottom: 12px;">
-                                    Upload an Excel (.xlsx, .csv) file containing columns for <strong>Student Name</strong> and <strong>Class</strong>.
+                                <p
+                                    style="font-size: 13px; color: var(--text-gray); margin-top: 0; margin-bottom: 12px;">
+                                    Upload an Excel (.xlsx, .csv) file containing columns for <strong>Student
+                                        Name</strong>, <strong>Class</strong>, and optional <strong>Birth Date</strong>.
                                 </p>
                                 <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                                    <input type="file" id="bulkStudentsFile" accept=".xlsx, .xls, .csv" style="max-width: 320px; margin: 0;">
-                                    <button id="uploadBulkStudentsBtn" style="background: var(--primary-blue); width: auto; padding: 10px 24px; margin: 0;">Upload & Process Bulk Students</button>
+                                    <input type="file" id="bulkStudentsFile" accept=".xlsx, .xls, .csv"
+                                        style="max-width: 320px; margin: 0;">
+                                    <button id="uploadBulkStudentsBtn"
+                                        style="background: var(--primary-blue); width: auto; padding: 10px 24px; margin: 0;">Upload
+                                        & Process Bulk Students</button>
+                                </div>
+                            </div>
+
+                            <!-- Bulk Photos Mode (Google Drive & Drag and Drop) -->
+                            <div id="studentRegPhotosForm" class="hidden">
+                                <div style="background: var(--bg-color, #f8fafc); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                                        <div style="font-weight: 700; font-size: 14px; color: var(--text-dark);">
+                                            ☁️ Google Drive Web App Script Integration (Optional)
+                                        </div>
+                                        <button type="button" onclick="toggleDriveScriptSettings()" style="background: transparent; color: var(--primary-blue); border: 1px solid var(--primary-blue); border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                                            Configure Google Drive URL
+                                        </button>
+                                    </div>
+                                    <p style="font-size: 12.5px; color: var(--text-gray); margin: 0;">
+                                        💡 <strong>Automatic Matching:</strong> Name your image files with the <strong>Student Code</strong> (e.g. <code style="background: rgba(0,0,0,0.06); padding: 2px 5px; border-radius: 4px;">MK101.jpg</code>, <code style="background: rgba(0,0,0,0.06); padding: 2px 5px; border-radius: 4px;">BLXVC.png</code>) or <strong>Full Student Name</strong> (e.g. <code style="background: rgba(0,0,0,0.06); padding: 2px 5px; border-radius: 4px;">Quinnella Meiko Dinata.jpg</code>).
+                                    </p>
+
+                                    <!-- Collapsible Script URL Setting -->
+                                    <div id="driveScriptSettingsBox" class="hidden" style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border-color);">
+                                        <label style="font-size: 12px; font-weight: 700; color: var(--text-dark); display: block; margin-bottom: 4px;">
+                                            Google Apps Script Web App URL:
+                                        </label>
+                                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                            <input type="url" id="googleDriveScriptUrl" placeholder="https://script.google.com/macros/s/.../exec" style="flex: 1; min-width: 260px; margin: 0; font-size: 13px;">
+                                            <button type="button" onclick="saveDriveScriptUrl()" style="background: #16a34a; color: #ffffff; padding: 8px 16px; font-size: 13px; font-weight: 700; border-radius: 8px; border: none; cursor: pointer;">
+                                                Save URL
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Drag & Drop Box -->
+                                <div id="bulkPhotoDropzone" style="border: 2.5px dashed var(--primary-blue, #1e5eff); background: rgba(30, 94, 255, 0.03); border-radius: 16px; padding: 36px 20px; text-align: center; cursor: pointer; transition: all 0.2s ease;">
+                                    <div style="width: 54px; height: 54px; border-radius: 50%; background: #eff6ff; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+                                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                            <polyline points="21 15 16 10 5 21"></polyline>
+                                        </svg>
+                                    </div>
+                                    <h4 style="margin: 0 0 6px; font-size: 16px; color: var(--text-dark);">
+                                        Drag & Drop Student Photos Here
+                                    </h4>
+                                    <p style="margin: 0 0 16px; font-size: 13px; color: var(--text-gray);">
+                                        or click to browse multiple photo files (.jpg, .png, .webp)
+                                    </p>
+                                    <input type="file" id="bulkPhotoFileInput" multiple accept="image/*" style="display: none;">
+                                    <button type="button" onclick="document.getElementById('bulkPhotoFileInput').click()" style="background: var(--primary-blue); color: white; border: none; padding: 8px 22px; border-radius: 20px; font-weight: 700; font-size: 13.5px; cursor: pointer;">
+                                        Select Photo Files
+                                    </button>
+                                </div>
+
+                                <!-- Results / Progress Log Container -->
+                                <div id="bulkPhotoResults" class="hidden" style="margin-top: 20px;">
+                                    <!-- Results injected via JS -->
                                 </div>
                             </div>
                         </div>
 
                         <!-- STUDENTS MASTER DIRECTORY -->
                         <div class="box" style="grid-column: 1 / -1;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
                                 <div style="display: flex; align-items: center; gap: 10px;">
                                     <h3 style="margin: 0;">Students Master Directory</h3>
-                                    <span id="dbStudentsCountBadge" style="background: rgba(30, 94, 255, 0.1); color: var(--primary-blue); font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 12px;">0</span>
+                                    <span id="dbStudentsCountBadge"
+                                        style="background: rgba(30, 94, 255, 0.1); color: var(--primary-blue); font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 12px;">0</span>
                                 </div>
                                 <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                                     <!-- Search Input -->
-                                    <input type="text" id="searchDbStudents" placeholder="Search students..." oninput="onDbStudentSearchChange()" style="width: 180px; margin: 0; padding: 8px 12px; font-size: 13px;">
-                                    
+                                    <input type="text" id="searchDbStudents" placeholder="Search students..."
+                                        oninput="onDbStudentSearchChange()"
+                                        style="width: 180px; margin: 0; padding: 8px 12px; font-size: 13px;">
+
                                     <!-- Filter Class Dropdown -->
-                                    <select id="filterDbStudentClass" onchange="onDbStudentFilterChange()" style="width: auto; min-width: 130px; margin: 0; padding: 8px 12px; font-size: 13px;">
+                                    <select id="filterDbStudentClass" onchange="onDbStudentFilterChange()"
+                                        style="width: auto; min-width: 130px; margin: 0; padding: 8px 12px; font-size: 13px;">
                                         <option value="all">All Classes</option>
                                     </select>
 
                                     <!-- Rows Per Page Dropdown -->
-                                    <select id="dbStudentsPerPage" onchange="onDbStudentPerPageChange()" style="width: auto; margin: 0; padding: 8px 12px; font-size: 13px;">
+                                    <select id="dbStudentsPerPage" onchange="onDbStudentPerPageChange()"
+                                        style="width: auto; margin: 0; padding: 8px 12px; font-size: 13px;">
                                         <option value="10">Show 10</option>
                                         <option value="20">Show 20</option>
                                         <option value="50">Show 50</option>
@@ -660,8 +894,10 @@
                                 <table id="dbStudentsDirectoryTable">
                                     <thead>
                                         <tr>
+                                            <th style="width: 50px; text-align: center;">Photo</th>
                                             <th>Student Name</th>
                                             <th>Class</th>
+                                            <th>Birth Date</th>
                                             <th style="width: 80px; text-align: center;">Actions</th>
                                         </tr>
                                     </thead>
@@ -684,17 +920,26 @@
 
                         <!-- Active Classes -->
                         <div class="box" style="grid-column: 1 / -1;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                                 <div>
                                     <h3 style="margin: 0;">Active Classes</h3>
-                                    <p style="font-size: 13px; color: var(--text-gray); margin: 4px 0 0 0;">Classes are automatically populated based on registered Student profiles.</p>
+                                    <p style="font-size: 13px; color: var(--text-gray); margin: 4px 0 0 0;">Classes are
+                                        automatically populated based on registered Student profiles.</p>
                                 </div>
-                                <button type="button" id="btnToggleClassesTable" onclick="toggleActiveClassesTable()" style="width: auto; padding: 8px 16px; font-size: 13px; background: var(--primary-blue);">Show Table</button>
+                                <button type="button" id="btnToggleClassesTable" onclick="toggleActiveClassesTable()"
+                                    style="width: auto; padding: 8px 16px; font-size: 13px; background: var(--primary-blue);">Show
+                                    Table</button>
                             </div>
                             <div id="containerClassesTable" class="hidden" style="margin-top: 15px;">
                                 <div class="table-responsive" style="max-height: 250px;">
                                     <table id="classesTable">
-                                        <thead><tr><th>Class Name</th><th>Source</th></tr></thead>
+                                        <thead>
+                                            <tr>
+                                                <th>Class Name</th>
+                                                <th>Source</th>
+                                            </tr>
+                                        </thead>
                                         <tbody></tbody>
                                     </table>
                                 </div>
@@ -703,29 +948,45 @@
                     </div>
 
                     <!-- TEACHER SECTION -->
-                    <div id="db-section-teachers" class="db-section-group" style="grid-column: 1 / -1; display: contents;">
+                    <div id="db-section-teachers" class="db-section-group"
+                        style="grid-column: 1 / -1; display: contents;">
                         <!-- 2. Register Teacher -->
                         <div class="box" style="grid-column: 1 / -1;">
                             <h3 style="margin-top: 0; margin-bottom: 16px;">Register Teacher</h3>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+                            <div
+                                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
                                 <div>
-                                    <label style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Teacher Full Name</label>
-                                    <input type="text" id="newTeacherName" placeholder="Teacher Full Name" style="margin: 0 !important;">
+                                    <label
+                                        style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Teacher
+                                        Full Name</label>
+                                    <input type="text" id="newTeacherName" placeholder="Teacher Full Name"
+                                        style="margin: 0 !important;">
                                 </div>
                                 <div>
-                                    <label style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Teacher Email Address</label>
-                                    <input type="email" id="newTeacherEmail" placeholder="Teacher Email Address" style="margin: 0 !important;">
+                                    <label
+                                        style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Teacher
+                                        Email Address</label>
+                                    <input type="email" id="newTeacherEmail" placeholder="Teacher Email Address"
+                                        style="margin: 0 !important;">
                                 </div>
                                 <div>
-                                    <label style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Login Password</label>
-                                    <input type="password" id="newTeacherPassword" placeholder="Login Password" style="margin: 0 !important;">
+                                    <label
+                                        style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Login
+                                        Password</label>
+                                    <input type="password" id="newTeacherPassword" placeholder="Login Password"
+                                        style="margin: 0 !important;">
                                 </div>
                                 <div>
-                                    <label style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Subject Specialty</label>
-                                    <input type="text" id="newTeacherSubject" placeholder="Subject Specialty" style="margin: 0 !important;">
+                                    <label
+                                        style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Subject
+                                        Specialty</label>
+                                    <input type="text" id="newTeacherSubject" placeholder="Subject Specialty"
+                                        style="margin: 0 !important;">
                                 </div>
                             </div>
-                            <button id="createTeacherBtn" style="background: #f59e0b; margin-top: 18px; width: auto; padding: 10px 24px;">Register Teacher</button>
+                            <button id="createTeacherBtn"
+                                style="background: #f59e0b; margin-top: 18px; width: auto; padding: 10px 24px;">Register
+                                Teacher</button>
                         </div>
 
                         <!-- TEACHERS MASTER DIRECTORY -->
@@ -750,17 +1011,26 @@
 
                         <!-- Active Subjects -->
                         <div class="box" style="grid-column: 1 / -1;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                                 <div>
                                     <h3 style="margin: 0;">Active Subjects</h3>
-                                    <p style="font-size: 13px; color: var(--text-gray); margin: 4px 0 0 0;">Subjects are automatically populated based on registered Teacher accounts.</p>
+                                    <p style="font-size: 13px; color: var(--text-gray); margin: 4px 0 0 0;">Subjects are
+                                        automatically populated based on registered Teacher accounts.</p>
                                 </div>
-                                <button type="button" id="btnToggleSubjectsTable" onclick="toggleActiveSubjectsTable()" style="width: auto; padding: 8px 16px; font-size: 13px; background: var(--primary-blue);">Show Table</button>
+                                <button type="button" id="btnToggleSubjectsTable" onclick="toggleActiveSubjectsTable()"
+                                    style="width: auto; padding: 8px 16px; font-size: 13px; background: var(--primary-blue);">Show
+                                    Table</button>
                             </div>
                             <div id="containerSubjectsTable" class="hidden" style="margin-top: 15px;">
                                 <div class="table-responsive" style="max-height: 250px;">
                                     <table id="subjectsTable">
-                                        <thead><tr><th>Subject Name</th><th>Source</th></tr></thead>
+                                        <thead>
+                                            <tr>
+                                                <th>Subject Name</th>
+                                                <th>Source</th>
+                                            </tr>
+                                        </thead>
                                         <tbody></tbody>
                                     </table>
                                 </div>
@@ -769,27 +1039,52 @@
                     </div>
 
                     <!-- QUIZ SECTION -->
-                    <div id="db-section-quizzes" class="db-section-group" style="grid-column: 1 / -1; display: contents;">
+                    <div id="db-section-quizzes" class="db-section-group"
+                        style="grid-column: 1 / -1; display: contents;">
                         <!-- Manual Offline Quizzes / Exams -->
                         <div class="box" style="grid-column: 1 / -1;">
                             <h3>Manage Offline Exams / Quizzes</h3>
-                            <p style="font-size: 13px; color: var(--text-gray);">Add offline exams here. Digital quizzes from the Quiz Builder are automatically linked.</p>
-                            
-                            <input type="text" id="newManualQuiz" placeholder="Enter Offline Exam Name (e.g., Midterm Paper)">
-                            
-                            <div class="form-row" style="margin-top: 8px; margin-bottom: 12px; display: flex; gap: 16px; flex-wrap: wrap;">
-                                <div class="form-group" style="flex: 1; min-width: 220px;">
-                                    <label for="newManualQuizSubject" style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Subject:</label>
+                            <p style="font-size: 13px; color: var(--text-gray);">Add offline exams here. Digital quizzes
+                                from the Quiz Builder are automatically linked.</p>
+
+                            <input type="text" id="newManualQuiz"
+                                placeholder="Enter Offline Exam Name (e.g., Midterm Paper)">
+
+                            <div class="form-row"
+                                style="margin-top: 8px; margin-bottom: 12px; display: flex; gap: 16px; flex-wrap: wrap;">
+                                <div class="form-group" style="flex: 1; min-width: 180px;">
+                                    <label for="newManualQuizType"
+                                        style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Type:</label>
+                                    <select id="newManualQuizType" style="margin: 0 !important;">
+                                        <option value="Exercise">Exercise</option>
+                                        <option value="Homework">Homework</option>
+                                        <option value="Quiz" selected>Quiz</option>
+                                        <option value="Review">Review</option>
+                                        <option value="Final Test">Final Test</option>
+                                        <option value="Project">Project</option>
+                                        <option value="Skill">Skill</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="flex: 1.2; min-width: 200px;">
+                                    <label for="newManualQuizSubject"
+                                        style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Subject:</label>
                                     <select id="newManualQuizSubject" style="margin: 0 !important;">
                                         <option value="">-- Select Subject --</option>
                                     </select>
                                 </div>
-                                <div class="form-group" style="flex: 1; min-width: 220px;">
-                                    <label style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Target Class:</label>
+                                <div class="form-group" style="flex: 1.2; min-width: 200px;">
+                                    <label
+                                        style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Target
+                                        Class:</label>
                                     <div class="multi-select-dropdown" id="manualQuizClassDropdown">
-                                        <div class="multi-select-trigger" onclick="toggleMultiSelectDropdown('manualQuizClassDropdown')">
-                                            <span class="multi-select-label" id="manualQuizClassLabel">-- Select Target Class --</span>
-                                            <svg class="dropdown-arrow-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                        <div class="multi-select-trigger"
+                                            onclick="toggleMultiSelectDropdown('manualQuizClassDropdown')">
+                                            <span class="multi-select-label" id="manualQuizClassLabel">-- Select Target
+                                                Class --</span>
+                                            <svg class="dropdown-arrow-icon" viewBox="0 0 24 24" width="16" height="16"
+                                                fill="none" stroke="currentColor" stroke-width="2">
+                                                <polyline points="6 9 12 15 18 9"></polyline>
+                                            </svg>
                                         </div>
                                         <div class="multi-select-options" id="manualQuizClassOptions">
                                             <!-- Checkboxes injected dynamically -->
@@ -798,17 +1093,18 @@
                                 </div>
                             </div>
 
-                            <button onclick="addManualQuiz()" style="background: var(--primary-blue);">Add Offline Exam</button>
-                            
+                            <button onclick="addManualQuiz()" style="background: var(--primary-blue);">Add Offline
+                                Exam</button>
+
                             <div class="table-responsive" style="margin-top: 15px; max-height: 350px;">
                                 <table id="quizzesDatabaseTable">
                                     <thead>
                                         <tr>
                                             <th>Quiz / Exam Name</th>
+                                            <th>Type</th>
                                             <th>Subject</th>
                                             <th>Class</th>
-                                            <th>Source</th>
-                                            <th>Action</th>
+                                            <th style="width: 80px; text-align: center;">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody></tbody>
@@ -820,296 +1116,531 @@
                 </div>
             </div>
 
-          <!-- TAB 5: Manage News -->
-                <div id="tab-manage-news" class="tab-content">
-                    <div class="dashboard-grid">
-                        <!-- Post / Edit Form -->
-                        <div class="box">
-                            <h3 id="newsFormTitle">Post News / Notice</h3>
-                            <input type="text" id="newsTitle" placeholder="Notice Title">
-                            <textarea id="newsContent" rows="4" placeholder="Enter notice details here..."></textarea>
-                            
-                            <!-- Multi-Select Target Class Checklist Dropdown -->
-                            <div class="form-group" style="margin-top: 12px; margin-bottom: 16px;">
-                                <label style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Target Class(es):</label>
-                                <div class="multi-select-dropdown" id="newsClassDropdown">
-                                    <div class="multi-select-trigger" onclick="toggleMultiSelectDropdown('newsClassDropdown')">
-                                        <span class="multi-select-label" id="newsClassLabel">All Classes</span>
-                                        <svg class="dropdown-arrow-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                                    </div>
-                                    <div class="multi-select-options" id="newsClassOptions">
-                                        <label class="multi-select-option-row">
-                                            <input type="checkbox" value="all" onchange="onNewsClassCheckboxChange(this)" checked>
-                                            <strong>All Classes</strong>
-                                        </label>
-                                    </div>
+            <!-- TAB 5: Manage News -->
+            <div id="tab-manage-news" class="tab-content">
+                <div class="dashboard-grid">
+                    <!-- Post / Edit Form -->
+                    <div class="box">
+                        <h3 id="newsFormTitle">Post News / Notice</h3>
+                        <input type="text" id="newsTitle" placeholder="Notice Title">
+                        <textarea id="newsContent" rows="4" placeholder="Enter notice details here..."></textarea>
+
+                        <!-- Multi-Select Target Class Checklist Dropdown -->
+                        <div class="form-group" style="margin-top: 12px; margin-bottom: 16px;">
+                            <label
+                                style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Target
+                                Class(es):</label>
+                            <div class="multi-select-dropdown" id="newsClassDropdown">
+                                <div class="multi-select-trigger"
+                                    onclick="toggleMultiSelectDropdown('newsClassDropdown')">
+                                    <span class="multi-select-label" id="newsClassLabel">All Classes</span>
+                                    <svg class="dropdown-arrow-icon" viewBox="0 0 24 24" width="16" height="16"
+                                        fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="multi-select-options" id="newsClassOptions">
+                                    <label class="multi-select-option-row">
+                                        <input type="checkbox" value="all" onchange="onNewsClassCheckboxChange(this)"
+                                            checked>
+                                        <strong>All Classes</strong>
+                                    </label>
                                 </div>
                             </div>
-
-                            <button id="postNewsBtn">Post Notice</button>
                         </div>
-                        
-                        <!-- Manage Existing Notices -->
-                        <div class="box">
-                            <h3>Manage Active Notices</h3>
-                            <div class="table-responsive">
-                                <table id="manageNewsTable">
-                                    <thead>
-                                        <tr>
-                                            <th>Date</th>
-                                            <th>Title</th>
-                                            <th>Target Class</th>
-                                            <th>Status</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- JS will inject rows here -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
- <!-- TAB 6: Manage Quizzes (Redesigned with Landing Page) -->
-<div id="tab-manage-quizzes" class="tab-content">
-    
-    <!-- STEP 1: LANDING VIEW -->
-    <div id="quiz-landing-view">
-        <!-- Create Action Box -->
-        <div class="box" style="text-align: center; padding: 40px 20px; margin-bottom: 24px; border: 2px dashed #cbd5e1;">
-            <h3 style="margin-top: 0; color: #1e5eff; font-size: 20px;">Create a New Quiz</h3>
-            <p style="color: #707eae; font-size: 14px; margin-bottom: 20px;">Design interactive quizzes, worksheets, and functional writing tasks.</p>
-            <button onclick="openQuizBuilder(true)" style="background: #1e5eff; width: auto; padding: 12px 32px; font-size: 16px; border-radius: 8px;">+ Create New Quiz</button>
-        </div>
-
-        <!-- Existing Quizzes Box -->
-        <div class="box">
-            <h3>Existing Quizzes</h3>
-            <div class="table-responsive">
-                <table id="quizTable">
-                    <thead><tr><th>Title</th><th>Subject</th><th>Class</th><th>Status</th><th>Actions</th></tr></thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-<!-- STEP 2: BUILDER VIEW (Google Forms Style) -->
-    <div id="quiz-builder-view" class="hidden gform-container">
-        
-<!-- Top Navigation -->
-<div class="gform-header">
-    <div class="gform-header-left">
-        <button onclick="closeQuizBuilder()" class="icon-btn">&larr;</button>
-        <input type="text" id="quizTitle" class="gform-title-input" placeholder="Untitled Quiz" value="Untitled Quiz">
-        <!-- Removed "All changes saved" -->
-    </div>
-    <div class="gform-header-center">
-        <button class="gform-tab active">Questions</button>
-        <!-- Removed Responses and Settings tabs -->
-    </div>
-    <div class="gform-header-right">
-        <button id="saveQuizBtn" class="gform-publish-btn">Publish</button>
-    </div>
-</div>
-
-<!-- Main Body -->
-<div class="gform-body">
-    <div class="gform-content-wrapper">
-        <div id="floatingToolbar" class="gform-floating-toolbar">
-        <!-- Button to add MCQ -->
-        <button onclick="addBlock('mcq')" title="Add Question">+</button>
-        <!-- Button to add a new Header/Section -->
-        <button onclick="addBlock('header')" title="Add Title and Description">Tt</button>
-        <!-- Button to add a passage -->
-        <button onclick="addBlock('passage')" title="Add Text/Passage">T</button>
-        <!-- Button to add an essay -->
-        <button onclick="addBlock('essay')" title="Add Essay">P</button>
-    </div>
-    <div id="toolbar-storage" style="display: none;">
-        <div id="globalRichTextToolbar" class="rich-text-toolbar">
-            <select onchange="formatText('fontName', this.value)" title="Font">
-                <option value="Arial">Arial</option>
-                <option value="Georgia">Georgia</option>
-                <option value="Times New Roman">Times New Roman</option>
-                <option value="Verdana">Verdana</option>
-            </select>
-            <select onchange="formatText('fontSize', this.value)" title="Font Size">
-                <option value="3">Normal</option>
-                <option value="5">Large</option>
-                <option value="6">Huge</option>
-            </select>
-                <!-- onmousedown preventDefault is crucial so the text doesn't lose focus before formatting applies -->
-            <button onmousedown="event.preventDefault(); formatText('bold')" title="Bold"><b>B</b></button>
-            <button onmousedown="event.preventDefault(); formatText('italic')" title="Italic"><i>I</i></button>
-            <button onmousedown="event.preventDefault(); formatText('underline')" title="Underline"><u>U</u></button>
-            <button onmousedown="event.preventDefault(); formatText('removeFormat')" title="Clear Formatting">⌫</button>
-        </div>
-    </div>
-
-         <!-- Title Header Card -->
-            <div class="gform-card title-card active-card" onclick="activateCard(this)">
-            
-            <div class="card-top-accent"></div>
-            
-            <!-- NEW: Rich Text Formatting Toolbar -->
-            <div class="rich-text-toolbar" id="titleFormattingToolbar">
-                <select onchange="formatText('fontName', this.value)" title="Font">
-                    <option value="Arial">Arial</option>
-                    <option value="Georgia">Georgia</option>
-                    <option value="Times New Roman">Times New Roman</option>
-                    <option value="Verdana">Verdana</option>
-                </select>
-                <select onchange="formatText('fontSize', this.value)" title="Font Size">
-                    <option value="3">Normal</option>
-                    <option value="5">Large</option>
-                    <option value="6">Huge</option>
-                </select>
-                <button onclick="formatText('bold')" title="Bold"><b>B</b></button>
-                <button onclick="formatText('italic')" title="Italic"><i>I</i></button>
-                <button onclick="formatText('underline')" title="Underline"><u>U</u></button>
-                <button onclick="formatText('removeFormat')" title="Clear Formatting">⌫</button>
-            </div>
-
-            <!-- Changed to contenteditable divs to allow formatting -->
-            <div id="gform-main-title" class="gform-h1-input" contenteditable="true" data-placeholder="Quiz Title">Untitled Quiz</div>
-            <!-- Font size increased to 15px via inline style -->
-            <div id="gform-description" class="gform-desc-input" contenteditable="true" data-placeholder="Quiz description" style="font-size: 15px; margin-bottom: 20px;"></div>
-            
-            <div style="display:flex; gap: 15px; margin-top: 15px; border-top: 1px solid #dadce0; padding-top: 15px;">
-                <!-- Changed to standard Select Dropdowns -->
-                <select id="quizTargetClass" class="gform-desc-input" style="border: 1px solid #dadce0; padding: 8px; border-radius: 4px; font-size: 14px;">
-                    <option value="">-- Select Target Class --</option>
-                </select>
-                <select id="quizSubject" class="gform-desc-input" style="border: 1px solid #dadce0; padding: 8px; border-radius: 4px; font-size: 14px;">
-                    <option value="">-- Select Subject --</option>
-                </select>
-            </div>
-            </div>
-
-            <!-- Questions Container -->
-            <div id="quizBlocksContainer"></div>
-            
-        </div>
-    </div>
-    </div>
-    </div>     
-</div>
-
-           <!-- Modal for Quiz Results -->
-            <div id="quizResultsModal" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; justify-content:center; align-items:center;">
-                <div class="box" style="width: 90%; max-width: 700px; position: relative;">
-                    <button onclick="closeResultsModal()" style="position:absolute; right:15px; top:15px; width:auto; background:#e02d2d;">Close</button>
-                    <h3 id="quizResultsTitle" style="margin-top:0;">Quiz Submissions</h3>
-                    <div style="max-height: 400px; overflow-y: auto; margin-top: 16px;">
-                        <table id="quizResultsTable" style="width:100%; border-collapse:collapse;">
-                            <thead>
-                                <tr style="text-align:left; border-bottom:2px solid var(--border-color, #e2e8f0);">
-                                    <th style="padding:8px;">Student</th>
-                                    <th style="padding:8px;">Class</th>
-                                    <th style="padding:8px;">Score</th>
-                                    <th style="padding:8px;">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            <!-- Modal for Inspecting Student Quiz Answers -->
-            <div id="studentAnswersModal" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1100; display:flex; justify-content:center; align-items:center;">
-                <div class="box" style="width: 90%; max-width: 650px; position: relative; max-height: 85vh; overflow-y: auto; background: #ffffff; border-radius: 12px; padding: 24px;">
-                    <button onclick="closeAnswersModal()" style="position:absolute; right:15px; top:15px; background:#64748b; color:white; border:none; padding:6px 14px; border-radius:6px; cursor:pointer; font-weight:600;">
-                        ← Back to List
-                    </button>
-                    <h3 id="studentAnswersTitle" style="margin-top:0; color:#1e293b; padding-right: 100px;">Student Answers</h3>
-                    
-                    <!-- Reference Auto Score Display -->
-                    <div id="autoScoreReference" style="margin: 16px 0; padding: 12px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #3b82f6;"></div>
-                    
-                    <!-- Answers Container -->
-                    <div id="answersDetailContainer" style="margin-top: 16px;"></div>
-                </div>
-            </div>
-                <!-- Modal for Adjusting Points -->
-                    <div id="pointModal" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; justify-content:center; align-items:center;">
-                        <div class="box" style="width: 90%; max-width: 400px; position: relative;">
-                            <button onclick="closePointModal()" style="position:absolute; right:15px; top:15px; width:auto; background:#e02d2d; padding:6px 12px; font-size:12px;">Close</button>
-                            <h3 style="margin-top:0;">Adjust Behavior Points</h3>
-                            
-                            <p id="pointModalStudent" style="font-weight:600; color:var(--primary-blue); margin-bottom:15px;"></p>
-                            <input type="hidden" id="modalStudentCode">
-                            
-                            <label style="font-size:13px; font-weight:bold; color:var(--text-dark);">Point Amount (+ or -)</label>
-                            <input type="number" id="modalPointValue" placeholder="e.g. 2, -1, 0.5" step="0.1">
-                            
-                            <label style="font-size:13px; font-weight:bold; color:var(--text-dark); margin-top:10px; display:block;">Reason for Adjustment</label>
-                            <input type="text" id="modalPointReason" placeholder="Reason for adding/subtracting">
-                            
-                            <button onclick="submitModalPoint()" style="background:#10b981; margin-top: 20px;">Save Adjustment</button>
-                        </div>
+                        <button id="postNewsBtn">Post Notice</button>
                     </div>
 
-                    <!-- Modal for Viewing and Managing Student Behavior History -->
-                <div id="behaviorHistoryModal" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1100; display:flex; justify-content:center; align-items:center;">
-                    <div class="box" style="width: 90%; max-width: 650px; position: relative; max-height: 85vh; overflow-y: auto; padding: 24px;">
-                        <button onclick="closeBehaviorHistoryModal()" style="position:absolute; right:15px; top:15px; width:auto; background:#64748b; color:white; padding: 6px 12px; font-size: 12px; border-radius: 6px;">Close</button>
-                        <h3 id="historyModalTitle" style="margin-top:0; color: var(--text-dark);">Behavior History</h3>
-                        
-                        <div class="table-responsive" style="max-height: 400px; margin-top: 16px;">
-                            <table id="historyDetailTable">
+                    <!-- Manage Existing Notices -->
+                    <div class="box">
+                        <h3>Manage Active Notices</h3>
+                        <div class="table-responsive">
+                            <table id="manageNewsTable">
                                 <thead>
                                     <tr>
-                                        <th>Date / Time</th>
-                                        <th>Reason</th>
-                                        <th>Points</th>
+                                        <th>Date</th>
+                                        <th>Title</th>
+                                        <th>Target Class</th>
+                                        <th>Status</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody id="historyDetailTbody">
-                                    <!-- Dynamic entries injected via JS -->
+                                <tbody>
+                                    <!-- JS will inject rows here -->
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Modal for Viewing Student Unique Code -->
-                <div id="studentCodeModal" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); z-index:1200; display:flex; justify-content:center; align-items:center; backdrop-filter: blur(4px);">
-                    <div class="box" style="width: 90%; max-width: 400px; position: relative; text-align: center; padding: 28px 24px; border-radius: 16px; box-shadow: 0 12px 36px rgba(0,0,0,0.25);">
-                        <button onclick="closeStudentCodeModal()" style="position:absolute; right:15px; top:15px; width:auto; background:#64748b; color:white; padding: 6px 12px; font-size: 12px; border-radius: 6px; border:none; cursor:pointer;">Close</button>
-                        
-                        <div style="width: 52px; height: 52px; border-radius: 50%; background: #eef2ff; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
-                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                            </svg>
-                        </div>
-                        
-                        <h3 style="margin: 0 0 4px; font-size: 18px; color: var(--text-dark);" id="modalStudentCodeName">Student Name</h3>
-                        <p style="margin: 0 0 18px; font-size: 13px; color: var(--text-gray);" id="modalStudentCodeClass">Class Room</p>
-                        
-                        <div style="background: #f8fafc; border: 2px dashed #cbd5e1; padding: 16px; border-radius: 12px; margin-bottom: 20px;">
-                            <p style="margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-gray); font-weight: 700;">Unique Student Code</p>
-                            <div id="modalDisplayStudentCode" style="font-family: monospace; font-size: 26px; font-weight: 800; letter-spacing: 4px; color: var(--primary-blue);">ABC12</div>
-                        </div>
+            <!-- TAB 6: Manage Quizzes (Redesigned with Landing Page) -->
+            <div id="tab-manage-quizzes" class="tab-content">
 
-                        <button id="copyStudentCodeBtn" onclick="copyStudentCodeToClipboard()" style="background: var(--primary-blue); width: 100%; padding: 11px 16px; font-weight: 600; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                            </svg>
-                            <span id="copyBtnText">Copy Code</span>
-                        </button>
+                <!-- STEP 1: LANDING VIEW -->
+                <div id="quiz-landing-view">
+                    <!-- Create Action Box -->
+                    <div class="box"
+                        style="text-align: center; padding: 40px 20px; margin-bottom: 24px; border: 2px dashed #cbd5e1;">
+                        <h3 style="margin-top: 0; color: #1e5eff; font-size: 20px;">Create a New Quiz</h3>
+                        <p style="color: #707eae; font-size: 14px; margin-bottom: 20px;">Design interactive quizzes,
+                            worksheets, and functional writing tasks.</p>
+                        <button onclick="openQuizBuilder(true)"
+                            style="background: #1e5eff; width: auto; padding: 12px 32px; font-size: 16px; border-radius: 8px;">+
+                            Create New Quiz</button>
+                    </div>
+
+                    <!-- Existing Quizzes Box -->
+                    <div class="box">
+                        <h3>Existing Quizzes</h3>
+                        <div class="table-responsive">
+                            <table id="quizTable">
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Subject</th>
+                                        <th>Class</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
-        </main>
+
+                <!-- STEP 2: BUILDER VIEW (Google Forms Style) -->
+                <div id="quiz-builder-view" class="hidden gform-container">
+
+                    <!-- Top Navigation -->
+                    <div class="gform-header">
+                        <div class="gform-header-left">
+                            <button onclick="closeQuizBuilder()" class="icon-btn" title="Back to Quizzes">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                                    <polyline points="12 19 5 12 12 5"></polyline>
+                                </svg>
+                            </button>
+                            <input type="text" id="quizTitle" class="gform-title-input" placeholder="Untitled Quiz"
+                                value="Untitled Quiz">
+                            <!-- Removed "All changes saved" -->
+                        </div>
+                        <div class="gform-header-center">
+                            <button class="gform-tab active">Questions</button>
+                            <!-- Removed Responses and Settings tabs -->
+                        </div>
+                        <div class="gform-header-right">
+                            <button id="saveQuizBtn" class="gform-publish-btn">Publish</button>
+                        </div>
+                    </div>
+
+                    <!-- Main Body -->
+                    <div class="gform-body">
+                        <div class="gform-content-wrapper">
+                            <div id="floatingToolbar" class="gform-floating-toolbar">
+                                <!-- Button to add MCQ -->
+                                <button onclick="addBlock('mcq')" title="Add Multiple Choice Question">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="12" y1="8" x2="12" y2="16"></line>
+                                        <line x1="8" y1="12" x2="16" y2="12"></line>
+                                    </svg>
+                                </button>
+                                <!-- Button to add a new Header/Section -->
+                                <button onclick="addBlock('header')" title="Add Title and Description">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="4 7 4 4 20 4 20 7"></polyline>
+                                        <line x1="9" y1="20" x2="15" y2="20"></line>
+                                        <line x1="12" y1="4" x2="12" y2="20"></line>
+                                    </svg>
+                                </button>
+                                <!-- Button to add a passage -->
+                                <button onclick="addBlock('passage')" title="Add Reading Passage">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                                    </svg>
+                                </button>
+                                <!-- Button to add an essay -->
+                                <button onclick="addBlock('essay')" title="Add Essay / Long Answer">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <line x1="21" y1="10" x2="3" y2="10"></line>
+                                        <line x1="21" y1="6" x2="3" y2="6"></line>
+                                        <line x1="21" y1="14" x2="3" y2="14"></line>
+                                        <line x1="15" y1="18" x2="3" y2="18"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                            <!-- Floating Rich Text Popup Toolbar (Shows above focused text element) -->
+                            <div id="richTextPopupToolbar" class="rich-text-popup" style="display: none;">
+                                <select id="rtFontFamily" onchange="formatText('fontName', this.value)" title="Font">
+                                    <option value="Inter">Inter</option>
+                                    <option value="Roboto">Roboto</option>
+                                    <option value="Open Sans">Open Sans</option>
+                                    <option value="Lato">Lato</option>
+                                    <option value="Montserrat">Montserrat</option>
+                                    <option value="Poppins">Poppins</option>
+                                    <option value="Nunito">Nunito</option>
+                                    <option value="Raleway">Raleway</option>
+                                    <option value="Ubuntu">Ubuntu</option>
+                                    <option value="Source Sans 3">Source Sans</option>
+                                    <option value="Merriweather">Merriweather</option>
+                                    <option value="Playfair Display">Playfair Display</option>
+                                    <option value="Lora">Lora</option>
+                                    <option value="Oswald">Oswald</option>
+                                    <option value="Comic Neue">Comic Neue</option>
+                                    <option value="Arial">Arial</option>
+                                    <option value="Georgia">Georgia</option>
+                                    <option value="Times New Roman">Times New Roman</option>
+                                    <option value="Verdana">Verdana</option>
+                                    <option value="Courier New">Courier New</option>
+                                </select>
+                                <select id="rtFontSize" onchange="formatText('fontSize', this.value)" title="Font Size">
+                                    <option value="12">12</option>
+                                    <option value="14">14</option>
+                                    <option value="16" selected>16</option>
+                                    <option value="18">18</option>
+                                    <option value="20">20</option>
+                                    <option value="24">24</option>
+                                    <option value="28">28</option>
+                                    <option value="32">32</option>
+                                    <option value="36">36</option>
+                                    <option value="48">48</option>
+                                </select>
+                                <button type="button" class="rt-btn"
+                                    onmousedown="event.preventDefault(); formatText('bold')"
+                                    title="Bold"><b>B</b></button>
+                                <button type="button" class="rt-btn"
+                                    onmousedown="event.preventDefault(); formatText('italic')"
+                                    title="Italic"><i>I</i></button>
+                                <button type="button" class="rt-btn"
+                                    onmousedown="event.preventDefault(); formatText('underline')"
+                                    title="Underline"><u>U</u></button>
+                                <button type="button" class="rt-btn"
+                                    onmousedown="event.preventDefault(); formatText('removeFormat')"
+                                    title="Clear Formatting">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M20 20H7L3 14l9-9 8 8-5 5"></path>
+                                        <path d="M18 13l-6-6"></path>
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <!-- Title Header Card -->
+                            <div class="gform-card title-card active-card" onclick="activateCard(this)">
+
+                                <div class="card-top-accent"></div>
+
+                                <!-- Changed to contenteditable divs to allow formatting -->
+                                <div id="gform-main-title" class="gform-h1-input" contenteditable="true"
+                                    data-placeholder="Quiz Title">Untitled Quiz</div>
+                                <!-- Font size increased to 15px via inline style -->
+                                <div id="gform-description" class="gform-desc-input" contenteditable="true"
+                                    data-placeholder="Quiz description" style="font-size: 15px; margin-bottom: 20px;">
+                                </div>
+
+                                <div
+                                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 16px; border-top: 1px solid var(--border-color, #dadce0); padding-top: 16px; align-items: center;">
+                                    
+                                    <!-- 1. Quiz Type Dropdown -->
+                                    <div style="width: 100%;">
+                                        <select id="quizTypeSelect" class="gform-desc-input"
+                                            style="width: 100%; height: 44px; margin: 0; border: 1.5px solid var(--border-color, #cbd5e1); padding: 0 14px; border-radius: 10px; font-size: 13.5px; font-weight: 600; background: var(--card-bg, #ffffff); color: var(--text-dark, #0f172a); cursor: pointer;">
+                                            <option value="Exercise">Exercise</option>
+                                            <option value="Homework">Homework</option>
+                                            <option value="Quiz" selected>Quiz</option>
+                                            <option value="Review">Review</option>
+                                            <option value="Final Test">Final Test</option>
+                                            <option value="Project">Project</option>
+                                            <option value="Skill">Skill</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- 2. Subject Dropdown -->
+                                    <div style="width: 100%;">
+                                        <select id="quizSubject" class="gform-desc-input"
+                                            style="width: 100%; height: 44px; margin: 0; border: 1.5px solid var(--border-color, #cbd5e1); padding: 0 14px; border-radius: 10px; font-size: 13.5px; font-weight: 600; background: var(--card-bg, #ffffff); color: var(--text-dark, #0f172a); cursor: pointer;">
+                                            <option value="">-- Select Subject --</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- 3. Target Class Multi-Select Checklist Dropdown -->
+                                    <div class="multi-select-dropdown" id="quizClassDropdown" style="width: 100%; margin: 0;">
+                                        <div class="multi-select-trigger" onclick="toggleMultiSelectDropdown('quizClassDropdown')"
+                                            style="height: 44px; display: flex; align-items: center; border: 1.5px solid var(--border-color, #cbd5e1); border-radius: 10px; padding: 0 14px; box-sizing: border-box; background: var(--card-bg, #ffffff);">
+                                            <span class="multi-select-label" id="quizClassLabel" style="font-size: 13.5px; font-weight: 600;">-- Select Target Class --</span>
+                                            <svg class="dropdown-arrow-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                        </div>
+                                        <div class="multi-select-options" id="quizClassOptions">
+                                            <!-- Checkboxes injected dynamically via JS -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Questions Container -->
+                            <div id="quizBlocksContainer"></div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+    </div>
+
+    <!-- Modal for Quiz Results -->
+    <div id="quizResultsModal" class="hidden"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; justify-content:center; align-items:center;">
+        <div class="box" style="width: 90%; max-width: 700px; position: relative;">
+            <button onclick="closeResultsModal()"
+                style="position:absolute; right:15px; top:15px; width:auto; background:#e02d2d;">Close</button>
+            <h3 id="quizResultsTitle" style="margin-top:0;">Quiz Submissions</h3>
+            <div style="max-height: 400px; overflow-y: auto; margin-top: 16px;">
+                <table id="quizResultsTable" style="width:100%; border-collapse:collapse;">
+                    <thead>
+                        <tr style="text-align:left; border-bottom:2px solid var(--border-color, #e2e8f0);">
+                            <th style="padding:8px;">Student</th>
+                            <th style="padding:8px;">Class</th>
+                            <th style="padding:8px;">Score</th>
+                            <th style="padding:8px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <!-- Modal for Inspecting Student Quiz Answers -->
+    <div id="studentAnswersModal" class="hidden"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1100; display:flex; justify-content:center; align-items:center;">
+        <div class="box"
+            style="width: 90%; max-width: 650px; position: relative; max-height: 85vh; overflow-y: auto; background: #ffffff; border-radius: 12px; padding: 24px;">
+            <button onclick="closeAnswersModal()"
+                style="position:absolute; right:15px; top:15px; background:#64748b; color:white; border:none; padding:6px 14px; border-radius:6px; cursor:pointer; font-weight:600;">
+                ← Back to List
+            </button>
+            <h3 id="studentAnswersTitle" style="margin-top:0; color:#1e293b; padding-right: 100px;">Student Answers</h3>
+
+            <!-- Reference Auto Score Display -->
+            <div id="autoScoreReference"
+                style="margin: 16px 0; padding: 12px; background: #f1f5f9; border-radius: 8px; border-left: 4px solid #3b82f6;">
+            </div>
+
+            <!-- Answers Container -->
+            <div id="answersDetailContainer" style="margin-top: 16px;"></div>
+        </div>
+    </div>
+    <!-- Modal for Adjusting Points -->
+    <div id="pointModal" class="hidden"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; display:flex; justify-content:center; align-items:center;">
+        <div class="box" style="width: 90%; max-width: 400px; position: relative;">
+            <button onclick="closePointModal()"
+                style="position:absolute; right:15px; top:15px; width:auto; background:#e02d2d; padding:6px 12px; font-size:12px;">Close</button>
+            <h3 style="margin-top:0;">Adjust Behavior Points</h3>
+
+            <p id="pointModalStudent" style="font-weight:600; color:var(--primary-blue); margin-bottom:15px;"></p>
+            <input type="hidden" id="modalStudentCode">
+
+            <label style="font-size:13px; font-weight:bold; color:var(--text-dark);">Point Amount (+ or -)</label>
+            <input type="number" id="modalPointValue" placeholder="e.g. 2, -1, 0.5" step="0.1">
+
+            <label
+                style="font-size:13px; font-weight:bold; color:var(--text-dark); margin-top:10px; display:block;">Reason
+                for Adjustment</label>
+            <input type="text" id="modalPointReason" placeholder="Reason for adding/subtracting">
+
+            <button onclick="submitModalPoint()" style="background:#10b981; margin-top: 20px;">Save Adjustment</button>
+        </div>
+    </div>
+
+    <!-- Modal for Viewing and Managing Student Behavior History -->
+    <div id="behaviorHistoryModal" class="hidden"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1100; display:flex; justify-content:center; align-items:center;">
+        <div class="box"
+            style="width: 90%; max-width: 650px; position: relative; max-height: 85vh; overflow-y: auto; padding: 24px;">
+            <button onclick="closeBehaviorHistoryModal()"
+                style="position:absolute; right:15px; top:15px; width:auto; background:#64748b; color:white; padding: 6px 12px; font-size: 12px; border-radius: 6px;">Close</button>
+            <h3 id="historyModalTitle" style="margin-top:0; color: var(--text-dark);">Behavior History</h3>
+
+            <div class="table-responsive" style="max-height: 400px; margin-top: 16px;">
+                <table id="historyDetailTable">
+                    <thead>
+                        <tr>
+                            <th>Date / Time</th>
+                            <th>Reason</th>
+                            <th>Points</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyDetailTbody">
+                        <!-- Dynamic entries injected via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Viewing Student Unique Code -->
+    <div id="studentCodeModal" class="hidden"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); z-index:1200; display:flex; justify-content:center; align-items:center; backdrop-filter: blur(4px);">
+        <div class="box"
+            style="width: 90%; max-width: 400px; position: relative; text-align: center; padding: 28px 24px; border-radius: 16px; box-shadow: 0 12px 36px rgba(0,0,0,0.25);">
+            <button onclick="closeStudentCodeModal()"
+                style="position:absolute; right:15px; top:15px; width:auto; background:#64748b; color:white; padding: 6px 12px; font-size: 12px; border-radius: 6px; border:none; cursor:pointer;">Close</button>
+
+            <div
+                style="width: 52px; height: 52px; border-radius: 50%; background: #eef2ff; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+            </div>
+
+            <h3 style="margin: 0 0 4px; font-size: 18px; color: var(--text-dark);" id="modalStudentCodeName">Student
+                Name</h3>
+            <p style="margin: 0 0 18px; font-size: 13px; color: var(--text-gray);" id="modalStudentCodeClass">Class Room
+            </p>
+
+            <div
+                style="background: #f8fafc; border: 2px dashed #cbd5e1; padding: 16px; border-radius: 12px; margin-bottom: 20px;">
+                <p
+                    style="margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-gray); font-weight: 700;">
+                    Unique Student Code</p>
+                <div id="modalDisplayStudentCode"
+                    style="font-family: monospace; font-size: 26px; font-weight: 800; letter-spacing: 4px; color: var(--primary-blue);">
+                    ABC12</div>
+            </div>
+
+            <button id="copyStudentCodeBtn" onclick="copyStudentCodeToClipboard()"
+                style="background: var(--primary-blue); width: 100%; padding: 11px 16px; font-weight: 600; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span id="copyBtnText">Copy Code</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal for Editing Student Profile -->
+    <div id="editStudentProfileModal" class="hidden"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); z-index:1200; display:flex; justify-content:center; align-items:center; backdrop-filter: blur(4px);">
+        <div class="box"
+            style="width: 90%; max-width: 480px; position: relative; text-align: left; padding: 26px; border-radius: 16px; box-shadow: 0 12px 36px rgba(0,0,0,0.25);">
+            <button onclick="closeEditStudentModal()"
+                style="position:absolute; right:15px; top:15px; width:auto; background:#64748b; color:white; padding: 6px 12px; font-size: 12px; border-radius: 6px; border:none; cursor:pointer;">Close</button>
+
+            <h3 style="margin: 0 0 16px; font-size: 18px; color: var(--text-dark);">✏️ Edit Student Profile</h3>
+
+            <input type="hidden" id="editStudentId">
+
+            <div style="text-align: center; margin-bottom: 18px;">
+                <div style="width: 84px; height: 84px; border-radius: 50%; margin: 0 auto 8px; position: relative; overflow: hidden; background: #f1f5f9; border: 2px solid #cbd5e1; display: flex; align-items: center; justify-content: center;">
+                    <img id="editStudentPhotoPreview" src="" alt="Preview" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                    <span id="editStudentPhotoPlaceholder" style="font-size: 28px; color: #94a3b8;">👤</span>
+                </div>
+                <div style="font-size: 12px; color: var(--text-gray);">
+                    ID: <strong id="editStudentDisplayCode" style="font-family: monospace; color: var(--primary-blue);">-----</strong>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+                <div>
+                    <label style="font-size: 12.5px; font-weight: 700; color: var(--text-dark); display: block; margin-bottom: 4px;">Full Name</label>
+                    <input type="text" id="editStudentNameInput" placeholder="Full Student Name" style="width: 100%; margin: 0;">
+                </div>
+                <div>
+                    <label style="font-size: 12.5px; font-weight: 700; color: var(--text-dark); display: block; margin-bottom: 4px;">Class / Grade</label>
+                    <input type="text" id="editStudentClassInput" placeholder="e.g. Grade 9B" style="width: 100%; margin: 0;">
+                </div>
+                <div>
+                    <label style="font-size: 12.5px; font-weight: 700; color: var(--text-dark); display: block; margin-bottom: 4px;">Date of Birth</label>
+                    <input type="date" id="editStudentBirthDateInput" style="width: 100%; margin: 0;">
+                </div>
+                <div>
+                    <label style="font-size: 12.5px; font-weight: 700; color: var(--text-dark); display: block; margin-bottom: 4px;">Photo URL (or Google Drive Link)</label>
+                    <input type="text" id="editStudentPhotoUrlInput" placeholder="https://lh3.googleusercontent.com/d/... or Drive URL" oninput="onEditPhotoUrlChange()" style="width: 100%; margin: 0;">
+                </div>
+                <div>
+                    <label style="font-size: 12.5px; font-weight: 700; color: var(--text-dark); display: block; margin-bottom: 4px;">Or Upload Photo Directly</label>
+                    <input type="file" id="editStudentPhotoFileInput" accept="image/*" onchange="onEditPhotoFileChange(event)" style="width: 100%; margin: 0; font-size: 12px;">
+                </div>
+            </div>
+
+    <!-- EDIT OFFLINE EXAM / QUIZ MODAL -->
+    <div id="editOfflineQuizModal" class="hidden"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); z-index:1200; display:flex; justify-content:center; align-items:center; backdrop-filter: blur(4px);">
+        <div class="box" style="width: 90%; max-width: 480px; position: relative; padding: 26px; border-radius: 20px; box-shadow: 0 16px 40px rgba(0,0,0,0.25);">
+            <button type="button" onclick="closeEditOfflineQuizModal()"
+                style="position:absolute; right:16px; top:16px; width:32px !important; height:32px !important; padding:0 !important; background:rgba(0,0,0,0.06); color:var(--text-gray); border-radius:50%; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; font-weight:bold;">
+                ✕
+            </button>
+
+            <h3 style="margin: 0 0 18px 0; font-size: 18px; color: var(--text-dark);">✏️ Edit Offline Exam / Quiz</h3>
+            <input type="hidden" id="editOfflineQuizId">
+
+            <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px;">
+                <div>
+                    <label style="font-size: 12.5px; font-weight: 700; color: var(--text-dark); display: block; margin-bottom: 4px;">Exam / Quiz Name</label>
+                    <input type="text" id="editOfflineQuizName" placeholder="Exam Name" style="width: 100%; margin: 0;">
+                </div>
+
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 140px;">
+                        <label style="font-size: 12.5px; font-weight: 700; color: var(--text-dark); display: block; margin-bottom: 4px;">Type</label>
+                        <select id="editOfflineQuizType" style="width: 100%; margin: 0;">
+                            <option value="Exercise">Exercise</option>
+                            <option value="Homework">Homework</option>
+                            <option value="Quiz">Quiz</option>
+                            <option value="Review">Review</option>
+                            <option value="Final Test">Final Test</option>
+                            <option value="Project">Project</option>
+                            <option value="Skill">Skill</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1.2; min-width: 160px;">
+                        <label style="font-size: 12.5px; font-weight: 700; color: var(--text-dark); display: block; margin-bottom: 4px;">Subject</label>
+                        <select id="editOfflineQuizSubject" style="width: 100%; margin: 0;">
+                            <option value="">-- Select Subject --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label style="font-size: 12.5px; font-weight: 700; color: var(--text-dark); display: block; margin-bottom: 4px;">Target Class</label>
+                    <div class="multi-select-dropdown" id="editOfflineQuizClassDropdown" style="width: 100%; margin: 0;">
+                        <div class="multi-select-trigger" onclick="toggleMultiSelectDropdown('editOfflineQuizClassDropdown')">
+                            <span class="multi-select-label" id="editOfflineQuizClassLabel">-- Select Target Class --</span>
+                            <svg class="dropdown-arrow-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </div>
+                        <div class="multi-select-options" id="editOfflineQuizClassOptions">
+                            <!-- Injected dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" onclick="closeEditOfflineQuizModal()" style="background: #f1f5f9; color: var(--text-dark); border: 1px solid #cbd5e1; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-weight: 600;">Cancel</button>
+                <button type="button" id="saveEditOfflineQuizBtn" onclick="saveEditOfflineQuiz()" style="background: var(--primary-blue); color: white; border: none; padding: 10px 22px; border-radius: 8px; cursor: pointer; font-weight: 700;">Save Changes</button>
+            </div>
+        </div>
+    </div>
+    </main>
     </div>
 
 
     <!-- Make sure admin.js is imported last -->
-    <script type="module" src="admin.js?v=301"></script>
+    <script type="module" src="admin.js?v=320"></script>
 </body>
+
 </html>

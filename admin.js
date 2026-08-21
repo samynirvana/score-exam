@@ -232,20 +232,18 @@ window.generateNewUniqueCode = async function(oldCode) {
 window.setStudentRegMode = function(mode) {
     const singleForm = document.getElementById('studentRegSingleForm');
     const bulkForm = document.getElementById('studentRegBulkForm');
+    const photosForm = document.getElementById('studentRegPhotosForm');
     const btnSingle = document.getElementById('btnModeSingle');
     const btnBulk = document.getElementById('btnModeBulk');
+    const btnPhotos = document.getElementById('btnModePhotos');
 
-    if (mode === 'bulk') {
-        if (singleForm) singleForm.classList.add('hidden');
-        if (bulkForm) bulkForm.classList.remove('hidden');
-        if (btnSingle) btnSingle.classList.remove('active');
-        if (btnBulk) btnBulk.classList.add('active');
-    } else {
-        if (bulkForm) bulkForm.classList.add('hidden');
-        if (singleForm) singleForm.classList.remove('hidden');
-        if (btnBulk) btnBulk.classList.remove('active');
-        if (btnSingle) btnSingle.classList.add('active');
-    }
+    if (singleForm) singleForm.classList.toggle('hidden', mode !== 'single');
+    if (bulkForm) bulkForm.classList.toggle('hidden', mode !== 'bulk');
+    if (photosForm) photosForm.classList.toggle('hidden', mode !== 'photos');
+
+    if (btnSingle) btnSingle.classList.toggle('active', mode === 'single');
+    if (btnBulk) btnBulk.classList.toggle('active', mode === 'bulk');
+    if (btnPhotos) btnPhotos.classList.toggle('active', mode === 'photos');
 };
 
 // --- SCORE INPUT MODE SWITCHER ---
@@ -415,21 +413,29 @@ window.renderDbStudentsTable = function() {
     const endIndex = Math.min(filtered.length, startIndex + perPage);
     const paginatedStudents = filtered.slice(startIndex, endIndex);
 
-    // 4. Render Table Rows (without code column)
+    // 4. Render Table Rows with Photo & Birth Date
     const rowsHtml = paginatedStudents.map(student => {
         const safeName = (student.studentName || 'Student').replace(/'/g, "\\'");
         const safeClass = (student.studentClass || '').replace(/'/g, "\\'");
+        const photoUrl = resolvePhotoUrl(student.photoUrl || student.photo || '');
+        const birthDate = student.birthDate || student.dateOfBirth || '-';
+        
+        const photoHtml = photoUrl ? 
+            `<img src="${photoUrl}" alt="Photo" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid #cbd5e1; display: block; margin: 0 auto;" onerror="this.outerHTML='<div style=\\'width: 32px; height: 32px; border-radius: 50%; background: #f1f5f9; color: #94a3b8; display: flex; align-items: center; justify-content: center; margin: 0 auto; font-size: 14px;\\'>👤</div>'">` : 
+            `<div style="width: 32px; height: 32px; border-radius: 50%; background: #f1f5f9; color: #94a3b8; display: flex; align-items: center; justify-content: center; margin: 0 auto; font-size: 14px;">👤</div>`;
 
         return `
         <tr>
+            <td style="text-align: center;">${photoHtml}</td>
             <td><strong style="font-weight: 600; color: var(--text-dark);">${student.studentName || 'N/A'}</strong></td>
             <td><span style="color: var(--primary-blue); font-weight: 600;">${student.studentClass || 'N/A'}</span></td>
+            <td><span style="color: var(--text-gray); font-size: 13px;">${birthDate}</span></td>
             <td style="text-align: center;">
                 <div class="kebab-menu">
                     <button class="kebab-btn" onclick="toggleMenu(event, 'dbstudent-${student.id}')">⋮</button>
                     <div id="menu-dbstudent-${student.id}" class="dropdown-menu">
                         <button class="dropdown-item" onclick="viewStudentCode('${student.id}', '${safeName}', '${safeClass}')">👁️ View Student Code</button>
-                        <button class="dropdown-item" onclick="editStudentProfile('${student.id}')">✏️ Edit Student Profile</button>
+                        <button class="dropdown-item" onclick="openEditStudentModal('${student.id}')">✏️ Edit Student Profile</button>
                         <button class="dropdown-item" onclick="generateNewUniqueCode('${student.id}')">🔄 Generate New Code</button>
                         <button class="dropdown-item danger" onclick="deleteStudentProfile('${student.id}')">🗑️ Delete Student</button>
                     </div>
@@ -528,6 +534,7 @@ async function generateUniqueStudentCode() {
 async function registerStudent() {
     const name = document.getElementById('newStudentName').value.trim();
     const studentClass = document.getElementById('newStudentClass').value.trim();
+    const birthDate = document.getElementById('newStudentBirthDate')?.value || '';
 
     if (!name || !studentClass) {
         alert("Please provide both Student Name and Class assignment.");
@@ -546,12 +553,15 @@ async function registerStudent() {
         const uniqueCode = await generateUniqueStudentCode();
         await setDoc(doc(db, "students", uniqueCode), {
             studentName: name,
-            studentClass: studentClass
+            studentClass: studentClass,
+            birthDate: birthDate,
+            photoUrl: ""
         });
         
         alert(`Profile Confirmed!\nName: ${name}\nClass: ${studentClass}\nCode: ${uniqueCode}`);
         document.getElementById('newStudentName').value = "";
         document.getElementById('newStudentClass').value = "";
+        if (document.getElementById('newStudentBirthDate')) document.getElementById('newStudentBirthDate').value = "";
         loadStudentsDirectory();
         loadPointsTable(); // Refresh points table to include new student
     } catch (e) {
@@ -632,40 +642,332 @@ async function loadStudentsDirectory() {
     }
 }
 
-// Inline Student Directory Modification Handler
-async function editStudentProfile(studentCode) {
-    try {
-        const docRef = doc(db, "students", studentCode);
-        const docSnap = await getDoc(docRef);
-        if (!docSnap.exists()) return alert("Student record missing.");
+// --- PHOTO & URL RESOLVER ---
+function resolvePhotoUrl(rawUrl) {
+    if (!rawUrl || typeof rawUrl !== 'string') return '';
+    const trimmed = rawUrl.trim();
+    if (trimmed.startsWith('https://lh3.googleusercontent.com/d/') || trimmed.startsWith('data:image/')) {
+        return trimmed;
+    }
+    const driveMatch = trimmed.match(/\/d\/([a-zA-Z0-9_-]+)/) || trimmed.match(/id=([a-zA-Z0-9_-]+)/);
+    if (driveMatch && driveMatch[1]) {
+        return `https://lh3.googleusercontent.com/d/${driveMatch[1]}`;
+    }
+    return trimmed;
+}
 
-        const currentData = docSnap.data();
-        const currentClass = currentData.studentClass || currentData.Class || currentData.class || "";
+// Resize image to max 400x400 data URL for lightweight, high-speed storage
+function resizeImageToDataUrl(file, maxWidth = 400, maxHeight = 400, quality = 0.85) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                let width = img.width;
+                let height = img.height;
+                if (width > maxWidth || height > maxHeight) {
+                    if (width > height) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    } else {
+                        width = Math.round((width * maxHeight) / height);
+                        height = maxHeight;
+                    }
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL(file.type || 'image/jpeg', quality));
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
 
-        const newName = prompt("Modify Student Full Name:", currentData.studentName || "");
-        if (newName === null) return; 
-        
-        const newClass = prompt("Modify Student Class (e.g., Grade 7A):", currentClass);
-        if (newClass === null) return; 
-
-        if (!newName.trim() || !newClass.trim()) {
-            alert("Values cannot be saved empty.");
-            return;
+// Optional Google Apps Script uploader bridge
+async function uploadPhotoToDriveOrDirect(file, dataUrl, scriptUrl) {
+    if (scriptUrl) {
+        try {
+            const base64Data = dataUrl.split(',')[1];
+            const response = await fetch(scriptUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify({
+                    fileName: file.name,
+                    mimeType: file.type || 'image/jpeg',
+                    base64Data: base64Data
+                })
+            });
+            const resJson = await response.json();
+            if (resJson.status === 'success' && resJson.photoUrl) {
+                return resJson.photoUrl;
+            }
+        } catch (e) {
+            console.warn("Google Drive Web App upload error, saving direct image:", e);
         }
+    }
+    return dataUrl;
+}
 
-        await updateDoc(docRef, {
-            studentName: newName.trim(),
-            studentClass: newClass.trim()
+// --- BULK PHOTO PROCESSING ---
+async function processBulkPhotoFiles(files) {
+    if (!files || files.length === 0) return;
+    const resultsContainer = document.getElementById('bulkPhotoResults');
+    if (resultsContainer) {
+        resultsContainer.classList.remove('hidden');
+        resultsContainer.innerHTML = `
+            <div style="padding: 16px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px; text-align: center;">
+                <div style="font-size: 14px; font-weight: 700; color: var(--primary-blue);">
+                    🔄 Processing & Matching ${files.length} photo(s)...
+                </div>
+                <div style="font-size: 12px; color: var(--text-gray); margin-top: 4px;">
+                    Please wait while photos are optimized and linked to student profiles.
+                </div>
+            </div>
+        `;
+    }
+
+    const scriptUrl = localStorage.getItem('googleDriveScriptUrl') || document.getElementById('googleDriveScriptUrl')?.value.trim() || '';
+
+    try {
+        const studentsSnap = await getDocs(collection(db, "students"));
+        const students = [];
+        studentsSnap.forEach(docSnap => {
+            students.push({ id: docSnap.id, ...docSnap.data() });
         });
 
-        alert("Profile updated successfully!");
+        const matched = [];
+        const unmatched = [];
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (!file.type.startsWith('image/')) {
+                unmatched.push({ name: file.name, reason: "Not an image file" });
+                continue;
+            }
+
+            const rawName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+            const cleanIdentifier = rawName.trim().toLowerCase();
+
+            const targetStudent = students.find(s => {
+                const sCode = (s.id || '').trim().toLowerCase();
+                const sCodeField = (s.studentCode || '').trim().toLowerCase();
+                const sName = (s.studentName || '').trim().toLowerCase();
+                return sCode === cleanIdentifier || sCodeField === cleanIdentifier || sName === cleanIdentifier;
+            });
+
+            if (targetStudent) {
+                try {
+                    const dataUrl = await resizeImageToDataUrl(file);
+                    const finalUrl = await uploadPhotoToDriveOrDirect(file, dataUrl, scriptUrl);
+                    
+                    await updateDoc(doc(db, "students", targetStudent.id), {
+                        photoUrl: finalUrl
+                    });
+
+                    matched.push({
+                        name: targetStudent.studentName,
+                        code: targetStudent.id,
+                        sClass: targetStudent.studentClass,
+                        photoUrl: finalUrl
+                    });
+                } catch (err) {
+                    unmatched.push({ name: file.name, reason: "Save error: " + err.message });
+                }
+            } else {
+                unmatched.push({ name: file.name, reason: "No student matching code or name" });
+            }
+        }
+
+        if (resultsContainer) {
+            resultsContainer.innerHTML = `
+                <div style="background: var(--card-bg, #ffffff); border: 1px solid var(--border-color); border-radius: 12px; padding: 18px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+                        <h4 style="margin: 0; font-size: 15px; color: var(--text-dark);">
+                            📸 Bulk Photo Upload Summary
+                        </h4>
+                        <span style="font-size: 12px; font-weight: 700; color: #16a34a; background: #dcfce7; padding: 3px 10px; border-radius: 12px;">
+                            ✅ ${matched.length} Matched / ${files.length} Total
+                        </span>
+                    </div>
+
+                    ${matched.length > 0 ? `
+                        <div style="margin-bottom: 14px;">
+                            <div style="font-size: 12px; font-weight: 700; color: var(--text-dark); margin-bottom: 8px;">
+                                Successfully Linked Profiles:
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; max-height: 240px; overflow-y: auto; padding: 4px;">
+                                ${matched.map(m => `
+                                    <div style="display: flex; align-items: center; gap: 8px; background: var(--bg-color); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                        <img src="${m.photoUrl}" alt="Photo" style="width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid #cbd5e1;">
+                                        <div style="overflow: hidden;">
+                                            <div style="font-size: 12.5px; font-weight: 700; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${m.name}</div>
+                                            <div style="font-size: 11px; color: var(--primary-blue); font-family: monospace;">${m.code} (${m.sClass || 'N/A'})</div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${unmatched.length > 0 ? `
+                        <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; padding: 12px; margin-top: 10px;">
+                            <div style="font-size: 12px; font-weight: 700; color: #b45309; margin-bottom: 6px;">
+                                ⚠️ Unmatched Files (${unmatched.length}):
+                            </div>
+                            <div style="font-size: 12px; color: #92400e; max-height: 120px; overflow-y: auto;">
+                                ${unmatched.map(u => `<div>• <strong>${u.name}</strong> - ${u.reason}</div>`).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
         loadStudentsDirectory();
-        loadAdminTable(); 
-        loadPointsTable(); // Refresh points table with new name
     } catch (e) {
-        alert("Error modifying dataset: " + e.message);
+        alert("Error during bulk photo matching: " + e.message);
     }
 }
+
+// --- GOOGLE DRIVE SCRIPT SETTINGS ---
+window.toggleDriveScriptSettings = async function() {
+    const box = document.getElementById('driveScriptSettingsBox');
+    if (box) box.classList.toggle('hidden');
+    const input = document.getElementById('googleDriveScriptUrl');
+    if (input) {
+        let url = localStorage.getItem('googleDriveScriptUrl') || '';
+        if (!url) {
+            try {
+                const snap = await getDoc(doc(db, "system_settings", "googleDrive"));
+                if (snap.exists() && snap.data().scriptUrl) {
+                    url = snap.data().scriptUrl;
+                    localStorage.setItem('googleDriveScriptUrl', url);
+                }
+            } catch (e) {
+                console.warn(e);
+            }
+        }
+        input.value = url;
+    }
+};
+
+window.saveDriveScriptUrl = async function() {
+    const input = document.getElementById('googleDriveScriptUrl');
+    const url = input?.value.trim() || '';
+    localStorage.setItem('googleDriveScriptUrl', url);
+    try {
+        await setDoc(doc(db, "system_settings", "googleDrive"), {
+            scriptUrl: url,
+            updatedAt: new Date().toISOString()
+        }, { merge: true });
+    } catch (e) {
+        console.warn("Could not save to Firestore system_settings:", e);
+    }
+    alert("Google Drive Web App Script URL saved & synced successfully!");
+};
+
+// --- EDIT STUDENT PROFILE MODAL ---
+window.openEditStudentModal = async function(studentId) {
+    try {
+        const studentRef = doc(db, "students", studentId);
+        const studentSnap = await getDoc(studentRef);
+        if (!studentSnap.exists()) return alert("Student record missing.");
+        const data = studentSnap.data();
+
+        document.getElementById('editStudentId').value = studentId;
+        document.getElementById('editStudentDisplayCode').innerText = studentId;
+        document.getElementById('editStudentNameInput').value = data.studentName || '';
+        document.getElementById('editStudentClassInput').value = data.studentClass || data.Class || data.class || '';
+        document.getElementById('editStudentBirthDateInput').value = data.birthDate || data.dateOfBirth || '';
+        document.getElementById('editStudentPhotoUrlInput').value = data.photoUrl || data.photo || '';
+        
+        const preview = document.getElementById('editStudentPhotoPreview');
+        const placeholder = document.getElementById('editStudentPhotoPlaceholder');
+        const photoUrl = resolvePhotoUrl(data.photoUrl || data.photo || '');
+        if (photoUrl) {
+            preview.src = photoUrl;
+            preview.style.display = 'block';
+            placeholder.style.display = 'none';
+        } else {
+            preview.style.display = 'none';
+            placeholder.style.display = 'block';
+        }
+
+        document.getElementById('editStudentProfileModal')?.classList.remove('hidden');
+    } catch (e) {
+        alert("Error loading student: " + e.message);
+    }
+};
+
+window.editStudentProfile = window.openEditStudentModal;
+
+window.closeEditStudentModal = function() {
+    document.getElementById('editStudentProfileModal')?.classList.add('hidden');
+};
+
+window.onEditPhotoUrlChange = function() {
+    const url = document.getElementById('editStudentPhotoUrlInput')?.value.trim() || '';
+    const preview = document.getElementById('editStudentPhotoPreview');
+    const placeholder = document.getElementById('editStudentPhotoPlaceholder');
+    const resolved = resolvePhotoUrl(url);
+    if (resolved) {
+        preview.src = resolved;
+        preview.style.display = 'block';
+        placeholder.style.display = 'none';
+    } else {
+        preview.style.display = 'none';
+        placeholder.style.display = 'block';
+    }
+};
+
+window.onEditPhotoFileChange = async function(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+        const dataUrl = await resizeImageToDataUrl(file);
+        const scriptUrl = localStorage.getItem('googleDriveScriptUrl') || '';
+        const finalUrl = await uploadPhotoToDriveOrDirect(file, dataUrl, scriptUrl);
+        document.getElementById('editStudentPhotoUrlInput').value = finalUrl;
+        window.onEditPhotoUrlChange();
+    } catch (e) {
+        alert("Error reading photo file: " + e.message);
+    }
+};
+
+window.saveEditStudentProfile = async function() {
+    const studentId = document.getElementById('editStudentId').value;
+    const name = document.getElementById('editStudentNameInput').value.trim();
+    const sClass = document.getElementById('editStudentClassInput').value.trim();
+    const birthDate = document.getElementById('editStudentBirthDateInput').value;
+    const photoUrl = document.getElementById('editStudentPhotoUrlInput').value.trim();
+
+    if (!name || !sClass) {
+        return alert("Name and Class cannot be empty.");
+    }
+
+    try {
+        await updateDoc(doc(db, "students", studentId), {
+            studentName: name,
+            studentClass: sClass,
+            birthDate: birthDate,
+            photoUrl: photoUrl
+        });
+
+        alert("Student profile updated successfully!");
+        closeEditStudentModal();
+        loadStudentsDirectory();
+        loadAdminTable();
+        loadPointsTable();
+    } catch (e) {
+        alert("Error saving profile: " + e.message);
+    }
+};
 
 // Student Directory Wiping Handler
 async function deleteStudentProfile(studentCode) {
@@ -1551,10 +1853,173 @@ function convertDriveUrl(url) {
 let currentEditQuizId = null;
 
 document.getElementById('gform-main-title')?.addEventListener('input', function(e) {
-    document.getElementById('quizTitle').value = e.target.value;
+    const titleInput = document.getElementById('quizTitle');
+    if (titleInput) titleInput.value = e.target.innerText || e.target.textContent || '';
 });
 document.getElementById('quizTitle')?.addEventListener('input', function(e) {
-    document.getElementById('gform-main-title').value = e.target.value;
+    const mainTitle = document.getElementById('gform-main-title');
+    if (mainTitle && document.activeElement !== mainTitle) {
+        mainTitle.innerText = e.target.value || '';
+    }
+});
+
+// --- FLOATING RICH TEXT POPUP CONTROLLER ---
+let currentEditableTarget = null;
+let savedRange = null;
+
+function saveCurrentSelection() {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+        savedRange = sel.getRangeAt(0).cloneRange();
+    }
+}
+
+function restoreCurrentSelection() {
+    if (savedRange) {
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(savedRange);
+    }
+}
+
+window.formatText = function(command, value = null) {
+    if (!currentEditableTarget) return;
+
+    currentEditableTarget.focus();
+    restoreCurrentSelection();
+
+    if (command === 'fontSize') {
+        const px = String(value).endsWith('px') ? value : `${value}px`;
+        // Use temporary size 7 to locate the newly wrapped font nodes
+        document.execCommand('fontSize', false, '7');
+        const fontElements = currentEditableTarget.querySelectorAll('font[size="7"]');
+        fontElements.forEach(fontEl => {
+            fontEl.removeAttribute('size');
+            fontEl.style.fontSize = px;
+        });
+    } else if (command === 'fontName') {
+        document.execCommand('fontName', false, value);
+    } else if (command === 'bold' || command === 'italic' || command === 'underline') {
+        document.execCommand(command, false, null);
+    } else if (command === 'removeFormat') {
+        document.execCommand('removeFormat', false, null);
+        const styledEls = currentEditableTarget.querySelectorAll('[style*="font-size"], [style*="font-family"]');
+        styledEls.forEach(el => {
+            el.style.fontSize = '';
+            el.style.fontFamily = '';
+        });
+    }
+
+    saveCurrentSelection();
+
+    // Trigger input event so any listeners (e.g. title syncing) update immediately
+    currentEditableTarget.dispatchEvent(new Event('input', { bubbles: true }));
+};
+
+function showRichTextPopup(target) {
+    if (!target) return;
+    currentEditableTarget = target;
+    saveCurrentSelection();
+
+    const popup = document.getElementById('richTextPopupToolbar');
+    if (!popup) return;
+
+    popup.style.display = 'flex';
+    positionRichTextPopup(target);
+}
+
+function positionRichTextPopup(target) {
+    const popup = document.getElementById('richTextPopupToolbar');
+    if (!popup || popup.style.display === 'none' || !target) return;
+
+    const sel = window.getSelection();
+    let rect = null;
+
+    if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+        const range = sel.getRangeAt(0);
+        const rangeRect = range.getBoundingClientRect();
+        if (rangeRect.width > 0 || rangeRect.height > 0) {
+            rect = rangeRect;
+        }
+    }
+
+    if (!rect) {
+        rect = target.getBoundingClientRect();
+    }
+
+    const popupRect = popup.getBoundingClientRect();
+
+    // Center above target
+    let left = rect.left + (rect.width / 2) - (popupRect.width / 2);
+    left = Math.max(16, Math.min(left, window.innerWidth - popupRect.width - 16));
+
+    let top = rect.top - popupRect.height - 8;
+    // If too close to top sticky header (~60px), position below
+    if (top < 65) {
+        top = rect.bottom + 8;
+    }
+
+    popup.style.top = `${top}px`;
+    popup.style.left = `${left}px`;
+}
+
+function hideRichTextPopup() {
+    const popup = document.getElementById('richTextPopupToolbar');
+    if (popup) {
+        popup.style.display = 'none';
+    }
+    currentEditableTarget = null;
+    savedRange = null;
+}
+
+// Global listeners for editable text boxes inside quiz builder
+document.addEventListener('focusin', function(e) {
+    const target = e.target;
+    if (target && target.isContentEditable && target.closest('#quiz-builder-view')) {
+        showRichTextPopup(target);
+    }
+});
+
+document.addEventListener('click', function(e) {
+    const target = e.target;
+    const popup = document.getElementById('richTextPopupToolbar');
+
+    if (popup && (popup === target || popup.contains(target))) {
+        return;
+    }
+
+    if (target && target.isContentEditable && target.closest('#quiz-builder-view')) {
+        showRichTextPopup(target);
+        return;
+    }
+
+    hideRichTextPopup();
+});
+
+document.addEventListener('keyup', function(e) {
+    const target = e.target;
+    if (target && target.isContentEditable && target.closest('#quiz-builder-view')) {
+        saveCurrentSelection();
+        positionRichTextPopup(target);
+    }
+});
+
+document.addEventListener('mouseup', function(e) {
+    const target = e.target;
+    if (target && target.isContentEditable && target.closest('#quiz-builder-view')) {
+        saveCurrentSelection();
+        positionRichTextPopup(target);
+    }
+});
+
+// Reposition on scroll and resize
+window.addEventListener('scroll', function() {
+    if (currentEditableTarget) positionRichTextPopup(currentEditableTarget);
+}, true);
+
+window.addEventListener('resize', function() {
+    const active = document.querySelector('.gform-card.active-card');
+    if (active && typeof activateCard === 'function') activateCard(active);
 });
 
 // Global card activation function for inline HTML clicks and module calls
@@ -1569,18 +2034,38 @@ window.activateCard = function(element) {
     
     // Move floating sidebar toolbar next to active card
     const toolbar = document.getElementById('floatingToolbar');
-    if (toolbar) toolbar.style.top = element.offsetTop + 'px';
-
-    // Relocate the Rich Text formatting toolbar inside the active card container
-    const rtContainer = element.querySelector('.rt-toolbar-container');
-    const rtToolbar = document.getElementById('globalRichTextToolbar');
-    if (rtContainer && rtToolbar) {
-        rtContainer.appendChild(rtToolbar);
+    const wrapper = document.querySelector('.gform-content-wrapper');
+    if (toolbar && wrapper && window.innerWidth > 768) {
+        const cardRect = element.getBoundingClientRect();
+        const wrapperRect = wrapper.getBoundingClientRect();
+        const relativeTop = cardRect.top - wrapperRect.top;
+        const topPx = Math.max(0, Math.round(relativeTop)) + 'px';
+        toolbar.style.setProperty('top', topPx, 'important');
+    } else if (toolbar && window.innerWidth > 768) {
+        toolbar.style.setProperty('top', element.offsetTop + 'px', 'important');
     }
 };
 
+// Listen for clicks & focus anywhere inside the Quiz Builder cards
+document.addEventListener('click', function(e) {
+    const card = e.target.closest('.gform-card');
+    const builderView = document.getElementById('quiz-builder-view');
+    if (card && builderView && !builderView.classList.contains('hidden')) {
+        activateCard(card);
+    }
+});
+
+document.addEventListener('focusin', function(e) {
+    const card = e.target.closest('.gform-card');
+    const builderView = document.getElementById('quiz-builder-view');
+    if (card && builderView && !builderView.classList.contains('hidden')) {
+        activateCard(card);
+    }
+});
+
 // Internal reference for admin.js function calls
 const activateCard = window.activateCard;
+
 // Main function to create new blocks
 function addBlock(type) {
     const container = document.getElementById('quizBlocksContainer');
@@ -1596,7 +2081,15 @@ function addBlock(type) {
     blockDiv.setAttribute('onclick', 'activateCard(this)');
 
     blockDiv.innerHTML = getBlockInnerHtml(type, blockId);
-    container.appendChild(blockDiv);
+    
+    // If an active block exists inside quizBlocksContainer, insert right below it
+    const activeBlock = document.querySelector('.quiz-block.active-card');
+    if (activeBlock && activeBlock.parentNode === container) {
+        activeBlock.after(blockDiv);
+    } else {
+        container.appendChild(blockDiv);
+    }
+
     activateCard(blockDiv);
     return blockDiv;
 }
@@ -1607,15 +2100,38 @@ let blockCounter = 0; // Tracks unique IDs for radio buttons
 function getTypeSelectHtml(currentType) {
     return `
         <select class="gform-type-select" onchange="switchBlockType(this)">
-            <option value="mcq" ${currentType === 'mcq' ? 'selected' : ''}>🔘 Multiple choice</option>
-            <option value="fill" ${currentType === 'fill' ? 'selected' : ''}>📝 Fill in the blank</option>
-            <option value="essay" ${currentType === 'essay' ? 'selected' : ''}>📄 Essay / Paragraph</option>
+            <option value="mcq" ${currentType === 'mcq' ? 'selected' : ''}>Multiple Choice</option>
+            <option value="fill" ${currentType === 'fill' ? 'selected' : ''}>Fill in the Blank</option>
+            <option value="essay" ${currentType === 'essay' ? 'selected' : ''}>Essay / Paragraph</option>
+            <option value="passage" ${currentType === 'passage' ? 'selected' : ''}>Reading Passage</option>
         </select>
     `;
 }
 
 // Generates the inner HTML template for a given block type
 function getBlockInnerHtml(type, blockId) {
+    const dragHandleHtml = `<div style="text-align: center; color: #94a3b8; cursor: grab; margin-top: -12px; margin-bottom: 6px; display: flex; justify-content: center;"><svg width="20" height="12" viewBox="0 0 20 12" fill="currentColor"><circle cx="4" cy="3" r="1.5"/><circle cx="10" cy="3" r="1.5"/><circle cx="16" cy="3" r="1.5"/><circle cx="4" cy="9" r="1.5"/><circle cx="10" cy="9" r="1.5"/><circle cx="16" cy="9" r="1.5"/></svg></div>`;
+    
+    const cardFooterActionsHtml = `
+        <div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px; width: 100%;">
+            <button class="icon-btn duplicate" type="button" title="Duplicate Question" onclick="event.stopPropagation(); duplicateBlock(this)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+            </button>
+            <button class="icon-btn delete" type="button" title="Delete Block" onclick="event.stopPropagation(); deleteBlock(this)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18"></path>
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+            </button>
+        </div>
+    `;
+
     const mediaAndPointsHtml = `
         <div style="display: flex; gap: 10px; margin-top: 15px; margin-bottom: 15px;">
             <input type="text" class="gform-opt-input blk-img" placeholder="Optional: Google Drive Image URL" style="flex: 1; border: 1px solid #dadce0; padding: 8px; border-radius: 4px; font-size: 13px;">
@@ -1628,8 +2144,7 @@ function getBlockInnerHtml(type, blockId) {
 
     if (type === 'mcq') {
         return `
-            <div style="text-align: center; color: #dadce0; cursor: grab; margin-top: -15px; margin-bottom: 5px;">⋮⋮</div>
-            <div class="rt-toolbar-container"></div>
+            ${dragHandleHtml}
             
             <div class="gform-question-header">
                 <div class="gform-q-input blk-prompt" contenteditable="true" data-placeholder="Question"></div>
@@ -1643,7 +2158,9 @@ function getBlockInnerHtml(type, blockId) {
                     <div class="gform-opt-row">
                         <input type="radio" name="${blockId}_correct" value="${i}" onchange="this.closest('.quiz-block').querySelector('.blk-correct').value = this.value" ${i === 0 ? 'checked' : ''} title="Mark as correct answer">
                         <input type="text" class="gform-opt-input blk-opt${i}" placeholder="Option ${num}" required>
-                        <button class="icon-btn delete" onclick="this.closest('.gform-opt-row').remove()">✖</button>
+                        <button class="icon-btn delete" title="Remove Option" onclick="this.closest('.gform-opt-row').remove(); window.reindexMCQOptions(this.closest('.quiz-block'))">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
                     </div>
                 `).join('')}
             </div>
@@ -1652,17 +2169,19 @@ function getBlockInnerHtml(type, blockId) {
             
             <div class="gform-opt-row" style="margin-top: 8px;">
                 <input type="radio" disabled>
-                <span class="gform-add-opt" onclick="addOptionToMCQ(this, '${blockId}')" style="color: #1a73e8; cursor:pointer; font-weight: 500;">Add option</span>
+                <span class="gform-add-opt" onclick="addOptionToMCQ(this, '${blockId}')" style="color: #1a73e8; cursor:pointer; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    Add option
+                </span>
             </div>
 
             <div class="gform-card-footer">
-                <button class="icon-btn delete" title="Delete" onclick="this.closest('.gform-card').remove()">🗑️</button>
+                ${cardFooterActionsHtml}
             </div>
         `;
     } else if (type === 'fill') {
         return `
-            <div style="text-align: center; color: #dadce0; cursor: grab; margin-top: -15px; margin-bottom: 5px;">⋮⋮</div>
-            <div class="rt-toolbar-container"></div>
+            ${dragHandleHtml}
             
             <div class="gform-question-header">
                 <div class="gform-q-input blk-prompt" contenteditable="true" data-placeholder="Question (e.g., The capital of France is ___)"></div>
@@ -1677,13 +2196,12 @@ function getBlockInnerHtml(type, blockId) {
             </div>
             
             <div class="gform-card-footer">
-                <button class="icon-btn delete" title="Delete" onclick="this.closest('.gform-card').remove()">🗑️</button>
+                ${cardFooterActionsHtml}
             </div>
         `;
     } else if (type === 'essay') {
         return `
-            <div style="text-align: center; color: #dadce0; cursor: grab; margin-top: -15px; margin-bottom: 5px;">⋮⋮</div>
-            <div class="rt-toolbar-container"></div>
+            ${dragHandleHtml}
             
             <div class="gform-question-header">
                 <div class="gform-q-input blk-prompt" contenteditable="true" data-placeholder="Essay Question Prompt"></div>
@@ -1697,13 +2215,25 @@ function getBlockInnerHtml(type, blockId) {
             </div>
             
             <div class="gform-card-footer">
-                <button class="icon-btn delete" title="Delete" onclick="this.closest('.gform-card').remove()">🗑️</button>
+                ${cardFooterActionsHtml}
+            </div>
+        `;
+    } else if (type === 'passage') {
+        return `
+            ${dragHandleHtml}
+            <div class="gform-question-header">
+                <div class="gform-q-input blk-prompt" contenteditable="true" data-placeholder="Passage Title (e.g., Reading Comprehension: Space Exploration)" style="font-size: 18px; font-weight: 600; background: transparent; border-bottom: 2px solid #673ab7;"></div>
+            </div>
+            <div style="margin-top: 12px;">
+                <div class="gform-desc-input blk-desc" contenteditable="true" data-placeholder="Type or paste reading passage text here..." style="min-height: 80px; font-size: 14px; line-height: 1.6; border: 1px solid #dadce0; border-radius: 6px; padding: 12px; background: #ffffff;"></div>
+            </div>
+            <div class="gform-card-footer">
+                ${cardFooterActionsHtml}
             </div>
         `;
     } else if (type === 'header') {
         return `
-            <div style="text-align: center; color: #dadce0; cursor: grab; margin-top: -15px; margin-bottom: 5px;">⋮⋮</div>
-            <div class="rt-toolbar-container"></div>
+            ${dragHandleHtml}
             <div class="gform-question-header">
                 <div class="gform-q-input blk-prompt" contenteditable="true" data-placeholder="Header / Section Title" style="font-size: 20px; font-weight: 500; background: transparent; border-bottom: 2px solid #673ab7;"></div>
             </div>
@@ -1711,11 +2241,131 @@ function getBlockInnerHtml(type, blockId) {
                 <div class="gform-desc-input blk-desc" contenteditable="true" data-placeholder="Description (Optional)" style="font-size: 14px; width: 100%;"></div>
             </div>
             <div class="gform-card-footer">
-                <button class="icon-btn delete" title="Delete" onclick="this.closest('.gform-card').remove()">🗑️</button>
+                ${cardFooterActionsHtml}
             </div>
         `;
     }
 }
+
+// --- DUPLICATE & DELETE BLOCK HANDLERS ---
+window.duplicateBlock = function(btnElement) {
+    const sourceCard = btnElement.closest('.quiz-block');
+    if (!sourceCard) return;
+
+    blockCounter++;
+    const newBlockId = 'block_' + blockCounter;
+    const type = sourceCard.dataset.type || 'mcq';
+
+    // Create cloned card element
+    const clonedDiv = document.createElement('div');
+    clonedDiv.className = 'gform-card quiz-block';
+    clonedDiv.dataset.type = type;
+    clonedDiv.dataset.blockId = newBlockId;
+    clonedDiv.setAttribute('onclick', 'activateCard(this)');
+
+    // Generate template
+    clonedDiv.innerHTML = getBlockInnerHtml(type, newBlockId);
+
+    // Copy Prompt / Title
+    const srcPrompt = sourceCard.querySelector('.blk-prompt');
+    const destPrompt = clonedDiv.querySelector('.blk-prompt');
+    if (srcPrompt && destPrompt) {
+        destPrompt.innerHTML = srcPrompt.innerHTML;
+    }
+
+    // Copy Description / Passage (if header/passage)
+    const srcDesc = sourceCard.querySelector('.blk-desc');
+    const destDesc = clonedDiv.querySelector('.blk-desc');
+    if (srcDesc && destDesc) {
+        destDesc.innerHTML = srcDesc.innerHTML;
+    }
+
+    // Copy Image URL
+    const srcImg = sourceCard.querySelector('.blk-img');
+    const destImg = clonedDiv.querySelector('.blk-img');
+    if (srcImg && destImg) {
+        destImg.value = srcImg.value;
+    }
+
+    // Copy Points
+    const srcPoints = sourceCard.querySelector('.blk-points');
+    const destPoints = clonedDiv.querySelector('.blk-points');
+    if (srcPoints && destPoints) {
+        destPoints.value = srcPoints.value;
+    }
+
+    // Copy MCQ Options & Correct Answer
+    if (type === 'mcq') {
+        const srcOptionRows = sourceCard.querySelectorAll('.options-container .gform-opt-row');
+        const destContainer = clonedDiv.querySelector('.options-container');
+        if (destContainer && srcOptionRows.length > 0) {
+            destContainer.innerHTML = '';
+            srcOptionRows.forEach((row, idx) => {
+                const optText = row.querySelector('.gform-opt-input')?.value || '';
+                const isChecked = row.querySelector('input[type="radio"]')?.checked;
+                
+                const optDiv = document.createElement('div');
+                optDiv.className = 'gform-opt-row';
+                optDiv.innerHTML = `
+                    <input type="radio" name="${newBlockId}_correct" value="${idx}" onchange="this.closest('.quiz-block').querySelector('.blk-correct').value = this.value" ${isChecked ? 'checked' : ''} title="Mark as correct answer">
+                    <input type="text" class="gform-opt-input blk-opt${idx}" placeholder="Option ${idx + 1}" value="${optText.replace(/"/g, '&quot;')}" required>
+                    <button class="icon-btn delete" type="button" title="Remove Option" onclick="this.closest('.gform-opt-row').remove(); window.reindexMCQOptions(this.closest('.quiz-block'))">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                `;
+                destContainer.appendChild(optDiv);
+            });
+        }
+        
+        const srcCorrect = sourceCard.querySelector('.blk-correct');
+        const destCorrect = clonedDiv.querySelector('.blk-correct');
+        if (srcCorrect && destCorrect) {
+            destCorrect.value = srcCorrect.value;
+        }
+    } else if (type === 'fill') {
+        const srcAnswer = sourceCard.querySelector('.blk-answer');
+        const destAnswer = clonedDiv.querySelector('.blk-answer');
+        if (srcAnswer && destAnswer) {
+            destAnswer.value = srcAnswer.value;
+        }
+    }
+
+    // Insert cloned block directly below the source card
+    sourceCard.after(clonedDiv);
+
+    // Activate the new block and position floating toolbar
+    activateCard(clonedDiv);
+    clonedDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+};
+
+window.deleteBlock = function(btnElement) {
+    const card = btnElement.closest('.gform-card');
+    if (!card) return;
+    
+    const prevCard = card.previousElementSibling || card.nextElementSibling || document.querySelector('.title-card');
+    card.remove();
+    if (prevCard) {
+        activateCard(prevCard);
+    }
+};
+
+window.reindexMCQOptions = function(block) {
+    if (!block) return;
+    const blockId = block.dataset.blockId;
+    const rows = block.querySelectorAll('.options-container .gform-opt-row');
+    rows.forEach((row, idx) => {
+        const radio = row.querySelector('input[type="radio"]');
+        if (radio) {
+            radio.name = `${blockId}_correct`;
+            radio.value = idx;
+        }
+        const input = row.querySelector('.gform-opt-input');
+        if (input) {
+            input.placeholder = `Option ${idx + 1}`;
+            input.className = `gform-opt-input blk-opt${idx}`;
+        }
+    });
+};
 
 // Function triggered when changing the dropdown option on a card
 window.switchBlockType = function(selectElement) {
@@ -1760,13 +2410,7 @@ window.switchBlockType = function(selectElement) {
     activateCard(blockDiv);
 };
 
-// Sync Title logic (updated for innerText instead of value)
-document.getElementById('gform-main-title')?.addEventListener('input', function(e) {
-    document.getElementById('quizTitle').value = e.target.innerText;
-});
-document.getElementById('quizTitle')?.addEventListener('input', function(e) {
-    document.getElementById('gform-main-title').innerText = e.target.value;
-});
+
 
 // --- Quiz UI Toggles (Landing vs Builder) ---
 window.openQuizBuilder = function(isNew = true) {
@@ -1776,13 +2420,16 @@ window.openQuizBuilder = function(isNew = true) {
     if (isNew) {
         currentEditQuizId = null; 
         document.getElementById('quizTitle').value = "Untitled Quiz";
-        document.getElementById('quizTargetClass').value = "";
+        setQuizClasses([]);
         document.getElementById('quizSubject').value = "";
         document.getElementById('quizBlocksContainer').innerHTML = "";
         addBlock('mcq');
         
         const mainTitle = document.getElementById('gform-main-title');
         if (mainTitle) mainTitle.innerText = "Untitled Quiz";
+
+        const quizTypeSelect = document.getElementById('quizTypeSelect');
+        if (quizTypeSelect) quizTypeSelect.value = "Quiz";
         
         const saveBtn = document.getElementById('saveQuizBtn');
         if (saveBtn) {
@@ -1796,6 +2443,7 @@ window.openQuizBuilder = function(isNew = true) {
 }
 
 window.closeQuizBuilder = function() {
+    hideRichTextPopup();
     document.getElementById('quiz-builder-view').classList.add('hidden');
     document.getElementById('quiz-landing-view').classList.remove('hidden');
     loadQuizzesTable(); // Refresh the table when going back
@@ -1889,8 +2537,18 @@ async function editQuiz(id) {
 
         currentEditQuizId = id;
         document.getElementById('quizTitle').value = quiz.title || "";
-        document.getElementById('quizTargetClass').value = quiz.targetClass || "";
+        
+        let quizClasses = [];
+        if (Array.isArray(quiz.targetClassesList) && quiz.targetClassesList.length > 0) {
+            quizClasses = quiz.targetClassesList;
+        } else if (quiz.targetClass) {
+            quizClasses = quiz.targetClass.split(',').map(s => s.trim()).filter(Boolean);
+        }
+        setQuizClasses(quizClasses);
         document.getElementById('quizSubject').value = quiz.subject || "";
+        if (document.getElementById('quizTypeSelect')) {
+            document.getElementById('quizTypeSelect').value = quiz.type || "Quiz";
+        }
 
         const container = document.getElementById('quizBlocksContainer');
         container.innerHTML = "";
@@ -1922,7 +2580,9 @@ async function editQuiz(id) {
                         newRow.innerHTML = `
                             <input type="radio" name="edit_block_${index}_correct" value="${i}" onchange="this.closest('.quiz-block').querySelector('.blk-correct').value = this.value" ${isChecked}>
                             <input type="text" class="gform-opt-input" value="${optText}" required>
-                            <button class="icon-btn delete" onclick="this.closest('.gform-opt-row').remove()">✖</button>
+                            <button class="icon-btn delete" title="Remove Option" onclick="this.closest('.gform-opt-row').remove()">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
                         `;
                         optionsContainer.appendChild(newRow);
                     });
@@ -2621,12 +3281,32 @@ window.loadSystemDatabases = async function() {
                 updateManualQuizClassLabel();
             }
 
+            // Populate multi-select checkbox options for Create Quiz
+            const quizOptionsContainer = document.getElementById("quizClassOptions");
+            if (quizOptionsContainer) {
+                let qOptionsHtml = `
+                    <label class="multi-select-option-row">
+                        <input type="checkbox" value="All Classes" onchange="onQuizClassCheckboxChange(this)">
+                        <span><strong>All Classes</strong></span>
+                    </label>
+                `;
+                sortedClasses.forEach(name => {
+                    qOptionsHtml += `
+                        <label class="multi-select-option-row">
+                            <input type="checkbox" value="${name}" onchange="onQuizClassCheckboxChange(this)">
+                            <span>${name}</span>
+                        </label>
+                    `;
+                });
+                quizOptionsContainer.innerHTML = qOptionsHtml;
+                updateQuizClassLabel();
+            }
+
             // Loop and populate class options for standard select elements
             sortedClasses.forEach(name => {
                 if(classTbody) classTbody.innerHTML += `<tr><td><strong>${name}</strong></td><td><span style="background: #ecfdf5; color: #10b981; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Student Linked</span></td></tr>`;
                 if(classSelect) classSelect.innerHTML += `<option value="${name}">${name}</option>`;
                 if(ledgerClassSelect) ledgerClassSelect.innerHTML += `<option value="${name}">${name}</option>`;
-                if(quizClassSelect) quizClassSelect.innerHTML += `<option value="${name}">${name}</option>`;
                 if(manualQuizClassSelect) manualQuizClassSelect.innerHTML += `<option value="${name}">${name}</option>`;
                 if(bulkClassSelect) bulkClassSelect.innerHTML += `<option value="${name}">${name}</option>`;
             });
@@ -2638,59 +3318,89 @@ window.loadSystemDatabases = async function() {
         const quizTbody = document.querySelector("#quizzesDatabaseTable tbody");
         if (quizTbody) {
             try {
-                // Fetch digital and offline quizzes simultaneously
-                const [digitalSnap, manualSnap] = await Promise.all([
-                    getDocs(collection(db, "quizzes")),
-                    getDocs(collection(db, "system_quizzes"))
-                ]);
+                // Fetch only offline quizzes (system_quizzes) for this management table
+                const manualSnap = await getDocs(collection(db, "system_quizzes"));
 
                 const quizRows = [];
 
-                // 1. Process Digital Quizzes (from Quiz Builder)
-                digitalSnap.forEach(docSnap => {
-                    const data = docSnap.data();
-                    const title = data.title || data.quizName;
-                    const sub = data.subject || '-';
-                    const cls = data.targetClass || '-';
+                // Helper for Quiz Type Badges
+                const getQuizTypeBadge = (type) => {
+                    const t = type || 'Quiz';
+                    let bg = 'rgba(37, 99, 235, 0.1)';
+                    let color = '#2563eb';
+                    let border = 'rgba(37, 99, 235, 0.25)';
 
-                    if (title) {
-                        quizRows.push(`
-                            <tr>
-                                <td><strong>${title}</strong></td>
-                                <td>${sub}</td>
-                                <td>${cls}</td>
-                                <td><span style="background: #fffbeb; color: #f59e0b; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Quiz Builder</span></td>
-                                <td>-</td>
-                            </tr>
-                        `);
+                    if (t === 'Final Test') {
+                        bg = 'rgba(220, 38, 38, 0.1)';
+                        color = '#dc2626';
+                        border = 'rgba(220, 38, 38, 0.25)';
+                    } else if (t === 'Review') {
+                        bg = 'rgba(147, 51, 234, 0.1)';
+                        color = '#9333ea';
+                        border = 'rgba(147, 51, 234, 0.25)';
+                    } else if (t === 'Homework') {
+                        bg = 'rgba(234, 88, 12, 0.1)';
+                        color = '#ea580c';
+                        border = 'rgba(234, 88, 12, 0.25)';
+                    } else if (t === 'Exercise') {
+                        bg = 'rgba(22, 163, 74, 0.1)';
+                        color = '#16a34a';
+                        border = 'rgba(22, 163, 74, 0.25)';
+                    } else if (t === 'Project') {
+                        bg = 'rgba(13, 148, 136, 0.1)';
+                        color = '#0d9488';
+                        border = 'rgba(13, 148, 136, 0.25)';
+                    } else if (t === 'Skill') {
+                        bg = 'rgba(79, 70, 229, 0.1)';
+                        color = '#4f46e5';
+                        border = 'rgba(79, 70, 229, 0.25)';
                     }
-                });
 
-                // 2. Process Offline Quizzes (Manual Exams)
+                    return `<span style="background: ${bg}; color: ${color}; border: 1px solid ${border}; padding: 3px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 700;">${t}</span>`;
+                };
+
+                // Process Offline Quizzes (Manual Exams)
                 manualSnap.forEach(docSnap => {
                     const data = docSnap.data();
                     const title = data.name;
                     const sub = data.subject || '-';
                     const cls = data.targetClass || '-';
+                    const type = data.type || (title.toLowerCase().includes('review') ? 'Review' : 'Quiz');
 
                     if (title) {
                         quizRows.push(`
                             <tr>
                                 <td><strong>${title}</strong></td>
+                                <td>${getQuizTypeBadge(type)}</td>
                                 <td>${sub}</td>
                                 <td>${cls}</td>
-                                <td><span style="background: #f1f5f9; color: #64748b; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Offline Exam</span></td>
-                                <td><button class="delete-btn" onclick="deleteSystemRecord('system_quizzes', '${docSnap.id}')">Delete</button></td>
+                                <td style="text-align: center; position: relative;">
+                                    <div class="db-action-kebab" style="position: relative; display: inline-block;">
+                                        <button type="button" class="card-kebab-btn" onclick="toggleOfflineQuizKebab(event, '${docSnap.id}')" title="Actions" style="width: 32px !important; height: 32px !important;">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg>
+                                        </button>
+                                        <div id="offlineQuizKebab_${docSnap.id}" class="profile-card-dropdown hidden" style="top: 36px; right: 0; min-width: 120px; z-index: 100;">
+                                            <button type="button" class="profile-dropdown-item" onclick="openEditOfflineQuizModal('${docSnap.id}')">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                                                <span>Edit</span>
+                                            </button>
+                                            <button type="button" class="profile-dropdown-item" style="color: #ef4444 !important;" onclick="deleteSystemRecord('system_quizzes', '${docSnap.id}')">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                                <span>Delete</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </td>
                             </tr>
                         `);
                     }
                 });
 
-                // 3. Inject into DOM in a single batch operation
+                // Inject into DOM in a single batch operation
                 if (quizRows.length > 0) {
                     quizTbody.innerHTML = quizRows.join('');
                 } else {
-                    quizTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text-gray);">No quizzes or exams found in database.</td></tr>`;
+                    quizTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text-gray);">No offline exams found in database.</td></tr>`;
                 }
 
             } catch (err) {
@@ -2722,6 +3432,9 @@ document.addEventListener('click', (e) => {
     if (!e.target.closest('.multi-select-dropdown')) {
         document.querySelectorAll('.multi-select-dropdown').forEach(d => d.classList.remove('open'));
     }
+    if (!e.target.closest('.db-action-kebab')) {
+        document.querySelectorAll('.profile-card-dropdown, .kebab-dropdown').forEach(d => d.classList.add('hidden'));
+    }
 });
 
 window.onManualQuizClassCheckboxChange = function() {
@@ -2748,6 +3461,55 @@ function updateManualQuizClassLabel() {
         label.innerText = `${selected.length} Classes Selected (${selected.join(', ')})`;
     }
 }
+
+// --- CREATE QUIZ MULTI-SELECT CHECKBOX LOGIC ---
+window.onQuizClassCheckboxChange = function(cb) {
+    if (cb && cb.value === 'All Classes') {
+        const otherCheckboxes = document.querySelectorAll('#quizClassOptions input[type="checkbox"]:not([value="All Classes"])');
+        if (cb.checked) {
+            otherCheckboxes.forEach(c => c.checked = false);
+        }
+    } else if (cb && cb.checked) {
+        const allCb = document.querySelector('#quizClassOptions input[type="checkbox"][value="All Classes"]');
+        if (allCb) allCb.checked = false;
+    }
+    updateQuizClassLabel();
+};
+
+function getSelectedQuizClasses() {
+    const checkboxes = document.querySelectorAll('#quizClassOptions input[type="checkbox"]:checked');
+    return Array.from(checkboxes).map(cb => cb.value);
+}
+
+function updateQuizClassLabel() {
+    const label = document.getElementById('quizClassLabel');
+    if (!label) return;
+    const selected = getSelectedQuizClasses();
+    if (selected.length === 0) {
+        label.innerText = '-- Select Target Class --';
+    } else if (selected.includes('All Classes')) {
+        label.innerText = 'All Classes';
+    } else if (selected.length === 1) {
+        label.innerText = selected[0];
+    } else {
+        label.innerText = `${selected.length} Classes Selected (${selected.join(', ')})`;
+    }
+}
+
+function setQuizClasses(classesList) {
+    const checkboxes = document.querySelectorAll('#quizClassOptions input[type="checkbox"]');
+    checkboxes.forEach(cb => {
+        if (!classesList || classesList.length === 0) {
+            cb.checked = false;
+        } else if (classesList.includes('All Classes') || classesList.includes('All') || classesList.includes('all')) {
+            cb.checked = (cb.value === 'All Classes');
+        } else {
+            cb.checked = classesList.includes(cb.value);
+        }
+    });
+    updateQuizClassLabel();
+}
+window.setQuizClasses = setQuizClasses;
 
 // --- ACTIVE CLASSES & SUBJECTS SHOW/HIDE TOGGLE LOGIC ---
 window.toggleActiveClassesTable = function() {
@@ -2802,10 +3564,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function addManualQuiz() {
     const input = document.getElementById('newManualQuiz');
+    const typeSelect = document.getElementById('newManualQuizType');
     const subjectSelect = document.getElementById('newManualQuizSubject');
     const submitBtn = document.querySelector("button[onclick='addManualQuiz()']");
 
     const examName = input ? input.value.trim() : "";
+    const quizType = typeSelect ? typeSelect.value : "Quiz";
     const subject = subjectSelect ? subjectSelect.value : "";
     const selectedClasses = getSelectedManualQuizClasses();
     const targetClassStr = selectedClasses.includes("All Classes") ? "All Classes" : selectedClasses.join(", ");
@@ -2840,17 +3604,19 @@ async function addManualQuiz() {
         // 4. Create New Offline Exam Document
         await addDoc(collection(db, "system_quizzes"), {
             name: examName,
+            type: quizType,
             subject: subject,
             targetClass: targetClassStr,
             targetClassesList: selectedClasses,
             createdAt: new Date().toISOString()
         });
         
-        alert(`Offline exam "${examName}" added successfully for target classes: ${targetClassStr}!`);
+        alert(`Offline exam "${examName}" [${quizType}] added successfully for target classes: ${targetClassStr}!`);
         
         // Reset Inputs
         input.value = "";
         subjectSelect.value = "";
+        if (typeSelect) typeSelect.value = "Quiz";
         document.querySelectorAll('#manualQuizClassOptions input[type="checkbox"]').forEach(cb => cb.checked = false);
         updateManualQuizClassLabel();
         
@@ -2985,6 +3751,25 @@ async function saveDirectScores() {
             saveBtn.disabled = true;
         }
 
+        // Lookup Quiz Type
+        let resolvedType = "Quiz";
+        try {
+            const qSnap = await getDocs(query(collection(db, "system_quizzes"), where("name", "==", quiz)));
+            if (!qSnap.empty && qSnap.docs[0].data().type) {
+                resolvedType = qSnap.docs[0].data().type;
+            } else {
+                const lower = quiz.toLowerCase();
+                if (lower.includes("review")) resolvedType = "Review";
+                else if (lower.includes("homework") || lower.includes("hw")) resolvedType = "Homework";
+                else if (lower.includes("exercise")) resolvedType = "Exercise";
+                else if (lower.includes("final") || lower.includes("exam") || lower.includes("midterm")) resolvedType = "Final Test";
+                else if (lower.includes("project")) resolvedType = "Project";
+                else if (lower.includes("skill")) resolvedType = "Skill";
+            }
+        } catch (te) {
+            console.warn(te);
+        }
+
         for (const input of scoreInputs) {
             const scoreValue = input.value;
             
@@ -3002,6 +3787,7 @@ async function saveDirectScores() {
                     studentClass: studentClass,
                     examName: quiz,     // Key used across exam_scores
                     quizName: quiz,     // Key kept for compatibility
+                    type: resolvedType, // Type: Exercise, Homework, Quiz, Review, Final Test, Project, Skill
                     score: Number(scoreValue),
                     updatedAt: new Date()
                 }, { merge: true });
@@ -3455,12 +4241,14 @@ window.closeResultsModal = closeResultsModal;
 // --- 5. PRESERVE STATUS DURING SAVE ---
 async function saveQuiz() {
     const title = document.getElementById('quizTitle').value.trim();
-    const targetClass = document.getElementById('quizTargetClass').value.trim();
+    const quizType = document.getElementById('quizTypeSelect')?.value || 'Quiz';
+    const selectedClasses = getSelectedQuizClasses();
+    const targetClassStr = selectedClasses.includes("All Classes") ? "All Classes" : selectedClasses.join(", ");
     const subject = document.getElementById('quizSubject').value.trim();
     const blocksElements = document.querySelectorAll('.quiz-block');
 
-    if (!title || !targetClass || blocksElements.length === 0) {
-        return alert("Please fill in quiz title, class, and add at least one block.");
+    if (!title || selectedClasses.length === 0 || blocksElements.length === 0) {
+        return alert("Please fill in quiz title, select at least one target class, and add at least one block.");
     }
 
     const items = [];
@@ -3529,14 +4317,27 @@ async function saveQuiz() {
     try {
         if (currentEditQuizId) {
             await updateDoc(doc(db, "quizzes", currentEditQuizId), {
-                title, targetClass, subject, items, updatedAt: new Date().toISOString()
+                title, 
+                type: quizType,
+                targetClass: targetClassStr, 
+                targetClassesList: selectedClasses,
+                subject, 
+                items, 
+                updatedAt: new Date().toISOString()
             });
             alert("Quiz updated successfully!");
             currentEditQuizId = null;
         } else {
             // New quizzes are published with status: 'active' by default
             await addDoc(collection(db, "quizzes"), {
-                title, targetClass, subject, items, status: 'active', createdAt: new Date().toISOString()
+                title, 
+                type: quizType,
+                targetClass: targetClassStr, 
+                targetClassesList: selectedClasses,
+                subject, 
+                items, 
+                status: 'active', 
+                createdAt: new Date().toISOString()
             });
             alert("Quiz published successfully!");
         }
@@ -3564,7 +4365,9 @@ window.addOptionToMCQ = function(btnElement, blockId) {
     newRow.innerHTML = `
         <input type="radio" name="${blockId}_correct" value="${newIdx}" title="Mark as correct answer" ${newIdx === 0 ? 'checked' : ''}>
         <input type="text" class="gform-opt-input blk-opt${newIdx}" placeholder="Option ${newIdx + 1}" required>
-        <button class="icon-btn delete" type="button" onclick="this.closest('.gform-opt-row').remove(); window.reindexMCQOptions(this.closest('.quiz-block'))">✖</button>
+        <button class="icon-btn delete" type="button" title="Remove Option" onclick="this.closest('.gform-opt-row').remove(); window.reindexMCQOptions(this.closest('.quiz-block'))">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
     `;
     optionsContainer.appendChild(newRow);
 };
@@ -4236,3 +5039,200 @@ window.editTeacherProfile = editTeacherProfile;
 window.deleteNewsUpdate = deleteNewsUpdate;
 window.addNewsUpdate = addNewsUpdate;
 document.getElementById('postNewsBtn')?.addEventListener('click', addNewsUpdate);
+
+// Bind Bulk Photo Drag & Drop Listeners
+const bulkDropzone = document.getElementById('bulkPhotoDropzone');
+const bulkFileInput = document.getElementById('bulkPhotoFileInput');
+
+if (bulkDropzone) {
+    ['dragenter', 'dragover'].forEach(eventName => {
+        bulkDropzone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            bulkDropzone.style.borderColor = '#16a34a';
+            bulkDropzone.style.background = 'rgba(22, 163, 74, 0.08)';
+        });
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        bulkDropzone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            bulkDropzone.style.borderColor = 'var(--primary-blue, #1e5eff)';
+            bulkDropzone.style.background = 'rgba(30, 94, 255, 0.03)';
+        });
+    });
+
+    bulkDropzone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt?.files;
+        if (files && files.length > 0) {
+            processBulkPhotoFiles(Array.from(files));
+        }
+    });
+}
+
+if (bulkFileInput) {
+    bulkFileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+            processBulkPhotoFiles(Array.from(e.target.files));
+        }
+    });
+}
+
+// --- KEBAB & EDIT OFFLINE EXAM MODAL CONTROLLERS ---
+window.toggleOfflineQuizKebab = function(e, id) {
+    if (e) e.stopPropagation();
+    const dropdown = document.getElementById(`offlineQuizKebab_${id}`);
+    const isHidden = dropdown?.classList.contains('hidden');
+    document.querySelectorAll('.profile-card-dropdown, .kebab-dropdown').forEach(d => d.classList.add('hidden'));
+    if (isHidden && dropdown) {
+        dropdown.classList.remove('hidden');
+    }
+};
+
+window.openEditOfflineQuizModal = async function(id) {
+    document.querySelectorAll('.profile-card-dropdown, .kebab-dropdown').forEach(d => d.classList.add('hidden'));
+    try {
+        const snap = await getDoc(doc(db, "system_quizzes", id));
+        if (!snap.exists()) return alert("Exam record missing.");
+        const data = snap.data();
+
+        document.getElementById('editOfflineQuizId').value = id;
+        document.getElementById('editOfflineQuizName').value = data.name || '';
+        document.getElementById('editOfflineQuizType').value = data.type || (data.name.toLowerCase().includes('review') ? 'Review' : 'Quiz');
+        
+        // Populate subject options in edit modal
+        const subjectSelect = document.getElementById('editOfflineQuizSubject');
+        if (subjectSelect) {
+            subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+            const subjects = [
+                "English", "Mathematics", "Science", "Indonesian", "Social Studies", 
+                "Civics / PPKN", "Religion", "Art & Culture", "Physical Education", "ICT / Computer"
+            ];
+            subjects.forEach(subj => {
+                subjectSelect.innerHTML += `<option value="${subj}">${subj}</option>`;
+            });
+            subjectSelect.value = data.subject || '';
+        }
+
+        // Populate class checklist in edit modal
+        const classContainer = document.getElementById('editOfflineQuizClassOptions');
+        if (classContainer) {
+            const classesSnap = await getDocs(collection(db, "students"));
+            const classSet = new Set();
+            classesSnap.forEach(sDoc => {
+                const s = sDoc.data();
+                if (s.studentClass) classSet.add(s.studentClass.trim());
+            });
+            const sortedClasses = Array.from(classSet).sort();
+
+            let targetList = [];
+            if (Array.isArray(data.targetClassesList)) {
+                targetList = data.targetClassesList;
+            } else if (data.targetClass) {
+                targetList = data.targetClass.split(',').map(s => s.trim());
+            }
+
+            classContainer.innerHTML = `
+                <label class="multi-select-option">
+                    <input type="checkbox" value="All Classes" onchange="onEditOfflineQuizClassChange()" ${targetList.includes('All Classes') ? 'checked' : ''}>
+                    <span>All Classes</span>
+                </label>
+            `;
+            sortedClasses.forEach(cls => {
+                classContainer.innerHTML += `
+                    <label class="multi-select-option">
+                        <input type="checkbox" value="${cls}" onchange="onEditOfflineQuizClassChange()" ${targetList.includes(cls) ? 'checked' : ''}>
+                        <span>${cls}</span>
+                    </label>
+                `;
+            });
+            updateEditOfflineQuizClassLabel();
+        }
+
+        document.getElementById('editOfflineQuizModal')?.classList.remove('hidden');
+
+    } catch (err) {
+        console.error("Error opening edit modal:", err);
+        alert("Error loading exam details: " + err.message);
+    }
+};
+
+window.onEditOfflineQuizClassChange = function() {
+    updateEditOfflineQuizClassLabel();
+};
+
+function getSelectedEditOfflineQuizClasses() {
+    const checked = Array.from(document.querySelectorAll('#editOfflineQuizClassOptions input[type="checkbox"]:checked'));
+    return checked.map(cb => cb.value);
+}
+
+function updateEditOfflineQuizClassLabel() {
+    const selected = getSelectedEditOfflineQuizClasses();
+    const label = document.getElementById('editOfflineQuizClassLabel');
+    if (!label) return;
+    if (selected.length === 0) {
+        label.innerText = '-- Select Target Class --';
+    } else if (selected.includes('All Classes')) {
+        label.innerText = 'All Classes';
+    } else if (selected.length <= 2) {
+        label.innerText = selected.join(', ');
+    } else {
+        label.innerText = `${selected.length} Classes Selected`;
+    }
+}
+
+window.closeEditOfflineQuizModal = function() {
+    document.getElementById('editOfflineQuizModal')?.classList.add('hidden');
+};
+
+window.saveEditOfflineQuiz = async function() {
+    const id = document.getElementById('editOfflineQuizId').value;
+    const name = document.getElementById('editOfflineQuizName').value.trim();
+    const type = document.getElementById('editOfflineQuizType').value;
+    const subject = document.getElementById('editOfflineQuizSubject').value;
+    const selectedClasses = getSelectedEditOfflineQuizClasses();
+    const targetClassStr = selectedClasses.includes("All Classes") ? "All Classes" : selectedClasses.join(", ");
+
+    if (!id || !name || !subject || selectedClasses.length === 0) {
+        alert("Please enter an Exam Name, select a Subject, and check at least one Target Class.");
+        return;
+    }
+
+    const saveBtn = document.getElementById('saveEditOfflineQuizBtn');
+    try {
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerText = "Saving...";
+        }
+
+        await updateDoc(doc(db, "system_quizzes", id), {
+            name: name,
+            type: type,
+            subject: subject,
+            targetClass: targetClassStr,
+            targetClassesList: selectedClasses,
+            updatedAt: new Date().toISOString()
+        });
+
+        alert("Offline exam updated successfully!");
+        closeEditOfflineQuizModal();
+
+        if (typeof window.loadSystemDatabases === "function") {
+            await window.loadSystemDatabases();
+        }
+
+    } catch (err) {
+        console.error("Error updating offline exam:", err);
+        alert("Error saving offline exam: " + err.message);
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerText = "Save Changes";
+        }
+    }
+};
+
+window.getSelectedEditOfflineQuizClasses = getSelectedEditOfflineQuizClasses;
+window.updateEditOfflineQuizClassLabel = updateEditOfflineQuizClassLabel;

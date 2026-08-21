@@ -126,10 +126,26 @@ async function loadAvailableQuizzesDropdown() {
 
         snap.forEach(docSnap => {
             const q = docSnap.data();
+            const status = (q.status || 'active').toLowerCase().trim();
+            
+            // Only show quizzes with active status
+            if (status !== 'active') {
+                return;
+            }
+
             const targetClass = (q.targetClass || '').toLowerCase().trim();
+            const targetClassesList = Array.isArray(q.targetClassesList) ? q.targetClassesList.map(c => c.toLowerCase().trim()) : [];
             const studentClass = (currentStudent.studentClass || '').toLowerCase().trim();
 
-            if (targetClass === 'all' || targetClass === 'all classes' || targetClass === studentClass) {
+            const isMatch = targetClass === 'all' || 
+                            targetClass === 'all classes' || 
+                            targetClass === studentClass ||
+                            targetClassesList.includes('all') ||
+                            targetClassesList.includes('all classes') ||
+                            targetClassesList.includes(studentClass) ||
+                            targetClass.split(',').map(s => s.trim()).includes(studentClass);
+
+            if (isMatch) {
                 const quizObj = { id: docSnap.id, ...q };
                 availableQuizzesMap[docSnap.id] = quizObj;
 
@@ -165,6 +181,13 @@ document.getElementById('startSelectedQuizBtn').addEventListener('click', () => 
     renderQuizForm(activeQuiz);
 });
 
+// Auto-resize input textareas to fit content without scrollbars
+window.autoResizeInput = function(el) {
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.max(48, el.scrollHeight) + 'px';
+};
+
 function renderQuizForm(quiz) {
     document.getElementById('activeQuizTitle').innerText = quiz.title;
     document.getElementById('activeQuizSubject').innerText = `Subject: ${quiz.subject || 'General'}`;
@@ -173,6 +196,7 @@ function renderQuizForm(quiz) {
     form.innerHTML = "";
 
     const items = quiz.items || quiz.questions || [];
+    let questionCounter = 0;
 
     items.forEach((item, idx) => {
         const div = document.createElement('div');
@@ -180,66 +204,98 @@ function renderQuizForm(quiz) {
 
         // 1. Header / Section Instructions
         if (item.type === 'header') {
-            div.style.background = "var(--bg-body)";
-            div.style.borderLeft = "4px solid var(--primary-blue)";
+            div.style.background = "var(--bg-body, #f8fafc)";
+            div.style.borderLeft = "5px solid var(--primary-blue, #1e5eff)";
             div.innerHTML = `
-                <h3 style="margin: 0 0 4px 0; color: var(--text-dark);">${item.text}</h3>
-                ${item.description ? `<p style="margin:0; font-size:13px; color:var(--text-gray);">${item.description}</p>` : ''}
+                <h3 style="margin: 0 0 6px 0; font-size: 18px; font-weight: 700; color: var(--text-dark);">${item.text || item.title || 'Section'}</h3>
+                ${item.description ? `<p style="margin:0; font-size:14px; line-height: 1.5; color:var(--text-gray);">${item.description}</p>` : ''}
             `;
         } 
         // 2. Reading Passage
         else if (item.type === 'passage') {
-            div.style.borderLeft = "4px solid #10b981";
-            let imgHtml = item.imageUrl ? `<img src="${item.imageUrl}" style="max-width:100%; border-radius:8px; margin:12px 0;">` : '';
+            div.style.borderLeft = "5px solid #10b981";
+            let imgHtml = item.imageUrl ? `<img src="${item.imageUrl}" style="max-width:100%; border-radius:10px; margin:14px 0; border: 1px solid var(--border-color);">` : '';
             div.innerHTML = `
-                <h4 style="margin-top:0; color:var(--text-dark);">${item.title || 'Reading Passage'}</h4>
-                <div style="white-space: pre-line; background: var(--bg-body); padding: 14px; border-radius: 8px; font-size: 14px; line-height: 1.6;">${item.text || item.prompt}</div>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                    <span style="background: rgba(16, 185, 129, 0.1); color: #10b981; font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 6px; text-transform: uppercase;">Reading Passage</span>
+                </div>
+                <h4 style="margin: 0 0 10px 0; font-size: 16.5px; font-weight: 700; color:var(--text-dark);">${item.title || 'Passage'}</h4>
+                <div style="white-space: pre-line; background: var(--bg-body, #f8fafc); padding: 16px; border-radius: 10px; font-size: 14.5px; line-height: 1.65; border: 1px solid var(--border-color); color: var(--text-dark);">${item.text || item.prompt}</div>
                 ${imgHtml}
             `;
         } 
         // 3. Multiple Choice Question
         else if (item.type === 'mcq' || (!item.type && item.question)) {
-            const prompt = item.prompt || item.question;
-            let imgHtml = item.imageUrl ? `<img src="${item.imageUrl}" style="max-width:100%; border-radius:8px; margin:12px 0;">` : '';
-            
+            questionCounter++;
+            const prompt = item.prompt || item.question || '';
+            let imgHtml = item.imageUrl ? `<img src="${item.imageUrl}" style="max-width:100%; border-radius:12px; margin:14px 0; border: 1px solid var(--border-color);">` : '';
+            const pointsHtml = item.points ? `<span class="q-points-badge">${item.points} pt${item.points > 1 ? 's' : ''}</span>` : '';
+
             div.innerHTML = `
-                <p style="margin-top:0; font-size:15px;"><strong>Question ${idx + 1}: ${prompt}</strong></p>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span class="q-num-badge">No. ${questionCounter}</span>
+                    ${pointsHtml}
+                </div>
+                <div class="quiz-question-text">${prompt}</div>
                 ${imgHtml}
-                ${(item.options || []).map((opt, oIdx) => `
-                    <label class="quiz-option-label">
-                        <input type="radio" name="item_${idx}" value="${oIdx}">
-                        <span>${opt}</span>
-                    </label>
-                `).join('')}
+                <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 6px;">
+                    ${(item.options || []).map((opt, oIdx) => `
+                        <label class="quiz-option-label">
+                            <input type="radio" name="item_${idx}" value="${oIdx}">
+                            <span>${opt}</span>
+                        </label>
+                    `).join('')}
+                </div>
             `;
         } 
         // 4. Fill in the Blank
         else if (item.type === 'fill') {
-            let imgHtml = item.imageUrl ? `<img src="${item.imageUrl}" style="max-width:100%; border-radius:8px; margin:12px 0;">` : '';
+            questionCounter++;
+            const prompt = item.prompt || '';
+            let imgHtml = item.imageUrl ? `<img src="${item.imageUrl}" style="max-width:100%; border-radius:12px; margin:14px 0; border: 1px solid var(--border-color);">` : '';
+            const pointsHtml = item.points ? `<span class="q-points-badge">${item.points} pt${item.points > 1 ? 's' : ''}</span>` : '';
+
             div.innerHTML = `
-                <p style="margin-top:0; font-size:15px;"><strong>Question ${idx + 1}: ${item.prompt}</strong></p>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span class="q-num-badge">No. ${questionCounter}</span>
+                    ${pointsHtml}
+                </div>
+                <div class="quiz-question-text">${prompt}</div>
                 ${imgHtml}
-                <input type="text" name="item_${idx}" placeholder="Type your answer here..." style="width:100%; margin-top:8px;">
+                <textarea name="item_${idx}" class="auto-expand-input" rows="1" placeholder="Type your answer here..." oninput="autoResizeInput(this)"></textarea>
             `;
         } 
         // 5. Essay Question
         else if (item.type === 'essay') {
-            let imgHtml = item.imageUrl ? `<img src="${item.imageUrl}" style="max-width:100%; border-radius:8px; margin:12px 0;">` : '';
+            questionCounter++;
+            const prompt = item.prompt || '';
+            let imgHtml = item.imageUrl ? `<img src="${item.imageUrl}" style="max-width:100%; border-radius:12px; margin:14px 0; border: 1px solid var(--border-color);">` : '';
+            const pointsHtml = item.points ? `<span class="q-points-badge">${item.points} pt${item.points > 1 ? 's' : ''}</span>` : '';
+
             div.innerHTML = `
-                <p style="margin-top:0; font-size:15px;"><strong>Question ${idx + 1}: ${item.prompt}</strong></p>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span class="q-num-badge">No. ${questionCounter}</span>
+                    ${pointsHtml}
+                </div>
+                <div class="quiz-question-text">${prompt}</div>
                 ${imgHtml}
-                <textarea name="item_${idx}" rows="4" placeholder="Write your full response here..." style="width:100%; margin-top:8px;"></textarea>
+                <textarea name="item_${idx}" class="auto-expand-input" rows="3" placeholder="Write your full response here..." oninput="autoResizeInput(this)" style="min-height: 85px;"></textarea>
             `;
         } 
         // 6. Matching Question
         else if (item.type === 'matching') {
+            questionCounter++;
+            const prompt = item.prompt || '';
             let optionsHtml = (item.rights || []).map(r => `<option value="${r}">${r}</option>`).join('');
             div.innerHTML = `
-                <p style="margin-top:0; font-size:15px;"><strong>Question ${idx + 1}: ${item.prompt}</strong></p>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span class="q-num-badge">No. ${questionCounter}</span>
+                </div>
+                <div class="quiz-question-text">${prompt}</div>
                 ${(item.lefts || []).map((left, lIdx) => `
-                    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin:10px 0;">
-                        <span style="font-size:14px;">${left}</span>
-                        <select name="item_${idx}_${lIdx}" style="width:auto; margin:0; padding:8px 12px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin:10px 0; background: var(--bg-body, #f8fafc); padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border-color);">
+                        <span style="font-size:14.5px; font-weight: 600; color: var(--text-dark);">${left}</span>
+                        <select name="item_${idx}_${lIdx}" style="width:auto; margin:0; padding:8px 14px; font-size: 13.5px; font-weight: 600; border-radius: 8px;">
                             <option value="">-- Choose Match --</option>
                             ${optionsHtml}
                         </select>
@@ -281,7 +337,7 @@ document.getElementById('submitQuizBtn').addEventListener('click', async (e) => 
         // Fill in Blank
         else if (item.type === 'fill') {
             autoGradableCount++;
-            const input = form.querySelector(`input[name="item_${idx}"]`);
+            const input = form.querySelector(`[name="item_${idx}"]`);
             const val = input ? input.value.trim().toLowerCase() : "";
             if (item.answers && item.answers.map(a => a.toLowerCase()).includes(val)) score++;
             studentResponses.push({ prompt: item.prompt, response: val || "No answer" });

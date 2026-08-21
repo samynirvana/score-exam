@@ -171,9 +171,9 @@ async function showTimelineApp() {
     if (appEl) appEl.classList.remove('hidden');
 
     const badgeHTML = currentUser.type === 'staff' ? ` <span class="staff-badge">✓</span>` : '';
-    const classBadgeHTML = currentUser.studentClass ? ` (${currentUser.studentClass})` : '';
+    const firstName = (currentUser.name || '').trim().split(' ')[0] || currentUser.name || 'User';
     const nameDisp = document.getElementById('currentUserDisplay');
-    if (nameDisp) nameDisp.innerHTML = currentUser.name + badgeHTML + classBadgeHTML;
+    if (nameDisp) nameDisp.innerHTML = firstName + badgeHTML;
 
     const sidebarName = document.getElementById('sidebarStudentName');
     const sidebarClass = document.getElementById('sidebarStudentClass');
@@ -410,6 +410,24 @@ window.openNotification = async function(notifId, postId) {
 
 // --- 5. POSTING & RENDERING (WITH KEBAB MENU) ---
 
+// Auto-resize timeline post textarea dynamically to fit text without scrollbar
+const initPostTextareaAutoResize = () => {
+    const postMsgEl = document.getElementById('postMessage');
+    if (!postMsgEl) return;
+    const resize = () => {
+        postMsgEl.style.height = 'auto';
+        postMsgEl.style.height = Math.max(80, postMsgEl.scrollHeight) + 'px';
+    };
+    postMsgEl.addEventListener('input', resize);
+    postMsgEl.addEventListener('change', resize);
+    postMsgEl.addEventListener('focus', resize);
+};
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPostTextareaAutoResize);
+} else {
+    initPostTextareaAutoResize();
+}
+
 document.getElementById('submitPostBtn')?.addEventListener('click', async () => {
     if (!currentUser) return alert("Please log in first to submit a post.");
     const postMsgEl = document.getElementById('postMessage');
@@ -435,6 +453,7 @@ document.getElementById('submitPostBtn')?.addEventListener('click', async () => 
         }
 
         postMsgEl.value = '';
+        postMsgEl.style.height = '80px';
     } catch (error) {
         alert("Failed to publish post: " + error.message);
     }

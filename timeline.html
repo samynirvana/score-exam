@@ -19,9 +19,9 @@
         rel="stylesheet">
 
     <!-- External Stylesheets -->
-    <link rel="stylesheet" href="admin.css?v=305">
-    <link rel="stylesheet" href="student.css?v=305">
-    <link rel="stylesheet" href="timeline.css?v=311">
+    <link rel="stylesheet" href="admin.css?v=309">
+    <link rel="stylesheet" href="student.css?v=309">
+    <link rel="stylesheet" href="timeline.css?v=318">
 </head>
 
 <body>
@@ -78,6 +78,15 @@
                     <span class="menu-label">Classroom Timeline</span>
                 </a>
 
+                <a href="profile.html" class="menu-btn" data-label="Profile" style="text-decoration: none;">
+                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <span class="menu-label">Profile</span>
+                </a>
+
                 <a href="scores.html" class="menu-btn" data-label="My Scores" style="text-decoration: none;">
                     <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -129,12 +138,13 @@
 
             <!-- MOBILE KEBAB MENU BUTTON & DROPDOWN (VISIBLE ON <= 768px) -->
             <div class="mobile-kebab-container">
-                <button id="mobileTopbarKebabBtn" class="mobile-kebab-btn" aria-label="Toggle Menu">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5"
+                <button id="mobileTopbarKebabBtn" class="mobile-kebab-btn" aria-label="Toggle Menu" title="Menu">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2"
                         stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="3" y1="6" x2="21" y2="6"></line>
-                        <line x1="3" y1="12" x2="21" y2="12"></line>
-                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                        <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+                        <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+                        <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+                        <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
                     </svg>
                 </button>
 
@@ -170,7 +180,7 @@
                         </svg>
                         <span>Classroom Feed</span>
                     </a>
-                    <a href="index.html#myProfileCard" class="kebab-item nav-profile">
+                    <a href="profile.html" class="kebab-item nav-profile">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="2">
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
@@ -227,28 +237,31 @@
         </header>
 
         <!-- MAIN CONTENT AREA -->
-        <main class="main-wrapper" style="padding-top: 24px;">
+        <main class="main-wrapper">
 
             <!-- MAIN TIMELINE APP -->
             <div id="timelineApp" class="container timeline-container"
                 style="max-width: 680px; margin: 0 auto; width: 100%;">
 
                 <!-- TOP FEED BAR (THREADS STYLE HEADER) -->
-                <div
-                    style="position: sticky; top: 0; z-index: 10; backdrop-filter: blur(12px); background: var(--bg-color, #f1f5f9); padding: 18px 0; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <div class="timeline-feed-header"
+                    style="position: sticky; top: 0; z-index: 10; backdrop-filter: blur(12px); background: var(--bg-color, #f1f5f9); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
                     <div>
                         <h2 class="timeline-heading"
-                            style="margin: 0; font-size: 22px; font-weight: 800; color: var(--text-main);">Classroom
-                            Feed</h2>
-                        <p style="font-size: 13px; color: #10b981; margin: 2px 0 0 0; font-weight: 600;">
-                            Connected as: <span id="currentUserDisplay"></span>
+                            style="margin: 0; font-size: 22px; font-weight: 800; color: var(--text-main);">Timeline</h2>
+                        <p class="timeline-user-subtext" style="font-size: 13px; color: var(--primary-blue, #1e5eff); margin: 2px 0 0 0; font-weight: 600;">
+                            User: <span id="currentUserDisplay"></span>
                         </p>
                     </div>
                     <div class="nav-controls" style="display: flex; align-items: center; gap: 10px;">
                         <div class="notif-wrapper" style="position: relative;">
-                            <button id="notifToggleBtn" class="notif-btn"
-                                style="padding: 6px 14px; font-size: 13px; border-radius: 20px;">Alerts <span
-                                    id="notifBadge" class="notif-badge">0</span></button>
+                            <button id="notifToggleBtn" class="notif-btn" title="Alerts" aria-label="Alerts">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                                </svg>
+                                <span id="notifBadge" class="notif-badge">0</span>
+                            </button>
                             <div id="notifDropdown" class="notif-dropdown">
                                 <div
                                     style="padding: 12px; text-align: center; font-size: 13px; color: var(--text-muted);">
@@ -261,33 +274,21 @@
                 <!-- POST CREATION CARD (TWITTER / THREADS COMPOSER STYLE) -->
                 <div class="post-box"
                     style="background: var(--card-bg); border-radius: 16px; border: 1px solid var(--border-color); padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 24px;">
-                    <div style="display: flex; gap: 14px;">
-                        <div
-                            style="width: 42px; height: 42px; border-radius: 50%; background: #eff6ff; color: #1e5eff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid #bfdbfe;">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M12 20h9"></path>
-                                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-                            </svg>
-                        </div>
-                        <div style="flex: 1;">
-                            <textarea id="postMessage"
-                                placeholder="Start a discussion or post an update... (Type @ to mention someone)"
-                                style="width: 100%; border: none; background: transparent; resize: none; min-height: 80px; font-size: 15px; outline: none; padding: 4px 0; color: var(--text-main);"></textarea>
+                    <div>
+                        <textarea id="postMessage"
+                            placeholder="Start a discussion or post an update... (Type @ to mention someone)"
+                            style="width: 100%; border: none; background: transparent; resize: none; min-height: 80px; font-size: 15px; outline: none; padding: 4px 0; color: var(--text-main); box-sizing: border-box;"></textarea>
 
-                            <div class="post-options-row"
-                                style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color);">
-                                <div class="target-selector-wrapper"
-                                    style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted);">
-                                    <span>Audience:</span>
-                                    <select id="postTargetClass"
-                                        style="padding: 4px 10px; border-radius: 8px; font-size: 13px; font-weight: 600;">
-                                        <option value="All">All Classes</option>
-                                    </select>
-                                </div>
-                                <button id="submitPostBtn"
-                                    style="background: #1e5eff; color: white; border: none; padding: 8px 20px; border-radius: 20px; font-weight: 700; font-size: 14px; cursor: pointer;">Post</button>
+                        <div class="post-options-row"
+                            style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+                            <div class="target-selector-wrapper"
+                                style="display: flex; align-items: center;">
+                                <select id="postTargetClass">
+                                    <option value="All">All Classes</option>
+                                </select>
                             </div>
+                            <button id="submitPostBtn"
+                                style="background: #1e5eff; color: white; border: none; padding: 6px 18px; border-radius: 20px; font-weight: 700; font-size: 13.5px; cursor: pointer;">Post</button>
                         </div>
                     </div>
                 </div>

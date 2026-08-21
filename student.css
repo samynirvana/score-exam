@@ -128,7 +128,8 @@
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
-    overflow: hidden !important; /* Clips wide children inside card */
+    overflow: hidden !important;
+    /* Clips wide children inside card */
     padding: 20px !important;
     margin-bottom: 20px !important;
 }
@@ -154,12 +155,14 @@
 
 .table-responsive table {
     width: 100% !important;
-    min-width: 0 !important; /* CRITICAL FIX: Removes admin.css 550px min-width */
+    min-width: 0 !important;
+    /* CRITICAL FIX: Removes admin.css 550px min-width */
     table-layout: auto !important;
     white-space: normal !important;
 }
 
-th, td {
+th,
+td {
     padding: 10px 12px !important;
     font-size: 13px !important;
     word-break: break-word !important;
@@ -192,7 +195,7 @@ th, td {
         padding: 12px 16px !important;
     }
 
-    .quick-links-grid, 
+    .quick-links-grid,
     .profile-grid {
         grid-template-columns: 1fr !important;
         gap: 12px !important;
@@ -205,7 +208,7 @@ th, td {
         padding: 16px !important;
     }
 
-    .hero-point-card > div:last-child {
+    .hero-point-card>div:last-child {
         text-align: left !important;
     }
 
@@ -235,28 +238,29 @@ th, td {
 }
 
 .nav-controls {
-  display: flex;
-  align-items: center;
-  gap: 10px; /* Space between dark mode and teacher button */
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    /* Space between dark mode and teacher button */
 }
 
 /* Styling for the For Teacher button */
 .teacher-btn {
-  display: inline-block;
-  padding: 8px 16px;
-  background-color: #2b6cb0;
-  color: #ffffff;
-  text-decoration: none;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: background-color 0.2s ease;
+    display: inline-block;
+    padding: 8px 16px;
+    background-color: #2b6cb0;
+    color: #ffffff;
+    text-decoration: none;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
 }
 
 .teacher-btn:hover {
-  background-color: #2c5282;
+    background-color: #2c5282;
 }
 
 /* ======================================================
@@ -344,7 +348,8 @@ th, td {
     height: 50px !important;
     min-width: 50px !important;
     min-height: 50px !important;
-    background-color: #ffffff; /* Yellow background */
+    background-color: #ffffff;
+    /* Yellow background */
     border-radius: 10px;
     display: flex !important;
     align-items: center !important;
@@ -372,7 +377,7 @@ th, td {
     gap: 12px;
 }
 
-.theme-toggle-btn, 
+.theme-toggle-btn,
 .teacher-btn {
     display: inline-flex !important;
     align-items: center !important;
@@ -628,13 +633,18 @@ th, td {
     transform: translateX(4px);
 }
 
-.blue-arrow { color: #2563eb; }
-.green-arrow { color: #16a34a; }
+.blue-arrow {
+    color: #2563eb;
+}
+
+.green-arrow {
+    color: #16a34a;
+}
 
 /* ======================================================
    ROUNDED PILL BUTTON STYLING SYSTEM (LIGHT & DARK THEME)
    ====================================================== */
-button, 
+button:not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.card-kebab-btn):not(#profileCardKebabBtn):not(.profile-dropdown-item),
 .btn-pill,
 .teacher-btn,
 .theme-toggle-btn,
@@ -660,7 +670,7 @@ button,
     transition: all 0.2s ease !important;
 }
 
-button:hover,
+button:not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.card-kebab-btn):not(#profileCardKebabBtn):not(.profile-dropdown-item):hover,
 .btn-pill:hover,
 .teacher-btn:hover,
 .theme-toggle-btn:hover,
@@ -683,7 +693,7 @@ button:active,
 }
 
 /* Dark Theme Button Overrides */
-.dark-theme button,
+.dark-theme button:not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.card-kebab-btn):not(#profileCardKebabBtn):not(.profile-dropdown-item),
 .dark-theme .btn-pill,
 .dark-theme .teacher-btn,
 .dark-theme .theme-toggle-btn,
@@ -699,7 +709,7 @@ button:active,
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
 }
 
-.dark-theme button:hover,
+.dark-theme button:not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):hover,
 .dark-theme .btn-pill:hover,
 .dark-theme .teacher-btn:hover,
 .dark-theme .theme-toggle-btn:hover,
@@ -742,7 +752,7 @@ button:active,
     .main-wrapper {
         padding: 16px 20px 32px !important;
     }
-    
+
     .dashboard-grid {
         grid-template-columns: 1fr !important;
         gap: 20px !important;
@@ -752,7 +762,7 @@ button:active,
         grid-template-columns: repeat(2, 1fr) !important;
         gap: 14px !important;
     }
-    
+
     .dashboard-overview-grid {
         grid-template-columns: 1fr !important;
     }
@@ -760,6 +770,7 @@ button:active,
 
 /* Mobile & iPhone Breakpoint (<= 768px) */
 @media screen and (max-width: 768px) {
+
     .sidebar,
     .student-sidebar {
         padding: 0 10px !important;
@@ -845,7 +856,7 @@ button:active,
         padding: 24px !important;
     }
 
-    #spotlightHeroCard > div {
+    #spotlightHeroCard>div {
         max-width: 100% !important;
     }
 
@@ -864,15 +875,20 @@ button:active,
     }
 
     /* Input & Button touch targets for iPhone & iPad */
-    input, select, textarea, button {
-        font-size: 16px !important; /* Prevents auto-zoom on iOS Safari */
+    input,
+    select,
+    textarea,
+    button {
+        font-size: 16px !important;
+        /* Prevents auto-zoom on iOS Safari */
     }
 }
 
 /* Small iPhone Breakpoint (<= 480px) */
 @media screen and (max-width: 480px) {
     .brand div:nth-child(2) {
-        display: none !important; /* Hide brand text on tiny screens, show logo badge */
+        display: none !important;
+        /* Hide brand text on tiny screens, show logo badge */
     }
 
     .sidebar,
@@ -890,7 +906,8 @@ button:active,
     }
 
     .teacher-btn span {
-        display: none !important; /* Icon-only teacher button on tiny mobile */
+        display: none !important;
+        /* Icon-only teacher button on tiny mobile */
     }
 
     .teacher-btn {
@@ -902,7 +919,8 @@ button:active,
 
     #mainThemeText,
     #themeToggleText {
-        display: none !important; /* Icon-only theme button on tiny mobile */
+        display: none !important;
+        /* Icon-only theme button on tiny mobile */
     }
 
     .theme-toggle-btn {
@@ -932,35 +950,80 @@ button:active,
     z-index: 999999;
 }
 
-.mobile-kebab-btn {
+button.mobile-kebab-btn,
+.mobile-kebab-btn,
+#mobileTopbarKebabBtn {
     background: #1e5eff !important;
     color: #ffffff !important;
-    border: none !important;
+    border: 1px solid rgba(255, 255, 255, 0.35) !important;
     border-radius: 10px !important;
     width: 38px !important;
     height: 38px !important;
     min-width: 38px !important;
     min-height: 38px !important;
-    display: flex !important;
+    display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    cursor: pointer !important;
-    box-shadow: 0 4px 12px rgba(30, 94, 255, 0.4) !important;
-    outline: none !important;
     padding: 0 !important;
-    transition: transform 0.1s ease, background 0.2s ease !important;
+    cursor: pointer !important;
+    box-shadow: 0 3px 10px rgba(30, 94, 255, 0.45) !important;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-.mobile-kebab-btn:active {
+button.mobile-kebab-btn:hover,
+.mobile-kebab-btn:hover,
+#mobileTopbarKebabBtn:hover {
+    background: #2563eb !important;
+    border-color: rgba(255, 255, 255, 0.7) !important;
+    transform: scale(1.05) !important;
+}
+
+button.mobile-kebab-btn:active,
+.mobile-kebab-btn:active,
+#mobileTopbarKebabBtn:active {
     transform: scale(0.92) !important;
+    background: #1d4ed8 !important;
 }
 
-.mobile-kebab-btn svg {
+button.mobile-kebab-btn svg,
+.mobile-kebab-btn svg,
+#mobileTopbarKebabBtn svg {
     width: 20px !important;
     height: 20px !important;
     stroke: #ffffff !important;
     fill: none !important;
+    stroke-width: 2.2 !important;
+    color: #ffffff !important;
     pointer-events: none !important;
+    display: block !important;
+}
+
+/* Dark mode override for mobile kebab button */
+body.dark-theme button.mobile-kebab-btn,
+body.dark-mode button.mobile-kebab-btn,
+body.dark-theme #mobileTopbarKebabBtn,
+body.dark-mode #mobileTopbarKebabBtn {
+    background: #2563eb !important;
+    border: 1px solid rgba(147, 197, 253, 0.6) !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 14px rgba(37, 99, 235, 0.6) !important;
+}
+
+body.dark-theme button.mobile-kebab-btn:hover,
+body.dark-mode button.mobile-kebab-btn:hover,
+body.dark-theme #mobileTopbarKebabBtn:hover,
+body.dark-mode #mobileTopbarKebabBtn:hover {
+    background: #3b82f6 !important;
+    border-color: #93c5fd !important;
+}
+
+body.dark-theme button.mobile-kebab-btn svg,
+body.dark-mode button.mobile-kebab-btn svg,
+body.dark-theme #mobileTopbarKebabBtn svg,
+body.dark-mode #mobileTopbarKebabBtn svg {
+    stroke: #ffffff !important;
+    fill: none !important;
+    color: #ffffff !important;
 }
 
 .mobile-topbar-dropdown {
@@ -986,6 +1049,7 @@ button:active,
         opacity: 0;
         transform: translateY(-8px) scale(0.96);
     }
+
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
@@ -1050,7 +1114,7 @@ button:active,
 
 /* RESPONSIVE HIDING/SHOWING OF TOPBAR ON MOBILE (<= 768px) */
 @media screen and (max-width: 768px) {
-    .brand > div:first-child {
+    .brand>div:first-child {
         width: 32px !important;
         height: 32px !important;
         padding: 4px !important;

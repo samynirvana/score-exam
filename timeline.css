@@ -51,6 +51,25 @@ body {
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+/* Post Message Textarea Auto-Expand & Hide Scrollbars */
+#postMessage,
+.comment-input-field,
+.auto-expand-textarea {
+    overflow-y: hidden !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    resize: none !important;
+    transition: height 0.1s ease !important;
+}
+
+#postMessage::-webkit-scrollbar,
+.comment-input-field::-webkit-scrollbar,
+.auto-expand-textarea::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+
 input, textarea, button {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 15px;
@@ -69,10 +88,68 @@ input, textarea, button {
 .timeline-container { 
     max-width: 680px; 
     margin: 0 auto; 
-    width: 100%; 
-    text-align: left; 
-    background-color: var(--bg-color) !important;
-    color: var(--text-main);
+    background-color: transparent !important;
+}
+
+#timelineFeed {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.timeline-feed-header {
+    padding: 14px 0;
+    margin-bottom: 18px;
+}
+
+.timeline-user-subtext {
+    font-size: 13px;
+    color: var(--primary-blue, #1e5eff) !important;
+    margin: 2px 0 0 0;
+    font-weight: 600;
+}
+
+body.dark-theme .timeline-user-subtext,
+body.dark-mode .timeline-user-subtext {
+    color: #60a5fa !important;
+}
+
+/* Bulletproof reinforcement for Mobile Menu Button */
+#mobileTopbarKebabBtn.mobile-kebab-btn,
+.mobile-kebab-container .mobile-kebab-btn {
+    background: #1e5eff !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.35) !important;
+    border-radius: 10px !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 3px 10px rgba(30, 94, 255, 0.45) !important;
+    padding: 0 !important;
+    cursor: pointer !important;
+}
+
+#mobileTopbarKebabBtn.mobile-kebab-btn svg,
+.mobile-kebab-container .mobile-kebab-btn svg {
+    width: 20px !important;
+    height: 20px !important;
+    stroke: #ffffff !important;
+    fill: none !important;
+    stroke-width: 2.2 !important;
+    color: #ffffff !important;
+    pointer-events: none !important;
+    display: block !important;
+}
+
+body.dark-theme #mobileTopbarKebabBtn.mobile-kebab-btn,
+body.dark-mode #mobileTopbarKebabBtn.mobile-kebab-btn {
+    background: #2563eb !important;
+    border: 1px solid rgba(147, 197, 253, 0.6) !important;
+    box-shadow: 0 0 14px rgba(37, 99, 235, 0.6) !important;
 }
 
 /* ==========================================================================
@@ -530,20 +607,26 @@ input, textarea, button {
     color: var(--text-muted);
 }
 
-.target-selector-wrapper select {
-    flex: 1;
-    padding: 10px 12px;
+.target-selector-wrapper select,
+#postTargetClass {
+    padding: 6px 24px 6px 10px !important;
     background-color: var(--input-bg);
     color: var(--text-main);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    height: 36px !important;
+    line-height: normal !important;
+    box-sizing: border-box !important;
     outline: none;
     cursor: pointer;
+    display: inline-block !important;
+    vertical-align: middle !important;
 }
 
-.target-selector-wrapper select:focus {
+.target-selector-wrapper select:focus,
+#postTargetClass:focus {
     border-color: var(--primary-color);
 }
 
@@ -572,8 +655,71 @@ input, textarea, button {
 
 /* Notifications & Mentions */
 .notif-wrapper { position: relative; }
-.notif-btn { background: #200094; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; min-height: 40px; }
-.notif-badge { position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; font-size: 10px; padding: 2px 6px; border-radius: 50%; font-weight: bold; display: none; }
+#notifToggleBtn.notif-btn,
+.notif-btn { 
+    background: #ffffff !important; 
+    color: #1e293b !important; 
+    border: 1.5px solid #cbd5e1 !important; 
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    max-width: 36px !important;
+    max-height: 36px !important;
+    padding: 0 !important; 
+    border-radius: 50% !important; 
+    cursor: pointer !important; 
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.2s ease !important;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08) !important;
+}
+#notifToggleBtn.notif-btn:hover,
+.notif-btn:hover {
+    background: #f1f5f9 !important;
+    border-color: #94a3b8 !important;
+    transform: scale(1.06) !important;
+}
+#notifToggleBtn.notif-btn svg,
+.notif-btn svg {
+    width: 18px !important;
+    height: 18px !important;
+    stroke: #1e293b !important;
+    fill: none !important;
+    stroke-width: 2.2 !important;
+    color: #1e293b !important;
+    display: block !important;
+    pointer-events: none !important;
+}
+.notif-badge { 
+    position: absolute !important; 
+    top: -4px !important; 
+    right: -4px !important; 
+    background: #ef4444 !important; 
+    color: #ffffff !important; 
+    font-size: 10px !important; 
+    padding: 1px 5px !important; 
+    border-radius: 10px !important; 
+    font-weight: 800 !important; 
+    display: none; 
+}
+body.dark-theme #notifToggleBtn.notif-btn,
+body.dark-mode #notifToggleBtn.notif-btn,
+body.dark-theme .notif-btn,
+body.dark-mode .notif-btn {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+body.dark-theme #notifToggleBtn.notif-btn svg,
+body.dark-mode #notifToggleBtn.notif-btn svg,
+body.dark-theme .notif-btn svg,
+body.dark-mode .notif-btn svg {
+    stroke: #f8fafc !important;
+    color: #f8fafc !important;
+}
 .notif-dropdown { display: none; position: absolute; top: 45px; right: 0; width: 300px; max-height: 320px; overflow-y: auto; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15); z-index: 100; }
 .notif-item { padding: 12px 14px; border-bottom: 1px solid var(--border-color); font-size: 14px; cursor: pointer; color: var(--text-main); }
 .notif-item:hover { background: var(--comment-bg); }
@@ -588,14 +734,18 @@ input, textarea, button {
    8. RESPONSIVE DESIGN (MOBILE & TABLET)
    ========================================================================== */
 @media (max-width: 768px) {
-    body { padding: 12px 8px; }
-    .timeline-container { width: 100%; }
+    body { padding: 0 !important; margin: 0 !important; }
+    .app-container { width: 100% !important; padding: 0 !important; margin: 0 !important; }
+    .sidebar, .student-sidebar { width: 100% !important; border-radius: 0 !important; padding: 0 12px !important; }
+    .main-wrapper { padding: 8px 14px 24px !important; }
+    .timeline-container { width: 100% !important; }
     .post-body { padding-left: 0; }
     .top-nav { flex-direction: row; gap: 10px; }
 }
 
 @media (max-width: 480px) {
-    body { font-size: 15px; }
+    body { font-size: 15px; padding: 0 !important; margin: 0 !important; }
+    .main-wrapper { padding: 6px 12px 24px !important; }
     .timeline-post, .post-box { padding: 16px; margin-bottom: 14px; }
     .reply-box { flex-direction: column; }
     .reply-box button { width: 100%; }

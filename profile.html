@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>My Profile - Student Portal</title>
+    <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/1o_7O1hdx1SJOXfoFw9ZKxpl4zSOD_VYd">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="admin.css?v=315">
+    <link rel="stylesheet" href="student.css?v=315">
+    <style>
+        .profile-container {
+            max-width: 720px;
+            margin: 0 auto;
+            width: 100%;
+            padding: 24px 16px 60px;
+        }
+
+        .profile-hero-card {
+            background: var(--card-bg, #ffffff);
+            border: 1px solid var(--border-color, #e2e8f0);
+            border-radius: 20px;
+            padding: 32px 24px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+            text-align: center;
+            position: relative;
+            margin-bottom: 24px;
+        }
+
+        .profile-avatar-wrapper {
+            position: relative;
+            width: 165px;
+            height: 220px;
+            margin: 0 auto 20px;
+            border-radius: 20px;
+            padding: 4px;
+            background: linear-gradient(135deg, #1e5eff, #3b82f6, #60a5fa);
+            box-shadow: 0 10px 28px rgba(30, 94, 255, 0.25);
+            aspect-ratio: 6 / 8;
+        }
+
+        .profile-avatar-img {
+            width: 100%;
+            height: 100%;
+            border-radius: 16px;
+            object-fit: cover;
+            background: #f1f5f9;
+            display: block;
+            border: 2.5px solid var(--card-bg, #ffffff);
+        }
+
+        .profile-avatar-fallback {
+            width: 100%;
+            height: 100%;
+            border-radius: 16px;
+            background: #eff6ff;
+            color: #1e5eff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2.5px solid var(--card-bg, #ffffff);
+        }
+
+        .avatar-upload-spinner {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(2px);
+            z-index: 10;
+        }
+
+        .mini-spinner {
+            width: 34px;
+            height: 34px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Card Kebab Options Menu */
+        .card-kebab-wrapper {
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            z-index: 20;
+        }
+
+        .card-kebab-btn {
+            width: 36px !important;
+            height: 36px !important;
+            padding: 0 !important;
+            border-radius: 50% !important;
+            background: rgba(0, 0, 0, 0.04) !important;
+            color: var(--text-gray, #64748b) !important;
+            border: 1px solid var(--border-color, #e2e8f0) !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            cursor: pointer !important;
+            box-shadow: none !important;
+            transition: all 0.2s ease !important;
+        }
+
+        .card-kebab-btn:hover {
+            background: rgba(30, 94, 255, 0.1) !important;
+            color: var(--primary-blue, #1e5eff) !important;
+            border-color: rgba(30, 94, 255, 0.3) !important;
+            transform: scale(1.05) !important;
+        }
+
+        body.dark-theme .card-kebab-btn,
+        body.dark-mode .card-kebab-btn {
+            background: rgba(255, 255, 255, 0.06) !important;
+            color: #94a3b8 !important;
+            border-color: #334155 !important;
+        }
+
+        .profile-card-dropdown {
+            position: absolute;
+            top: 42px;
+            right: 0;
+            background: var(--card-bg, #ffffff);
+            border: 1px solid var(--border-color, #e2e8f0);
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+            min-width: 200px;
+            padding: 6px;
+            z-index: 100;
+            animation: fadeInDown 0.15s ease-out;
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .profile-dropdown-item {
+            width: 100% !important;
+            background: transparent !important;
+            border: none !important;
+            color: var(--text-dark, #334155) !important;
+            padding: 10px 14px !important;
+            font-size: 13.5px !important;
+            font-weight: 600 !important;
+            border-radius: 8px !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+            cursor: pointer !important;
+            text-align: left !important;
+            box-shadow: none !important;
+            transition: background 0.15s ease !important;
+        }
+
+        .profile-dropdown-item:hover {
+            background: rgba(30, 94, 255, 0.08) !important;
+            color: var(--primary-blue, #1e5eff) !important;
+        }
+
+        body.dark-theme .profile-dropdown-item,
+        body.dark-mode .profile-dropdown-item {
+            color: #cbd5e1 !important;
+        }
+
+        body.dark-theme .profile-dropdown-item:hover,
+        body.dark-mode .profile-dropdown-item:hover {
+            background: rgba(255, 255, 255, 0.08) !important;
+            color: #60a5fa !important;
+        }
+
+        .upload-status-toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #0f172a;
+            color: #ffffff;
+            padding: 12px 22px;
+            border-radius: 12px;
+            font-size: 13.5px;
+            font-weight: 600;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 9999;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .upload-status-toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .profile-name {
+            margin: 0 0 6px;
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--text-main, #0f172a);
+        }
+
+        .profile-badges-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .profile-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .badge-class {
+            background: rgba(30, 94, 255, 0.1);
+            color: var(--primary-blue, #1e5eff);
+            border: 1px solid rgba(30, 94, 255, 0.2);
+        }
+
+        .badge-code {
+            background: #f8fafc;
+            color: var(--text-dark, #334155);
+            border: 1px solid #e2e8f0;
+            font-family: monospace;
+            letter-spacing: 0.5px;
+        }
+
+        body.dark-theme .badge-code,
+        body.dark-mode .badge-code {
+            background: #1e293b;
+            color: #cbd5e1;
+            border-color: #334155;
+        }
+
+        .profile-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 24px;
+            text-align: left;
+        }
+
+        .info-card {
+            background: var(--bg-color, #f8fafc);
+            border: 1px solid var(--border-color, #e2e8f0);
+            border-radius: 14px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .info-icon-circle {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .info-title {
+            font-size: 12px;
+            color: var(--text-gray, #64748b);
+            font-weight: 600;
+            margin: 0 0 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-value {
+            font-size: 15px;
+            color: var(--text-main, #0f172a);
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .stats-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-shortcut-card {
+            background: var(--card-bg, #ffffff);
+            border: 1px solid var(--border-color, #e2e8f0);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            text-decoration: none;
+            color: inherit;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .stat-shortcut-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--primary-blue, #1e5eff);
+            box-shadow: 0 8px 20px rgba(30, 94, 255, 0.08);
+        }
+
+        @media (max-width: 600px) {
+            .profile-container {
+                padding: 12px 10px 40px;
+            }
+
+            .profile-hero-card {
+                padding: 24px 16px;
+            }
+
+            .profile-avatar-wrapper {
+                width: 135px;
+                height: 180px;
+                border-radius: 16px;
+            }
+
+            .profile-name {
+                font-size: 20px;
+            }
+
+            .profile-info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="app-container">
+
+        <!-- TOP NAVIGATION HEADER BAR -->
+        <header class="sidebar student-sidebar">
+            <div class="brand">
+                <div style="background: #ffffff; padding: 6px; border-radius: 10px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <img src="https://lh3.googleusercontent.com/d/1o_7O1hdx1SJOXfoFw9ZKxpl4zSOD_VYd" alt="Logo" style="width: 100%; height: 100%; object-fit: contain;">
+                </div>
+                <div>
+                    <h2 style="margin: 0; font-size: 15px; font-weight: 800; color: #ffffff; letter-spacing: 0.5px;">MITRA KASIH SCHOOL</h2>
+                    <p style="margin: 2px 0 0 0; font-size: 12px; color: var(--text-gray);">Student Portal</p>
+                </div>
+            </div>
+
+            <div class="menu-bar desktop-menu-bar">
+                <!-- 1. Dashboard -->
+                <a href="index.html" class="menu-btn" data-label="Dashboard" style="text-decoration: none;">
+                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
+                    <span class="menu-label">Dashboard</span>
+                </a>
+
+                <!-- 2. Online Quiz -->
+                <a href="quiz.html" class="menu-btn" data-label="Online Quiz" style="text-decoration: none;">
+                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    <span class="menu-label">Online Quiz</span>
+                </a>
+
+                <!-- 3. Classroom Timeline -->
+                <a href="timeline.html" class="menu-btn" data-label="Classroom Feed" style="text-decoration: none;">
+                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="8" y1="6" x2="21" y2="6"></line>
+                        <line x1="8" y1="12" x2="21" y2="12"></line>
+                        <line x1="8" y1="18" x2="21" y2="18"></line>
+                        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                    </svg>
+                    <span class="menu-label">Classroom Timeline</span>
+                </a>
+
+                <!-- 4. My Profile (Active) -->
+                <a href="profile.html" class="menu-btn active" data-label="My Profile" style="text-decoration: none;">
+                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <span class="menu-label">My Profile</span>
+                </a>
+
+                <!-- 5. My Scores -->
+                <a href="scores.html" class="menu-btn" data-label="My Scores" style="text-decoration: none;">
+                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                        <line x1="8" y1="21" x2="16" y2="21"></line>
+                        <line x1="12" y1="17" x2="12" y2="21"></line>
+                    </svg>
+                    <span class="menu-label">My Scores</span>
+                </a>
+            </div>
+
+            <!-- USER PROFILE & ACTIONS RIGHT -->
+            <div class="user-profile-bottom desktop-user-actions"
+                style="display: flex; align-items: center; gap: 12px; margin: 0;">
+                <button id="themeToggleBtn" class="theme-toggle-btn" style="padding: 6px 12px; font-size: 13px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <span id="mainThemeText">Dark Mode</span>
+                </button>
+                <button onclick="window.location.href='admin.html'" class="teacher-btn"
+                    style="padding: 6px 12px; font-size: 13px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                        <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+                    </svg>
+                    <span>For Teacher</span>
+                </button>
+                <button id="studentLogoutBtn" title="Logout"
+                    style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; padding: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- MOBILE KEBAB MENU BUTTON & DROPDOWN (VISIBLE ON <= 768px) -->
+            <div class="mobile-kebab-container">
+                <button id="mobileTopbarKebabBtn" class="mobile-kebab-btn" aria-label="Toggle Menu" title="Menu">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+                        <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+                        <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+                        <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+                    </svg>
+                </button>
+
+                <div id="mobileTopbarDropdown" class="mobile-topbar-dropdown hidden">
+                    <div class="kebab-group-label">NAVIGATION</div>
+                    <a href="index.html" class="kebab-item nav-dashboard">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                        </svg>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="quiz.html" class="kebab-item nav-quiz">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                        </svg>
+                        <span>Online Quiz</span>
+                    </a>
+                    <a href="timeline.html" class="kebab-item nav-timeline">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="8" y1="6" x2="21" y2="6"></line>
+                            <line x1="8" y1="12" x2="21" y2="12"></line>
+                            <line x1="8" y1="18" x2="21" y2="18"></line>
+                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                        </svg>
+                        <span>Classroom Feed</span>
+                    </a>
+                    <a href="profile.html" class="kebab-item nav-profile active">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        <span>My Profile</span>
+                    </a>
+                    <a href="scores.html" class="kebab-item nav-scores">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                            <line x1="8" y1="21" x2="16" y2="21"></line>
+                            <line x1="12" y1="17" x2="12" y2="21"></line>
+                        </svg>
+                        <span>My Scores</span>
+                    </a>
+
+                    <div class="kebab-divider"></div>
+                    <div class="kebab-group-label">ACTIONS</div>
+                    <button id="mobileKebabThemeBtn" class="kebab-item">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                        <span id="mobileKebabThemeText">Dark Mode</span>
+                    </button>
+                    <button onclick="window.location.href='admin.html'" class="kebab-item">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                            <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+                        </svg>
+                        <span>For Teacher</span>
+                    </button>
+                    <button id="mobileKebabLogoutBtn" class="kebab-item kebab-btn-danger">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                        <span>Logout</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- MAIN PROFILE CONTENT -->
+        <main class="main-wrapper">
+            <div class="profile-container">
+
+                <!-- PROFILE HERO CARD -->
+                <div class="profile-hero-card">
+                    <!-- Top Right Kebab Menu -->
+                    <div class="card-kebab-wrapper">
+                        <button type="button" class="card-kebab-btn" id="profileCardKebabBtn" onclick="toggleProfileCardMenu(event)" aria-label="Profile options" title="Profile options">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="1.5"></circle>
+                                <circle cx="12" cy="5" r="1.5"></circle>
+                                <circle cx="12" cy="19" r="1.5"></circle>
+                            </svg>
+                        </button>
+                        <div id="profileCardDropdown" class="profile-card-dropdown hidden">
+                            <button type="button" class="profile-dropdown-item" onclick="openPhotoEditModal()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                    <circle cx="12" cy="13" r="4"></circle>
+                                </svg>
+                                <span>Change Profile Picture</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="profile-avatar-wrapper" id="avatarContainer">
+                        <div class="profile-avatar-fallback" id="avatarFallback">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                        </div>
+                        <img id="profileAvatarImg" class="profile-avatar-img hidden" alt="Student Photo">
+
+                        <!-- Uploading Spinner Overlay -->
+                        <div id="avatarUploadSpinner" class="avatar-upload-spinner hidden">
+                            <div class="mini-spinner"></div>
+                        </div>
+                    </div>
+
+                    <!-- Hidden File Input for Avatar Change -->
+                    <input type="file" id="studentPhotoInput" accept="image/*" style="display: none;">
+
+                    <h1 class="profile-name" id="profileStudentName">Loading Profile...</h1>
+
+                    <div class="profile-badges-row">
+                        <span class="profile-badge badge-class" id="profileClassBadge">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                            </svg>
+                            <span id="profileClassText">Class Room</span>
+                        </span>
+                        <span class="profile-badge badge-code" id="profileCodeBadge">
+                            ID: <span id="profileCodeText">-----</span>
+                        </span>
+                    </div>
+
+                    <!-- PROFILE ATTRIBUTES GRID -->
+                    <div class="profile-info-grid">
+                        <!-- Birth Date -->
+                        <div class="info-card">
+                            <div class="info-icon-circle" style="background: #fef3c7; color: #d97706;">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="info-title">Date of Birth</h4>
+                                <p class="info-value" id="profileBirthDate">Not Set</p>
+                            </div>
+                        </div>
+
+                        <!-- House / Behavior Points -->
+                        <div class="info-card">
+                            <div class="info-icon-circle" style="background: #dbeafe; color: #2563eb;">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="info-title">Behavior Points</h4>
+                                <p class="info-value" id="profilePoints">0 Pts</p>
+                            </div>
+                        </div>
+
+                        <!-- Account Status -->
+                        <div class="info-card">
+                            <div class="info-icon-circle" style="background: #dcfce7; color: #16a34a;">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="info-title">Status</h4>
+                                <p class="info-value" style="color: #16a34a;">Active Student</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- QUICK NAVIGATION SHORTCUTS -->
+                <div class="stats-cards-grid">
+                    <a href="scores.html" class="stat-shortcut-card">
+                        <div class="info-icon-circle" style="background: #e0e7ff; color: #4338ca;">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                            </svg>
+                        </div>
+                        <div>
+                            <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text-main);">My Exam Scores</h4>
+                            <p style="margin: 2px 0 0; font-size: 12.5px; color: var(--text-gray);">View score reports & transcripts</p>
+                        </div>
+                    </a>
+
+                    <a href="quiz.html" class="stat-shortcut-card">
+                        <div class="info-icon-circle" style="background: #fdf4ff; color: #a855f7;">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polygon points="10 8 16 12 10 16 10 8"></polygon>
+                            </svg>
+                        </div>
+                        <div>
+                            <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text-main);">Online Quizzes</h4>
+                            <p style="margin: 2px 0 0; font-size: 12.5px; color: var(--text-gray);">Take assigned interactive tests</p>
+                        </div>
+                    </a>
+
+                    <a href="timeline.html" class="stat-shortcut-card">
+                        <div class="info-icon-circle" style="background: #eff6ff; color: #2563eb;">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text-main);">Classroom Timeline</h4>
+                            <p style="margin: 2px 0 0; font-size: 12.5px; color: var(--text-gray);">Posts, updates & discussions</p>
+                        </div>
+                    </a>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL FOR EDITING PROFILE PICTURE -->
+    <div id="photoEditModal" class="hidden"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); z-index:1200; display:flex; justify-content:center; align-items:center; backdrop-filter: blur(4px);">
+        <div class="box"
+            style="width: 90%; max-width: 420px; position: relative; text-align: center; padding: 30px 24px; border-radius: 20px; box-shadow: 0 16px 40px rgba(0,0,0,0.25);">
+            <button type="button" onclick="closePhotoEditModal()"
+                style="position:absolute; right:16px; top:16px; width:32px !important; height:32px !important; padding:0 !important; background:rgba(0,0,0,0.06); color:var(--text-gray); border-radius:50%; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size: 14px; font-weight: bold;">
+                ✕
+            </button>
+
+            <h3 style="margin: 0 0 6px; font-size: 18px; color: var(--text-main);">📸 Edit Profile Picture</h3>
+            <p style="margin: 0 0 20px; font-size: 13px; color: var(--text-gray);">Update your photo to display across the student portal</p>
+
+            <div style="width: 135px; height: 180px; margin: 0 auto 20px; position: relative; border-radius: 16px; padding: 4px; background: linear-gradient(135deg, #1e5eff, #3b82f6, #60a5fa); box-shadow: 0 8px 24px rgba(30, 94, 255, 0.25); aspect-ratio: 6 / 8;">
+                <div id="modalAvatarFallback" class="profile-avatar-fallback" style="border-radius: 12px;">
+                    <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                </div>
+                <img id="modalAvatarImg" class="profile-avatar-img hidden" alt="Current Photo" style="border-radius: 12px;">
+            </div>
+
+            <div style="margin-bottom: 24px;">
+                <h4 style="margin: 0 0 4px; font-size: 16px; color: var(--text-main);" id="modalStudentName">Student Name</h4>
+                <span style="font-family: monospace; font-size: 13px; color: var(--primary-blue); font-weight: 700;" id="modalStudentCode">-----</span>
+            </div>
+
+            <button type="button" id="modalChangePhotoBtn" onclick="triggerStudentPhotoInput()"
+                style="background: var(--primary-blue, #1e5eff) !important; color: #ffffff !important; width: 100% !important; padding: 12px 20px !important; font-size: 14.5px !important; font-weight: 700 !important; border-radius: 12px !important; border: none !important; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(30, 94, 255, 0.35) !important;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                    <circle cx="12" cy="13" r="4"></circle>
+                </svg>
+                <span>Change Photo</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Upload Status Toast Notification -->
+    <div id="uploadStatusToast" class="upload-status-toast">
+        <span id="toastIcon">✅</span>
+        <span id="toastMessage">Profile photo updated successfully!</span>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="profile.js?v=315"></script>
+    <script src="studentNav.js?v=315"></script>
+</body>
+
+</html>

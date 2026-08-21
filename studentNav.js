@@ -35,6 +35,7 @@ const initMobileNav = () => {
     const navQuiz = dropdown.querySelector('.nav-quiz');
     const navTimeline = dropdown.querySelector('.nav-timeline');
     const navScores = dropdown.querySelector('.nav-scores');
+    const navProfile = dropdown.querySelector('.nav-profile');
 
     if (currentPath === 'index.html' || currentPath === '') {
         navDashboard?.classList.add('active');
@@ -44,6 +45,8 @@ const initMobileNav = () => {
         navTimeline?.classList.add('active');
     } else if (currentPath === 'scores.html') {
         navScores?.classList.add('active');
+    } else if (currentPath === 'profile.html') {
+        navProfile?.classList.add('active');
     }
 
     // Sync Dark Mode Toggle
