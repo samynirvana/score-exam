@@ -305,6 +305,284 @@ button, input, select, textarea {
   background-color: #047857;
 }
 
+.edit-btn {
+  background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+}
+
+.edit-btn:hover {
+  background: linear-gradient(135deg, #4338ca 0%, #2563eb 100%);
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+}
+
+.edit-btn.active-editing {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
+}
+
+/* Edit Mode Toolbar */
+.edit-mode-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, #eef2ff 0%, #f0fdf4 100%);
+  border: 1.5px solid #a5b4fc;
+  border-radius: 12px;
+  padding: 12px 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 15px rgba(79, 70, 229, 0.08);
+  animation: slideDownFade 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+@keyframes slideDownFade {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.edit-toolbar-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.edit-pulse-dot {
+  width: 12px;
+  height: 12px;
+  background-color: #4f46e5;
+  border-radius: 50%;
+  box-shadow: 0 0 0 rgba(79, 70, 229, 0.4);
+  animation: pulseDot 1.6s infinite;
+}
+
+@keyframes pulseDot {
+  0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(79, 70, 229, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
+}
+
+.edit-toolbar-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e1b4b;
+}
+
+.edit-toolbar-subtitle {
+  font-size: 12px;
+  color: #4338ca;
+  font-weight: 500;
+}
+
+.edit-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.reset-btn {
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.reset-btn:hover {
+  background-color: #fee2e2;
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+
+.cancel-btn {
+  background-color: #e2e8f0;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
+
+.cancel-btn:hover {
+  background-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.save-changes-btn {
+  background: linear-gradient(135deg, #16a34a 0%, #059669 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3);
+}
+
+.save-changes-btn:hover {
+  background: linear-gradient(135deg, #15803d 0%, #047857 100%);
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.4);
+}
+
+/* In-Cell Edit Mode Styling */
+.schedule-container.is-editing {
+  border: 2px dashed #6366f1;
+  border-radius: 12px;
+  background-color: #fafafa;
+}
+
+.edit-slot-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+  text-align: left;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.edit-slot-card:hover {
+  border-color: #818cf8;
+  box-shadow: 0 4px 10px rgba(99, 102, 241, 0.12);
+}
+
+.edit-slot-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 2px;
+}
+
+.edit-period-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.edit-merge-controls {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.btn-cell-action {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: all 0.15s ease;
+}
+
+.btn-cell-action:hover {
+  background: #e0e7ff;
+  border-color: #818cf8;
+  color: #3730a3;
+  transform: translateY(-1px);
+}
+
+.btn-cell-action.btn-clear:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+.btn-cell-action.btn-split:hover {
+  background: #fef3c7;
+  border-color: #fcd34d;
+  color: #92400e;
+}
+
+.edit-cell-input,
+.edit-cell-select,
+.edit-cell-textarea {
+  width: 100%;
+  font-size: 11px;
+  padding: 4px 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background-color: #ffffff;
+  color: #0f172a;
+  outline: none;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.edit-cell-input:focus,
+.edit-cell-select:focus,
+.edit-cell-textarea:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
+}
+
+.edit-cell-textarea {
+  resize: vertical;
+  min-height: 38px;
+}
+
+.edit-field-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-top: 2px;
+}
+
+.merged-badge-indicator {
+  display: inline-block;
+  background: #ede9fe;
+  color: #5b21b6;
+  border: 1px solid #ddd6fe;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  margin-left: 4px;
+}
+
+.edit-uniform-input {
+  width: 90%;
+  margin-top: 4px;
+  padding: 3px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1.5px solid #818cf8;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1e1b4b;
+  text-align: center;
+  outline: none;
+  box-shadow: 0 1px 4px rgba(99, 102, 241, 0.15);
+  transition: all 0.2s ease;
+}
+
+.edit-uniform-input:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.25);
+  background: #fdfaff;
+}
+
+.weekly-override-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
 /* Side-by-Side Flex Layout */
 .teacher-layout {
   display: flex;
@@ -1209,24 +1487,54 @@ select:focus {
   }
 
   .print-header-banner {
-    display: block !important;
-    text-align: center !important;
-    margin-bottom: 16px !important;
-    padding-bottom: 8px !important;
-    border-bottom: 2px solid #e2e8f0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    margin-bottom: 6px !important;
+    padding-bottom: 6px !important;
+    border-bottom: 2px solid #0f172a !important;
   }
 
-  .print-title {
+  .print-header-logo-side {
+    flex: 0 0 240px !important;
+    width: 240px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .print-school-logo {
+    width: 100% !important;
+    max-width: 230px !important;
+    height: auto !important;
+    max-height: 58px !important;
+    object-fit: contain !important;
+  }
+
+  .print-header-center {
+    flex: 1 !important;
+    text-align: center !important;
+    padding: 0 12px !important;
+  }
+
+  .print-school-name {
     font-size: 16pt !important;
     font-weight: 800 !important;
     color: #0f172a !important;
+    letter-spacing: 0.6px !important;
+    text-transform: uppercase !important;
+    margin: 0 0 2px 0 !important;
+    line-height: 1.15 !important;
   }
 
-  .print-meta {
-    font-size: 10pt !important;
-    font-weight: 600 !important;
-    color: #475569 !important;
-    margin-top: 4px !important;
+  .print-schedule-subtitle {
+    font-size: 11pt !important;
+    font-weight: 700 !important;
+    color: #1e293b !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.3px !important;
+    margin: 0 !important;
+    line-height: 1.15 !important;
   }
 
   .schedule-container, #printableArea {

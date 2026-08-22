@@ -88,34 +88,61 @@ function getFridayMiddleSchoolTime(slotId, rowspan = 1) {
   return `${startSlot.start} - ${endSlot.end}`;
 }
 
-const dailyUniforms = {
-  MONDAY: "Seragam Putih Biru",
-  TUESDAY: "Seragam Kotak-Kotak",
-  WEDNESDAY: "Seragam Putih Biru",
-  THURSDAY: "Seragam Kotak-Kotak",
-  FRIDAY: "Seragam Pramuka/Batik Jumat"
-};
-
-function updateUniformBadges(selectedClass) {
+function getDefaultUniforms(selectedClass) {
   const isHS = isHighSchoolClass(selectedClass);
   const monWedUniform = isHS ? "Seragam Putih Abu" : "Seragam Putih Biru";
+  return {
+    MONDAY: monWedUniform,
+    TUESDAY: "Seragam Kotak-Kotak",
+    WEDNESDAY: monWedUniform,
+    THURSDAY: "Seragam Kotak-Kotak",
+    FRIDAY: "Seragam Pramuka/Batik Jumat"
+  };
+}
 
-  const badges = document.querySelectorAll('#printableArea thead .uniform-badge');
-  if (badges && badges.length >= 5) {
-    badges[0].textContent = monWedUniform; // Monday
-    badges[1].textContent = "Seragam Kotak-Kotak"; // Tuesday
-    badges[2].textContent = monWedUniform; // Wednesday
-    badges[3].textContent = "Seragam Kotak-Kotak"; // Thursday
-    badges[4].textContent = "Seragam Pramuka/Batik Jumat"; // Friday
-  }
+function updateUniformBadges(selectedClass, calPrefix = null) {
+  const prefix = calPrefix || getActiveCalendarPrefix('class');
+  const overrideKey = `${prefix}_${selectedClass}`;
+  const defaultUniforms = getDefaultUniforms(selectedClass);
+  const savedUniforms = weeklyOverrides?.[overrideKey]?.uniforms || {};
+
+  const days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
+  const thHeaders = document.querySelectorAll('#printableArea thead th.col-day');
+
+  thHeaders.forEach((th, idx) => {
+    const day = days[idx];
+    if (!day) return;
+
+    const currentUniform = (isClassEditMode && draftWeeklyUniforms[day])
+      ? draftWeeklyUniforms[day]
+      : (savedUniforms[day] || defaultUniforms[day]);
+
+    if (isClassEditMode) {
+      th.innerHTML = `
+        <span class="day-name">${day}</span>
+        <input type="text" class="edit-uniform-input" data-day="${day}" value="${currentUniform}" placeholder="Uniform for ${day}...">
+      `;
+    } else {
+      th.innerHTML = `
+        <span class="day-name">${day}</span>
+        <span class="uniform-badge">${currentUniform}</span>
+      `;
+    }
+  });
 }
 
 // Application State
 let appEntities = { teachers: [], classes: [], subjects: [], homeTeachers: {}, teacherEmails: {} };
 let classNotesData = {};
 let masterSchedules = {};
+let weeklyOverrides = {};
 let materialsData = {};
 let academicCalendar = {};
+
+let isClassEditMode = false;
+let draftWeeklySchedule = null;
+let draftWeeklyMaterials = {};
+let draftWeeklyUniforms = {};
 
 function isTeacherUser() {
   const user = auth.currentUser;
@@ -145,12 +172,57 @@ function getLoggedInTeacherName() {
   return null;
 }
 
+function canUserEditClass(className) {
+  const user = auth.currentUser;
+  if (!user) return false;
+  if (!isTeacherUser()) return true; // Admin has full access to edit any class
+
+  const teacherName = getLoggedInTeacherName();
+  if (!teacherName) return false;
+  const assignedClass = appEntities.homeTeachers?.[teacherName];
+  return !!(assignedClass && assignedClass === className);
+}
+
+function updateClassEditButtonState() {
+  const selectedClass = document.getElementById('classSelectView')?.value;
+  const btnEdit = document.getElementById('btnEditClassWeekly');
+  const btnEditText = document.getElementById('btnEditClassWeeklyText');
+  const toolbar = document.getElementById('classEditToolbar');
+  const container = document.getElementById('printableArea');
+
+  if (!btnEdit) return;
+
+  const canEdit = canUserEditClass(selectedClass);
+  btnEdit.style.display = canEdit ? 'inline-flex' : 'none';
+
+  if (!canEdit && isClassEditMode) {
+    exitClassEditMode(false);
+  }
+
+  if (isClassEditMode) {
+    btnEdit.classList.add('active-editing');
+    if (btnEditText) btnEditText.textContent = 'Exit Edit Mode';
+    if (toolbar) toolbar.style.display = 'flex';
+    if (container) container.classList.add('is-editing');
+    const subtitle = document.getElementById('editToolbarSubtitle');
+    const week = document.getElementById('classWeekSelect')?.value || 'Week';
+    if (subtitle) subtitle.textContent = `Editing schedule & materials for ${selectedClass} (${week}) — changes apply only to this week`;
+  } else {
+    btnEdit.classList.remove('active-editing');
+    if (btnEditText) btnEditText.textContent = 'Edit Weekly Schedule';
+    if (toolbar) toolbar.style.display = 'none';
+    if (container) container.classList.remove('is-editing');
+  }
+}
+
 function checkUserRoleAccess() {
   const user = auth.currentUser;
   const btnAdminView = document.getElementById('btnAdminView');
   const teacherSelectContainer = document.getElementById('teacherSelectContainer');
 
   if (!user) return;
+
+  updateClassEditButtonState();
 
   if (isTeacherUser()) {
     // Hide Admin Dashboard button for Teachers
@@ -323,8 +395,24 @@ function switchTab(tabId, targetBtn) {
   btn?.classList.add('active');
 }
 
-// Helper to retrieve slot assignments normalized as an array
-function getSlotAssignments(className, day, slotId) {
+// Helper to retrieve slot assignments normalized as an array, prioritizing weekly overrides
+function getSlotAssignments(className, day, slotId, viewCalPrefix = null) {
+  const calPrefix = viewCalPrefix || getActiveCalendarPrefix('class');
+  const overrideKey = `${calPrefix}_${className}`;
+
+  if (weeklyOverrides && weeklyOverrides[overrideKey]) {
+    const overrideObj = weeklyOverrides[overrideKey];
+    const scheduleMap = overrideObj.schedule || overrideObj;
+    if (scheduleMap && scheduleMap[day]) {
+      const overrideVal = scheduleMap[day][slotId];
+      if (overrideVal !== undefined) {
+        if (!overrideVal || overrideVal.length === 0) return [];
+        if (Array.isArray(overrideVal)) return overrideVal;
+        return [overrideVal];
+      }
+    }
+  }
+
   const entry = masterSchedules[className]?.[day]?.[slotId];
   if (!entry) return [];
   if (Array.isArray(entry)) return entry;
@@ -954,31 +1042,424 @@ function getSubjectPastelStyle(subjectName) {
   return `background-color: ${p.bg}; border: 1px solid ${p.border}; color: ${p.text};`;
 }
 
+function enterClassEditMode() {
+  const selectedClass = document.getElementById('classSelectView')?.value;
+  if (!selectedClass || !canUserEditClass(selectedClass)) {
+    alert("You do not have permission to edit the schedule for this class.");
+    return;
+  }
+  isClassEditMode = true;
+  initDraftWeeklyData(selectedClass, getActiveCalendarPrefix('class'));
+  updateClassEditButtonState();
+  renderClassSchedule();
+}
+
+function exitClassEditMode(discardChanges = true) {
+  if (discardChanges) {
+    draftWeeklySchedule = null;
+    draftWeeklyMaterials = {};
+  }
+  isClassEditMode = false;
+  updateClassEditButtonState();
+  renderClassSchedule();
+}
+
+function initDraftWeeklyData(selectedClass, calPrefix) {
+  draftWeeklySchedule = {};
+  draftWeeklyMaterials = {};
+  const overrideKey = `${calPrefix}_${selectedClass}`;
+  const defaultUniforms = getDefaultUniforms(selectedClass);
+  const savedUniforms = weeklyOverrides?.[overrideKey]?.uniforms || {};
+  draftWeeklyUniforms = { ...defaultUniforms, ...savedUniforms };
+
+  const days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
+  days.forEach(day => {
+    draftWeeklySchedule[day] = {};
+    timeSlots.forEach(slot => {
+      if (!slot.isBreak) {
+        const current = getSlotAssignments(selectedClass, day, slot.id, calPrefix);
+        draftWeeklySchedule[day][slot.id] = JSON.parse(JSON.stringify(current));
+        current.forEach(entry => {
+          if (entry.subject) {
+            const matKey = `${calPrefix}_${selectedClass}_${day}_${entry.subject}`;
+            if (draftWeeklyMaterials[matKey] === undefined) {
+              draftWeeklyMaterials[matKey] = {
+                material: materialsData[matKey]?.material || '',
+                link: materialsData[matKey]?.link || ''
+              };
+            }
+          }
+        });
+      }
+    });
+  });
+}
+
+function renderClassEditSchedule(selectedClass, calPrefix) {
+  const tbody = document.getElementById('classScheduleBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  const days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
+  const skipCells = { MONDAY: 0, TUESDAY: 0, WEDNESDAY: 0, THURSDAY: 0, FRIDAY: 0 };
+  const registeredSubjects = appEntities.subjects || [];
+
+  timeSlots.forEach((slot, sIndex) => {
+    const tr = document.createElement('tr');
+
+    if (slot.isBreak) {
+      tr.className = 'break-row';
+      let html = `<td class="time-cell break-time">${slot.time}</td>`;
+      if (slot.id === 0) {
+        html += `<td colspan="5" class="break-label"><span class="break-pill">${slot.label}</span></td>`;
+      } else if (slot.id === 4) {
+        html += `<td colspan="4" class="break-label"><span class="break-pill">BREAK</span></td><td class="break-label break-day-cell"><span class="break-pill">BREAK</span></td>`;
+      } else if (slot.id === 8) {
+        html += `<td colspan="4" class="break-label"><span class="break-pill">LUNCH</span></td><td class="break-label break-day-cell"><span class="empty-dash">-</span></td>`;
+      } else if (slot.id === 12) {
+        html += `<td colspan="4" class="break-label"><span class="break-pill">CLOSING</span></td><td class="break-label break-day-cell"><span class="empty-dash">-</span></td>`;
+      } else {
+        html += `<td colspan="5" class="break-label"><span class="break-pill">${slot.label}</span></td>`;
+      }
+      tr.innerHTML = html;
+      days.forEach(day => skipCells[day] = 0);
+    } else {
+      let html = `<td class="time-cell"><div class="time-range">${slot.time}</div><div class="period-badge">Period ${slot.period}</div></td>`;
+
+      days.forEach(day => {
+        if (skipCells[day] > 0) {
+          skipCells[day]--;
+          return;
+        }
+
+        const slotEntries = draftWeeklySchedule?.[day]?.[slot.id] || [];
+
+        // Check matching span in draft
+        let rowspan = 1;
+        if (slotEntries.length > 0) {
+          for (let i = sIndex + 1; i < timeSlots.length; i++) {
+            const nextSlot = timeSlots[i];
+            if (nextSlot.isBreak) break;
+            const nextEntries = draftWeeklySchedule?.[day]?.[nextSlot.id] || [];
+            if (areSlotAssignmentsMatching(slotEntries, nextEntries)) {
+              rowspan++;
+            } else {
+              break;
+            }
+          }
+        }
+
+        if (rowspan > 1) skipCells[day] = rowspan - 1;
+
+        // Check if merge down is possible (next slot exists and is non-break)
+        const nextSlotIndex = sIndex + rowspan;
+        const canMergeDown = nextSlotIndex < timeSlots.length && !timeSlots[nextSlotIndex].isBreak;
+
+        const rowspanAttr = rowspan > 1 ? ` rowspan="${rowspan}"` : '';
+
+        if (slotEntries.length > 0) {
+          const entry = slotEntries[0];
+          const matKey = `${calPrefix}_${selectedClass}_${day}_${entry.subject}`;
+          const matInfo = draftWeeklyMaterials[matKey] || materialsData[matKey] || { material: '', link: '' };
+          const isCustomSubject = !registeredSubjects.includes(entry.subject);
+
+          let subjectOptionsHtml = registeredSubjects.map(sub => `<option value="${sub}" ${sub === entry.subject ? 'selected' : ''}>${sub}</option>`).join('');
+          subjectOptionsHtml += `<option value="__custom__" ${isCustomSubject ? 'selected' : ''}>✨ Custom Event / Subject...</option>`;
+
+          const customInputDisplay = isCustomSubject ? 'block' : 'none';
+
+          html += `
+            <td${rowspanAttr} class="subject-cell" style="vertical-align: top; padding: 6px;">
+              <div class="edit-slot-card">
+                <div class="edit-slot-header">
+                  <span class="edit-period-label">Period ${slot.period}${rowspan > 1 ? `–${slot.period + rowspan - 1}` : ''}</span>
+                  ${rowspan > 1 ? `<span class="merged-badge-indicator">${rowspan} Periods</span>` : ''}
+                  <div class="edit-merge-controls">
+                    ${rowspan > 1 ? `<button type="button" class="btn-cell-action btn-split" data-day="${day}" data-slot="${slot.id}" data-span="${rowspan}" title="Split merged block into separate periods">➗ Split</button>` : ''}
+                    ${canMergeDown ? `<button type="button" class="btn-cell-action btn-merge" data-day="${day}" data-slot="${slot.id}" data-span="${rowspan}" title="Merge with next period below">⬇️ Merge</button>` : ''}
+                    <button type="button" class="btn-cell-action btn-clear" data-day="${day}" data-slot="${slot.id}" data-span="${rowspan}" title="Clear slot">🗑️</button>
+                  </div>
+                </div>
+
+                <div class="edit-field-label">Subject / Urgent Event</div>
+                <select class="edit-cell-select edit-subject-select" data-day="${day}" data-slot="${slot.id}" data-span="${rowspan}">
+                  ${subjectOptionsHtml}
+                </select>
+                <input type="text" class="edit-cell-input edit-custom-subject-input" data-day="${day}" data-slot="${slot.id}" data-span="${rowspan}" placeholder="Type custom event title..." value="${isCustomSubject ? entry.subject : ''}" style="display: ${customInputDisplay}; margin-top: 3px;">
+
+                <div class="edit-field-label">Material (This Week)</div>
+                <textarea class="edit-cell-textarea edit-mat-input" data-matkey="${matKey}" placeholder="Describe material / topic for this week...">${matInfo.material || ''}</textarea>
+
+                <div class="edit-field-label">Resource Link</div>
+                <input type="text" class="edit-cell-input edit-link-input" data-matkey="${matKey}" placeholder="https://..." value="${matInfo.link || ''}">
+              </div>
+            </td>
+          `;
+        } else {
+          // Empty Slot
+          html += `
+            <td class="subject-cell" style="vertical-align: top; padding: 6px;">
+              <div class="edit-slot-card" style="background:#f8fafc; border:1px dashed #cbd5e1; text-align:center;">
+                <div class="edit-slot-header">
+                  <span class="edit-period-label">Period ${slot.period}</span>
+                </div>
+                <div style="font-size:11px; color:#94a3b8; margin: 6px 0;">(Free / Unassigned)</div>
+                <button type="button" class="btn-cell-action btn-add-slot" data-day="${day}" data-slot="${slot.id}" style="width:100%; justify-content:center; padding:5px 8px; font-weight:700; background:#eef2ff; color:#4f46e5; border-color:#c7d2fe;">
+                  ➕ Assign Subject / Event
+                </button>
+              </div>
+            </td>
+          `;
+        }
+      });
+
+      tr.innerHTML = html;
+    }
+
+    tbody.appendChild(tr);
+  });
+
+  // Attach interactive listeners for the edit table
+  attachClassEditTableListeners(selectedClass, calPrefix);
+}
+
+function attachClassEditTableListeners(selectedClass, calPrefix) {
+  const tbody = document.getElementById('classScheduleBody');
+  if (!tbody) return;
+
+  // 1. Uniform input changes in header
+  document.querySelectorAll('.edit-uniform-input').forEach(inp => {
+    inp.addEventListener('input', (e) => {
+      const day = inp.dataset.day;
+      if (day) {
+        draftWeeklyUniforms[day] = e.target.value;
+      }
+    });
+  });
+
+  // 2. Merge Down Button
+  tbody.querySelectorAll('.btn-merge').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const day = btn.dataset.day;
+      const slotId = parseInt(btn.dataset.slot, 10);
+      const span = parseInt(btn.dataset.span, 10) || 1;
+
+      const sIndex = timeSlots.findIndex(s => s.id === slotId);
+      const nextSlotIndex = sIndex + span;
+      if (nextSlotIndex < timeSlots.length && !timeSlots[nextSlotIndex].isBreak) {
+        const nextSlot = timeSlots[nextSlotIndex];
+        const sourceEntry = draftWeeklySchedule[day][slotId];
+        draftWeeklySchedule[day][nextSlot.id] = JSON.parse(JSON.stringify(sourceEntry));
+        renderClassSchedule();
+      }
+    });
+  });
+
+  // 3. Split Button
+  tbody.querySelectorAll('.btn-split').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const day = btn.dataset.day;
+      const slotId = parseInt(btn.dataset.slot, 10);
+      const span = parseInt(btn.dataset.span, 10) || 1;
+
+      const sIndex = timeSlots.findIndex(s => s.id === slotId);
+      for (let i = 1; i < span; i++) {
+        const targetSlot = timeSlots[sIndex + i];
+        if (targetSlot && !targetSlot.isBreak) {
+          const orig = draftWeeklySchedule[day][slotId]?.[0] || { subject: 'Subject', teacher: '' };
+          draftWeeklySchedule[day][targetSlot.id] = [{ subject: `${orig.subject} (Section ${i + 1})`, teacher: orig.teacher || '' }];
+        }
+      }
+      renderClassSchedule();
+    });
+  });
+
+  // 4. Clear Button
+  tbody.querySelectorAll('.btn-clear').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const day = btn.dataset.day;
+      const slotId = parseInt(btn.dataset.slot, 10);
+      const span = parseInt(btn.dataset.span, 10) || 1;
+
+      const sIndex = timeSlots.findIndex(s => s.id === slotId);
+      for (let i = 0; i < span; i++) {
+        const targetSlot = timeSlots[sIndex + i];
+        if (targetSlot && !targetSlot.isBreak) {
+          draftWeeklySchedule[day][targetSlot.id] = [];
+        }
+      }
+      renderClassSchedule();
+    });
+  });
+
+  // 5. Add Slot Button
+  tbody.querySelectorAll('.btn-add-slot').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const day = btn.dataset.day;
+      const slotId = parseInt(btn.dataset.slot, 10);
+      const defaultSub = appEntities.subjects?.[0] || 'English';
+      draftWeeklySchedule[day][slotId] = [{ subject: defaultSub, teacher: '' }];
+      renderClassSchedule();
+    });
+  });
+
+  // 6. Subject Select change
+  tbody.querySelectorAll('.edit-subject-select').forEach(sel => {
+    sel.addEventListener('change', (e) => {
+      const day = sel.dataset.day;
+      const slotId = parseInt(sel.dataset.slot, 10);
+      const span = parseInt(sel.dataset.span, 10) || 1;
+      const val = e.target.value;
+
+      const sIndex = timeSlots.findIndex(s => s.id === slotId);
+      const newSubject = val === '__custom__' ? 'Urgent School Event' : val;
+
+      for (let i = 0; i < span; i++) {
+        const targetSlot = timeSlots[sIndex + i];
+        if (targetSlot && !targetSlot.isBreak && draftWeeklySchedule[day][targetSlot.id]?.[0]) {
+          draftWeeklySchedule[day][targetSlot.id][0].subject = newSubject;
+        }
+      }
+      renderClassSchedule();
+    });
+  });
+
+  // 7. Custom Subject text input
+  tbody.querySelectorAll('.edit-custom-subject-input').forEach(inp => {
+    inp.addEventListener('input', (e) => {
+      const day = inp.dataset.day;
+      const slotId = parseInt(inp.dataset.slot, 10);
+      const span = parseInt(inp.dataset.span, 10) || 1;
+      const val = e.target.value;
+
+      const sIndex = timeSlots.findIndex(s => s.id === slotId);
+      for (let i = 0; i < span; i++) {
+        const targetSlot = timeSlots[sIndex + i];
+        if (targetSlot && !targetSlot.isBreak && draftWeeklySchedule[day][targetSlot.id]?.[0]) {
+          draftWeeklySchedule[day][targetSlot.id][0].subject = val;
+        }
+      }
+    });
+  });
+
+  // 8. Material textarea input
+  tbody.querySelectorAll('.edit-mat-input').forEach(ta => {
+    ta.addEventListener('input', (e) => {
+      const key = ta.dataset.matkey;
+      if (key) {
+        if (!draftWeeklyMaterials[key]) draftWeeklyMaterials[key] = {};
+        draftWeeklyMaterials[key].material = e.target.value;
+      }
+    });
+  });
+
+  // 9. Link input
+  tbody.querySelectorAll('.edit-link-input').forEach(inp => {
+    inp.addEventListener('input', (e) => {
+      const key = inp.dataset.matkey;
+      if (key) {
+        if (!draftWeeklyMaterials[key]) draftWeeklyMaterials[key] = {};
+        draftWeeklyMaterials[key].link = e.target.value;
+      }
+    });
+  });
+}
+
+async function saveClassWeeklySchedule() {
+  const selectedClass = document.getElementById('classSelectView')?.value;
+  if (!selectedClass) return;
+  const calPrefix = getActiveCalendarPrefix('class');
+  const overrideKey = `${calPrefix}_${selectedClass}`;
+  const week = document.getElementById('classWeekSelect')?.value || 'this week';
+
+  try {
+    if (!weeklyOverrides) weeklyOverrides = {};
+    weeklyOverrides[overrideKey] = {
+      schedule: draftWeeklySchedule,
+      uniforms: draftWeeklyUniforms
+    };
+
+    // Save weekly overrides
+    await setDoc(doc(db, "schedules", "weeklyOverrides"), weeklyOverrides, { merge: true });
+
+    // Save materials
+    if (Object.keys(draftWeeklyMaterials).length > 0) {
+      materialsData = { ...materialsData, ...draftWeeklyMaterials };
+      await setDoc(doc(db, "schedules", "materialsData"), materialsData, { merge: true });
+    }
+
+    alert(`Weekly schedule, uniforms & materials saved successfully for ${selectedClass} (${week})!`);
+    isClassEditMode = false;
+    draftWeeklySchedule = null;
+    draftWeeklyMaterials = {};
+    draftWeeklyUniforms = {};
+    updateClassEditButtonState();
+    renderClassSchedule();
+    renderTeacherView();
+  } catch (err) {
+    alert("Error saving weekly schedule: " + err.message);
+  }
+}
+
+async function resetClassWeeklySchedule() {
+  const selectedClass = document.getElementById('classSelectView')?.value;
+  if (!selectedClass) return;
+  const calPrefix = getActiveCalendarPrefix('class');
+  const overrideKey = `${calPrefix}_${selectedClass}`;
+  const week = document.getElementById('classWeekSelect')?.value || 'this week';
+
+  if (!confirm(`Are you sure you want to reset the schedule and uniforms for ${selectedClass} (${week}) back to the Master Template? This will remove all weekly custom events, merges, and custom uniforms for this week.`)) {
+    return;
+  }
+
+  try {
+    if (weeklyOverrides && weeklyOverrides[overrideKey]) {
+      delete weeklyOverrides[overrideKey];
+      await setDoc(doc(db, "schedules", "weeklyOverrides"), weeklyOverrides);
+    }
+    alert(`Schedule for ${selectedClass} (${week}) has been reset to Master Template.`);
+    isClassEditMode = false;
+    draftWeeklySchedule = null;
+    draftWeeklyMaterials = {};
+    draftWeeklyUniforms = {};
+    updateClassEditButtonState();
+    renderClassSchedule();
+    renderTeacherView();
+  } catch (err) {
+    alert("Error resetting schedule: " + err.message);
+  }
+}
+
 function renderClassSchedule() {
   const selectElem = document.getElementById('classSelectView');
   if (!selectElem) return;
   const selectedClass = selectElem.value;
   const tbody = document.getElementById('classScheduleBody');
   if (!tbody) return;
+
+  const calPrefix = getActiveCalendarPrefix('class');
+
+  updateClassEditButtonState();
+
+  updateUniformBadges(selectedClass, calPrefix);
+
+  updateClassPrintHeader(selectedClass);
+
+  // If in Edit Mode, render the interactive edit table
+  if (isClassEditMode) {
+    renderClassEditSchedule(selectedClass, calPrefix);
+    return;
+  }
+
   tbody.innerHTML = '';
 
-  updateUniformBadges(selectedClass);
-
-  const printClass = document.getElementById('printClassName');
-  if (printClass) printClass.textContent = selectedClass || '';
-  const printYear = document.getElementById('printMetaYear');
-  if (printYear) printYear.textContent = document.getElementById('classYearSelect')?.value || '';
-  const printTheme = document.getElementById('printMetaTheme');
-  if (printTheme) printTheme.textContent = document.getElementById('classThemeSelect')?.value || '';
-  const printWeek = document.getElementById('printMetaWeek');
-  if (printWeek) printWeek.textContent = document.getElementById('classWeekSelect')?.value || '';
-  const printDates = document.getElementById('printMetaDates');
-  if (printDates) printDates.textContent = document.getElementById('classDateBadge')?.textContent || '';
-
   const days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
-  const calPrefix = getActiveCalendarPrefix('class');
   const skipCells = { MONDAY: 0, TUESDAY: 0, WEDNESDAY: 0, THURSDAY: 0, FRIDAY: 0 };
-  const showTeacher = !isHighSchoolClass(selectedClass);
+  const showTeacher = false; // Teacher names removed in class view for both middle school and high school
 
   const clockSvg = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:3px; vertical-align:middle;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
   const linkSvg = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:3px; vertical-align:middle;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
@@ -1027,7 +1508,7 @@ function renderClassSchedule() {
           return;
         }
 
-        const slotEntries = getSlotAssignments(selectedClass, day, slot.id);
+        const slotEntries = getSlotAssignments(selectedClass, day, slot.id, calPrefix);
 
         if (slotEntries.length > 0) {
           const primarySubject = slotEntries[0].subject;
@@ -1038,7 +1519,7 @@ function renderClassSchedule() {
             const nextSlot = timeSlots[i];
             if (nextSlot.isBreak) break;
 
-            const nextEntries = getSlotAssignments(selectedClass, day, nextSlot.id);
+            const nextEntries = getSlotAssignments(selectedClass, day, nextSlot.id, calPrefix);
             if (areSlotAssignmentsMatching(slotEntries, nextEntries)) {
               rowspan++;
             } else {
@@ -1166,7 +1647,42 @@ function renderClassSchedule() {
   tbody.appendChild(notesTr);
 }
 
+document.getElementById('btnEditClassWeekly')?.addEventListener('click', () => {
+  if (isClassEditMode) {
+    exitClassEditMode(true);
+  } else {
+    enterClassEditMode();
+  }
+});
+
+document.getElementById('btnSaveClassEdit')?.addEventListener('click', saveClassWeeklySchedule);
+document.getElementById('btnCancelClassEdit')?.addEventListener('click', () => exitClassEditMode(true));
+document.getElementById('btnResetClassMaster')?.addEventListener('click', resetClassWeeklySchedule);
+
+function updateClassPrintHeader(selectedClass) {
+  const isHS = isHighSchoolClass(selectedClass);
+  const printSchoolName = document.getElementById('printSchoolName');
+  if (printSchoolName) {
+    printSchoolName.textContent = isHS ? 'MITRA KASIH HIGH SCHOOL' : 'MITRA KASIH MIDDLE SCHOOL';
+  }
+
+  const printSubtitle = document.getElementById('printScheduleSubtitle');
+  if (printSubtitle) {
+    const yr = (document.getElementById('classYearSelect')?.value || '2026/2027').replace('-', '/');
+    const th = document.getElementById('classThemeSelect')?.value || '';
+    const wk = document.getElementById('classWeekSelect')?.value || '';
+    const cls = (selectedClass || 'Class').toUpperCase();
+
+    const parts = [cls, 'WEEKLY SCHEDULE', yr];
+    if (th) parts.push(th.toUpperCase());
+    if (wk) parts.push(wk.toUpperCase());
+    printSubtitle.textContent = parts.join(' ');
+  }
+}
+
 document.getElementById('btnPrintPDF')?.addEventListener('click', () => {
+  const selectedClass = document.getElementById('classSelectView')?.value;
+  updateClassPrintHeader(selectedClass);
   window.print();
 });
 
@@ -1174,20 +1690,22 @@ document.getElementById('btnDownloadExcel')?.addEventListener('click', exportWee
 
 document.getElementById('btnTeacherPrintPDF')?.addEventListener('click', () => {
   const teacherName = document.getElementById('teacherSelectView')?.value || '';
-  const printName = document.getElementById('printTeacherName');
-  if (printName) printName.textContent = teacherName;
+  const yr = (document.getElementById('teacherYearSelect')?.value || '2026/2027').replace('-', '/');
+  const th = document.getElementById('teacherThemeSelect')?.value || '';
+  const wk = document.getElementById('teacherWeekSelect')?.value || '';
 
-  const printYear = document.getElementById('printTeacherMetaYear');
-  if (printYear) printYear.textContent = document.getElementById('teacherYearSelect')?.value || '';
+  const printTeacherSchoolName = document.getElementById('printTeacherSchoolName');
+  if (printTeacherSchoolName) {
+    printTeacherSchoolName.textContent = 'MITRA KASIH SCHOOL';
+  }
 
-  const printTheme = document.getElementById('printTeacherMetaTheme');
-  if (printTheme) printTheme.textContent = document.getElementById('teacherThemeSelect')?.value || '';
-
-  const printWeek = document.getElementById('printTeacherMetaWeek');
-  if (printWeek) printWeek.textContent = document.getElementById('teacherWeekSelect')?.value || '';
-
-  const printDates = document.getElementById('printTeacherMetaDates');
-  if (printDates) printDates.textContent = document.getElementById('teacherDateBadge')?.textContent || '';
+  const printTeacherSubtitle = document.getElementById('printTeacherScheduleSubtitle');
+  if (printTeacherSubtitle) {
+    const parts = [teacherName.toUpperCase() || 'TEACHER', 'WEEKLY SCHEDULE', yr];
+    if (th) parts.push(th.toUpperCase());
+    if (wk) parts.push(wk.toUpperCase());
+    printTeacherSubtitle.textContent = parts.join(' ');
+  }
 
   window.print();
 });
@@ -1249,7 +1767,7 @@ function exportWeeklyToExcel() {
     // 1. Table Headers (th)
     if (tagName === 'th') {
       const dayName = cell.querySelector('.day-name')?.textContent.trim();
-      const uniform = cell.querySelector('.uniform-badge')?.textContent.trim();
+      const uniform = cell.querySelector('.edit-uniform-input')?.value || cell.querySelector('.uniform-badge')?.textContent.trim();
       const friBadge = cell.querySelector('.friday-header-badge');
       const friMs = friBadge && friBadge.style.display !== 'none' ? friBadge.textContent.trim() : null;
 
@@ -1473,7 +1991,7 @@ function exportWeeklyToExcel() {
   const rowOffset = 3; // Space for Header Title & Metadata
 
   // 1. Title Banner (Row 0)
-  const titleText = `SCHOOL WEEKLY SCHEDULE - ${className || 'Class'}`;
+  const titleText = `MITRA KASIH SCHOOL - WEEKLY SCHEDULE (${className || 'Class'})`;
   const titleStyle = createExcelStyle("1E293B", "1E293B", "FFFFFF", { fontSize: 14, bold: true, align: "center" });
   for (let c = 0; c < 6; c++) {
     const cellRef = XLSX.utils.encode_cell({ r: 0, c });
@@ -2275,7 +2793,22 @@ document.getElementById('saveMaterialsBtn')?.addEventListener('click', async () 
   }
 });
 
-document.getElementById('classSelectView')?.addEventListener('change', renderClassSchedule);
+document.getElementById('classSelectView')?.addEventListener('change', () => {
+  if (isClassEditMode) exitClassEditMode(true);
+  renderClassSchedule();
+});
+document.getElementById('classYearSelect')?.addEventListener('change', () => {
+  if (isClassEditMode) exitClassEditMode(true);
+  renderClassSchedule();
+});
+document.getElementById('classThemeSelect')?.addEventListener('change', () => {
+  if (isClassEditMode) exitClassEditMode(true);
+  renderClassSchedule();
+});
+document.getElementById('classWeekSelect')?.addEventListener('change', () => {
+  if (isClassEditMode) exitClassEditMode(true);
+  renderClassSchedule();
+});
 document.getElementById('teacherSelectView')?.addEventListener('change', renderTeacherView);
 document.getElementById('adminClassSelect')?.addEventListener('change', updateAdminPeriodSelectOptions);
 document.getElementById('adminDaySelect')?.addEventListener('change', updateAdminPeriodSelectOptions);
@@ -2325,9 +2858,20 @@ onSnapshot(doc(db, "schedules", "masterSchedules"), (docSnap) => {
   renderManageScheduleTable();
 });
 
+onSnapshot(doc(db, "schedules", "weeklyOverrides"), (docSnap) => {
+  if (docSnap.exists()) weeklyOverrides = docSnap.data();
+  else weeklyOverrides = {};
+  if (!isClassEditMode) {
+    renderClassSchedule();
+    renderTeacherView();
+  }
+});
+
 onSnapshot(doc(db, "schedules", "materialsData"), (docSnap) => {
   if (docSnap.exists()) materialsData = docSnap.data();
-  renderClassSchedule();
+  if (!isClassEditMode) {
+    renderClassSchedule();
+  }
   renderTeacherView();
 });
 
