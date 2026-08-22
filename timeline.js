@@ -170,15 +170,48 @@ async function showTimelineApp() {
     const appEl = document.getElementById('timelineApp');
     if (appEl) appEl.classList.remove('hidden');
 
-    const badgeHTML = currentUser.type === 'staff' ? ` <span class="staff-badge">✓</span>` : '';
-    const firstName = (currentUser.name || '').trim().split(' ')[0] || currentUser.name || 'User';
     const nameDisp = document.getElementById('currentUserDisplay');
-    if (nameDisp) nameDisp.innerHTML = firstName + badgeHTML;
+    const roleBadge = document.getElementById('currentUserRoleBadge');
+    const composerAvatar = document.getElementById('composerAvatarCircle');
+
+    let roleText = 'Student';
+    let isVerified = false;
+
+    if (currentUser.type === 'staff') {
+        const rawCode = (currentUser.code || '').toLowerCase();
+        const rawName = (currentUser.name || '').toLowerCase();
+        if (rawName.includes('admin') || rawCode.includes('admin')) {
+            roleText = 'Admin';
+        } else {
+            roleText = 'Teacher';
+        }
+        isVerified = true;
+    } else {
+        roleText = currentUser.studentClass && currentUser.studentClass !== 'Unassigned' 
+            ? `Student (${currentUser.studentClass})` 
+            : 'Student';
+    }
+
+    const badgeHTML = isVerified ? ` <span class="staff-badge" title="Verified Staff">✓</span>` : '';
+    const displayName = currentUser.name || 'User';
+
+    if (nameDisp) nameDisp.innerHTML = displayName + badgeHTML;
+    if (roleBadge) roleBadge.innerText = roleText;
+    if (composerAvatar) {
+        composerAvatar.innerText = displayName.charAt(0).toUpperCase();
+        composerAvatar.style.background = (currentUser.type === 'staff') ? '#1e5eff' : '#10b981';
+    }
 
     const sidebarName = document.getElementById('sidebarStudentName');
     const sidebarClass = document.getElementById('sidebarStudentClass');
     if (sidebarName) sidebarName.innerText = currentUser.name;
     if (sidebarClass) sidebarClass.innerText = currentUser.studentClass ? `Class: ${currentUser.studentClass}` : 'Logged in';
+
+    // Hide student-only navigation tabs (Dashboard, Online Quiz, Profile, Scores) for Staff (Teacher / Admin)
+    const isStaff = currentUser.type === 'staff';
+    document.querySelectorAll('.student-only-nav').forEach(el => {
+        el.classList.toggle('hidden', isStaff);
+    });
 
     await fetchAllNames();
     await populateClassDropdown();

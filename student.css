@@ -1,3 +1,7 @@
+.hidden {
+    display: none !important;
+}
+
 .app-container {
     display: flex !important;
     flex-direction: column !important;
@@ -339,35 +343,40 @@ td {
 .brand {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 12px;
+    margin-left: 2px;
 }
 
-/* Enforce strict square dimensions on the yellow brand box */
-.brand-badge {
-    width: 50px !important;
-    height: 50px !important;
-    min-width: 50px !important;
-    min-height: 50px !important;
-    background-color: #ffffff;
-    /* Yellow background */
-    border-radius: 10px;
+/* Enforce sleek, proportional dimensions on the brand logo box */
+.brand-badge,
+.brand-logo-container,
+.brand>div:first-child {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    min-height: 34px !important;
+    background-color: #ffffff !important;
+    border-radius: 8px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    padding: 6px !important;
+    padding: 4px !important;
     overflow: hidden !important;
     flex-shrink: 0 !important;
-    box-sizing: border-box;
+    box-sizing: border-box !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12) !important;
 }
 
 /* Force the logo image to scale down inside the box */
-.brand-badge-img {
+.brand-badge-img,
+.brand-logo-container img,
+.brand>div:first-child img {
     width: 100% !important;
     height: 100% !important;
     max-width: 100% !important;
     max-height: 100% !important;
     object-fit: contain !important;
-    display: block;
+    display: block !important;
 }
 
 /* 2. Topbar Action Buttons & Icons Fix */
@@ -642,9 +651,90 @@ td {
 }
 
 /* ======================================================
+   BEHAVIOR ACTIVITY FEED CARDS
+   ====================================================== */
+.behavior-activity-item {
+    background: var(--card-bg, #ffffff) !important;
+    border: 1px solid var(--border-color, #e2e8f0) !important;
+    border-radius: 12px !important;
+    padding: 10px 14px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.behavior-activity-item:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+}
+
+.behavior-item-left {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 10px !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+}
+
+.behavior-item-icon {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    border-radius: 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+}
+
+.behavior-item-details {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+}
+
+.behavior-item-title {
+    margin: 0 !important;
+    font-size: 13.5px !important;
+    font-weight: 700 !important;
+    color: var(--text-dark, #0f172a) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+body.dark-theme .behavior-item-title,
+body.dark-mode .behavior-item-title {
+    color: #f8fafc !important;
+}
+
+.behavior-item-date {
+    margin: 2px 0 0 0 !important;
+    font-size: 11.5px !important;
+    color: var(--text-gray, #64748b) !important;
+}
+
+.behavior-item-badge {
+    font-size: 13.5px !important;
+    font-weight: 800 !important;
+    padding: 3px 10px !important;
+    border-radius: 8px !important;
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* ======================================================
    ROUNDED PILL BUTTON STYLING SYSTEM (LIGHT & DARK THEME)
    ====================================================== */
-button:not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.card-kebab-btn):not(#profileCardKebabBtn):not(.profile-dropdown-item),
+button:not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.card-kebab-btn):not(#profileCardKebabBtn):not(.profile-dropdown-item):not(.menu-btn):not(.submenu-btn):not(.kebab-item):not(.kebab-btn):not(.edit-btn):not(.delete-btn),
 .btn-pill,
 .teacher-btn,
 .theme-toggle-btn,
@@ -693,7 +783,7 @@ button:active,
 }
 
 /* Dark Theme Button Overrides */
-.dark-theme button:not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.card-kebab-btn):not(#profileCardKebabBtn):not(.profile-dropdown-item),
+.dark-theme button:not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.card-kebab-btn):not(#profileCardKebabBtn):not(.profile-dropdown-item):not(.menu-btn):not(.submenu-btn):not(.kebab-item):not(.kebab-btn):not(.edit-btn):not(.delete-btn),
 .dark-theme .btn-pill,
 .dark-theme .teacher-btn,
 .dark-theme .theme-toggle-btn,
@@ -709,7 +799,7 @@ button:active,
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
 }
 
-.dark-theme button:not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):hover,
+.dark-theme button:not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.card-kebab-btn):not(#profileCardKebabBtn):not(.profile-dropdown-item):not(.menu-btn):not(.submenu-btn):not(.kebab-item):not(.kebab-btn):not(.edit-btn):not(.delete-btn):hover,
 .dark-theme .btn-pill:hover,
 .dark-theme .teacher-btn:hover,
 .dark-theme .theme-toggle-btn:hover,
@@ -742,6 +832,80 @@ button:active,
    MOBILE & TABLET RESPONSIVE ENHANCEMENTS (IPHONE & IPAD)
    ====================================================== */
 
+/* ======================================================
+   COMPREHENSIVE DARK THEME SYSTEM FOR STUDENT PORTAL
+   ====================================================== */
+body.dark-theme,
+body.dark-mode {
+    --bg-body: #0b1437 !important;
+    --card-bg: #111c44 !important;
+    --text-dark: #f4f7fe !important;
+    --text-gray: #a3aed1 !important;
+    --border-color: #1b254b !important;
+    --sidebar-bg: #080f28 !important;
+    --sidebar-hover: #152046 !important;
+    background: #0b1437 !important;
+    color: #f4f7fe !important;
+}
+
+body.dark-theme .app-container,
+body.dark-mode .app-container,
+body.dark-theme .main-wrapper,
+body.dark-mode .main-wrapper {
+    background: #0b1437 !important;
+    color: #f4f7fe !important;
+}
+
+body.dark-theme .box,
+body.dark-mode .box,
+body.dark-theme #newsTicker,
+body.dark-mode #newsTicker,
+body.dark-theme .stat-card,
+body.dark-mode .stat-card {
+    background: #111c44 !important;
+    border: 1px solid #1b254b !important;
+    color: #f4f7fe !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+}
+
+body.dark-theme .box h3,
+body.dark-mode .box h3,
+body.dark-theme h1,
+body.dark-theme h2,
+body.dark-theme h3,
+body.dark-theme h4,
+body.dark-mode h1,
+body.dark-mode h2,
+body.dark-mode h3,
+body.dark-mode h4 {
+    color: #f4f7fe !important;
+}
+
+body.dark-theme p,
+body.dark-mode p {
+    color: #a3aed1;
+}
+
+body.dark-theme .sidebar,
+body.dark-mode .sidebar,
+body.dark-theme .student-sidebar,
+body.dark-mode .student-sidebar {
+    background: #080f28 !important;
+    border-bottom: 1px solid #1b254b !important;
+}
+
+body.dark-theme .student-greeting-banner,
+body.dark-mode .student-greeting-banner {
+    background-color: #0f172a !important;
+    border-color: #1e293b !important;
+}
+
+body.dark-theme .behavior-activity-item,
+body.dark-mode .behavior-activity-item {
+    background: #0b1437 !important;
+    border-color: #1b254b !important;
+}
+
 /* iPad & Medium Tablet Breakpoint (<= 1024px) */
 /* ======================================================
    RESPONSIVE MEDIA QUERIES (IPAD & IPHONE OPTIMIZATION)
@@ -773,9 +937,14 @@ button:active,
 
     .sidebar,
     .student-sidebar {
-        padding: 0 10px !important;
+        padding: 0 16px !important;
         height: 56px !important;
         min-height: 56px !important;
+    }
+
+    .brand {
+        gap: 10px !important;
+        margin-left: 4px !important;
     }
 
     .brand p {
@@ -783,7 +952,7 @@ button:active,
     }
 
     .brand h2 {
-        font-size: 13px !important;
+        font-size: 13.5px !important;
     }
 
     .menu-bar {
@@ -893,7 +1062,11 @@ button:active,
 
     .sidebar,
     .student-sidebar {
-        padding: 0 6px !important;
+        padding: 0 14px !important;
+    }
+
+    .brand {
+        margin-left: 2px !important;
     }
 
     .menu-bar {
@@ -1114,11 +1287,15 @@ body.dark-mode #mobileTopbarKebabBtn svg {
 
 /* RESPONSIVE HIDING/SHOWING OF TOPBAR ON MOBILE (<= 768px) */
 @media screen and (max-width: 768px) {
-    .brand>div:first-child {
-        width: 32px !important;
-        height: 32px !important;
-        padding: 4px !important;
-        border-radius: 8px !important;
+    .brand>div:first-child,
+    .brand-badge,
+    .brand-logo-container {
+        width: 30px !important;
+        height: 30px !important;
+        min-width: 30px !important;
+        min-height: 30px !important;
+        padding: 3px !important;
+        border-radius: 7px !important;
     }
 
     .brand h2 {

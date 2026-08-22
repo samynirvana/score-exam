@@ -114,6 +114,13 @@ body.dark-mode .timeline-user-subtext {
     color: #60a5fa !important;
 }
 
+/* Hide student-only navigation tabs for Staff/Teacher/Admin accounts */
+.student-only-nav.hidden,
+.kebab-item.student-only-nav.hidden,
+.menu-btn.student-only-nav.hidden {
+    display: none !important;
+}
+
 /* Bulletproof reinforcement for Mobile Menu Button */
 #mobileTopbarKebabBtn.mobile-kebab-btn,
 .mobile-kebab-container .mobile-kebab-btn {
@@ -610,9 +617,9 @@ body.dark-mode #mobileTopbarKebabBtn.mobile-kebab-btn {
 .target-selector-wrapper select,
 #postTargetClass {
     padding: 6px 24px 6px 10px !important;
-    background-color: var(--input-bg);
-    color: var(--text-main);
-    border: 1px solid var(--border-color);
+    background-color: var(--input-bg, #ffffff) !important;
+    color: var(--text-main, #0f172a) !important;
+    border: 1px solid var(--border-color, #cbd5e1) !important;
     border-radius: 8px !important;
     font-size: 13px !important;
     font-weight: 600 !important;
@@ -625,22 +632,46 @@ body.dark-mode #mobileTopbarKebabBtn.mobile-kebab-btn {
     vertical-align: middle !important;
 }
 
+body.dark-mode .target-selector-wrapper select,
+body.dark-theme .target-selector-wrapper select,
+body.dark-mode #postTargetClass,
+body.dark-theme #postTargetClass {
+    background-color: #1e293b !important;
+    color: #f8fafc !important;
+    border-color: #334155 !important;
+}
+
+body.dark-mode .target-selector-wrapper select option,
+body.dark-theme .target-selector-wrapper select option,
+body.dark-mode #postTargetClass option,
+body.dark-theme #postTargetClass option {
+    background-color: #1e293b !important;
+    color: #f8fafc !important;
+}
+
 .target-selector-wrapper select:focus,
 #postTargetClass:focus {
-    border-color: var(--primary-color);
+    border-color: var(--primary-color) !important;
 }
 
 .target-class-badge {
     display: inline-flex;
     align-items: center;
-    background: var(--avatar-bg);
-    color: var(--avatar-text);
+    background: var(--avatar-bg, #dbeafe);
+    color: var(--avatar-text, #1d4ed8);
     padding: 2px 8px;
     border-radius: 6px;
     font-size: 11px;
     font-weight: 700;
     margin-left: 6px;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border-color, #cbd5e1);
+}
+
+body.dark-mode .target-class-badge,
+body.dark-theme .target-class-badge {
+    background: rgba(37, 99, 235, 0.2) !important;
+    color: #93c5fd !important;
+    border-color: rgba(147, 197, 253, 0.3) !important;
 }
 
 @media (max-width: 480px) {

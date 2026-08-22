@@ -73,7 +73,7 @@ onAuthStateChanged(auth, async (user) => {
             }
 
             const welcomeSubEl = document.querySelector('.header-title p');
-            if (welcomeSubEl) welcomeSubEl.innerText = `Welcome back, ${formattedName}`;
+            if (welcomeSubEl) welcomeSubEl.innerHTML = `Welcome back, <strong class="welcome-user-highlight">${formattedName}</strong>`;
 
             loginScreen.classList.add('hidden');
             adminDashboard.classList.remove('hidden');
@@ -92,20 +92,13 @@ onAuthStateChanged(auth, async (user) => {
 
             } else {
                 document.querySelectorAll('.admin-only-view').forEach(el => el.classList.add('hidden'));
-                document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-                
-                const scoresBtn = document.querySelector('[data-tab="tab-manage-scores"]');
-                const scoresTab = document.getElementById('tab-manage-scores');
-                if (scoresBtn) scoresBtn.classList.add('active');
-                if (scoresTab) scoresTab.classList.add('active');
 
                 if (subjectInput) {
                     subjectInput.value = teacherSubject;
                     subjectInput.disabled = true; 
                 }
                 if (tableTitle) tableTitle.innerText = `Departmental Performance Ledger: ${teacherSubject}`;
-                if (welcomeTitle) welcomeTitle.innerText = `Teacher Portal Workspace (${teacherSubject})`;
+                if (welcomeTitle) welcomeTitle.innerText = "Teacher Page";
 
                 const directSubSelect = document.getElementById('directSubjectSelect');
                 if (directSubSelect && teacherSubject) {
@@ -117,7 +110,9 @@ onAuthStateChanged(auth, async (user) => {
             const parallelTasks = [
                 loadNewsTable(),
                 loadAdminTable(),
-                loadPointsTable()
+                loadPointsTable(),
+                loadStudentsDirectory(),
+                updateDashboardStats()
             ];
 
             if (typeof window.loadSystemDatabases === "function") {
@@ -125,17 +120,11 @@ onAuthStateChanged(auth, async (user) => {
             }
 
             if (userRole === "admin") {
-                parallelTasks.push(loadStudentsDirectory());
                 parallelTasks.push(loadTeachersDirectory());
             }
 
             // Execute all queries simultaneously
             await Promise.all(parallelTasks);
-
-            // 5. Update stats after directories are loaded
-            if (userRole === "admin") {
-                updateDashboardStats();
-            }
 
         } catch (err) {
             console.error("Error querying identity permissions: ", err);
@@ -2849,83 +2838,113 @@ async function loadScoresTable() {
 }
 window.loadScoresTable = loadScoresTable;
 // --- DASHBOARD STATISTICS CALCULATOR ---
-// --- OPTIMIZED DASHBOARD STATS CALCULATOR (PARALLEL FETCH) ---
+// --- OPTIMIZED DASHBOARD STATS CALCULATOR (DECOUPLED & RESILIENT) ---
 async function updateDashboardStats() {
     try {
-        // 1. Fire all 5 Firestore queries concurrently in a single parallel batch
-        const [studentsSnap, usersSnap, pointsSnap, newsSnap, quizSnap] = await Promise.all([
-            getDocs(collection(db, "students")),
-            getDocs(collection(db, "users")),
-            getDocs(collection(db, "student_points")),
-            getDocs(collection(db, "news_updates")),
-            getDocs(collection(db, "quizzes"))
-        ]);
+        let studentsMap = {};
 
-        // 2. Render Total Students Count
-        const elTotalStudents = document.getElementById('stat-total-students');
-        if (elTotalStudents) elTotalStudents.innerText = studentsSnap.size;
+        // 1. Students Count & Map
+        try {
+            const studentsSnap = await getDocs(collection(db, "students"));
+            const elTotalStudents = document.getElementById('stat-total-students');
+            if (elTotalStudents) elTotalStudents.innerText = studentsSnap.size;
 
-        // 3. Render Total Teachers Count
-        let teacherCount = 0;
-        usersSnap.forEach(doc => {
-            if (doc.data().role === 'teacher') teacherCount++;
-        });
-        const elTotalTeachers = document.getElementById('stat-total-teachers');
-        if (elTotalTeachers) elTotalTeachers.innerText = teacherCount;
+            studentsSnap.forEach(doc => {
+                studentsMap[doc.id] = { name: doc.data().studentName || 'N/A', total: 0 };
+            });
+        } catch (e) {
+            console.warn("Could not load students for stats:", e);
+        }
 
-        // 4. Calculate & Render Highest and Lowest Behavior Points
-        const studentsMap = {};
-        studentsSnap.forEach(doc => {
-            studentsMap[doc.id] = { name: doc.data().studentName || 'N/A', total: 0 };
-        });
-
-        pointsSnap.forEach(doc => {
-            const data = doc.data();
-            if (studentsMap[data.studentCode]) {
-                studentsMap[data.studentCode].total += (parseFloat(data.points) || 0);
-            }
-        });
-
-        let highestName = "N/A", highestScore = -Infinity;
-        let lowestName = "N/A", lowestScore = Infinity;
-        let hasStudents = false;
-
-        for (const code in studentsMap) {
-            hasStudents = true;
-            const student = studentsMap[code];
-            if (student.total > highestScore) { 
-                highestScore = student.total; 
-                highestName = student.name; 
-            }
-            if (student.total < lowestScore) { 
-                lowestScore = student.total; 
-                lowestName = student.name; 
+        // 2. Teachers Count
+        try {
+            let teacherCount = 0;
+            const usersSnap = await getDocs(collection(db, "users"));
+            usersSnap.forEach(doc => {
+                const r = (doc.data().role || '').toLowerCase();
+                if (r === 'teacher') teacherCount++;
+            });
+            const elTotalTeachers = document.getElementById('stat-total-teachers');
+            if (elTotalTeachers) elTotalTeachers.innerText = teacherCount > 0 ? teacherCount : 1;
+        } catch (e) {
+            const elTotalTeachers = document.getElementById('stat-total-teachers');
+            if (elTotalTeachers && (elTotalTeachers.innerText === '...' || !elTotalTeachers.innerText)) {
+                elTotalTeachers.innerText = '1';
             }
         }
 
-        const elHighest = document.getElementById('stat-highest-behavior');
-        const elLowest = document.getElementById('stat-lowest-behavior');
+        // 3. Behavior Points (Highest & Lowest)
+        try {
+            const pointsSnap = await getDocs(collection(db, "student_points"));
+            pointsSnap.forEach(doc => {
+                const data = doc.data();
+                if (studentsMap[data.studentCode]) {
+                    studentsMap[data.studentCode].total += (parseFloat(data.points) || 0);
+                }
+            });
 
-        if (hasStudents && highestScore !== -Infinity) {
-            if (elHighest) elHighest.innerText = `${highestName} (${highestScore > 0 ? '+' : ''}${highestScore})`;
-            if (elLowest) elLowest.innerText = `${lowestName} (${lowestScore > 0 ? '+' : ''}${lowestScore})`;
-        } else {
-            if (elHighest) elHighest.innerText = "N/A";
-            if (elLowest) elLowest.innerText = "N/A";
+            let highestName = "N/A", highestScore = -Infinity;
+            let lowestName = "N/A", lowestScore = Infinity;
+            let hasStudents = false;
+
+            for (const code in studentsMap) {
+                hasStudents = true;
+                const student = studentsMap[code];
+                if (student.total > highestScore) { 
+                    highestScore = student.total; 
+                    highestName = student.name; 
+                }
+                if (student.total < lowestScore) { 
+                    lowestScore = student.total; 
+                    lowestName = student.name; 
+                }
+            }
+
+            const elHighest = document.getElementById('stat-highest-behavior');
+            const elLowest = document.getElementById('stat-lowest-behavior');
+
+            if (hasStudents && highestScore !== -Infinity) {
+                if (elHighest) elHighest.innerText = `${highestName} (${highestScore > 0 ? '+' : ''}${highestScore})`;
+                if (elLowest) elLowest.innerText = `${lowestName} (${lowestScore > 0 ? '+' : ''}${lowestScore})`;
+            } else {
+                if (elHighest) elHighest.innerText = "N/A";
+                if (elLowest) elLowest.innerText = "N/A";
+            }
+        } catch (e) {
+            console.warn("Could not calculate behavior stats:", e);
         }
 
-        // 5. Render Total News Count
-        const elTotalNews = document.getElementById('stat-total-news');
-        if (elTotalNews) elTotalNews.innerText = newsSnap.size;
+        // 4. Total News Count
+        try {
+            const newsSnap = await getDocs(collection(db, "news_updates"));
+            const elTotalNews = document.getElementById('stat-total-news');
+            if (elTotalNews) elTotalNews.innerText = newsSnap.size;
+        } catch (e) {
+            console.warn("Could not load news stats:", e);
+        }
 
-        // 6. Render Total Quizzes Count
-        const elTotalQuizzes = document.getElementById('stat-total-quizzes');
-        if (elTotalQuizzes) elTotalQuizzes.innerText = quizSnap.size;
+        // 5. Total Quizzes Count (Digital + Offline)
+        try {
+            let totalQuizCount = 0;
+            const quizSnap = await getDocs(collection(db, "quizzes"));
+            totalQuizCount += quizSnap.size;
+
+            try {
+                const manualSnap = await getDocs(collection(db, "system_quizzes"));
+                totalQuizCount += manualSnap.size;
+            } catch (err) {}
+
+            const elTotalQuizzes = document.getElementById('stat-total-quizzes');
+            if (elTotalQuizzes) elTotalQuizzes.innerText = totalQuizCount;
+        } catch (e) {
+            console.warn("Could not load quiz stats:", e);
+        }
 
     } catch (e) {
         console.error("Dashboard stats calculation error:", e);
     }
 }
+window.updateDashboardStats = updateDashboardStats;
 
 // 2. Function to filter, sort, and render the table with hidden codes
 // --- OPTIMIZED STUDENT TABLE RENDER ---

@@ -209,6 +209,26 @@ function renderUnifiedProfile(scoreSnap, pointSnap) {
     const behaviorFeed = document.getElementById('behaviorActivityFeed');
     if (behaviorFeed) behaviorFeed.innerHTML = "";
 
+    const formatTimestamp = (raw) => {
+        if (!raw) return 'Recent Event';
+        try {
+            let d;
+            if (typeof raw.toDate === 'function') {
+                d = raw.toDate();
+            } else if (raw.seconds) {
+                d = new Date(raw.seconds * 1000);
+            } else if (typeof raw === 'string' || typeof raw === 'number') {
+                d = new Date(raw);
+            } else {
+                d = new Date(raw);
+            }
+            if (isNaN(d.getTime())) return 'Recent Event';
+            return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+        } catch (e) {
+            return 'Recent Event';
+        }
+    };
+
     if (!pointSnap.empty) {
         pointSnap.forEach((docSnap) => {
             const data = docSnap.data();
@@ -221,30 +241,30 @@ function renderUnifiedProfile(scoreSnap, pointSnap) {
             const isPositive = pts > 0;
             const isNeutral = pts === 0;
 
-            const badgeBg = isPositive ? '#ecfdf5' : (isNeutral ? '#f1f5f9' : '#fef2f2');
+            const badgeBg = isPositive ? 'rgba(16, 185, 129, 0.12)' : (isNeutral ? 'rgba(100, 116, 139, 0.12)' : 'rgba(239, 68, 68, 0.12)');
             const badgeColor = isPositive ? '#10b981' : (isNeutral ? '#64748b' : '#ef4444');
-            const badgeBorder = isPositive ? '#a7f3d0' : (isNeutral ? '#e2e8f0' : '#fca5a5');
+            const badgeBorder = isPositive ? 'rgba(16, 185, 129, 0.3)' : (isNeutral ? 'rgba(100, 116, 139, 0.3)' : 'rgba(239, 68, 68, 0.3)');
             const sign = isPositive ? '+' : '';
 
             // Icon SVG based on Merit vs Demerit
             const iconSvg = isPositive
-                ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>`
-                : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>`;
+                ? `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>`
+                : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>`;
 
             if (behaviorFeed) {
                 behaviorFeed.innerHTML += `
-                    <div style="background: var(--card-bg, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: 14px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 14px; transition: transform 0.15s ease, box-shadow 0.15s ease;" onmouseenter="this.style.transform='translateX(4px)';" onmouseleave="this.style.transform='translateX(0)';">
-                        <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
-                            <div style="width: 36px; height: 36px; border-radius: 10px; background: ${badgeBg}; color: ${badgeColor}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <div class="behavior-activity-item">
+                        <div class="behavior-item-left">
+                            <div class="behavior-item-icon" style="background: ${badgeBg}; color: ${badgeColor}; border: 1px solid ${badgeBorder};">
                                 ${iconSvg}
                             </div>
-                            <div style="min-width: 0;">
-                                <h4 style="margin: 0; font-size: 14.5px; font-weight: 700; color: var(--text-dark, #0f172a); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${data.reason || 'Point Adjustment'}</h4>
-                                <p style="margin: 2px 0 0 0; font-size: 12px; color: var(--text-gray, #64748b);">${data.timestamp ? new Date(data.timestamp).toLocaleDateString(undefined, {month:'short', day:'numeric'}) : 'Behavior Event'}</p>
+                            <div class="behavior-item-details">
+                                <h4 class="behavior-item-title">${data.reason || 'Point Adjustment'}</h4>
+                                <p class="behavior-item-date">${formatTimestamp(data.timestamp)}</p>
                             </div>
                         </div>
 
-                        <div style="background: ${badgeBg}; color: ${badgeColor}; border: 1px solid ${badgeBorder}; font-size: 15px; font-weight: 800; padding: 4px 12px; border-radius: 8px; flex-shrink: 0; white-space: nowrap;">
+                        <div class="behavior-item-badge" style="background: ${badgeBg}; color: ${badgeColor}; border: 1px solid ${badgeBorder};">
                             ${sign}${pts} pts
                         </div>
                     </div>

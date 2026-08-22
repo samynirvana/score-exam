@@ -10,8 +10,8 @@
     <title>My Profile - Student Portal</title>
     <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/1o_7O1hdx1SJOXfoFw9ZKxpl4zSOD_VYd">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="admin.css?v=315">
-    <link rel="stylesheet" href="student.css?v=315">
+    <link rel="stylesheet" href="admin.css?v=334">
+    <link rel="stylesheet" href="student.css?v=334">
     <style>
         .profile-container {
             max-width: 720px;
@@ -137,12 +137,18 @@
             right: 0;
             background: var(--card-bg, #ffffff);
             border: 1px solid var(--border-color, #e2e8f0);
-            border-radius: 14px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
-            min-width: 200px;
-            padding: 6px;
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            min-width: auto;
+            width: max-content;
+            padding: 4px;
             z-index: 100;
             animation: fadeInDown 0.15s ease-out;
+        }
+
+        .profile-card-dropdown.hidden,
+        .hidden {
+            display: none !important;
         }
 
         @keyframes fadeInDown {
@@ -155,15 +161,16 @@
             background: transparent !important;
             border: none !important;
             color: var(--text-dark, #334155) !important;
-            padding: 10px 14px !important;
-            font-size: 13.5px !important;
+            padding: 6px 10px !important;
+            font-size: 12px !important;
             font-weight: 600 !important;
-            border-radius: 8px !important;
+            border-radius: 6px !important;
             display: flex !important;
             align-items: center !important;
-            gap: 10px !important;
+            gap: 6px !important;
             cursor: pointer !important;
             text-align: left !important;
+            white-space: nowrap !important;
             box-shadow: none !important;
             transition: background 0.15s ease !important;
         }
@@ -266,7 +273,7 @@
         }
 
         .info-card {
-            background: var(--bg-color, #f8fafc);
+            background: #f8fafc;
             border: 1px solid var(--border-color, #e2e8f0);
             border-radius: 14px;
             padding: 16px;
@@ -287,8 +294,8 @@
 
         .info-title {
             font-size: 12px;
-            color: var(--text-gray, #64748b);
-            font-weight: 600;
+            color: #64748b;
+            font-weight: 700;
             margin: 0 0 2px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -296,7 +303,7 @@
 
         .info-value {
             font-size: 15px;
-            color: var(--text-main, #0f172a);
+            color: #0f172a;
             font-weight: 700;
             margin: 0;
         }
@@ -320,6 +327,47 @@
             color: inherit;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
             transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* Explicit Dark Mode Overrides for Profile */
+        body.dark-theme .profile-hero-card,
+        body.dark-mode .profile-hero-card,
+        body.dark-theme .stat-shortcut-card,
+        body.dark-mode .stat-shortcut-card {
+            background: #111c44 !important;
+            border-color: #1b254b !important;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        body.dark-theme .profile-name,
+        body.dark-mode .profile-name {
+            color: #f8fafc !important;
+        }
+
+        body.dark-theme .info-card,
+        body.dark-mode .info-card {
+            background: #1b254b !important;
+            border-color: #2b3674 !important;
+        }
+
+        body.dark-theme .info-title,
+        body.dark-mode .info-title {
+            color: #94a3b8 !important;
+        }
+
+        body.dark-theme .info-value,
+        body.dark-mode .info-value {
+            color: #f8fafc !important;
+        }
+
+        body.dark-theme .stat-shortcut-card h4,
+        body.dark-mode .stat-shortcut-card h4 {
+            color: #f8fafc !important;
+        }
+
+        body.dark-theme .stat-shortcut-card p,
+        body.dark-mode .stat-shortcut-card p {
+            color: #94a3b8 !important;
         }
 
         .stat-shortcut-card:hover {
@@ -361,8 +409,8 @@
         <!-- TOP NAVIGATION HEADER BAR -->
         <header class="sidebar student-sidebar">
             <div class="brand">
-                <div style="background: #ffffff; padding: 6px; border-radius: 10px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                    <img src="https://lh3.googleusercontent.com/d/1o_7O1hdx1SJOXfoFw9ZKxpl4zSOD_VYd" alt="Logo" style="width: 100%; height: 100%; object-fit: contain;">
+                <div class="brand-logo-container">
+                    <img src="https://lh3.googleusercontent.com/d/1o_7O1hdx1SJOXfoFw9ZKxpl4zSOD_VYd" alt="Logo">
                 </div>
                 <div>
                     <h2 style="margin: 0; font-size: 15px; font-weight: 800; color: #ffffff; letter-spacing: 0.5px;">MITRA KASIH SCHOOL</h2>
@@ -585,11 +633,11 @@
                         </button>
                         <div id="profileCardDropdown" class="profile-card-dropdown hidden">
                             <button type="button" class="profile-dropdown-item" onclick="openPhotoEditModal()">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                                     <circle cx="12" cy="13" r="4"></circle>
                                 </svg>
-                                <span>Change Profile Picture</span>
+                                <span>Change Picture</span>
                             </button>
                         </div>
                     </div>
@@ -767,8 +815,8 @@
     </div>
 
     <!-- Scripts -->
-    <script type="module" src="profile.js?v=315"></script>
-    <script src="studentNav.js?v=315"></script>
+    <script type="module" src="profile.js?v=330"></script>
+    <script src="studentNav.js?v=330"></script>
 </body>
 
 </html>

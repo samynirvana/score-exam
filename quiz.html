@@ -11,8 +11,8 @@
     <title>Take Quiz - Student Portal</title>
     <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/1o_7O1hdx1SJOXfoFw9ZKxpl4zSOD_VYd">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="admin.css?v=309">
-    <link rel="stylesheet" href="student.css?v=309">
+    <link rel="stylesheet" href="admin.css?v=334">
+    <link rel="stylesheet" href="student.css?v=334">
     <style>
         /* Quiz Specific Custom Layout Enhancements */
         .modal-overlay {
@@ -39,6 +39,66 @@
             padding: 28px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
             animation: modalFadeIn 0.25s ease-out;
+        }
+
+        /* Modal Dark Mode Styling */
+        body.dark-theme .modal-card,
+        body.dark-mode .modal-card {
+            background: #111c44 !important;
+            border-color: #1b254b !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+        }
+
+        body.dark-theme #modalStudentName,
+        body.dark-mode #modalStudentName {
+            color: #f8fafc !important;
+        }
+
+        body.dark-theme #modalStudentClass,
+        body.dark-mode #modalStudentClass {
+            background: rgba(30, 94, 255, 0.2) !important;
+            color: #60a5fa !important;
+            border: 1px solid rgba(96, 165, 250, 0.3) !important;
+        }
+
+        body.dark-theme #quizSelectDropdown,
+        body.dark-mode #quizSelectDropdown {
+            background: #1b254b !important;
+            color: #f8fafc !important;
+            border: 1.5px solid #2b3674 !important;
+            border-radius: 10px !important;
+        }
+
+        body.dark-theme #quizSelectDropdown option,
+        body.dark-mode #quizSelectDropdown option {
+            background: #1b254b !important;
+            color: #f8fafc !important;
+        }
+
+        body.dark-theme #closeModalBtn,
+        body.dark-mode #closeModalBtn {
+            background: #1e293b !important;
+            border-color: #334155 !important;
+            color: #cbd5e1 !important;
+        }
+
+        body.dark-theme #closeModalBtn:hover,
+        body.dark-mode #closeModalBtn:hover {
+            background: #334155 !important;
+            color: #ffffff !important;
+        }
+
+        body.dark-theme #startSelectedQuizBtn,
+        body.dark-mode #startSelectedQuizBtn {
+            background: #1e5eff !important;
+            color: #ffffff !important;
+            box-shadow: 0 4px 14px rgba(30, 94, 255, 0.4) !important;
+            border: none !important;
+        }
+
+        body.dark-theme #startSelectedQuizBtn:hover,
+        body.dark-mode #startSelectedQuizBtn:hover {
+            background: #2563eb !important;
         }
 
         @keyframes modalFadeIn {
@@ -232,10 +292,8 @@
         <!-- TOP NAVIGATION HEADER BAR (FACEBOOK STYLE) -->
         <header class="sidebar student-sidebar">
             <div class="brand">
-                <div
-                    style="background: #ffffff; padding: 6px; border-radius: 10px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                    <img src="https://lh3.googleusercontent.com/d/1o_7O1hdx1SJOXfoFw9ZKxpl4zSOD_VYd" alt="Logo"
-                        style="width: 100%; height: 100%; object-fit: contain;">
+                <div class="brand-logo-container">
+                    <img src="https://lh3.googleusercontent.com/d/1o_7O1hdx1SJOXfoFw9ZKxpl4zSOD_VYd" alt="Logo">
                 </div>
                 <div>
                     <h2 style="margin: 0; font-size: 15px; font-weight: 800; color: #ffffff; letter-spacing: 0.5px;">
@@ -480,8 +538,8 @@
         </main>
     </div>
 
-    <script type="module" src="quiz.js?v=321"></script>
-    <script type="module" src="studentNav.js?v=321"></script>
+    <script type="module" src="quiz.js?v=332"></script>
+    <script type="module" src="studentNav.js?v=332"></script>
 </body>
 
 </html>

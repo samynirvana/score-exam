@@ -1,3 +1,10 @@
+.hidden,
+[hidden],
+.admin-only-view.hidden,
+.kebab-item.hidden {
+    display: none !important;
+}
+
 :root {
     --bg-body: #f4f7fe;
     --sidebar-bg: #0b1437;
@@ -190,17 +197,48 @@ textarea:focus {
     overflow: visible !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
     z-index: 1000 !important;
-    position: relative !important;
+.sidebar {
+    padding: 0 20px !important;
 }
 
 .brand {
     display: flex !important;
     align-items: center !important;
-    gap: 10px !important;
+    gap: 12px !important;
+    margin-left: 2px !important;
     padding: 0 !important;
-    margin: 0 !important;
     border-bottom: none !important;
     flex-shrink: 0 !important;
+}
+
+.brand-badge,
+.brand-logo-container,
+.brand>div:first-child {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    min-height: 34px !important;
+    background-color: #ffffff !important;
+    border-radius: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 4px !important;
+    overflow: hidden !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12) !important;
+}
+
+.brand-badge img,
+.brand-logo-container img,
+.brand>div:first-child img {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
+    display: block !important;
 }
 
 .brand h2 {
@@ -562,14 +600,30 @@ body.dark-theme .db-page-btn.active {
 
 .header-title h1 {
     margin: 0;
-    font-size: 24px;
+    font-size: 26px;
+    font-weight: 800;
     color: var(--text-dark);
+    letter-spacing: -0.5px;
 }
 
 .header-title p {
-    margin: 4px 0 0 0;
-    color: #707eae;
-    font-size: 14px;
+    margin: 6px 0 0 0;
+    color: var(--text-gray, #707eae);
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.welcome-user-highlight {
+    font-size: 17.5px;
+    font-weight: 800;
+    color: var(--primary-blue, #1e5eff);
+    letter-spacing: 0.2px;
+}
+
+body.dark-theme .welcome-user-highlight,
+body.dark-mode .welcome-user-highlight {
+    color: #60a5fa !important;
+    text-shadow: 0 0 16px rgba(96, 165, 250, 0.4);
 }
 
 .topbar-actions {
@@ -2586,7 +2640,8 @@ div.gform-q-input:empty:before {
 /* ======================================================
    DARK MODE STYLES
    ====================================================== */
-body.dark-theme {
+body.dark-theme,
+body.dark-mode {
     --bg-body: #0b1437;
     --card-bg: #111c44;
     --text-dark: #f4f7fe;
@@ -2600,46 +2655,74 @@ body.dark-theme {
     --input-text: #ffffff;
     --input-placeholder: #707eae;
     --quiz-box-bg: #1b254b;
+
+    background: #0b1437 !important;
+    color: #f4f7fe !important;
+}
+
+body.dark-theme .app-container,
+body.dark-mode .app-container,
+body.dark-theme .main-wrapper,
+body.dark-mode .main-wrapper {
+    background: #0b1437 !important;
+}
+
+body.dark-theme .box,
+body.dark-mode .box {
+    background: #111c44 !important;
+    border: 1px solid #1b254b !important;
+    color: #f4f7fe !important;
 }
 
 /* Dark Mode Overrides */
-body.dark-theme table {
+body.dark-theme table,
+body.dark-mode table {
     background: var(--card-bg);
 }
 
-body.dark-theme td {
+body.dark-theme td,
+body.dark-mode td {
     color: #cbd5e1;
     border-bottom-color: var(--border-color);
 }
 
 body.dark-theme input,
+body.dark-mode input,
 body.dark-theme select,
-body.dark-theme textarea {
+body.dark-mode select,
+body.dark-theme textarea,
+body.dark-mode textarea {
     background: #1b254b;
     color: #ffffff;
     border-color: #2b3674;
 }
 
 body.dark-theme input:focus,
-body.dark-theme select:focus {
+body.dark-mode input:focus,
+body.dark-theme select:focus,
+body.dark-mode select:focus {
     background: #24305e;
 }
 
-body.dark-theme .dropdown-menu {
+body.dark-theme .dropdown-menu,
+body.dark-mode .dropdown-menu {
     background: #111c44;
     border-color: #1b254b;
 }
 
-body.dark-theme .dropdown-item {
+body.dark-theme .dropdown-item,
+body.dark-mode .dropdown-item {
     color: #f4f7fe;
     border-bottom-color: #1b254b;
 }
 
-body.dark-theme .dropdown-item:hover {
+body.dark-theme .dropdown-item:hover,
+body.dark-mode .dropdown-item:hover {
     background: #1b254b;
 }
 
-body.dark-theme .topbar {
+body.dark-theme .topbar,
+body.dark-mode .topbar {
     background: var(--bg-body);
 }
 
@@ -2972,9 +3055,232 @@ body.dark-theme .kebab-dropdown .kebab-item.danger:hover {
     width: 100%;
 }
 
+/* ======================================================
+   MOBILE KEBAB TOPBAR NAVIGATION SYSTEM (<= 768px)
+   ====================================================== */
+
+.sidebar {
+    overflow: visible !important;
+}
+
+.mobile-kebab-container {
+    display: none;
+    position: relative;
+    z-index: 999999;
+}
+
+.mobile-kebab-btn,
+#mobileTopbarKebabBtn {
+    background: #1e5eff !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.35) !important;
+    border-radius: 10px !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    cursor: pointer !important;
+    box-shadow: 0 3px 10px rgba(30, 94, 255, 0.45) !important;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.mobile-kebab-btn:hover,
+#mobileTopbarKebabBtn:hover {
+    background: #2563eb !important;
+    border-color: rgba(255, 255, 255, 0.7) !important;
+    transform: scale(1.05) !important;
+}
+
+.mobile-kebab-btn:active,
+#mobileTopbarKebabBtn:active {
+    transform: scale(0.92) !important;
+    background: #1d4ed8 !important;
+}
+
+.mobile-kebab-btn svg,
+#mobileTopbarKebabBtn svg {
+    width: 20px !important;
+    height: 20px !important;
+    stroke: #ffffff !important;
+    fill: none !important;
+    stroke-width: 2.2 !important;
+    color: #ffffff !important;
+    pointer-events: none !important;
+    display: block !important;
+}
+
+body.dark-theme .mobile-kebab-btn,
+body.dark-mode .mobile-kebab-btn,
+body.dark-theme #mobileTopbarKebabBtn,
+body.dark-mode #mobileTopbarKebabBtn {
+    background: #2563eb !important;
+    border: 1px solid rgba(147, 197, 253, 0.6) !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 14px rgba(37, 99, 235, 0.6) !important;
+}
+
+.mobile-topbar-dropdown {
+    position: fixed !important;
+    top: 54px !important;
+    right: 12px !important;
+    width: 240px !important;
+    max-width: calc(100vw - 24px) !important;
+    background: var(--card-bg, #ffffff) !important;
+    border: 1px solid var(--border-color, #e2e8f0) !important;
+    border-radius: 16px !important;
+    padding: 12px !important;
+    box-shadow: 0 20px 45px -5px rgba(0, 0, 0, 0.45) !important;
+    z-index: 999999 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    animation: kebabDropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@keyframes kebabDropdownFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.mobile-topbar-dropdown.hidden {
+    display: none !important;
+}
+
+.kebab-group-label {
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    letter-spacing: 1px !important;
+    color: var(--text-gray, #64748b) !important;
+    padding: 6px 10px 4px !important;
+    text-transform: uppercase !important;
+}
+
+.kebab-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 10px 12px !important;
+    border-radius: 10px !important;
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    color: var(--text-dark, #0f172a) !important;
+    text-decoration: none !important;
+    background: transparent !important;
+    border: none !important;
+    width: 100% !important;
+    text-align: left !important;
+    cursor: pointer !important;
+    transition: background 0.15s, color 0.15s !important;
+    box-sizing: border-box !important;
+    box-shadow: none !important;
+}
+
+.kebab-item.hidden {
+    display: none !important;
+}
+
+.kebab-item:hover,
+.kebab-item.active {
+    background: var(--input-bg, #f1f5f9) !important;
+    color: var(--primary-blue, #1e5eff) !important;
+}
+
+.kebab-item.active {
+    font-weight: 700 !important;
+}
+
+.kebab-divider {
+    height: 1px !important;
+    background: var(--border-color, #e2e8f0) !important;
+    margin: 4px 0 !important;
+}
+
+.kebab-btn-danger {
+    color: #ef4444 !important;
+}
+
+.kebab-btn-danger:hover {
+    background: rgba(239, 68, 68, 0.1) !important;
+}
+
 /* Responsive collapse for mobile devices */
 @media screen and (max-width: 768px) {
+    .sidebar {
+        padding: 0 16px !important;
+    }
+
+    .brand {
+        margin-left: 4px !important;
+    }
+
+    .brand>div:first-child,
+    .brand-badge,
+    .brand-logo-container {
+        width: 30px !important;
+        height: 30px !important;
+        min-width: 30px !important;
+        min-height: 30px !important;
+        padding: 3px !important;
+        border-radius: 7px !important;
+    }
+
+    .desktop-menu-bar,
+    .desktop-user-actions {
+        display: none !important;
+    }
+
+    .mobile-kebab-container {
+        display: block !important;
+    }
+
+    /* Stack Quick Actions and Active News/Notices panels vertically on mobile */
+    .dashboard-overview-grid {
+        grid-template-columns: 1fr !important;
+        gap: 16px !important;
+    }
+
+    .dashboard-panel {
+        height: auto !important;
+        width: 100% !important;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 12px !important;
+    }
+
     .behavior-form-row-split {
+        grid-template-columns: 1fr !important;
+    }
+
+    .topbar {
+        padding: 16px 0 10px !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 6px !important;
+    }
+
+    .topbar-actions.desktop-user-actions {
+        display: none !important;
+    }
+
+    .main-wrapper {
+        padding: 0 16px 32px !important;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .stats-grid {
         grid-template-columns: 1fr !important;
     }
 }
@@ -3398,10 +3704,11 @@ select {
     appearance: none !important;
     -webkit-appearance: none !important;
     -moz-appearance: none !important;
+    background-color: var(--card-bg, #ffffff) !important;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%231e5eff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
     background-repeat: no-repeat !important;
     background-position: right 14px center !important;
-    background-size: 16px !important;
+    background-size: 16px 16px !important;
     padding-right: 40px !important;
     border-radius: 12px !important;
     font-weight: 600 !important;
@@ -3411,11 +3718,27 @@ select {
 
 select:hover {
     border-color: var(--primary-blue, #1e5eff) !important;
-    background-color: var(--card-bg, #ffffff) !important;
 }
 
-body.dark-theme select {
+body.dark-theme select,
+body.dark-mode select,
+.dark-theme select,
+.dark-mode select {
+    background-color: #0b1437 !important;
+    color: #ffffff !important;
+    border-color: #1b254b !important;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2360a5fa' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 14px center !important;
+    background-size: 16px 16px !important;
+}
+
+body.dark-theme select option,
+body.dark-mode select option,
+.dark-theme select option,
+.dark-mode select option {
+    background-color: #0b1437 !important;
+    color: #ffffff !important;
 }
 
 /* Action Kebab Button & Popup Menu */
