@@ -1,0 +1,21 @@
+{
+  "hosting": {
+    "public": ".",
+    "cleanUrls": true,
+    "trailingSlash": false,
+    "ignore": [
+      "firebase.json",
+      ".firebaserc",
+      ".git/**",
+      ".vscode/**",
+      "**/.git/**",
+      "**/.vscode/**",
+      "**/node_modules/**",
+      "firestore.rules",
+      "linkconverter.py"
+    ]
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  }
+}
