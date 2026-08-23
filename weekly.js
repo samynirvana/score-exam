@@ -8,6 +8,7 @@ import {
   createUserWithEmailAndPassword,
   updatePassword
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { escapeHtml } from "./utils.js";
 
 
 const firebaseConfig = {
@@ -393,6 +394,12 @@ function switchTab(tabId, targetBtn) {
   document.getElementById(tabId)?.classList.add('active');
   const btn = targetBtn?.closest ? targetBtn.closest('.tab-btn') : targetBtn;
   btn?.classList.add('active');
+
+  if (tabId === 'adminView') {
+    renderEntityTables();
+    renderManageScheduleTable();
+    renderManageThemesTable();
+  }
 }
 
 // Helper to retrieve slot assignments normalized as an array, prioritizing weekly overrides
@@ -459,14 +466,30 @@ function formatModernDateRange(startDateStr, endDateStr) {
     return `${startDateStr} to ${endDateStr}`;
   }
 
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const d1 = parseInt(p1[2], 10);
-  const m1 = months[parseInt(p1[1], 10) - 1];
-  const y1 = p1[0];
+  let dStart = new Date(startDateStr + "T00:00:00");
+  let dEnd = new Date(endDateStr + "T00:00:00");
 
-  const d2 = parseInt(p2[2], 10);
-  const m2 = months[parseInt(p2[1], 10) - 1];
-  const y2 = p2[0];
+  if (isNaN(dStart.getTime()) || isNaN(dEnd.getTime())) {
+    return `${startDateStr} to ${endDateStr}`;
+  }
+
+  // Adjust Saturday (6) and Sunday (0) to Friday (do not show weekends)
+  if (dEnd.getDay() === 6) {
+    dEnd.setDate(dEnd.getDate() - 1);
+  } else if (dEnd.getDay() === 0) {
+    dEnd.setDate(dEnd.getDate() - 2);
+  }
+
+  if (dEnd < dStart) dEnd = new Date(dStart);
+
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const d1 = dStart.getDate();
+  const m1 = months[dStart.getMonth()];
+  const y1 = dStart.getFullYear();
+
+  const d2 = dEnd.getDate();
+  const m2 = months[dEnd.getMonth()];
+  const y2 = dEnd.getFullYear();
 
   if (y1 === y2 && m1 === m2) {
     return `${d1} – ${d2} ${m1} ${y1}`;
@@ -528,6 +551,106 @@ function populateCalendarSelects() {
   populateAdminCalendarDropdowns();
 }
 
+function loadSelectedThemeDates() {
+  const year = document.getElementById('adminYearSelect')?.value;
+  const theme = document.getElementById('adminThemeSelect')?.value;
+  const startInput = document.getElementById('calStartDate');
+  const endInput = document.getElementById('calEndDate');
+  const submitBtn = document.querySelector('#calendarForm button[type="submit"]');
+
+  if (!year || !theme || !startInput || !endInput) return;
+
+  const weeks = academicCalendar[year]?.[theme] || {};
+  const weekKeys = sortWeeks(Object.keys(weeks));
+
+  if (weekKeys.length > 0) {
+    const firstWeek = weeks[weekKeys[0]];
+    const lastWeek = weeks[weekKeys[weekKeys.length - 1]];
+    if (firstWeek?.startDate) startInput.value = firstWeek.startDate;
+    if (lastWeek?.endDate) endInput.value = lastWeek.endDate;
+    if (submitBtn) submitBtn.textContent = `Update & Save Theme Dates (${theme})`;
+  } else {
+    startInput.value = '';
+    endInput.value = '';
+    if (submitBtn) submitBtn.textContent = 'Auto-Generate & Save Weeks';
+  }
+
+  renderManageThemesTable();
+}
+
+function renderManageThemesTable() {
+  const tbody = document.getElementById('tableThemesManage');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  const year = document.getElementById('adminYearSelect')?.value;
+  if (!year || !academicCalendar[year]) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 14px; color: #64748b;">No themes found for this school year.</td></tr>`;
+    return;
+  }
+
+  const themes = Object.keys(academicCalendar[year]);
+  if (themes.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 14px; color: #64748b;">No themes created yet for ${year}.</td></tr>`;
+    return;
+  }
+
+  themes.forEach(theme => {
+    const weeks = academicCalendar[year][theme] || {};
+    const weekKeys = sortWeeks(Object.keys(weeks));
+    const weekCount = weekKeys.length;
+    let rangeText = 'Not generated';
+    if (weekCount > 0) {
+      const firstWeek = weeks[weekKeys[0]];
+      const lastWeek = weeks[weekKeys[weekCount - 1]];
+      rangeText = formatModernDateRange(firstWeek.startDate, lastWeek.endDate);
+    }
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="padding: 10px 14px;"><strong>${theme}</strong></td>
+      <td style="padding: 10px 14px;"><span style="font-weight: 600; color: #1e293b;">${rangeText}</span></td>
+      <td style="padding: 10px 14px; text-align: center;"><span class="ttl-badge" style="background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe;">${weekCount} Wk${weekCount === 1 ? '' : 's'}</span></td>
+      <td style="padding: 10px 14px; text-align: center;">
+        <div style="display: inline-flex; gap: 6px;">
+          <button type="button" class="btn-edit-theme" data-year="${year}" data-theme="${theme}" style="padding: 4px 10px; font-size: 12px; background: #e0e7ff; color: #4338ca; border: none; border-radius: 6px; font-weight: 700; cursor: pointer;">Edit</button>
+          <button type="button" class="btn-delete-theme" data-year="${year}" data-theme="${theme}" style="padding: 4px 10px; font-size: 12px; background: #fee2e2; color: #dc2626; border: none; border-radius: 6px; font-weight: 700; cursor: pointer;">Delete</button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll('.btn-edit-theme').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const targetTheme = e.target.dataset.theme;
+      const themeSel = document.getElementById('adminThemeSelect');
+      if (themeSel) {
+        themeSel.value = targetTheme;
+        loadSelectedThemeDates();
+        document.getElementById('calStartDate')?.focus();
+      }
+    });
+  });
+
+  tbody.querySelectorAll('.btn-delete-theme').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const yr = e.target.dataset.year;
+      const th = e.target.dataset.theme;
+      if (confirm(`Are you sure you want to delete "${th}" from ${yr}? This will remove all generated weeks for this theme.`)) {
+        delete academicCalendar[yr][th];
+        try {
+          await setDoc(doc(db, "config", "academicCalendar"), academicCalendar);
+          populateCalendarSelects();
+          alert(`Successfully deleted ${th}.`);
+        } catch (err) {
+          alert("Error deleting theme: " + err.message);
+        }
+      }
+    });
+  });
+}
+
 function populateAdminCalendarDropdowns() {
   const adminYearSel = document.getElementById('adminYearSelect');
   const adminThemeSel = document.getElementById('adminThemeSelect');
@@ -544,6 +667,8 @@ function populateAdminCalendarDropdowns() {
   const currTheme = adminThemeSel.value;
   adminThemeSel.innerHTML = themes.map(t => `<option value="${t}">${t}</option>`).join('');
   if (currTheme && themes.includes(currTheme)) adminThemeSel.value = currTheme;
+
+  loadSelectedThemeDates();
 }
 
 document.getElementById('btnAddYear')?.addEventListener('click', async () => {
@@ -583,6 +708,7 @@ document.getElementById('btnAddTheme')?.addEventListener('click', async () => {
       await setDoc(doc(db, "config", "academicCalendar"), academicCalendar);
       populateCalendarSelects();
       document.getElementById('adminThemeSelect').value = cleanTheme;
+      loadSelectedThemeDates();
     } catch (err) {
       alert("Error adding Theme: " + err.message);
     }
@@ -593,6 +719,10 @@ document.getElementById('btnAddTheme')?.addEventListener('click', async () => {
 
 document.getElementById('adminYearSelect')?.addEventListener('change', () => {
   populateAdminCalendarDropdowns();
+});
+
+document.getElementById('adminThemeSelect')?.addEventListener('change', () => {
+  loadSelectedThemeDates();
 });
 
 function formatDate(date) {
@@ -614,12 +744,16 @@ function generateWeeksFromDateRange(startStr, endStr) {
   }
 
   while (currentStart <= finalEnd) {
+    // Standard school week ends on Friday (+4 days from Monday)
     let currentEnd = new Date(currentStart);
-    currentEnd.setDate(currentEnd.getDate() + 6);
+    currentEnd.setDate(currentEnd.getDate() + 4);
 
     if (currentEnd > finalEnd) {
       currentEnd = new Date(finalEnd);
     }
+    // Snap Saturday/Sunday to Friday
+    if (currentEnd.getDay() === 6) currentEnd.setDate(currentEnd.getDate() - 1);
+    if (currentEnd.getDay() === 0) currentEnd.setDate(currentEnd.getDate() - 2);
 
     const weekKey = `Week ${weekNum}`;
     weeksObj[weekKey] = {
@@ -655,8 +789,10 @@ document.getElementById('calendarForm')?.addEventListener('submit', async (e) =>
   try {
     await setDoc(doc(db, "config", "academicCalendar"), academicCalendar);
     const weekCount = Object.keys(generatedWeeks).length;
-    alert(`Successfully generated and saved ${weekCount} weeks for ${year} > ${theme}!`);
+    alert(`Successfully saved ${weekCount} weeks (Mon–Fri) for ${year} > ${theme}!`);
     populateCalendarSelects();
+    renderClassSchedule();
+    renderTeacherView();
   } catch (err) {
     alert("Error saving calendar data: " + err.message);
   }
@@ -742,25 +878,65 @@ function populateAdminSelects() {
   checkUserRoleAccess();
 }
 
+function calculateTeacherTTP(teacherName) {
+  if (!teacherName || !masterSchedules) return 0;
+  let count = 0;
+  const targetTeacher = teacherName.trim().toLowerCase();
+  const days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
+
+  Object.keys(masterSchedules).forEach(className => {
+    const classSchedule = masterSchedules[className];
+    if (!classSchedule || typeof classSchedule !== 'object') return;
+
+    days.forEach(day => {
+      timeSlots.forEach(slot => {
+        if (slot.isBreak) return;
+        const entries = getSlotAssignments(className, day, slot.id);
+        entries.forEach(entry => {
+          if (entry && (entry.teacher || '').trim().toLowerCase() === targetTeacher) {
+            count++;
+          }
+        });
+      });
+    });
+  });
+  return count;
+}
+
 const entityPageMap = {
   teachers: 1,
+  homeTeachers: 1,
   classes: 1,
   subjects: 1
 };
 const ENTITY_PAGE_SIZE = 10;
 
 function renderEntityTables() {
-  const types = ['teachers', 'classes', 'subjects'];
   if (!appEntities.homeTeachers) appEntities.homeTeachers = {};
+  if (!appEntities.teachers) appEntities.teachers = [];
+  if (!appEntities.classes) appEntities.classes = [];
+  if (!appEntities.subjects) appEntities.subjects = [];
+
+  const regularTeachers = appEntities.teachers.filter(t => !appEntities.homeTeachers[t]);
+  const homeTeachersList = appEntities.teachers.filter(t => !!appEntities.homeTeachers[t]);
+
+  const entityData = {
+    teachers: regularTeachers,
+    homeTeachers: homeTeachersList,
+    classes: appEntities.classes,
+    subjects: appEntities.subjects
+  };
+
+  const types = ['teachers', 'homeTeachers', 'classes', 'subjects'];
 
   types.forEach(type => {
-    const capitalizeType = type.charAt(0).toUpperCase() + type.slice(1);
+    const capitalizeType = type === 'homeTeachers' ? 'HomeTeachers' : (type.charAt(0).toUpperCase() + type.slice(1));
     const tbodyId = `table${capitalizeType}`;
     const tbody = document.getElementById(tbodyId);
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    const allItems = appEntities[type] || [];
+    const allItems = entityData[type] || [];
     const totalItems = allItems.length;
     const totalPages = Math.ceil(totalItems / ENTITY_PAGE_SIZE) || 1;
 
@@ -770,34 +946,74 @@ function renderEntityTables() {
     const startIdx = (entityPageMap[type] - 1) * ENTITY_PAGE_SIZE;
     const pageItems = allItems.slice(startIdx, startIdx + ENTITY_PAGE_SIZE);
 
+    if (pageItems.length === 0) {
+      const colSpan = (type === 'teachers' || type === 'homeTeachers') ? 3 : 2;
+      tbody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; color: #64748b; padding: 14px;">No ${type === 'homeTeachers' ? 'home teachers assigned' : type} found.</td></tr>`;
+    }
+
     pageItems.forEach(item => {
       const tr = document.createElement('tr');
-      let homeBadge = '';
-      const isHomeTeacher = type === 'teachers' && appEntities.homeTeachers[item];
 
-      if (isHomeTeacher) {
-        homeBadge = `<br><span class="hometeacher-pill">Home Teacher: ${appEntities.homeTeachers[item]}</span>`;
+      if (type === 'teachers') {
+        const ttp = calculateTeacherTTP(item);
+        tr.innerHTML = `
+          <td style="text-align: left; padding: 10px 14px;">
+            <strong style="color: #0f172a; font-weight: 700;">${item}</strong>
+          </td>
+          <td style="text-align: center; width: 55px; padding: 8px 10px;">
+            <span class="ttl-badge" title="Total Teaching Periods: ${ttp}">${ttp}</span>
+          </td>
+          <td style="text-align: center; width: 60px; padding: 8px 10px;">
+            <div class="kebab-menu">
+              <button class="kebab-btn" title="Actions">⋮</button>
+              <div class="kebab-dropdown">
+                <button class="set-hometeacher-opt" data-name="${item}">Set Home Teacher</button>
+                <button class="edit-opt" data-type="teachers" data-name="${item}">Edit</button>
+                <button class="delete-opt" data-type="teachers" data-name="${item}">Delete</button>
+              </div>
+            </div>
+          </td>
+        `;
+      } else if (type === 'homeTeachers') {
+        const assignedClass = appEntities.homeTeachers[item] || '-';
+        const ttp = calculateTeacherTTP(item);
+        tr.innerHTML = `
+          <td style="text-align: left; padding: 10px 14px;">
+            <strong style="color: #0f172a; font-weight: 700;">${item}</strong>
+            <br><span class="hometeacher-pill">Home Teacher: ${assignedClass}</span>
+          </td>
+          <td style="text-align: center; width: 55px; padding: 8px 10px;">
+            <span class="ttl-badge" title="Total Teaching Periods: ${ttp}">${ttp}</span>
+          </td>
+          <td style="text-align: center; width: 60px; padding: 8px 10px;">
+            <div class="kebab-menu">
+              <button class="kebab-btn" title="Actions">⋮</button>
+              <div class="kebab-dropdown">
+                <button class="set-hometeacher-opt" data-name="${item}">Change Class</button>
+                <button class="remove-hometeacher-opt" data-name="${item}" style="color: #ef4444;">Remove Home Teacher</button>
+                <button class="edit-opt" data-type="teachers" data-name="${item}">Edit</button>
+                <button class="delete-opt" data-type="teachers" data-name="${item}">Delete</button>
+              </div>
+            </div>
+          </td>
+        `;
+      } else {
+        tr.innerHTML = `
+          <td style="text-align: left; padding: 10px 14px;">
+            <strong style="color: #0f172a; font-weight: 700;">${item}</strong>
+          </td>
+          <td style="text-align: center; width: 60px; padding: 8px 10px;">
+            <div class="kebab-menu">
+              <button class="kebab-btn" title="Actions">⋮</button>
+              <div class="kebab-dropdown">
+                <button class="edit-opt" data-type="${type}" data-name="${item}">Edit</button>
+                <button class="delete-opt" data-type="${type}" data-name="${item}">Delete</button>
+              </div>
+            </div>
+          </td>
+        `;
       }
 
-      tr.innerHTML = `
-        <td style="text-align: left; padding: 10px 14px;">
-          <strong style="color: #0f172a; font-weight: 700;">${item}</strong>${homeBadge}
-        </td>
-        <td style="text-align: center; width: 70px; padding: 8px 14px;">
-          <div class="kebab-menu">
-            <button class="kebab-btn" title="Actions">⋮</button>
-            <div class="kebab-dropdown">
-              ${type === 'teachers' ? (
-          isHomeTeacher
-            ? `<button class="remove-hometeacher-opt" data-name="${item}" style="color: #ef4444;">Remove Home Teacher</button>`
-            : `<button class="set-hometeacher-opt" data-name="${item}">Set Home Teacher</button>`
-        ) : ''}
-              <button class="edit-opt" data-type="${type}" data-name="${item}">Edit</button>
-              <button class="delete-opt" data-type="${type}" data-name="${item}">Delete</button>
-            </div>
-          </div>
-        </td>
-      `;
       tbody.appendChild(tr);
     });
 
@@ -838,8 +1054,8 @@ function renderEntityTables() {
 }
 
 // Entity Table Pagination Button Listeners
-['Teachers', 'Classes', 'Subjects'].forEach(typeKey => {
-  const type = typeKey.toLowerCase();
+['Teachers', 'HomeTeachers', 'Classes', 'Subjects'].forEach(typeKey => {
+  const type = typeKey === 'HomeTeachers' ? 'homeTeachers' : typeKey.toLowerCase();
   document.getElementById(`btnPrev${typeKey}`)?.addEventListener('click', () => {
     if (entityPageMap[type] > 1) {
       entityPageMap[type]--;
@@ -847,7 +1063,12 @@ function renderEntityTables() {
     }
   });
   document.getElementById(`btnNext${typeKey}`)?.addEventListener('click', () => {
-    const totalPages = Math.ceil((appEntities[type]?.length || 0) / ENTITY_PAGE_SIZE) || 1;
+    const list = type === 'teachers'
+      ? (appEntities.teachers || []).filter(t => !appEntities.homeTeachers?.[t])
+      : type === 'homeTeachers'
+      ? (appEntities.teachers || []).filter(t => !!appEntities.homeTeachers?.[t])
+      : (appEntities[type] || []);
+    const totalPages = Math.ceil(list.length / ENTITY_PAGE_SIZE) || 1;
     if (entityPageMap[type] < totalPages) {
       entityPageMap[type]++;
       renderEntityTables();
@@ -902,16 +1123,21 @@ async function editEntity(type, oldName) {
   if (index !== -1) {
     appEntities[type][index] = cleanName;
 
-    if (type === 'teachers' && appEntities.teacherEmails) {
-      if (oldName !== cleanName && appEntities.teacherEmails[oldName]) {
+    if (type === 'teachers') {
+      if (appEntities.teacherEmails && oldName !== cleanName && appEntities.teacherEmails[oldName]) {
         appEntities.teacherEmails[cleanName] = appEntities.teacherEmails[oldName];
         delete appEntities.teacherEmails[oldName];
+      }
+      if (appEntities.homeTeachers && oldName !== cleanName && appEntities.homeTeachers[oldName]) {
+        appEntities.homeTeachers[cleanName] = appEntities.homeTeachers[oldName];
+        delete appEntities.homeTeachers[oldName];
       }
     }
 
     try {
       await setDoc(doc(db, "config", "appEntities"), appEntities);
       alert(`Updated entity details successfully.`);
+      renderEntityTables();
     } catch (err) {
       alert("Error updating database: " + err.message);
     }
@@ -921,12 +1147,14 @@ async function editEntity(type, oldName) {
 async function deleteEntity(type, name) {
   if (confirm(`Are you sure you want to delete "${name}" from ${type}?`)) {
     appEntities[type] = appEntities[type].filter(item => item !== name);
-    if (type === 'teachers' && appEntities.teacherEmails) {
-      delete appEntities.teacherEmails[name];
+    if (type === 'teachers') {
+      if (appEntities.teacherEmails) delete appEntities.teacherEmails[name];
+      if (appEntities.homeTeachers) delete appEntities.homeTeachers[name];
     }
     try {
       await setDoc(doc(db, "config", "appEntities"), appEntities);
       alert(`Removed "${name}".`);
+      renderEntityTables();
     } catch (err) {
       alert("Error deleting item: " + err.message);
     }
@@ -2464,6 +2692,21 @@ function renderTeacherView() {
     });
   });
 
+  // Sort alphabetically by class name, then day of week (MON-FRI), then subject
+  const dayOrder = { MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3, THURSDAY: 4, FRIDAY: 5 };
+  teacherAssignments.sort((a, b) => {
+    const classComp = (a.className || '').localeCompare(b.className || '', undefined, { numeric: true, sensitivity: 'base' });
+    if (classComp !== 0) return classComp;
+    const dayComp = (dayOrder[a.day] || 99) - (dayOrder[b.day] || 99);
+    if (dayComp !== 0) return dayComp;
+    return (a.subject || '').localeCompare(b.subject || '');
+  });
+
+  if (teacherAssignments.length === 0) {
+    tbodyMat.innerHTML = `<tr><td colspan="3" style="text-align: center; color: #64748b; padding: 18px 8px;">No class periods assigned for ${selectedTeacher || 'this teacher'}.</td></tr>`;
+    return;
+  }
+
   teacherAssignments.forEach(item => {
     const mat = materialsData[item.key]?.material || '';
     const link = materialsData[item.key]?.link || '';
@@ -2471,11 +2714,16 @@ function renderTeacherView() {
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><strong>${item.className}</strong><br><small>${item.subject} (${dayShort})</small></td>
-      <td><input type="text" class="mat-input" data-key="${item.key}" value="${mat}" placeholder="Enter material..."></td>
-      <td>
+      <td style="text-align: left; padding: 12px 14px;">
+        <div style="font-weight: 800; font-size: 14px; color: #0f172a; line-height: 1.2;">${item.className}</div>
+        <div style="font-size: 12.5px; color: #475569; font-weight: 600; margin-top: 3px;">${item.subject} <span style="color: #64748b; font-weight: 500;">(${dayShort})</span></div>
+      </td>
+      <td style="padding: 10px 8px;">
+        <input type="text" class="mat-input" data-key="${item.key}" value="${mat}" placeholder="Enter material description or topic...">
+      </td>
+      <td style="padding: 10px 8px; text-align: center;">
         <div class="kebab-menu">
-          <button class="kebab-btn">⋮</button>
+          <button class="kebab-btn" title="Resource Actions">⋮</button>
           <div class="kebab-dropdown">
             <button class="set-link-opt" data-key="${item.key}">${link ? 'Edit Link' : 'Add Link'}</button>
             ${link ? `<button class="remove-link-opt" data-key="${item.key}">Remove Link</button>` : ''}
@@ -2637,6 +2885,7 @@ async function editSlotAssignment(className, day, slotId, index) {
     renderManageScheduleTable();
     renderClassSchedule();
     renderTeacherView();
+    renderEntityTables();
   } catch (err) {
     alert("Failed to update schedule: " + err.message);
   }
@@ -2662,6 +2911,7 @@ async function deleteSlotAssignment(className, day, slotId, index) {
       renderManageScheduleTable();
       renderClassSchedule();
       renderTeacherView();
+      renderEntityTables();
     } catch (err) {
       alert("Failed to delete assignment: " + err.message);
     }
@@ -2778,6 +3028,7 @@ document.getElementById('assignSlotForm')?.addEventListener('submit', async (e) 
     renderClassSchedule();
     renderTeacherView();
     renderManageScheduleTable();
+    renderEntityTables();
     alert(`Successfully assigned ${subject} (${teacher}) to ${className} on ${day}!`);
   } catch (err) {
     alert("Error updating schedule: " + err.message);
@@ -2792,6 +3043,35 @@ document.getElementById('saveMaterialsBtn')?.addEventListener('click', async () 
     alert("Error saving materials: " + err.message);
   }
 });
+
+// Teacher Material Side Toggle Handler
+let isTeacherMaterialVisible = false;
+
+function toggleTeacherMaterialTable(forceState = null) {
+  const side = document.getElementById('teacherMaterialSide');
+  const btn = document.getElementById('btnToggleTeacherMaterial');
+  const btnText = document.getElementById('btnToggleTeacherMaterialText');
+  if (!side) return;
+
+  if (forceState !== null) {
+    isTeacherMaterialVisible = forceState;
+  } else {
+    isTeacherMaterialVisible = !isTeacherMaterialVisible;
+  }
+
+  if (isTeacherMaterialVisible) {
+    side.style.display = 'block';
+    if (btn) btn.classList.add('active-editing');
+    if (btnText) btnText.textContent = 'Hide Material Editor';
+  } else {
+    side.style.display = 'none';
+    if (btn) btn.classList.remove('active-editing');
+    if (btnText) btnText.textContent = 'Input or Edit Material';
+  }
+}
+
+document.getElementById('btnToggleTeacherMaterial')?.addEventListener('click', () => toggleTeacherMaterialTable());
+document.getElementById('btnCloseTeacherMaterial')?.addEventListener('click', () => toggleTeacherMaterialTable(false));
 
 document.getElementById('classSelectView')?.addEventListener('change', () => {
   if (isClassEditMode) exitClassEditMode(true);
@@ -2856,6 +3136,7 @@ onSnapshot(doc(db, "schedules", "masterSchedules"), (docSnap) => {
   renderClassSchedule();
   renderTeacherView();
   renderManageScheduleTable();
+  renderEntityTables();
 });
 
 onSnapshot(doc(db, "schedules", "weeklyOverrides"), (docSnap) => {
@@ -2864,6 +3145,7 @@ onSnapshot(doc(db, "schedules", "weeklyOverrides"), (docSnap) => {
   if (!isClassEditMode) {
     renderClassSchedule();
     renderTeacherView();
+    renderEntityTables();
   }
 });
 

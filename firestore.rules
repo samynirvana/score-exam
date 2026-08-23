@@ -1,0 +1,107 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for Staff / Admin authentication
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isStaffOrAdmin() {
+      return isAuthenticated();
+    }
+
+    // 1. Students & Student Profiles
+    // Students read without Firebase Auth; Staff/Admin can write
+    match /students/{studentId} {
+      allow read: if true;
+      allow write: if isStaffOrAdmin();
+    }
+
+    // 2. Exam Scores & Grades
+    match /exam_scores/{scoreId} {
+      allow read: if true;
+      allow write: if isStaffOrAdmin();
+    }
+
+    // 3. Behavior / Merit & Demerit Points
+    match /student_points/{pointId} {
+      allow read: if true;
+      allow write: if isStaffOrAdmin();
+    }
+
+    // 4. School News & Updates
+    match /news_updates/{newsId} {
+      allow read: if true;
+      allow write: if isStaffOrAdmin();
+    }
+
+    // 5. Quizzes, System Quizzes & Results
+    match /quizzes/{quizId} {
+      allow read: if true;
+      allow write: if isStaffOrAdmin();
+    }
+
+    match /system_quizzes/{quizId} {
+      allow read: if true;
+      allow write: if isStaffOrAdmin();
+    }
+
+    match /quiz_results/{resultId} {
+      allow read, create: if true;
+      allow update, delete: if isStaffOrAdmin();
+    }
+
+    match /scores/{scoreId} {
+      allow read: if true;
+      allow write: if isStaffOrAdmin();
+    }
+
+    // 6. Users (Admin & Teacher Accounts)
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if isStaffOrAdmin();
+    }
+
+    // 7. Timeline Posts & Comments
+    match /timeline_posts/{postId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isStaffOrAdmin();
+    }
+
+    match /timeline_comments/{commentId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isStaffOrAdmin();
+    }
+
+    // 8. Direct Messages & Notifications
+    match /direct_messages/{msgId} {
+      allow read, create: if true;
+      allow update, delete: if isStaffOrAdmin();
+    }
+
+    match /timeline_notifications/{notifId} {
+      allow read, create, update: if true;
+      allow delete: if isStaffOrAdmin();
+    }
+
+    // 9. Configurations & Schedules (Academic Calendar, Classes, Master Schedule)
+    match /config/{configId} {
+      allow read: if true;
+      allow write: if isStaffOrAdmin();
+    }
+
+    match /schedules/{scheduleId} {
+      allow read: if true;
+      allow write: if isStaffOrAdmin();
+    }
+
+    // Default fallback for any other subcollections
+    match /{document=**} {
+      allow read: if true;
+      allow write: if isStaffOrAdmin();
+    }
+  }
+}

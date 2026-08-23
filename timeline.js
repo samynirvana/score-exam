@@ -1,20 +1,7 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, query, where, orderBy, onSnapshot, getDoc, getDocs, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-
-const firebaseConfig = {
-    apiKey: "AIzaSyB3TY9M4oUG7xxCgxR6bSJB0K9ivcP5RQI",
-    authDomain: "syamserverlist.firebaseapp.com",
-    projectId: "syamserverlist",
-    storageBucket: "syamserverlist.firebasestorage.app",
-    messagingSenderId: "468852816088",
-    appId: "1:468852816088:web:b72bcb0c4fee837d983fad",
-    measurementId: "G-2YHY6V3JH1"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app, "mrsyamdb");
-const auth = getAuth(app);
+import { collection, addDoc, query, where, orderBy, onSnapshot, getDoc, getDocs, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { db, auth } from "./firebase.js";
+import { escapeHtml, formatTimeAgo } from "./utils.js";
 
 let currentUser = null; 
 let unsubscribePosts = null; 
@@ -99,8 +86,12 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-function initTimelineSession() {
-    const savedSession = sessionStorage.getItem('studentLoggedInSession') || sessionStorage.getItem('studentTimelineSession');
+async function initTimelineSession() {
+    const savedSession = sessionStorage.getItem('studentLoggedInSession') 
+        || sessionStorage.getItem('studentTimelineSession')
+        || localStorage.getItem('studentLoggedInSession')
+        || localStorage.getItem('studentTimelineSession');
+
     if (savedSession) {
         try {
             const parsed = JSON.parse(savedSession);
@@ -111,12 +102,47 @@ function initTimelineSession() {
                     code: parsed.code || '',
                     studentClass: parsed.studentClass || parsed.class || 'Unassigned'
                 };
-                showTimelineApp();
+                await showTimelineApp();
+                return;
             }
         } catch (e) {
             console.error("Timeline session parse error:", e);
         }
     }
+
+    const localCode = localStorage.getItem('loggedInStudentCode');
+    if (localCode) {
+        try {
+            const studentRef = doc(db, "students", localCode.toUpperCase());
+            const studentSnap = await getDoc(studentRef);
+            if (studentSnap.exists()) {
+                const sData = studentSnap.data();
+                currentUser = { 
+                    type: 'student', 
+                    name: sData.studentName || 'Student', 
+                    code: localCode.toUpperCase(),
+                    studentClass: sData.studentClass || sData.class || 'Unassigned'
+                };
+                sessionStorage.setItem('studentTimelineSession', JSON.stringify(currentUser));
+                sessionStorage.setItem('studentLoggedInSession', JSON.stringify(currentUser));
+                localStorage.setItem('studentTimelineSession', JSON.stringify(currentUser));
+                localStorage.setItem('studentLoggedInSession', JSON.stringify(currentUser));
+                await showTimelineApp();
+                return;
+            }
+        } catch (err) {
+            console.error("Auto login error from student code:", err);
+        }
+    }
+
+    // Grace period for Firebase onAuthStateChanged to resolve for Staff/Teachers
+    setTimeout(() => {
+        if (!currentUser && !auth.currentUser) {
+            if (!currentUser && !auth.currentUser) {
+                window.location.href = 'index.html';
+            }
+        }
+    }, 1500);
 }
 
 if (document.readyState === 'loading') {
@@ -155,6 +181,10 @@ document.getElementById('loginBtn')?.addEventListener('click', async () => {
                     studentClass: sData.studentClass || sData.class || 'Unassigned'
                 };
                 sessionStorage.setItem('studentTimelineSession', JSON.stringify(currentUser));
+                sessionStorage.setItem('studentLoggedInSession', JSON.stringify(currentUser));
+                localStorage.setItem('studentTimelineSession', JSON.stringify(currentUser));
+                localStorage.setItem('studentLoggedInSession', JSON.stringify(currentUser));
+                localStorage.setItem('loggedInStudentCode', code);
                 showTimelineApp();
             } else {
                 alert("Student code not found in the directory.");
@@ -223,19 +253,15 @@ async function showTimelineApp() {
 function handleTimelineLogout() {
     sessionStorage.removeItem('studentTimelineSession');
     sessionStorage.removeItem('studentLoggedInSession');
+    localStorage.removeItem('studentTimelineSession');
+    localStorage.removeItem('studentLoggedInSession');
+    localStorage.removeItem('loggedInStudentCode');
+    localStorage.removeItem('studentLoggedIn');
     currentUser = null;
     if (unsubscribePosts) unsubscribePosts(); 
     if (unsubscribeNotifs) unsubscribeNotifs();
     if (auth.currentUser) signOut(auth);
-    
-    document.getElementById('timelineApp')?.classList.add('hidden');
-    const loginOverlay = document.getElementById('loginScreen');
-    if (loginOverlay) loginOverlay.style.display = 'flex';
-
-    const uIn = document.getElementById('loginUsername');
-    const pIn = document.getElementById('loginPassword');
-    if (uIn) uIn.value = '';
-    if (pIn) pIn.value = '';
+    window.location.href = 'index.html';
 }
 
 document.getElementById('logoutBtn')?.addEventListener('click', handleTimelineLogout);
@@ -405,9 +431,10 @@ function loadNotifications() {
             if (!notif.read) unreadCount++;
             
             const readClass = notif.read ? '' : 'unread';
+            const safeMsg = escapeHtml(notif.message);
             dropdown.innerHTML += `
                 <div class="notif-item ${readClass}" onclick="openNotification('${docSnap.id}', '${notif.postId}')">
-                    ${notif.message}
+                    ${safeMsg}
                     <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${new Date(notif.timestamp).toLocaleString()}</div>
                 </div>
             `;
@@ -517,8 +544,10 @@ function loadPosts() {
             
             const dateStr = formatTimeAgo(post.timestamp);
             const badgeHTML = post.isStaff ? `<img src="https://lh3.googleusercontent.com/d/1F9iWlab0M6Hlc1L5NR_HP4vsQDJJpd3d" alt="Verified" class="staff-badge-img">` : '';
-            const classBadgeHTML = `<span class="target-class-badge">${postTarget === 'All' ? 'All' : ' ' + postTarget}</span>`;
-            const initialLetter = post.authorName ? post.authorName.charAt(0) : '?';
+            const safeClass = escapeHtml(postTarget);
+            const classBadgeHTML = `<span class="target-class-badge">${safeClass === 'All' ? 'All' : ' ' + safeClass}</span>`;
+            const initialLetter = escapeHtml(post.authorName ? post.authorName.charAt(0).toUpperCase() : 'U');
+            const safeAuthor = escapeHtml(post.authorName || 'Student');
 
             let kebabMenuHTML = '';
             if (currentUser.type === 'staff') {
@@ -544,7 +573,7 @@ function loadPosts() {
                         <div class="avatar-circle">${initialLetter}</div>
                         <div class="sender-details">
                             <div class="sender-name-line">
-                                <span class="sender-name">${post.authorName}</span>
+                                <span class="sender-name">${safeAuthor}</span>
                                 ${badgeHTML}
                                 ${classBadgeHTML}
                             </div>
@@ -567,7 +596,7 @@ function loadPosts() {
                     
                     <div class="reply-box">
                         <input type="text" id="reply-msg-${postId}" class="reply-input" placeholder="Write a reply... (Type @ to mention)">
-                        <button class="reply-submit-btn" onclick="submitReply('${postId}', '${post.authorName}')">Reply</button>
+                        <button class="reply-submit-btn" onclick="submitReply('${postId}', '${safeAuthor.replace(/'/g, "\\'")}')">Reply</button>
                     </div>
                 </div>
             `;
@@ -603,6 +632,7 @@ function loadCommentsForPost(postId) {
 
         commentsList.forEach(comment => {
             const badgeHTML = comment.isStaff ? `<span class="staff-badge">✓</span>` : '';
+            const safeCommentAuthor = escapeHtml(comment.authorName || 'Student');
             
             let commentKebabHTML = '';
             if (currentUser.type === 'staff') {
@@ -621,7 +651,7 @@ function loadCommentsForPost(postId) {
             commentListEl.innerHTML += `
                 <div class="comment-item">
                     <div class="comment-content">
-                        <strong>${comment.authorName} ${badgeHTML}:</strong> 
+                        <strong>${safeCommentAuthor} ${badgeHTML}:</strong> 
                         ${formatMessageMentions(comment.message)}
                     </div>
                     ${commentKebabHTML}
@@ -687,56 +717,18 @@ window.deleteComment = async function(commentId) {
 };
 
 function formatMessageMentions(text) {
-    let formattedText = text;
+    let safeText = escapeHtml(text);
     allUserNames.forEach(name => {
-        const mention = '@' + name;
-        if (formattedText.includes(mention)) {
-            formattedText = formattedText.split(mention).join(`<span style="color: var(--primary-color); font-weight: bold;">${mention}</span>`);
+        const rawMention = '@' + name;
+        const safeMention = escapeHtml(rawMention);
+        if (safeText.includes(safeMention)) {
+            safeText = safeText.split(safeMention).join(`<span style="color: var(--primary-color); font-weight: bold;">${safeMention}</span>`);
         }
     });
-    return formattedText;
+    return safeText;
 }
 
-// --- RELATIVE TIME FORMATTER & AUTO-UPDATE ---
-
-/**
- * Converts an ISO timestamp into a short relative time string (e.g., 5m, 2h, 1d)
- */
-function formatTimeAgo(timestamp) {
-    if (!timestamp) return '';
-    
-    const postDate = new Date(timestamp);
-    const now = new Date();
-    const secondsPast = Math.floor((now - postDate) / 1000);
-
-    // Handles negative time offsets or immediate posts
-    if (secondsPast < 30) {
-        return 'just now';
-    }
-    
-    const minutes = Math.floor(secondsPast / 60);
-    if (minutes < 60) {
-        return `${minutes}m`;
-    }
-    
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) {
-        return `${hours}h`;
-    }
-    
-    const days = Math.floor(hours / 24);
-    if (days < 7) {
-        return `${days}d`;
-    }
-    
-    const weeks = Math.floor(days / 7);
-    if (weeks < 52) {
-        return `${weeks}w`;
-    }
-    
-    const years = Math.floor(days / 365);
-    return `${years}y`;
-}
+// --- AUTO-UPDATE RELATIVE TIMESTAMPS ---
 
 /**
  * Periodically updates all timestamp elements on the page without re-fetching from Firestore
@@ -1022,18 +1014,20 @@ function subscribeDMThreads() {
 
             threadsListEl.innerHTML = '';
             threadsMap.forEach(thread => {
-                const initial = thread.partnerName ? thread.partnerName.charAt(0).toUpperCase() : '?';
+                const initial = escapeHtml(thread.partnerName ? thread.partnerName.charAt(0).toUpperCase() : '?');
                 const dateStr = formatTimeAgo(thread.timestamp);
                 const unreadHTML = thread.unread > 0 ? `<span class="dm-unread-badge">${thread.unread}</span>` : '';
                 const safeCode = (thread.partnerCode || 'user').replace(/[^a-zA-Z0-9]/g, '_');
+                const safePartnerName = escapeHtml(thread.partnerName || 'User');
+                const safeLastMsg = escapeHtml(thread.lastMessage || '');
 
                 const item = document.createElement('div');
                 item.className = 'dm-thread-item';
                 item.innerHTML = `
                     <div class="dm-contact-avatar">${initial}</div>
                     <div class="dm-contact-info">
-                        <div class="dm-contact-name">${thread.partnerName}</div>
-                        <div class="dm-preview-text">${thread.lastMessage}</div>
+                        <div class="dm-contact-name">${safePartnerName}</div>
+                        <div class="dm-preview-text">${safeLastMsg}</div>
                     </div>
                     <div style="display: flex; align-items: center; gap: 4px;">
                         <div style="text-align: right;">
@@ -1043,7 +1037,7 @@ function subscribeDMThreads() {
                         <div class="kebab-wrapper" style="position: relative;" onclick="event.stopPropagation();">
                             <button class="dm-icon-btn thread-kebab-btn" onclick="toggleKebabMenu(event, 'dmThreadKebab_${safeCode}')" title="Options" style="color: var(--text-muted) !important; font-size: 16px !important; padding: 2px 6px !important;">&#8942;</button>
                             <div class="kebab-dropdown hidden" id="dmThreadKebab_${safeCode}">
-                                <button class="kebab-item delete-item" onclick="deleteDMChatroom('${thread.partnerCode}', '${thread.partnerName.replace(/'/g, "\\'")}')" style="color: #ef4444 !important;">🗑 Delete Chat</button>
+                                <button class="kebab-item delete-item" onclick="deleteDMChatroom('${thread.partnerCode}', '${safePartnerName.replace(/'/g, "\\'")}')" style="color: #ef4444 !important;">🗑 Delete Chat</button>
                             </div>
                         </div>
                     </div>
@@ -1099,17 +1093,19 @@ function renderLocalDMThreads() {
 
     threadsListEl.innerHTML = '';
     threadsMap.forEach(thread => {
-        const initial = thread.partnerName ? thread.partnerName.charAt(0).toUpperCase() : '?';
+        const initial = escapeHtml(thread.partnerName ? thread.partnerName.charAt(0).toUpperCase() : '?');
         const dateStr = formatTimeAgo(thread.timestamp);
         const safeCode = (thread.partnerCode || 'user').replace(/[^a-zA-Z0-9]/g, '_');
+        const safePartnerName = escapeHtml(thread.partnerName || 'User');
+        const safeLastMsg = escapeHtml(thread.lastMessage || '');
 
         const item = document.createElement('div');
         item.className = 'dm-thread-item';
         item.innerHTML = `
             <div class="dm-contact-avatar">${initial}</div>
             <div class="dm-contact-info">
-                <div class="dm-contact-name">${thread.partnerName}</div>
-                <div class="dm-preview-text">${thread.lastMessage}</div>
+                <div class="dm-contact-name">${safePartnerName}</div>
+                <div class="dm-preview-text">${safeLastMsg}</div>
             </div>
             <div style="display: flex; align-items: center; gap: 4px;">
                 <div style="text-align: right;">
@@ -1118,7 +1114,7 @@ function renderLocalDMThreads() {
                 <div class="kebab-wrapper" style="position: relative;" onclick="event.stopPropagation();">
                     <button class="dm-icon-btn thread-kebab-btn" onclick="toggleKebabMenu(event, 'dmThreadKebab_${safeCode}')" title="Options" style="color: var(--text-muted) !important; font-size: 16px !important; padding: 2px 6px !important;">&#8942;</button>
                     <div class="kebab-dropdown hidden" id="dmThreadKebab_${safeCode}">
-                        <button class="kebab-item delete-item" onclick="deleteDMChatroom('${thread.partnerCode}', '${thread.partnerName.replace(/'/g, "\\'")}')" style="color: #ef4444 !important;">🗑 Delete Chat</button>
+                        <button class="kebab-item delete-item" onclick="deleteDMChatroom('${thread.partnerCode}', '${safePartnerName.replace(/'/g, "\\'")}')" style="color: #ef4444 !important;">🗑 Delete Chat</button>
                     </div>
                 </div>
             </div>
@@ -1154,14 +1150,17 @@ function renderDMContactsList(filterStr) {
 
     listEl.innerHTML = '';
     filtered.forEach(contact => {
-        const initial = contact.name ? contact.name.charAt(0).toUpperCase() : '?';
+        const initial = escapeHtml(contact.name ? contact.name.charAt(0).toUpperCase() : '?');
+        const safeContactName = escapeHtml(contact.name || 'User');
+        const safeRole = escapeHtml(contact.role || 'User');
+        const safeClass = contact.studentClass ? ' • ' + escapeHtml(contact.studentClass) : '';
         const item = document.createElement('div');
         item.className = 'dm-contact-item';
         item.innerHTML = `
             <div class="dm-contact-avatar">${initial}</div>
             <div class="dm-contact-info">
-                <div class="dm-contact-name">${contact.name}</div>
-                <div class="dm-preview-text">${contact.role}${contact.studentClass ? ' • ' + contact.studentClass : ''}</div>
+                <div class="dm-contact-name">${safeContactName}</div>
+                <div class="dm-preview-text">${safeRole}${safeClass}</div>
             </div>
             <button class="dm-new-chat-btn">Chat</button>
         `;
@@ -1214,7 +1213,7 @@ function subscribeDMMessagesStream() {
             messages = messages.filter(m => !(m.hiddenFor && m.hiddenFor.includes(currentUser.code)));
 
             if (messages.length === 0) {
-                streamEl.innerHTML = `<div class="dm-empty-state">No messages yet. Send a message to start chatting with ${currentChatPartner.name}!</div>`;
+                streamEl.innerHTML = `<div class="dm-empty-state">No messages yet. Send a message to start chatting with ${escapeHtml(currentChatPartner.name)}!</div>`;
                 return;
             }
 
@@ -1229,11 +1228,12 @@ function subscribeDMMessagesStream() {
                 const isSent = data.senderCode === currentUser.code;
                 const msgClass = isSent ? 'dm-msg-sent' : 'dm-msg-received';
                 const timeStr = formatTimeAgo(data.timestamp);
+                const safeMessage = escapeHtml(data.message || '');
 
                 const div = document.createElement('div');
                 div.className = `dm-message-bubble ${msgClass}`;
                 div.innerHTML = `
-                    <div>${data.message}</div>
+                    <div>${safeMessage}</div>
                     <div class="dm-msg-time">${timeStr}</div>
                 `;
                 streamEl.appendChild(div);
@@ -1260,7 +1260,7 @@ function renderLocalDMMessagesStream() {
     localMsgs = localMsgs.filter(m => !(m.hiddenFor && m.hiddenFor.includes(currentUser.code)));
 
     if (localMsgs.length === 0) {
-        streamEl.innerHTML = `<div class="dm-empty-state">No messages yet. Send a message to start chatting with ${currentChatPartner.name}!</div>`;
+        streamEl.innerHTML = `<div class="dm-empty-state">No messages yet. Send a message to start chatting with ${escapeHtml(currentChatPartner.name)}!</div>`;
         return;
     }
 
@@ -1271,11 +1271,12 @@ function renderLocalDMMessagesStream() {
         const isSent = data.senderCode === currentUser.code;
         const msgClass = isSent ? 'dm-msg-sent' : 'dm-msg-received';
         const timeStr = formatTimeAgo(data.timestamp);
+        const safeMessage = escapeHtml(data.message || '');
 
         const div = document.createElement('div');
         div.className = `dm-message-bubble ${msgClass}`;
         div.innerHTML = `
-            <div>${data.message}</div>
+            <div>${safeMessage}</div>
             <div class="dm-msg-time">${timeStr}</div>
         `;
         streamEl.appendChild(div);

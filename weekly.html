@@ -274,6 +274,12 @@
       </div>
       
       <div class="filter-actions-group">
+        <button id="btnToggleTeacherMaterial" class="action-btn edit-btn">
+          <span class="btn-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </span>
+          <span id="btnToggleTeacherMaterialText">Input or Edit Material</span>
+        </button>
         <button id="btnTeacherPrintPDF" class="action-btn pdf-btn">
           <span class="btn-icon">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
@@ -314,14 +320,21 @@
         </table>
       </div>
 
-      <!-- Right Personal Material Table -->
-      <div class="material-side">
+      <!-- Right Personal Material Table (Hidden by default) -->
+      <div class="material-side" id="teacherMaterialSide" style="display: none;">
+        <div class="material-panel-header">
+          <div class="material-panel-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <span>Material Entry</span>
+          </div>
+          <button type="button" id="btnCloseTeacherMaterial" class="close-material-btn" title="Close Material Entry">✕</button>
+        </div>
         <table class="material-table">
           <thead>
             <tr>
-              <th>Class & Day</th>
-              <th>Material</th>
-              <th>Actions</th>
+              <th style="width: 32%;">Class & Day</th>
+              <th style="width: 56%;">Material</th>
+              <th style="width: 12%;">Actions</th>
             </tr>
           </thead>
           <tbody id="materialTableBody"></tbody>
@@ -430,7 +443,8 @@
                     <thead>
                       <tr>
                         <th>Teacher Name</th>
-                        <th style="width: 70px; text-align: center;">Action</th>
+                        <th style="width: 55px; text-align: center;" title="Total Teaching Periods">TTP</th>
+                        <th style="width: 60px; text-align: center;">Action</th>
                       </tr>
                     </thead>
                     <tbody id="tableTeachers"></tbody>
@@ -440,6 +454,30 @@
                   <button type="button" class="page-btn" id="btnPrevTeachers" disabled>&lsaquo;</button>
                   <span class="page-info" id="pageInfoTeachers">Page 1 of 1</span>
                   <button type="button" class="page-btn" id="btnNextTeachers" disabled>&rsaquo;</button>
+                </div>
+              </div>
+
+              <!-- Home Teachers Card -->
+              <div class="entity-card">
+                <div class="entity-card-header">
+                  <span class="entity-title">Home Teachers</span>
+                </div>
+                <div class="entity-table-wrapper">
+                  <table class="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Teacher & Assigned Class</th>
+                        <th style="width: 55px; text-align: center;" title="Total Teaching Periods">TTP</th>
+                        <th style="width: 60px; text-align: center;">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tableHomeTeachers"></tbody>
+                  </table>
+                </div>
+                <div class="table-pagination">
+                  <button type="button" class="page-btn" id="btnPrevHomeTeachers" disabled>&lsaquo;</button>
+                  <span class="page-info" id="pageInfoHomeTeachers">Page 1 of 1</span>
+                  <button type="button" class="page-btn" id="btnNextHomeTeachers" disabled>&rsaquo;</button>
                 </div>
               </div>
 
@@ -453,7 +491,7 @@
                     <thead>
                       <tr>
                         <th>Class Identifier</th>
-                        <th style="width: 70px; text-align: center;">Action</th>
+                        <th style="width: 60px; text-align: center;">Action</th>
                       </tr>
                     </thead>
                     <tbody id="tableClasses"></tbody>
@@ -476,7 +514,7 @@
                     <thead>
                       <tr>
                         <th>Subject Name</th>
-                        <th style="width: 70px; text-align: center;">Action</th>
+                        <th style="width: 60px; text-align: center;">Action</th>
                       </tr>
                     </thead>
                     <tbody id="tableSubjects"></tbody>
@@ -532,6 +570,28 @@
 
               <button type="submit" class="save-btn">Auto-Generate & Save Weeks</button>
             </form>
+          </div>
+
+          <!-- Manage Existing Themes Section -->
+          <div class="admin-card" style="margin-top: 20px;">
+            <div class="admin-card-header">
+              <h3 class="admin-card-title">Existing Themes & Date Boundaries</h3>
+              <p class="admin-card-subtitle">Manage start/end dates and review active themes for this school year.</p>
+            </div>
+            
+            <div class="entity-table-wrapper">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th style="width: 25%;">Theme</th>
+                    <th style="width: 45%;">Date Range (Mon – Fri)</th>
+                    <th style="width: 15%; text-align: center;">Weeks</th>
+                    <th style="width: 15%; text-align: center;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="tableThemesManage"></tbody>
+              </table>
+            </div>
           </div>
 
           <!-- Manage Existing Schedules Section -->

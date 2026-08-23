@@ -1,18 +1,6 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, query, where, getDocs, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-const firebaseConfig = {
-    apiKey: "AIzaSyB3TY9M4oUG7xxCgxR6bSJB0K9ivcP5RQI",
-    authDomain: "syamserverlist.firebaseapp.com",
-    projectId: "syamserverlist",
-    storageBucket: "syamserverlist.firebasestorage.app",
-    messagingSenderId: "468852816088",
-    appId: "1:468852816088:web:b72bcb0c4fee837d983fad",
-    measurementId: "G-2YHY6V3JH1"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app, "mrsyamdb");
+import { collection, query, where, getDocs, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { db } from "./firebase.js";
+import { escapeHtml } from "./utils.js";
 
 let currentStudentCode = "";
 let currentStudentName = "";

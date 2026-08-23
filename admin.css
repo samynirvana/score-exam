@@ -197,6 +197,8 @@ textarea:focus {
     overflow: visible !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
     z-index: 1000 !important;
+}
+
 .sidebar {
     padding: 0 20px !important;
 }
@@ -3745,19 +3747,48 @@ body.dark-mode select option,
 .card-kebab-btn {
     background: transparent !important;
     border: none !important;
-    color: var(--text-gray, #64748b) !important;
+    box-shadow: none !important;
+    color: var(--text-dark, #334155) !important;
     cursor: pointer !important;
-    padding: 6px !important;
+    padding: 0 !important;
     border-radius: 8px !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    transition: all 0.2s ease !important;
+    font-size: 24px !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    transition: all 0.15s ease !important;
 }
 
 .card-kebab-btn:hover {
-    background: rgba(30, 94, 255, 0.08) !important;
+    background: rgba(30, 94, 255, 0.12) !important;
     color: var(--primary-blue, #1e5eff) !important;
+    border: none !important;
+    transform: scale(1.1);
+}
+
+body.dark-theme .card-kebab-btn,
+body.dark-mode .card-kebab-btn {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #e2e8f0 !important;
+}
+
+body.dark-theme .card-kebab-btn:hover,
+body.dark-mode .card-kebab-btn:hover {
+    background: rgba(255, 255, 255, 0.15) !important;
+    color: #60a5fa !important;
+    border: none !important;
+}
+
+.profile-card-dropdown.hidden {
+    display: none !important;
 }
 
 .profile-card-dropdown {
@@ -3769,9 +3800,9 @@ body.dark-mode select option,
     padding: 6px !important;
     z-index: 9999 !important;
     min-width: 120px !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 4px !important;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .profile-dropdown-item {

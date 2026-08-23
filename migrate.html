@@ -306,7 +306,28 @@ Example:
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { auth, db } from "./firebase.js";
+
+    // Security Gate: Only authenticated administrators may use the migration utility
+    onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+            alert("Unauthorized Access. Please sign in as an Administrator in admin.html first.");
+            window.location.href = "admin.html";
+            return;
+        }
+        try {
+            const userSnap = await getDoc(doc(db, "users", user.uid));
+            if (!userSnap.exists() || userSnap.data().role !== "admin") {
+                alert("Access Denied: Only administrators have permission to access the Database Migration Tool.");
+                window.location.href = "admin.html";
+            }
+        } catch (e) {
+            alert("Authentication verification failed: " + e.message);
+            window.location.href = "admin.html";
+        }
+    });
 
     // Standard Current Firebase Config
     const CURRENT_SOURCE_CONFIG = {

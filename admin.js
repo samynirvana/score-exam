@@ -1,20 +1,7 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, where, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-const firebaseConfig = {
-    apiKey: "AIzaSyB3TY9M4oUG7xxCgxR6bSJB0K9ivcP5RQI",
-    authDomain: "syamserverlist.firebaseapp.com",
-    projectId: "syamserverlist",
-    storageBucket: "syamserverlist.firebasestorage.app",
-    messagingSenderId: "468852816088",
-    appId: "1:468852816088:web:b72bcb0c4fee837d983fad",
-    measurementId: "G-2YHY6V3JH1"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app, "mrsyamdb");
-const auth = getAuth(app);
+import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, where, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { app, db, auth, secondaryAuth } from "./firebase.js";
+import { escapeHtml, formatDate } from "./utils.js";
 
 // --- UTILITY: DEBOUNCE FUNCTION ---
 // Prevents functions from firing repeatedly on every single keystroke
@@ -25,14 +12,10 @@ function debounce(func, delay = 200) {
         timeoutId = setTimeout(() => func(...args), delay);
     };
 }
-// Secondary background authorization loop configuration context
-const secondaryApp = initializeApp(firebaseConfig, "SecondaryAuthApp");
-const secondaryAuth = getAuth(secondaryApp);
 
 let userRole = null;
 let teacherSubject = null;
 
-// --- DYNAMIC AUTH & PERMISSION LISTENER ---
 // --- DYNAMIC AUTH & PERMISSION LISTENER (FAST & PARALLEL) ---
 onAuthStateChanged(auth, async (user) => {
     const loginScreen = document.getElementById('loginScreen');
@@ -47,8 +30,8 @@ onAuthStateChanged(auth, async (user) => {
             const userDoc = await getDoc(doc(db, "users", user.uid));
             if (userDoc.exists()) {
                 const userData = userDoc.data();
-                userRole = userData.role; 
-                teacherSubject = userData.subject || ""; 
+                userRole = userData.role;
+                teacherSubject = userData.subject || "";
             } else {
                 userRole = "teacher";
                 teacherSubject = "Unassigned";
@@ -81,7 +64,7 @@ onAuthStateChanged(auth, async (user) => {
             // 3. Set UI Views and Role Permissions
             if (userRole === "admin") {
                 document.querySelectorAll('.admin-only-view').forEach(el => el.classList.remove('hidden'));
-                
+
                 if (subjectInput) {
                     subjectInput.disabled = false;
                     subjectInput.value = "";
@@ -95,7 +78,7 @@ onAuthStateChanged(auth, async (user) => {
 
                 if (subjectInput) {
                     subjectInput.value = teacherSubject;
-                    subjectInput.disabled = true; 
+                    subjectInput.disabled = true;
                 }
                 if (tableTitle) tableTitle.innerText = `Departmental Performance Ledger: ${teacherSubject}`;
                 if (welcomeTitle) welcomeTitle.innerText = "Teacher Page";
@@ -170,12 +153,12 @@ async function createTeacherAccount() {
             subject: subject
         });
         alert(`Teacher Registered Successfully!\nName: ${name}\nEmail: ${email}\nSubject: ${subject}`);
-        
+
         document.getElementById('newTeacherName').value = "";
         document.getElementById('newTeacherEmail').value = "";
         document.getElementById('newTeacherPassword').value = "";
         document.getElementById('newTeacherSubject').value = "";
-        
+
         await secondaryAuth.signOut();
         loadTeachersDirectory();
         if (typeof window.loadSystemDatabases === "function") {
@@ -186,7 +169,7 @@ async function createTeacherAccount() {
     }
 }
 
-window.generateNewUniqueCode = async function(oldCode) {
+window.generateNewUniqueCode = async function (oldCode) {
     if (confirm(`Are you sure you want to generate a new unique code for student ${oldCode}? The old code will be retired.`)) {
         try {
             const studentRef = doc(db, "students", oldCode);
@@ -218,7 +201,7 @@ window.generateNewUniqueCode = async function(oldCode) {
 };
 
 // --- STUDENT REGISTRATION MODE SWITCHER ---
-window.setStudentRegMode = function(mode) {
+window.setStudentRegMode = function (mode) {
     const singleForm = document.getElementById('studentRegSingleForm');
     const bulkForm = document.getElementById('studentRegBulkForm');
     const photosForm = document.getElementById('studentRegPhotosForm');
@@ -236,7 +219,7 @@ window.setStudentRegMode = function(mode) {
 };
 
 // --- SCORE INPUT MODE SWITCHER ---
-window.setScoreInputMode = function(mode) {
+window.setScoreInputMode = function (mode) {
     const singleView = document.getElementById('scoreInputSingleView');
     const bulkView = document.getElementById('scoreInputBulkView');
     const btnSingle = document.getElementById('btnScoreInputSingle');
@@ -259,7 +242,7 @@ window.setScoreInputMode = function(mode) {
 };
 
 // --- VIEW STUDENT CODE MODAL ---
-window.viewStudentCode = function(studentId, studentName, studentClass) {
+window.viewStudentCode = function (studentId, studentName, studentClass) {
     const modal = document.getElementById('studentCodeModal');
     const nameEl = document.getElementById('modalStudentCodeName');
     const classEl = document.getElementById('modalStudentCodeClass');
@@ -274,12 +257,12 @@ window.viewStudentCode = function(studentId, studentName, studentClass) {
     if (modal) modal.classList.remove('hidden');
 };
 
-window.closeStudentCodeModal = function() {
+window.closeStudentCodeModal = function () {
     const modal = document.getElementById('studentCodeModal');
     if (modal) modal.classList.add('hidden');
 };
 
-window.copyStudentCodeToClipboard = async function() {
+window.copyStudentCodeToClipboard = async function () {
     const codeEl = document.getElementById('modalDisplayStudentCode');
     const copyBtnText = document.getElementById('copyBtnText');
     if (!codeEl) return;
@@ -313,11 +296,11 @@ window.copyStudentCodeToClipboard = async function() {
 function compareStudentsByClassAndName(a, b) {
     const classA = (a.studentClass || '').trim();
     const classB = (b.studentClass || '').trim();
-    
+
     // Natural alphanumeric class compare (e.g. Grade 7A < Grade 7B < Grade 10A < Grade 12)
     const classComp = classA.localeCompare(classB, undefined, { numeric: true, sensitivity: 'base' });
     if (classComp !== 0) return classComp;
-    
+
     // Within same class, compare student names alphabetically (A to Z)
     const nameA = (a.studentName || '').trim();
     const nameB = (b.studentName || '').trim();
@@ -332,22 +315,22 @@ window.onDbStudentSearchChange = debounce(() => {
     renderDbStudentsTable();
 }, 200);
 
-window.onDbStudentFilterChange = function() {
+window.onDbStudentFilterChange = function () {
     dbStudentsCurrentPage = 1;
     renderDbStudentsTable();
 };
 
-window.onDbStudentPerPageChange = function() {
+window.onDbStudentPerPageChange = function () {
     dbStudentsCurrentPage = 1;
     renderDbStudentsTable();
 };
 
-window.goToDbStudentsPage = function(pageNum) {
+window.goToDbStudentsPage = function (pageNum) {
     dbStudentsCurrentPage = pageNum;
     renderDbStudentsTable();
 };
 
-window.renderDbStudentsTable = function() {
+window.renderDbStudentsTable = function () {
     const searchInput = document.getElementById('searchDbStudents');
     const classFilter = document.getElementById('filterDbStudentClass');
     const perPageSelect = document.getElementById('dbStudentsPerPage');
@@ -355,7 +338,7 @@ window.renderDbStudentsTable = function() {
     const countBadge = document.getElementById('dbStudentsCountBadge');
     const pageInfo = document.getElementById('dbStudentsPageInfo');
     const pageButtons = document.getElementById('dbStudentsPageButtons');
-    
+
     if (!tbody) return;
 
     const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
@@ -365,10 +348,10 @@ window.renderDbStudentsTable = function() {
     // 1. Filter students
     let filtered = allStudentsData.filter(s => {
         const matchesSearch = !searchTerm ||
-               (s.studentName && s.studentName.toLowerCase().includes(searchTerm)) ||
-               (s.studentClass && s.studentClass.toLowerCase().includes(searchTerm)) ||
-               (s.id && s.id.toLowerCase().includes(searchTerm));
-        
+            (s.studentName && s.studentName.toLowerCase().includes(searchTerm)) ||
+            (s.studentClass && s.studentClass.toLowerCase().includes(searchTerm)) ||
+            (s.id && s.id.toLowerCase().includes(searchTerm));
+
         const matchesClass = (selectedClass === 'all') || (s.studentClass === selectedClass);
 
         return matchesSearch && matchesClass;
@@ -408,9 +391,9 @@ window.renderDbStudentsTable = function() {
         const safeClass = (student.studentClass || '').replace(/'/g, "\\'");
         const photoUrl = resolvePhotoUrl(student.photoUrl || student.photo || '');
         const birthDate = student.birthDate || student.dateOfBirth || '-';
-        
-        const photoHtml = photoUrl ? 
-            `<img src="${photoUrl}" alt="Photo" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid #cbd5e1; display: block; margin: 0 auto;" onerror="this.outerHTML='<div style=\\'width: 32px; height: 32px; border-radius: 50%; background: #f1f5f9; color: #94a3b8; display: flex; align-items: center; justify-content: center; margin: 0 auto; font-size: 14px;\\'>👤</div>'">` : 
+
+        const photoHtml = photoUrl ?
+            `<img src="${photoUrl}" alt="Photo" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid #cbd5e1; display: block; margin: 0 auto;" onerror="this.outerHTML='<div style=\\'width: 32px; height: 32px; border-radius: 50%; background: #f1f5f9; color: #94a3b8; display: flex; align-items: center; justify-content: center; margin: 0 auto; font-size: 14px;\\'>👤</div>'">` :
             `<div style="width: 32px; height: 32px; border-radius: 50%; background: #f1f5f9; color: #94a3b8; display: flex; align-items: center; justify-content: center; margin: 0 auto; font-size: 14px;">👤</div>`;
 
         return `
@@ -506,7 +489,7 @@ async function generateUniqueStudentCode() {
 
     while (!isUnique) {
         newCode = generateRandomCode(5);
-        
+
         // Check if a student document with this code already exists in Firestore
         const studentRef = doc(db, "students", newCode);
         const studentSnap = await getDoc(studentRef);
@@ -546,7 +529,7 @@ async function registerStudent() {
             birthDate: birthDate,
             photoUrl: ""
         });
-        
+
         alert(`Profile Confirmed!\nName: ${name}\nClass: ${studentClass}\nCode: ${uniqueCode}`);
         document.getElementById('newStudentName').value = "";
         document.getElementById('newStudentClass').value = "";
@@ -571,14 +554,14 @@ async function loadStudentsDirectory() {
         querySnapshot.forEach((doc) => {
             const data = doc.data();
             allStudentsData.push({ id: doc.id, ...data });
-            
-            if (data.studentClass) { 
+
+            if (data.studentClass) {
                 classesSet.add(data.studentClass.trim());
             }
         });
 
         // Naturally sort classes (e.g., Grade 7A, Grade 7B, Grade 10A, Grade 12)
-        const sortedClasses = Array.from(classesSet).filter(Boolean).sort((a, b) => 
+        const sortedClasses = Array.from(classesSet).filter(Boolean).sort((a, b) =>
             a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
         );
 
@@ -754,7 +737,7 @@ async function processBulkPhotoFiles(files) {
                 try {
                     const dataUrl = await resizeImageToDataUrl(file);
                     const finalUrl = await uploadPhotoToDriveOrDirect(file, dataUrl, scriptUrl);
-                    
+
                     await updateDoc(doc(db, "students", targetStudent.id), {
                         photoUrl: finalUrl
                     });
@@ -825,7 +808,7 @@ async function processBulkPhotoFiles(files) {
 }
 
 // --- GOOGLE DRIVE SCRIPT SETTINGS ---
-window.toggleDriveScriptSettings = async function() {
+window.toggleDriveScriptSettings = async function () {
     const box = document.getElementById('driveScriptSettingsBox');
     if (box) box.classList.toggle('hidden');
     const input = document.getElementById('googleDriveScriptUrl');
@@ -846,7 +829,7 @@ window.toggleDriveScriptSettings = async function() {
     }
 };
 
-window.saveDriveScriptUrl = async function() {
+window.saveDriveScriptUrl = async function () {
     const input = document.getElementById('googleDriveScriptUrl');
     const url = input?.value.trim() || '';
     localStorage.setItem('googleDriveScriptUrl', url);
@@ -862,7 +845,7 @@ window.saveDriveScriptUrl = async function() {
 };
 
 // --- EDIT STUDENT PROFILE MODAL ---
-window.openEditStudentModal = async function(studentId) {
+window.openEditStudentModal = async function (studentId) {
     try {
         const studentRef = doc(db, "students", studentId);
         const studentSnap = await getDoc(studentRef);
@@ -875,7 +858,7 @@ window.openEditStudentModal = async function(studentId) {
         document.getElementById('editStudentClassInput').value = data.studentClass || data.Class || data.class || '';
         document.getElementById('editStudentBirthDateInput').value = data.birthDate || data.dateOfBirth || '';
         document.getElementById('editStudentPhotoUrlInput').value = data.photoUrl || data.photo || '';
-        
+
         const preview = document.getElementById('editStudentPhotoPreview');
         const placeholder = document.getElementById('editStudentPhotoPlaceholder');
         const photoUrl = resolvePhotoUrl(data.photoUrl || data.photo || '');
@@ -896,11 +879,11 @@ window.openEditStudentModal = async function(studentId) {
 
 window.editStudentProfile = window.openEditStudentModal;
 
-window.closeEditStudentModal = function() {
+window.closeEditStudentModal = function () {
     document.getElementById('editStudentProfileModal')?.classList.add('hidden');
 };
 
-window.onEditPhotoUrlChange = function() {
+window.onEditPhotoUrlChange = function () {
     const url = document.getElementById('editStudentPhotoUrlInput')?.value.trim() || '';
     const preview = document.getElementById('editStudentPhotoPreview');
     const placeholder = document.getElementById('editStudentPhotoPlaceholder');
@@ -915,7 +898,7 @@ window.onEditPhotoUrlChange = function() {
     }
 };
 
-window.onEditPhotoFileChange = async function(event) {
+window.onEditPhotoFileChange = async function (event) {
     const file = event.target.files?.[0];
     if (!file) return;
     try {
@@ -929,7 +912,7 @@ window.onEditPhotoFileChange = async function(event) {
     }
 };
 
-window.saveEditStudentProfile = async function() {
+window.saveEditStudentProfile = async function () {
     const studentId = document.getElementById('editStudentId').value;
     const name = document.getElementById('editStudentNameInput').value.trim();
     const sClass = document.getElementById('editStudentClassInput').value.trim();
@@ -1028,8 +1011,8 @@ async function loadAdminTable() {
     if (!user) return;
 
     try {
-        let q = (userRole === "admin") 
-            ? query(collection(db, "exam_scores")) 
+        let q = (userRole === "admin")
+            ? query(collection(db, "exam_scores"))
             : query(collection(db, "exam_scores"), where("subject", "==", teacherSubject));
 
         const querySnapshot = await getDocs(q);
@@ -1053,13 +1036,13 @@ async function loadAdminTable() {
         if (filterDropdown) {
             const currentFilter = filterDropdown.value;
             const uniqueClasses = [...new Set(scoresList.map(item => item.sClass))].filter(c => c !== 'N/A').sort();
-            
+
             // Rebuild dropdown options dynamically
             filterDropdown.innerHTML = '<option value="all">All Classes</option>';
             uniqueClasses.forEach(c => {
                 filterDropdown.innerHTML += `<option value="${c}">${c}</option>`;
             });
-            
+
             // Restore selection and apply filter
             if (uniqueClasses.includes(currentFilter)) {
                 filterDropdown.value = currentFilter;
@@ -1118,14 +1101,14 @@ async function processExcel() {
                 const examName = String(row["Exam Name"] || row["Exam"] || row["Quiz Name"] || "").trim();
                 const fileSubject = String(row["Subject"] || "").trim();
                 const subject = userRole === "admin" ? fileSubject : teacherSubject;
-                
+
                 const rawScore = row["Score"] !== undefined ? row["Score"] : row["score"];
                 const score = parseInt(rawScore);
 
                 // Check authorization for non-admin teachers
                 if (userRole !== "admin" && fileSubject.toLowerCase() !== teacherSubject.toLowerCase()) {
                     skippedCount++;
-                    continue; 
+                    continue;
                 }
 
                 if (code && examName && subject && !isNaN(score)) {
@@ -1149,7 +1132,7 @@ async function processExcel() {
 
             alert(`Excel Process Complete!\nUpdated/Saved: ${successCount} entries${skippedCount > 0 ? `\nSkipped (Unauthorized Subject): ${skippedCount}` : ''}`);
             fileInput.value = "";
-            
+
             // Refresh admin table if active
             if (typeof loadAdminTable === "function") loadAdminTable();
 
@@ -1176,7 +1159,7 @@ async function processStudentPoint(pointValue) {
     try {
         // Find the student code based on the typed name
         const studentMatch = allStudentsData.find(s => s.studentName.toLowerCase() === studentNameInput.toLowerCase());
-        
+
         if (!studentMatch) {
             alert(`Lookup Error: Student "${studentNameInput}" does not exist in the directory. Please use the autocomplete dropdown.`);
             return;
@@ -1196,16 +1179,16 @@ async function processStudentPoint(pointValue) {
 
         const sign = pointValue > 0 ? '+' : '';
         alert(`Successfully recorded ${sign}${pointValue} points for ${studentMatch.studentName}.`);
-        
+
         // Reset the form inputs
         document.getElementById('pointStudentName').value = "";
         document.getElementById('pointReason').value = "";
         document.getElementById('customPointValue').value = "";
-        
+
         // Refresh ledgers
-        loadPointsTable(); 
+        loadPointsTable();
         refreshBehaviorTabLedgers();
-        
+
     } catch (e) {
         alert("Error logging point transaction: " + e.message);
     }
@@ -1219,7 +1202,7 @@ async function loadPointsTable() {
     try {
         const studentsSnap = await getDocs(collection(db, "students"));
         const studentsMap = {};
-        
+
         studentsSnap.forEach(doc => {
             const data = doc.data();
             studentsMap[doc.id] = {
@@ -1254,12 +1237,12 @@ async function loadPointsTable() {
         if (filterDropdown) {
             const currentFilter = filterDropdown.value;
             const uniqueClasses = [...new Set(pointsList.map(item => item.sClass))].filter(c => c !== 'N/A').sort();
-            
+
             filterDropdown.innerHTML = '<option value="all">All Classes</option>';
             uniqueClasses.forEach(c => {
                 filterDropdown.innerHTML += `<option value="${c}">${c}</option>`;
             });
-            
+
             if (uniqueClasses.includes(currentFilter)) {
                 filterDropdown.value = currentFilter;
                 pointsList = pointsList.filter(item => item.sClass === currentFilter);
@@ -1268,12 +1251,12 @@ async function loadPointsTable() {
             }
         }
         const tbody = document.querySelector("#pointsTable tbody");
-        if(tbody) {
+        if (tbody) {
             tbody.innerHTML = "";
             pointsList.forEach(info => {
                 const color = info.total > 0 ? '#28a745' : (info.total < 0 ? '#dc3545' : '#333');
                 const sign = info.total > 0 ? '+' : '';
-                
+
                 tbody.innerHTML += `<tr>
                     <td>
                         <div style="display: flex; align-items: center; gap: 8px;">
@@ -1331,7 +1314,7 @@ async function inlineAdjustPoint(studentCode, amount) {
     try {
         const studentSnap = await getDoc(doc(db, "students", studentCode));
         if (!studentSnap.exists()) return alert("Student not found.");
-        
+
         const sData = studentSnap.data();
         const targetClass = sData.studentClass || sData.Class || sData.class || 'N/A';
 
@@ -1343,9 +1326,9 @@ async function inlineAdjustPoint(studentCode, amount) {
             points: parseFloat(amount),
             timestamp: new Date()
         });
-        
+
         // Refresh the table immediately to show the new total
-        loadPointsTable(); 
+        loadPointsTable();
     } catch (e) {
         alert("Error adjusting points: " + e.message);
     }
@@ -1359,7 +1342,7 @@ document.getElementById('filterScoreClass')?.addEventListener('change', loadAdmi
 document.getElementById('filterPointsClass')?.addEventListener('change', loadPointsTable);
 
 // --- TAB & SUB-TAB NAVIGATION LOGIC ---
-window.switchDbView = function(viewName) {
+window.switchDbView = function (viewName) {
     const validViews = ['students', 'teachers', 'quizzes', 'all'];
     if (!validViews.includes(viewName)) viewName = 'students';
 
@@ -1514,14 +1497,14 @@ async function resetStudentPoints(studentCode) {
             // Find all point records for this specific student
             const q = query(collection(db, "student_points"), where("studentCode", "==", studentCode));
             const snap = await getDocs(q);
-            
+
             // Delete them all
             const deletePromises = [];
             snap.forEach(docSnap => {
                 deletePromises.push(deleteDoc(doc(db, "student_points", docSnap.id)));
             });
             await Promise.all(deletePromises);
-            
+
             alert("Points successfully reset to 0.");
             loadPointsTable(); // Refresh the ledger immediately
         } catch (e) {
@@ -1533,7 +1516,7 @@ async function resetStudentPoints(studentCode) {
 // --- NEWS & NOTICE MANAGEMENT LOGIC ---
 let currentEditNewsId = null;
 
-window.onNewsClassCheckboxChange = function(changedInput) {
+window.onNewsClassCheckboxChange = function (changedInput) {
     const optionsContainer = document.getElementById('newsClassOptions');
     if (!optionsContainer) return;
 
@@ -1594,7 +1577,7 @@ async function populateNewsClassDropdown() {
             if (cls) classesSet.add(cls.trim());
         });
 
-        const sortedClasses = Array.from(classesSet).filter(Boolean).sort((a, b) => 
+        const sortedClasses = Array.from(classesSet).filter(Boolean).sort((a, b) =>
             a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
         );
 
@@ -1646,7 +1629,7 @@ async function addNewsUpdate() {
                 targetClasses: targetClasses
             });
             alert("Notice updated successfully!");
-            
+
             // Reset form UI
             currentEditNewsId = null;
             if (btn) {
@@ -1665,7 +1648,7 @@ async function addNewsUpdate() {
             });
             alert("News notice posted successfully!");
         }
-        
+
         document.getElementById('newsTitle').value = "";
         document.getElementById('newsContent').value = "";
 
@@ -1691,10 +1674,10 @@ async function loadNewsTable() {
     try {
         await populateNewsClassDropdown();
         const querySnapshot = await getDocs(collection(db, "news_updates"));
-        
+
         const dashboardContainer = document.getElementById("dashboard-news-container");
         const manageTbody = document.querySelector("#manageNewsTable tbody");
-        
+
         if (dashboardContainer) dashboardContainer.innerHTML = "";
         if (manageTbody) manageTbody.innerHTML = "";
 
@@ -1727,7 +1710,7 @@ async function loadNewsTable() {
             if (manageTbody) {
                 const badgeBg = status === 'active' ? '#ecfdf5' : '#f1f5f9';
                 const badgeText = status === 'active' ? '#10b981' : '#64748b';
-                
+
                 manageTbody.innerHTML += `<tr>
                     <td>${dateStr}</td>
                     <td><strong>${news.title}</strong></td>
@@ -1761,7 +1744,7 @@ async function loadNewsTable() {
                 activeCount++;
             }
         });
-        
+
         if (dashboardContainer && dashboardContainer.innerHTML === "") {
             dashboardContainer.innerHTML = "<p style='color: var(--text-gray); font-size: 13px; text-align: center; padding: 20px 0;'>No active notices at the moment.</p>";
         }
@@ -1776,7 +1759,7 @@ async function deleteNewsUpdate(docId) {
         try {
             await deleteDoc(doc(db, "news_updates", docId));
             loadNewsTable();
-            updateDashboardStats(); 
+            updateDashboardStats();
         } catch (e) {
             alert("Error deleting notice: " + e.message);
         }
@@ -1796,7 +1779,7 @@ async function toggleArchiveNews(docId, currentStatus) {
 }
 
 // Window bindings for inline HTML clicks
-window.editNewsUpdate = function(id, title, content, targetClassesJson) {
+window.editNewsUpdate = function (id, title, content, targetClassesJson) {
     currentEditNewsId = id;
     document.getElementById('newsTitle').value = title;
     document.getElementById('newsContent').value = content;
@@ -1817,12 +1800,12 @@ window.editNewsUpdate = function(id, title, content, targetClassesJson) {
         });
         updateNewsClassLabel();
     }
-    
+
     document.getElementById('newsFormTitle').innerText = "Edit Notice";
     const btn = document.getElementById('postNewsBtn');
     if (btn) {
         btn.innerText = "Update Notice";
-        btn.style.background = "#f59e0b"; 
+        btn.style.background = "#f59e0b";
     }
 };
 
@@ -1841,11 +1824,11 @@ function convertDriveUrl(url) {
 
 let currentEditQuizId = null;
 
-document.getElementById('gform-main-title')?.addEventListener('input', function(e) {
+document.getElementById('gform-main-title')?.addEventListener('input', function (e) {
     const titleInput = document.getElementById('quizTitle');
     if (titleInput) titleInput.value = e.target.innerText || e.target.textContent || '';
 });
-document.getElementById('quizTitle')?.addEventListener('input', function(e) {
+document.getElementById('quizTitle')?.addEventListener('input', function (e) {
     const mainTitle = document.getElementById('gform-main-title');
     if (mainTitle && document.activeElement !== mainTitle) {
         mainTitle.innerText = e.target.value || '';
@@ -1871,7 +1854,7 @@ function restoreCurrentSelection() {
     }
 }
 
-window.formatText = function(command, value = null) {
+window.formatText = function (command, value = null) {
     if (!currentEditableTarget) return;
 
     currentEditableTarget.focus();
@@ -1962,14 +1945,14 @@ function hideRichTextPopup() {
 }
 
 // Global listeners for editable text boxes inside quiz builder
-document.addEventListener('focusin', function(e) {
+document.addEventListener('focusin', function (e) {
     const target = e.target;
     if (target && target.isContentEditable && target.closest('#quiz-builder-view')) {
         showRichTextPopup(target);
     }
 });
 
-document.addEventListener('click', function(e) {
+document.addEventListener('click', function (e) {
     const target = e.target;
     const popup = document.getElementById('richTextPopupToolbar');
 
@@ -1985,7 +1968,7 @@ document.addEventListener('click', function(e) {
     hideRichTextPopup();
 });
 
-document.addEventListener('keyup', function(e) {
+document.addEventListener('keyup', function (e) {
     const target = e.target;
     if (target && target.isContentEditable && target.closest('#quiz-builder-view')) {
         saveCurrentSelection();
@@ -1993,7 +1976,7 @@ document.addEventListener('keyup', function(e) {
     }
 });
 
-document.addEventListener('mouseup', function(e) {
+document.addEventListener('mouseup', function (e) {
     const target = e.target;
     if (target && target.isContentEditable && target.closest('#quiz-builder-view')) {
         saveCurrentSelection();
@@ -2002,25 +1985,25 @@ document.addEventListener('mouseup', function(e) {
 });
 
 // Reposition on scroll and resize
-window.addEventListener('scroll', function() {
+window.addEventListener('scroll', function () {
     if (currentEditableTarget) positionRichTextPopup(currentEditableTarget);
 }, true);
 
-window.addEventListener('resize', function() {
+window.addEventListener('resize', function () {
     const active = document.querySelector('.gform-card.active-card');
     if (active && typeof activateCard === 'function') activateCard(active);
 });
 
 // Global card activation function for inline HTML clicks and module calls
-window.activateCard = function(element) {
+window.activateCard = function (element) {
     if (!element) return;
-    
+
     // Remove active state from all cards
     document.querySelectorAll('.gform-card').forEach(c => c.classList.remove('active-card'));
-    
+
     // Add active state to selected card
     element.classList.add('active-card');
-    
+
     // Move floating sidebar toolbar next to active card
     const toolbar = document.getElementById('floatingToolbar');
     const wrapper = document.querySelector('.gform-content-wrapper');
@@ -2036,7 +2019,7 @@ window.activateCard = function(element) {
 };
 
 // Listen for clicks & focus anywhere inside the Quiz Builder cards
-document.addEventListener('click', function(e) {
+document.addEventListener('click', function (e) {
     const card = e.target.closest('.gform-card');
     const builderView = document.getElementById('quiz-builder-view');
     if (card && builderView && !builderView.classList.contains('hidden')) {
@@ -2044,7 +2027,7 @@ document.addEventListener('click', function(e) {
     }
 });
 
-document.addEventListener('focusin', function(e) {
+document.addEventListener('focusin', function (e) {
     const card = e.target.closest('.gform-card');
     const builderView = document.getElementById('quiz-builder-view');
     if (card && builderView && !builderView.classList.contains('hidden')) {
@@ -2064,13 +2047,13 @@ function addBlock(type) {
     const blockId = 'block_' + blockCounter;
 
     const blockDiv = document.createElement('div');
-    blockDiv.className = 'gform-card quiz-block'; 
+    blockDiv.className = 'gform-card quiz-block';
     blockDiv.dataset.type = type;
     blockDiv.dataset.blockId = blockId;
     blockDiv.setAttribute('onclick', 'activateCard(this)');
 
     blockDiv.innerHTML = getBlockInnerHtml(type, blockId);
-    
+
     // If an active block exists inside quizBlocksContainer, insert right below it
     const activeBlock = document.querySelector('.quiz-block.active-card');
     if (activeBlock && activeBlock.parentNode === container) {
@@ -2100,7 +2083,7 @@ function getTypeSelectHtml(currentType) {
 // Generates the inner HTML template for a given block type
 function getBlockInnerHtml(type, blockId) {
     const dragHandleHtml = `<div style="text-align: center; color: #94a3b8; cursor: grab; margin-top: -12px; margin-bottom: 6px; display: flex; justify-content: center;"><svg width="20" height="12" viewBox="0 0 20 12" fill="currentColor"><circle cx="4" cy="3" r="1.5"/><circle cx="10" cy="3" r="1.5"/><circle cx="16" cy="3" r="1.5"/><circle cx="4" cy="9" r="1.5"/><circle cx="10" cy="9" r="1.5"/><circle cx="16" cy="9" r="1.5"/></svg></div>`;
-    
+
     const cardFooterActionsHtml = `
         <div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px; width: 100%;">
             <button class="icon-btn duplicate" type="button" title="Duplicate Question" onclick="event.stopPropagation(); duplicateBlock(this)">
@@ -2237,7 +2220,7 @@ function getBlockInnerHtml(type, blockId) {
 }
 
 // --- DUPLICATE & DELETE BLOCK HANDLERS ---
-window.duplicateBlock = function(btnElement) {
+window.duplicateBlock = function (btnElement) {
     const sourceCard = btnElement.closest('.quiz-block');
     if (!sourceCard) return;
 
@@ -2292,7 +2275,7 @@ window.duplicateBlock = function(btnElement) {
             srcOptionRows.forEach((row, idx) => {
                 const optText = row.querySelector('.gform-opt-input')?.value || '';
                 const isChecked = row.querySelector('input[type="radio"]')?.checked;
-                
+
                 const optDiv = document.createElement('div');
                 optDiv.className = 'gform-opt-row';
                 optDiv.innerHTML = `
@@ -2305,7 +2288,7 @@ window.duplicateBlock = function(btnElement) {
                 destContainer.appendChild(optDiv);
             });
         }
-        
+
         const srcCorrect = sourceCard.querySelector('.blk-correct');
         const destCorrect = clonedDiv.querySelector('.blk-correct');
         if (srcCorrect && destCorrect) {
@@ -2327,10 +2310,10 @@ window.duplicateBlock = function(btnElement) {
     clonedDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 };
 
-window.deleteBlock = function(btnElement) {
+window.deleteBlock = function (btnElement) {
     const card = btnElement.closest('.gform-card');
     if (!card) return;
-    
+
     const prevCard = card.previousElementSibling || card.nextElementSibling || document.querySelector('.title-card');
     card.remove();
     if (prevCard) {
@@ -2338,7 +2321,7 @@ window.deleteBlock = function(btnElement) {
     }
 };
 
-window.reindexMCQOptions = function(block) {
+window.reindexMCQOptions = function (block) {
     if (!block) return;
     const blockId = block.dataset.blockId;
     const rows = block.querySelectorAll('.options-container .gform-opt-row');
@@ -2357,7 +2340,7 @@ window.reindexMCQOptions = function(block) {
 };
 
 // Function triggered when changing the dropdown option on a card
-window.switchBlockType = function(selectElement) {
+window.switchBlockType = function (selectElement) {
     const newType = selectElement.value;
     const blockDiv = selectElement.closest('.quiz-block');
     if (!blockDiv) return;
@@ -2365,7 +2348,7 @@ window.switchBlockType = function(selectElement) {
     // Save current user-typed values before switching layout
     const promptNode = blockDiv.querySelector('.blk-prompt');
     const savedPrompt = promptNode ? promptNode.innerText : '';
-    
+
     const imgNode = blockDiv.querySelector('.blk-img');
     const savedImg = imgNode ? imgNode.value : '';
 
@@ -2402,24 +2385,24 @@ window.switchBlockType = function(selectElement) {
 
 
 // --- Quiz UI Toggles (Landing vs Builder) ---
-window.openQuizBuilder = function(isNew = true) {
+window.openQuizBuilder = function (isNew = true) {
     document.getElementById('quiz-landing-view').classList.add('hidden');
     document.getElementById('quiz-builder-view').classList.remove('hidden');
-    
+
     if (isNew) {
-        currentEditQuizId = null; 
+        currentEditQuizId = null;
         document.getElementById('quizTitle').value = "Untitled Quiz";
         setQuizClasses([]);
         document.getElementById('quizSubject').value = "";
         document.getElementById('quizBlocksContainer').innerHTML = "";
         addBlock('mcq');
-        
+
         const mainTitle = document.getElementById('gform-main-title');
         if (mainTitle) mainTitle.innerText = "Untitled Quiz";
 
         const quizTypeSelect = document.getElementById('quizTypeSelect');
         if (quizTypeSelect) quizTypeSelect.value = "Quiz";
-        
+
         const saveBtn = document.getElementById('saveQuizBtn');
         if (saveBtn) {
             saveBtn.innerText = "Publish";
@@ -2427,11 +2410,11 @@ window.openQuizBuilder = function(isNew = true) {
 
         // Initialize toolbar position
         const titleCard = document.querySelector('.title-card');
-        if(titleCard) activateCard(titleCard);
+        if (titleCard) activateCard(titleCard);
     }
 }
 
-window.closeQuizBuilder = function() {
+window.closeQuizBuilder = function () {
     hideRichTextPopup();
     document.getElementById('quiz-builder-view').classList.add('hidden');
     document.getElementById('quiz-landing-view').classList.remove('hidden');
@@ -2439,9 +2422,9 @@ window.closeQuizBuilder = function() {
 }
 
 // Dynamically update the header title as you type the quiz name
-document.getElementById('quizTitle')?.addEventListener('input', function(e) {
+document.getElementById('quizTitle')?.addEventListener('input', function (e) {
     const display = document.getElementById('displayQuizTitle');
-    if(display) {
+    if (display) {
         display.innerText = e.target.value || "New Untitled Quiz";
     }
 });
@@ -2502,8 +2485,8 @@ async function loadQuizzesTable() {
                 </td>
             </tr>`;
         });
-    } catch (e) { 
-        console.error("Error loading quizzes:", e); 
+    } catch (e) {
+        console.error("Error loading quizzes:", e);
     }
 }
 window.loadQuizzesTable = loadQuizzesTable;
@@ -2516,17 +2499,17 @@ async function editQuiz(id) {
         if (!snap.exists()) return alert("Quiz missing.");
         const quiz = snap.data();
 
-        openQuizBuilder(false); 
-        
+        openQuizBuilder(false);
+
         const displayQuizTitle = document.getElementById('displayQuizTitle');
         if (displayQuizTitle) displayQuizTitle.innerText = quiz.title || "Untitled";
-        
+
         const mainTitle = document.getElementById('gform-main-title');
         if (mainTitle) mainTitle.innerText = quiz.title || "Untitled";
 
         currentEditQuizId = id;
         document.getElementById('quizTitle').value = quiz.title || "";
-        
+
         let quizClasses = [];
         if (Array.isArray(quiz.targetClassesList) && quiz.targetClassesList.length > 0) {
             quizClasses = quiz.targetClassesList;
@@ -2551,13 +2534,13 @@ async function editQuiz(id) {
                 const descNode = block.querySelector('.blk-desc');
                 if (promptNode) promptNode.innerText = item.text || '';
                 if (descNode) descNode.innerText = item.description || '';
-                
+
             } else if (type === 'mcq') {
                 const promptNode = block.querySelector('.blk-prompt');
                 if (promptNode) promptNode.innerText = item.prompt || item.question || '';
                 if (block.querySelector('.blk-img')) block.querySelector('.blk-img').value = item.imageUrl || '';
                 if (block.querySelector('.blk-points')) block.querySelector('.blk-points').value = item.points || 1;
-                
+
                 // Clear the default options and rebuild based on saved data
                 const optionsContainer = block.querySelector('.options-container');
                 if (optionsContainer) {
@@ -2577,14 +2560,14 @@ async function editQuiz(id) {
                     });
                 }
                 if (block.querySelector('.blk-correct')) block.querySelector('.blk-correct').value = item.correct ?? 0;
-                
+
             } else if (type === 'fill') {
                 const promptNode = block.querySelector('.blk-prompt');
                 if (promptNode) promptNode.innerText = item.prompt || '';
                 if (block.querySelector('.blk-img')) block.querySelector('.blk-img').value = item.imageUrl || '';
                 if (block.querySelector('.blk-points')) block.querySelector('.blk-points').value = item.points || 1;
                 if (item.answers && block.querySelector('.blk-answer')) block.querySelector('.blk-answer').value = item.answers.join(', ');
-                
+
             } else if (type === 'essay') {
                 const promptNode = block.querySelector('.blk-prompt');
                 if (promptNode) promptNode.innerText = item.prompt || '';
@@ -2616,24 +2599,24 @@ async function deleteQuiz(id) {
 window.deleteQuiz = deleteQuiz;
 
 // 1. Updated viewQuizResults with "Check" button added in the Action column
-window.viewQuizResults = async function(quizTitle) {
+window.viewQuizResults = async function (quizTitle) {
     const modal = document.getElementById("quizResultsModal") || createQuizResultsModal();
-    
+
     modal.classList.remove('hidden');
     modal.style.display = "flex";
 
     const tbody = modal.querySelector("#quizResultsTable tbody");
     const modalTitle = modal.querySelector("#quizResultsTitle");
-    
+
     if (modalTitle) modalTitle.innerText = `Results & Score Submission: ${quizTitle}`;
     if (tbody) tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">Loading student records...</td></tr>`;
 
     try {
         const studentsSnap = await getDocs(collection(db, "students"));
-        
+
         const scoresQuery = query(collection(db, "scores"), where("quizTitle", "==", quizTitle));
         const scoresSnap = await getDocs(scoresQuery);
-        
+
         const existingScores = {};
         scoresSnap.forEach(docSnap => {
             const data = docSnap.data();
@@ -2698,7 +2681,7 @@ window.viewQuizResults = async function(quizTitle) {
     }
 };
 
-window.viewStudentAnswers = async function(studentCode, studentName, quizTitle) {
+window.viewStudentAnswers = async function (studentCode, studentName, quizTitle) {
     const modal = document.getElementById("studentAnswersModal");
     if (!modal) return;
 
@@ -2716,7 +2699,7 @@ window.viewStudentAnswers = async function(studentCode, studentName, quizTitle) 
     try {
         // Query the 'quiz_results' collection matching quizTitle and studentCode
         const q = query(
-            collection(db, "quiz_results"), 
+            collection(db, "quiz_results"),
             where("quizTitle", "==", quizTitle),
             where("studentCode", "==", studentCode)
         );
@@ -2767,7 +2750,7 @@ window.viewStudentAnswers = async function(studentCode, studentName, quizTitle) 
     }
 };
 // 3. Function to close the inspection modal
-window.closeAnswersModal = function() {
+window.closeAnswersModal = function () {
     const modal = document.getElementById("studentAnswersModal");
     if (modal) {
         modal.classList.add('hidden');
@@ -2779,7 +2762,7 @@ window.closeAnswersModal = function() {
 loadQuizzesTable();
 
 // --- 2. SAVE INDIVIDUAL STUDENT SCORE TO FIRESTORE ---
-window.saveDirectScore = async function(studentCode, studentName, studentClass, quizTitle) {
+window.saveDirectScore = async function (studentCode, studentName, studentClass, quizTitle) {
     const input = document.getElementById(`score-input-${studentCode}`);
     if (!input) return;
 
@@ -2890,13 +2873,13 @@ async function updateDashboardStats() {
             for (const code in studentsMap) {
                 hasStudents = true;
                 const student = studentsMap[code];
-                if (student.total > highestScore) { 
-                    highestScore = student.total; 
-                    highestName = student.name; 
+                if (student.total > highestScore) {
+                    highestScore = student.total;
+                    highestName = student.name;
                 }
-                if (student.total < lowestScore) { 
-                    lowestScore = student.total; 
-                    lowestName = student.name; 
+                if (student.total < lowestScore) {
+                    lowestScore = student.total;
+                    lowestName = student.name;
                 }
             }
 
@@ -2932,7 +2915,7 @@ async function updateDashboardStats() {
             try {
                 const manualSnap = await getDocs(collection(db, "system_quizzes"));
                 totalQuizCount += manualSnap.size;
-            } catch (err) {}
+            } catch (err) { }
 
             const elTotalQuizzes = document.getElementById('stat-total-quizzes');
             if (elTotalQuizzes) elTotalQuizzes.innerText = totalQuizCount;
@@ -2953,14 +2936,14 @@ function renderStudentsTable() {
     const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
     const sortBy = document.getElementById('sortStudents')?.value || 'code';
     const filterByClass = document.getElementById('filterClass')?.value || 'all';
-    
+
     // 1. Filter student array
     const filteredStudents = allStudentsData.filter(s => {
-        const matchesSearch = !searchTerm || 
+        const matchesSearch = !searchTerm ||
             (s.studentName && s.studentName.toLowerCase().includes(searchTerm)) ||
-            (s.studentClass && s.studentClass.toLowerCase().includes(searchTerm)) || 
+            (s.studentClass && s.studentClass.toLowerCase().includes(searchTerm)) ||
             (s.id && s.id.toLowerCase().includes(searchTerm));
-                              
+
         const matchesClass = (filterByClass === 'all') || (s.studentClass === filterByClass);
 
         return matchesSearch && matchesClass;
@@ -2970,7 +2953,7 @@ function renderStudentsTable() {
     filteredStudents.sort((a, b) => {
         if (sortBy === 'name') return (a.studentName || '').localeCompare(b.studentName || '');
         if (sortBy === 'class') return (a.studentClass || '').localeCompare(b.studentClass || '');
-        return (a.id || '').localeCompare(b.id || ''); 
+        return (a.id || '').localeCompare(b.id || '');
     });
 
     const tbody = document.querySelector('#studentsTable tbody');
@@ -3026,7 +3009,7 @@ document.getElementById('sortStudents')?.addEventListener('change', renderStuden
 
 
 // 4. Function to toggle the code visibility
-window.toggleCodeVisibility = function(studentId) {
+window.toggleCodeVisibility = function (studentId) {
     const span = document.getElementById(`code-${studentId}`);
     if (!span) return;
 
@@ -3044,14 +3027,14 @@ document.getElementById('searchStudents')?.addEventListener('input', renderStude
 document.getElementById('sortStudents')?.addEventListener('change', renderStudentsTable);
 
 // 4. Menu Toggle Logic (Attach to window so inline HTML onclick works)
-window.toggleMenu = function(event, id) {
+window.toggleMenu = function (event, id) {
     event.stopPropagation(); // Prevents the click from closing the menu immediately
-    
+
     // Close all other open menus first
     document.querySelectorAll('.dropdown-menu').forEach(menu => {
         if (menu.id !== `menu-${id}`) menu.classList.remove('show');
     });
-    
+
     // Toggle the clicked menu
     document.getElementById(`menu-${id}`).classList.toggle('show');
 }
@@ -3062,8 +3045,8 @@ window.addEventListener('click', () => {
 });
 
 // 5. Action Functions (Make sure these exist and are attached to window)
-window.generateNewUniqueCode = async function(oldCode) {
-    if(confirm(`Are you sure you want to generate a new code for student ${oldCode}? The old code will be disabled.`)) {
+window.generateNewUniqueCode = async function (oldCode) {
+    if (confirm(`Are you sure you want to generate a new code for student ${oldCode}? The old code will be disabled.`)) {
         // Add your logic here to generate a code, update the Firebase document ID/data, 
         // and delete the old document if necessary.
         // After updating Firebase:
@@ -3088,7 +3071,7 @@ function showScoreLedger() {
 
     // 2. Unhide the table container
     ledgerContainer.style.display = "block";
-    
+
     // 3. Update the title based on selection
     const selectedText = document.getElementById('ledgerQuizSelect').options[document.getElementById('ledgerQuizSelect').selectedIndex].text;
     ledgerTitle.innerText = `Ledger Results: ${selectedText}`;
@@ -3108,10 +3091,10 @@ async function fetchAndRenderScores(quizId, tbodyElement) {
         const q = query(collection(db, "scores"), where("examId", "==", quizId));
         const querySnapshot = await getDocs(q);
         */
-       
+
         // Simulated rendering after data fetch:
         tbodyElement.innerHTML = ""; // Clear loading text
-        
+
         // Example Row Injection (You will loop through your querySnapshot here)
         tbodyElement.innerHTML += `
             <tr>
@@ -3136,7 +3119,7 @@ async function fetchAndRenderScores(quizId, tbodyElement) {
 async function processBulkStudents() {
     const fileInput = document.getElementById('bulkStudentsFile');
     const file = fileInput ? fileInput.files[0] : null;
-    
+
     if (!file) {
         alert("Please select an Excel (.xlsx, .csv) file to upload.");
         return;
@@ -3160,12 +3143,12 @@ async function processBulkStudents() {
 
                 if (name && sClass) {
                     const uniqueCode = await generateUniqueStudentCode();
-                    
+
                     await setDoc(doc(db, "students", uniqueCode), {
                         studentName: String(name).trim(),
                         studentClass: String(sClass).trim()
                     });
-                    
+
                     successCount++;
                 } else {
                     skippedCount++;
@@ -3173,9 +3156,9 @@ async function processBulkStudents() {
             }
 
             alert(`Bulk Student Registration Complete!\n• Created: ${successCount} profiles${skippedCount > 0 ? `\n• Skipped (Missing Name/Class): ${skippedCount}` : ''}`);
-            
+
             fileInput.value = "";
-            
+
             // Refresh directories and databases
             if (typeof loadStudentsDirectory === "function") loadStudentsDirectory();
             if (typeof renderDbStudentsTable === "function") renderDbStudentsTable();
@@ -3186,7 +3169,7 @@ async function processBulkStudents() {
             alert("Error processing Excel file: " + err.message);
         }
     };
-    
+
     reader.readAsArrayBuffer(file);
 }
 
@@ -3194,10 +3177,10 @@ async function processBulkStudents() {
 document.getElementById('uploadBulkStudentsBtn')?.addEventListener('click', processBulkStudents);
 // --- SAFE DATABASE LOAD FOR ADMINS & TEACHERS ---
 // --- UNIFIED SYSTEM DATABASE LOADER ---
-window.loadSystemDatabases = async function() {
+window.loadSystemDatabases = async function () {
     try {
         console.log("--- STARTING DATABASE LOAD ---");
-        
+
         // 1. Fetch Subject Dropdown Elements
         const subjTbody = document.querySelector("#subjectsTable tbody");
         const subjSelect = document.getElementById("directSubjectSelect");
@@ -3207,12 +3190,12 @@ window.loadSystemDatabases = async function() {
         const bulkSubjSelect = document.getElementById("bulkSubjectSelect"); // Bulk Upload Dropdown
 
         // Reset Subject Dropdowns
-        if(subjTbody) subjTbody.innerHTML = "";
-        if(subjSelect) subjSelect.innerHTML = '<option value="">-- Select Subject --</option>';
-        if(ledgerSubjSelect) ledgerSubjSelect.innerHTML = '<option value="">-- Choose a Subject --</option>';
-        if(quizSubjSelect) quizSubjSelect.innerHTML = '<option value="">-- Select Subject --</option>';
-        if(manualQuizSubjSelect) manualQuizSubjSelect.innerHTML = '<option value="">-- Select Subject --</option>';
-        if(bulkSubjSelect) bulkSubjSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+        if (subjTbody) subjTbody.innerHTML = "";
+        if (subjSelect) subjSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+        if (ledgerSubjSelect) ledgerSubjSelect.innerHTML = '<option value="">-- Choose a Subject --</option>';
+        if (quizSubjSelect) quizSubjSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+        if (manualQuizSubjSelect) manualQuizSubjSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+        if (bulkSubjSelect) bulkSubjSelect.innerHTML = '<option value="">-- Select Subject --</option>';
 
         // 2. Extract & Populate Unique Subjects
         const uniqueSubjects = new Set();
@@ -3222,7 +3205,7 @@ window.loadSystemDatabases = async function() {
                 const usersSnap = await getDocs(collection(db, "users"));
                 usersSnap.forEach(doc => {
                     const data = doc.data();
-                    const sub = data.subject || data.Subject || data.course; 
+                    const sub = data.subject || data.Subject || data.course;
                     if (data.role === 'teacher' && sub && sub !== "Unassigned") {
                         sub.split(',').map(s => s.trim()).filter(Boolean).forEach(s => uniqueSubjects.add(s));
                     }
@@ -3236,12 +3219,12 @@ window.loadSystemDatabases = async function() {
 
         // Loop and populate subject options
         Array.from(uniqueSubjects).sort().forEach(name => {
-            if(subjTbody) subjTbody.innerHTML += `<tr><td><strong>${name}</strong></td><td><span style="background: #eef2ff; color: var(--primary-blue); padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Teacher Linked</span></td></tr>`;
-            if(subjSelect) subjSelect.innerHTML += `<option value="${name}">${name}</option>`;
-            if(ledgerSubjSelect) ledgerSubjSelect.innerHTML += `<option value="${name}">${name}</option>`;
-            if(quizSubjSelect) quizSubjSelect.innerHTML += `<option value="${name}">${name}</option>`;
-            if(manualQuizSubjSelect) manualQuizSubjSelect.innerHTML += `<option value="${name}">${name}</option>`;
-            if(bulkSubjSelect) bulkSubjSelect.innerHTML += `<option value="${name}">${name}</option>`;
+            if (subjTbody) subjTbody.innerHTML += `<tr><td><strong>${name}</strong></td><td><span style="background: #eef2ff; color: var(--primary-blue); padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Teacher Linked</span></td></tr>`;
+            if (subjSelect) subjSelect.innerHTML += `<option value="${name}">${name}</option>`;
+            if (ledgerSubjSelect) ledgerSubjSelect.innerHTML += `<option value="${name}">${name}</option>`;
+            if (quizSubjSelect) quizSubjSelect.innerHTML += `<option value="${name}">${name}</option>`;
+            if (manualQuizSubjSelect) manualQuizSubjSelect.innerHTML += `<option value="${name}">${name}</option>`;
+            if (bulkSubjSelect) bulkSubjSelect.innerHTML += `<option value="${name}">${name}</option>`;
         });
 
         // Pre-select assigned subject for teacher accounts
@@ -3260,12 +3243,12 @@ window.loadSystemDatabases = async function() {
         const bulkClassSelect = document.getElementById("bulkClassSelect"); // Bulk Upload Dropdown
 
         // Reset Class Dropdowns
-        if(classTbody) classTbody.innerHTML = "";
-        if(classSelect) classSelect.innerHTML = '<option value="">-- Select Class --</option>';
-        if(ledgerClassSelect) ledgerClassSelect.innerHTML = '<option value="">-- Choose a Class --</option>';
-        if(quizClassSelect) quizClassSelect.innerHTML = '<option value="">-- Select Target Class --</option><option value="All Classes">All Classes</option>';
-        if(manualQuizClassSelect) manualQuizClassSelect.innerHTML = '<option value="">-- Select Target Class --</option><option value="All Classes">All Classes</option>';
-        if(bulkClassSelect) bulkClassSelect.innerHTML = '<option value="">-- Select Class --</option>';
+        if (classTbody) classTbody.innerHTML = "";
+        if (classSelect) classSelect.innerHTML = '<option value="">-- Select Class --</option>';
+        if (ledgerClassSelect) ledgerClassSelect.innerHTML = '<option value="">-- Choose a Class --</option>';
+        if (quizClassSelect) quizClassSelect.innerHTML = '<option value="">-- Select Target Class --</option><option value="All Classes">All Classes</option>';
+        if (manualQuizClassSelect) manualQuizClassSelect.innerHTML = '<option value="">-- Select Target Class --</option><option value="All Classes">All Classes</option>';
+        if (bulkClassSelect) bulkClassSelect.innerHTML = '<option value="">-- Select Class --</option>';
 
         // 4. Extract & Populate Unique Classes from Student Records
         try {
@@ -3323,11 +3306,11 @@ window.loadSystemDatabases = async function() {
 
             // Loop and populate class options for standard select elements
             sortedClasses.forEach(name => {
-                if(classTbody) classTbody.innerHTML += `<tr><td><strong>${name}</strong></td><td><span style="background: #ecfdf5; color: #10b981; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Student Linked</span></td></tr>`;
-                if(classSelect) classSelect.innerHTML += `<option value="${name}">${name}</option>`;
-                if(ledgerClassSelect) ledgerClassSelect.innerHTML += `<option value="${name}">${name}</option>`;
-                if(manualQuizClassSelect) manualQuizClassSelect.innerHTML += `<option value="${name}">${name}</option>`;
-                if(bulkClassSelect) bulkClassSelect.innerHTML += `<option value="${name}">${name}</option>`;
+                if (classTbody) classTbody.innerHTML += `<tr><td><strong>${name}</strong></td><td><span style="background: #ecfdf5; color: #10b981; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">Student Linked</span></td></tr>`;
+                if (classSelect) classSelect.innerHTML += `<option value="${name}">${name}</option>`;
+                if (ledgerClassSelect) ledgerClassSelect.innerHTML += `<option value="${name}">${name}</option>`;
+                if (manualQuizClassSelect) manualQuizClassSelect.innerHTML += `<option value="${name}">${name}</option>`;
+                if (bulkClassSelect) bulkClassSelect.innerHTML += `<option value="${name}">${name}</option>`;
             });
         } catch (err) {
             console.warn("Students collection read restricted:", err.message);
@@ -3395,8 +3378,8 @@ window.loadSystemDatabases = async function() {
                                 <td>${cls}</td>
                                 <td style="text-align: center; position: relative;">
                                     <div class="db-action-kebab" style="position: relative; display: inline-block;">
-                                        <button type="button" class="card-kebab-btn" onclick="toggleOfflineQuizKebab(event, '${docSnap.id}')" title="Actions" style="width: 32px !important; height: 32px !important;">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg>
+                                        <button type="button" class="card-kebab-btn" onclick="toggleOfflineQuizKebab(event, '${docSnap.id}')" title="Actions">
+                                            ⋮
                                         </button>
                                         <div id="offlineQuizKebab_${docSnap.id}" class="profile-card-dropdown hidden" style="top: 36px; right: 0; min-width: 120px; z-index: 100;">
                                             <button type="button" class="profile-dropdown-item" onclick="openEditOfflineQuizModal('${docSnap.id}')">
@@ -3427,19 +3410,19 @@ window.loadSystemDatabases = async function() {
                 quizTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: red;">Error loading quiz database.</td></tr>`;
             }
         }
-        
+
         if (typeof renderDbStudentsTable === "function") {
             renderDbStudentsTable();
         }
         console.log("--- DATABASE LOAD COMPLETE ---");
 
-    } catch(e) {
+    } catch (e) {
         console.error("Error loading linked databases:", e.message);
     }
 };
 
 // --- MULTI-SELECT CHECKBOX DROPDOWN LOGIC ---
-window.toggleMultiSelectDropdown = function(dropdownId) {
+window.toggleMultiSelectDropdown = function (dropdownId) {
     const dropdown = document.getElementById(dropdownId);
     if (!dropdown) return;
     const isOpen = dropdown.classList.contains('open');
@@ -3456,7 +3439,7 @@ document.addEventListener('click', (e) => {
     }
 });
 
-window.onManualQuizClassCheckboxChange = function() {
+window.onManualQuizClassCheckboxChange = function () {
     updateManualQuizClassLabel();
 };
 
@@ -3482,7 +3465,7 @@ function updateManualQuizClassLabel() {
 }
 
 // --- CREATE QUIZ MULTI-SELECT CHECKBOX LOGIC ---
-window.onQuizClassCheckboxChange = function(cb) {
+window.onQuizClassCheckboxChange = function (cb) {
     if (cb && cb.value === 'All Classes') {
         const otherCheckboxes = document.querySelectorAll('#quizClassOptions input[type="checkbox"]:not([value="All Classes"])');
         if (cb.checked) {
@@ -3531,7 +3514,7 @@ function setQuizClasses(classesList) {
 window.setQuizClasses = setQuizClasses;
 
 // --- ACTIVE CLASSES & SUBJECTS SHOW/HIDE TOGGLE LOGIC ---
-window.toggleActiveClassesTable = function() {
+window.toggleActiveClassesTable = function () {
     const container = document.getElementById('containerClassesTable');
     const btn = document.getElementById('btnToggleClassesTable');
     if (!container || !btn) return;
@@ -3547,7 +3530,7 @@ window.toggleActiveClassesTable = function() {
     }
 };
 
-window.toggleActiveSubjectsTable = function() {
+window.toggleActiveSubjectsTable = function () {
     const container = document.getElementById('containerSubjectsTable');
     const btn = document.getElementById('btnToggleSubjectsTable');
     if (!container || !btn) return;
@@ -3571,7 +3554,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // FIX: Attach event listener to the sidebar MENU BUTTON instead of the tab content container
-    const manageDatabasesBtn = document.querySelector('[data-tab="tab-view-ledgers"]'); 
+    const manageDatabasesBtn = document.querySelector('[data-tab="tab-view-ledgers"]');
     if (manageDatabasesBtn) {
         manageDatabasesBtn.addEventListener('click', () => {
             if (typeof window.loadSystemDatabases === "function") {
@@ -3629,16 +3612,16 @@ async function addManualQuiz() {
             targetClassesList: selectedClasses,
             createdAt: new Date().toISOString()
         });
-        
+
         alert(`Offline exam "${examName}" [${quizType}] added successfully for target classes: ${targetClassStr}!`);
-        
+
         // Reset Inputs
         input.value = "";
         subjectSelect.value = "";
         if (typeSelect) typeSelect.value = "Quiz";
         document.querySelectorAll('#manualQuizClassOptions input[type="checkbox"]').forEach(cb => cb.checked = false);
         updateManualQuizClassLabel();
-        
+
         // Refresh Table Data
         if (typeof window.loadSystemDatabases === "function") {
             await window.loadSystemDatabases();
@@ -3659,7 +3642,7 @@ async function deleteSystemRecord(collectionName, docId) {
         try {
             await deleteDoc(doc(db, collectionName, docId));
             alert("Record deleted successfully.");
-            
+
             if (typeof window.loadSystemDatabases === "function") {
                 window.loadSystemDatabases();
             }
@@ -3750,7 +3733,7 @@ async function loadClassRoster() {
 }
 
 async function saveDirectScores() {
-    const subject = document.getElementById('directSubjectSelect').value; 
+    const subject = document.getElementById('directSubjectSelect').value;
     const studentClass = document.getElementById('directClassSelect').value;
     const quiz = document.getElementById('directQuizSelect').value;
 
@@ -3791,7 +3774,7 @@ async function saveDirectScores() {
 
         for (const input of scoreInputs) {
             const scoreValue = input.value;
-            
+
             if (scoreValue !== "") {
                 const studentCode = input.getAttribute('data-code');
                 const studentName = input.getAttribute('data-name');
@@ -3839,7 +3822,7 @@ async function viewScoreLedger() {
         return;
     }
 
-    const viewBtn = document.getElementById('viewLedgerBtn'); 
+    const viewBtn = document.getElementById('viewLedgerBtn');
 
     try {
         if (viewBtn) {
@@ -3854,14 +3837,14 @@ async function viewScoreLedger() {
         tbody.innerHTML = "<tr><td colspan='7' style='text-align:center;'>Fetching scores...</td></tr>";
 
         // Query unified exam_scores collection filtering by Subject, Class, and Exam
-        const q = query(collection(db, "exam_scores"), 
+        const q = query(collection(db, "exam_scores"),
             where("subject", "==", selectedSubject),
             where("studentClass", "==", selectedClass),
             where("examName", "==", selectedQuiz)
         );
-        
+
         const snap = await getDocs(q);
-        tbody.innerHTML = ""; 
+        tbody.innerHTML = "";
 
         if (snap.empty) {
             tbody.innerHTML = "<tr><td colspan='7' style='text-align:center; color: red;'>No scores found for this Subject, Class, and Quiz combination.</td></tr>";
@@ -3907,24 +3890,24 @@ async function viewScoreLedger() {
 }
 
 // --- POINTS MODAL LOGIC ---
-window.openPointModal = function(code, name) {
+window.openPointModal = function (code, name) {
     document.getElementById('modalStudentCode').value = code;
     document.getElementById('pointModalStudent').innerText = `Student: ${name} (${code})`;
     document.getElementById('modalPointValue').value = '';
     document.getElementById('modalPointReason').value = '';
-    
+
     const modal = document.getElementById('pointModal');
     modal.classList.remove('hidden');
-    modal.style.display = 'flex'; 
+    modal.style.display = 'flex';
 };
 
-window.closePointModal = function() {
+window.closePointModal = function () {
     const modal = document.getElementById('pointModal');
     modal.classList.add('hidden');
     modal.style.display = 'none';
 };
 
-window.submitModalPoint = async function() {
+window.submitModalPoint = async function () {
     const code = document.getElementById('modalStudentCode').value;
     const amount = parseFloat(document.getElementById('modalPointValue').value);
     const reason = document.getElementById('modalPointReason').value.trim();
@@ -3938,7 +3921,7 @@ window.submitModalPoint = async function() {
         const studentSnap = await getDoc(doc(db, "students", code));
         let targetClass = 'N/A';
         let studentName = code;
-        
+
         if (studentSnap.exists()) {
             const sData = studentSnap.data();
             targetClass = sData.studentClass || sData.Class || sData.class || 'N/A';
@@ -3953,10 +3936,10 @@ window.submitModalPoint = async function() {
             points: amount,
             timestamp: new Date()
         });
-        
+
         const sign = amount > 0 ? '+' : '';
         alert(`Successfully recorded ${sign}${amount} points.`);
-        
+
         closePointModal();
         loadPointsTable(); // Refresh the ledger immediately
     } catch (e) {
@@ -3967,7 +3950,7 @@ window.submitModalPoint = async function() {
 
 
 // Function to toggle code visibility in the Points Ledger
-window.togglePtCodeVisibility = function(studentId) {
+window.togglePtCodeVisibility = function (studentId) {
     const span = document.getElementById(`pt-code-${studentId}`);
     if (!span) return;
 
@@ -3986,7 +3969,7 @@ let uniquePastReasons = [];
 async function refreshBehaviorTabLedgers() {
     try {
         const pointsSnap = await getDocs(collection(db, "student_points"));
-        
+
         // Variables for tables
         const studentTotals = {};
         const reasonStats = {};
@@ -3997,22 +3980,22 @@ async function refreshBehaviorTabLedgers() {
             const pt = parseFloat(data.points) || 0;
             const reasonRaw = (data.reason || "Unknown").trim();
             const rKey = reasonRaw.toLowerCase();
-            
+
             // Build student totals for the full ledger
-            if(!studentTotals[data.studentCode]) {
-                studentTotals[data.studentCode] = { 
-                    code: data.studentCode, 
-                    name: data.studentName, 
-                    sClass: data.studentClass, 
-                    total: 0 
+            if (!studentTotals[data.studentCode]) {
+                studentTotals[data.studentCode] = {
+                    code: data.studentCode,
+                    name: data.studentName,
+                    sClass: data.studentClass,
+                    total: 0
                 };
             }
             studentTotals[data.studentCode].total += pt;
 
             // Build reason statistics
-            if(reasonRaw) {
+            if (reasonRaw) {
                 reasonsSet.add(reasonRaw); // For autocomplete
-                if(!reasonStats[rKey]) {
+                if (!reasonStats[rKey]) {
                     reasonStats[rKey] = { text: reasonRaw, posPts: 0, negPts: 0, count: 0 };
                 }
                 reasonStats[rKey].count++;
@@ -4053,7 +4036,7 @@ async function refreshBehaviorTabLedgers() {
         // --- Render Behavior Analytics Bar Charts (Chart.js) ---
         renderBehaviorCharts(reasonStats);
 
-    } catch(e) {
+    } catch (e) {
         console.error("Error generating behavior stats: ", e);
     }
 }
@@ -4139,7 +4122,7 @@ function renderBehaviorCharts(reasonStats) {
     }
 }
 
-window.toggleBehaviorCharts = function() {
+window.toggleBehaviorCharts = function () {
     const container = document.getElementById('containerBehaviorCharts');
     const btn = document.getElementById('btnToggleBehaviorCharts');
     if (!container || !btn) return;
@@ -4158,24 +4141,24 @@ window.toggleBehaviorCharts = function() {
 
 // 2. Autocomplete Filter Logic
 function setupAutocomplete(inputElement, listElement, dataProvider) {
-    inputElement.addEventListener("input", function() {
+    inputElement.addEventListener("input", function () {
         const val = this.value;
         listElement.innerHTML = "";
         if (!val) {
             listElement.classList.add("hidden");
             return;
         }
-        
+
         // dataProvider is a function that returns the array we want to search through
-        const dataArray = dataProvider(); 
+        const dataArray = dataProvider();
         const matches = dataArray.filter(item => item.toLowerCase().includes(val.toLowerCase())).slice(0, 8); // Max 8 results
-        
+
         if (matches.length > 0) {
             listElement.classList.remove("hidden");
             matches.forEach(match => {
                 const div = document.createElement("DIV");
                 div.innerHTML = match;
-                div.addEventListener("click", function() {
+                div.addEventListener("click", function () {
                     inputElement.value = match;
                     listElement.innerHTML = "";
                     listElement.classList.add("hidden");
@@ -4193,21 +4176,21 @@ document.addEventListener("DOMContentLoaded", () => {
     // Setup Name Autocomplete (Pulling from allStudentsData loaded globally)
     const nameInput = document.getElementById("pointStudentName");
     const nameList = document.getElementById("nameAutocompleteList");
-    if(nameInput) {
+    if (nameInput) {
         setupAutocomplete(nameInput, nameList, () => allStudentsData.map(s => s.studentName));
     }
 
     // Setup Reason Autocomplete
     const reasonInput = document.getElementById("pointReason");
     const reasonList = document.getElementById("reasonAutocompleteList");
-    if(reasonInput) {
+    if (reasonInput) {
         setupAutocomplete(reasonInput, reasonList, () => uniquePastReasons);
     }
 
     // Close dropdowns when clicking outside
     document.addEventListener("click", function (e) {
-        if(nameInput && e.target !== nameInput) nameList.classList.add("hidden");
-        if(reasonInput && e.target !== reasonInput) reasonList.classList.add("hidden");
+        if (nameInput && e.target !== nameInput) nameList.classList.add("hidden");
+        if (reasonInput && e.target !== reasonInput) reasonList.classList.add("hidden");
     });
 
     // Hook into tab click to refresh data
@@ -4273,11 +4256,11 @@ async function saveQuiz() {
     const items = [];
     blocksElements.forEach(el => {
         const type = el.dataset.type;
-        
+
         const imgNode = el.querySelector('.blk-img');
         const imgRaw = imgNode ? imgNode.value.trim() : '';
         const imgUrl = convertDriveUrl(imgRaw);
-        
+
         const pointsNode = el.querySelector('.blk-points');
         const points = pointsNode ? parseInt(pointsNode.value) || 1 : 0;
 
@@ -4285,7 +4268,7 @@ async function saveQuiz() {
             const titleText = el.querySelector('.blk-prompt') ? el.querySelector('.blk-prompt').innerText.trim() : '';
             const descText = el.querySelector('.blk-desc') ? el.querySelector('.blk-desc').innerText.trim() : '';
             items.push({ type, text: titleText, description: descText });
-            
+
         } else if (type === 'mcq') {
             const options = [];
             let selectedCorrectIndex = 0;
@@ -4294,7 +4277,7 @@ async function saveQuiz() {
             optionRows.forEach((row) => {
                 const input = row.querySelector('.gform-opt-input');
                 const radio = row.querySelector('input[type="radio"]');
-                
+
                 if (input && input.value.trim() !== '') {
                     options.push(input.value.trim());
                     // Directly verify if this radio option is selected
@@ -4303,7 +4286,7 @@ async function saveQuiz() {
                     }
                 }
             });
-            
+
             items.push({
                 type,
                 prompt: el.querySelector('.blk-prompt').innerText.trim(),
@@ -4312,8 +4295,8 @@ async function saveQuiz() {
                 options: options,
                 correct: selectedCorrectIndex
             });
-        
-            
+
+
         } else if (type === 'fill') {
             items.push({
                 type,
@@ -4322,7 +4305,7 @@ async function saveQuiz() {
                 points: points,
                 answers: el.querySelector('.blk-answer').value.trim().toLowerCase().split(',').map(a => a.trim())
             });
-            
+
         } else if (type === 'essay') {
             items.push({
                 type,
@@ -4336,12 +4319,12 @@ async function saveQuiz() {
     try {
         if (currentEditQuizId) {
             await updateDoc(doc(db, "quizzes", currentEditQuizId), {
-                title, 
+                title,
                 type: quizType,
-                targetClass: targetClassStr, 
+                targetClass: targetClassStr,
                 targetClassesList: selectedClasses,
-                subject, 
-                items, 
+                subject,
+                items,
                 updatedAt: new Date().toISOString()
             });
             alert("Quiz updated successfully!");
@@ -4349,13 +4332,13 @@ async function saveQuiz() {
         } else {
             // New quizzes are published with status: 'active' by default
             await addDoc(collection(db, "quizzes"), {
-                title, 
+                title,
                 type: quizType,
-                targetClass: targetClassStr, 
+                targetClass: targetClassStr,
                 targetClassesList: selectedClasses,
-                subject, 
-                items, 
-                status: 'active', 
+                subject,
+                items,
+                status: 'active',
                 createdAt: new Date().toISOString()
             });
             alert("Quiz published successfully!");
@@ -4365,13 +4348,13 @@ async function saveQuiz() {
         document.getElementById('quizBlocksContainer').innerHTML = "";
         document.getElementById('quizTitle').value = "";
         loadQuizzesTable();
-    } catch (e) { 
-        alert("Error saving quiz: " + e.message); 
+    } catch (e) {
+        alert("Error saving quiz: " + e.message);
     }
 }
 
 // --- MCQ DYNAMIC OPTION MANAGEMENT ---
-window.addOptionToMCQ = function(btnElement, blockId) {
+window.addOptionToMCQ = function (btnElement, blockId) {
     const block = btnElement.closest('.quiz-block');
     const optionsContainer = block.querySelector('.options-container');
     if (!optionsContainer) return;
@@ -4391,11 +4374,11 @@ window.addOptionToMCQ = function(btnElement, blockId) {
     optionsContainer.appendChild(newRow);
 };
 
-window.reindexMCQOptions = function(block) {
+window.reindexMCQOptions = function (block) {
     if (!block) return;
     const rows = block.querySelectorAll('.options-container .gform-opt-row');
     const blockId = block.dataset.blockId || 'block';
-    
+
     rows.forEach((row, i) => {
         const radio = row.querySelector('input[type="radio"]');
         if (radio) {
@@ -4456,7 +4439,7 @@ async function loadTeachersDirectory() {
                 teacherCount++;
                 const teacherId = docSnap.id;
                 const teacherEmail = data.email || "N/A";
-                
+
                 // Safe check: Only run .split() if data.email is defined
                 const fallbackName = data.email ? data.email.split('@')[0] : "Teacher";
                 const teacherName = data.name || fallbackName;
@@ -4495,7 +4478,7 @@ async function loadTeachersDirectory() {
     }
 }
 
-window.editTeacherSubjectSpecialty = async function(uid, currentName, currentSubject) {
+window.editTeacherSubjectSpecialty = async function (uid, currentName, currentSubject) {
     const promptMsg = `Modify Subject Specialty for ${currentName}:\n(For multiple subjects, separate with commas, e.g., "English G10, English G11, Seni Rupa")`;
     const newSubject = prompt(promptMsg, currentSubject);
     if (newSubject === null) return;
@@ -4520,7 +4503,7 @@ window.editTeacherSubjectSpecialty = async function(uid, currentName, currentSub
     }
 };
 
-window.editTeacherProfile = async function(uid, currentName, currentSubject) {
+window.editTeacherProfile = async function (uid, currentName, currentSubject) {
     const newName = prompt("Modify Teacher Full Name:", currentName);
     if (newName === null) return;
 
@@ -4548,7 +4531,7 @@ window.editTeacherProfile = async function(uid, currentName, currentSubject) {
     }
 };
 
-window.sendTeacherPasswordReset = async function(email) {
+window.sendTeacherPasswordReset = async function (email) {
     if (!email || email === "N/A") return alert("No valid email address available for this account.");
 
     if (confirm(`Send a password reset email to ${email}?`)) {
@@ -4561,7 +4544,7 @@ window.sendTeacherPasswordReset = async function(email) {
     }
 };
 
-window.deleteTeacherAccount = async function(uid, teacherName) {
+window.deleteTeacherAccount = async function (uid, teacherName) {
     if (confirm(`Are you sure you want to delete teacher account "${teacherName}" from the database?\n(Note: This removes their database record.)`)) {
         try {
             await deleteDoc(doc(db, "users", uid));
@@ -4603,14 +4586,14 @@ async function filterDirectQuizzes() {
                 const targetList = Array.isArray(data.targetClassesList) ? data.targetClassesList.map(c => c.toLowerCase()) : [];
 
                 const matchesSubject = !qSubject || qSubject === selectedSubject || selectedSubject.includes(qSubject) || qSubject.includes(selectedSubject);
-                const matchesClass = !qClass || 
-                                     qClass === selectedClass || 
-                                     qClass === "all classes" || 
-                                     qClass === "all" || 
-                                     qClass.includes("all classes") || 
-                                     qClass.includes("all") || 
-                                     qClass.includes(selectedClass) || 
-                                     targetList.includes(selectedClass);
+                const matchesClass = !qClass ||
+                    qClass === selectedClass ||
+                    qClass === "all classes" ||
+                    qClass === "all" ||
+                    qClass.includes("all classes") ||
+                    qClass.includes("all") ||
+                    qClass.includes(selectedClass) ||
+                    targetList.includes(selectedClass);
 
                 if (title && matchesSubject && matchesClass) {
                     quizSelect.innerHTML += `<option value="${title}">${title} (Digital)</option>`;
@@ -4631,14 +4614,14 @@ async function filterDirectQuizzes() {
                 const targetList = Array.isArray(data.targetClassesList) ? data.targetClassesList.map(c => c.toLowerCase()) : [];
 
                 const matchesSubject = !qSubject || qSubject === selectedSubject || selectedSubject.includes(qSubject) || qSubject.includes(selectedSubject);
-                const matchesClass = !qClass || 
-                                     qClass === selectedClass || 
-                                     qClass === "all classes" || 
-                                     qClass === "all" || 
-                                     qClass.includes("all classes") || 
-                                     qClass.includes("all") || 
-                                     qClass.includes(selectedClass) || 
-                                     targetList.includes(selectedClass);
+                const matchesClass = !qClass ||
+                    qClass === selectedClass ||
+                    qClass === "all classes" ||
+                    qClass === "all" ||
+                    qClass.includes("all classes") ||
+                    qClass.includes("all") ||
+                    qClass.includes(selectedClass) ||
+                    targetList.includes(selectedClass);
 
                 if (title && matchesSubject && matchesClass) {
                     quizSelect.innerHTML += `<option value="${title}">${title} (Offline)</option>`;
@@ -4680,14 +4663,14 @@ async function filterLedgerQuizzes() {
                 const targetList = Array.isArray(data.targetClassesList) ? data.targetClassesList.map(c => c.toLowerCase()) : [];
 
                 const matchesSubject = !qSubject || qSubject === selectedSubject || selectedSubject.includes(qSubject) || qSubject.includes(selectedSubject);
-                const matchesClass = !qClass || 
-                                     qClass === selectedClass || 
-                                     qClass === "all classes" || 
-                                     qClass === "all" || 
-                                     qClass.includes("all classes") || 
-                                     qClass.includes("all") || 
-                                     qClass.includes(selectedClass) || 
-                                     targetList.includes(selectedClass);
+                const matchesClass = !qClass ||
+                    qClass === selectedClass ||
+                    qClass === "all classes" ||
+                    qClass === "all" ||
+                    qClass.includes("all classes") ||
+                    qClass.includes("all") ||
+                    qClass.includes(selectedClass) ||
+                    targetList.includes(selectedClass);
 
                 if (title && matchesSubject && matchesClass) {
                     quizSelect.innerHTML += `<option value="${title}">${title} (Digital)</option>`;
@@ -4708,14 +4691,14 @@ async function filterLedgerQuizzes() {
                 const targetList = Array.isArray(data.targetClassesList) ? data.targetClassesList.map(c => c.toLowerCase()) : [];
 
                 const matchesSubject = !qSubject || qSubject === selectedSubject || selectedSubject.includes(qSubject) || qSubject.includes(selectedSubject);
-                const matchesClass = !qClass || 
-                                     qClass === selectedClass || 
-                                     qClass === "all classes" || 
-                                     qClass === "all" || 
-                                     qClass.includes("all classes") || 
-                                     qClass.includes("all") || 
-                                     qClass.includes(selectedClass) || 
-                                     targetList.includes(selectedClass);
+                const matchesClass = !qClass ||
+                    qClass === selectedClass ||
+                    qClass === "all classes" ||
+                    qClass === "all" ||
+                    qClass.includes("all classes") ||
+                    qClass.includes("all") ||
+                    qClass.includes(selectedClass) ||
+                    targetList.includes(selectedClass);
 
                 if (title && matchesSubject && matchesClass) {
                     quizSelect.innerHTML += `<option value="${title}">${title} (Offline)</option>`;
@@ -4756,14 +4739,14 @@ async function filterBulkQuizzes() {
             const targetList = Array.isArray(data.targetClassesList) ? data.targetClassesList.map(c => c.toLowerCase()) : [];
 
             const matchesSubject = !qSubject || qSubject === selectedSubject || selectedSubject.includes(qSubject);
-            const matchesClass = !qClass || 
-                                 qClass === selectedClass || 
-                                 qClass === "all classes" || 
-                                 qClass === "all" || 
-                                 qClass.includes("all classes") || 
-                                 qClass.includes("all") || 
-                                 qClass.includes(selectedClass) || 
-                                 targetList.includes(selectedClass);
+            const matchesClass = !qClass ||
+                qClass === selectedClass ||
+                qClass === "all classes" ||
+                qClass === "all" ||
+                qClass.includes("all classes") ||
+                qClass.includes("all") ||
+                qClass.includes(selectedClass) ||
+                targetList.includes(selectedClass);
 
             if (title && matchesSubject && matchesClass) {
                 quizSelect.innerHTML += `<option value="${title}">${title} (Digital)</option>`;
@@ -4780,14 +4763,14 @@ async function filterBulkQuizzes() {
             const targetList = Array.isArray(data.targetClassesList) ? data.targetClassesList.map(c => c.toLowerCase()) : [];
 
             const matchesSubject = !qSubject || qSubject === selectedSubject || selectedSubject.includes(qSubject);
-            const matchesClass = !qClass || 
-                                 qClass === selectedClass || 
-                                 qClass === "all classes" || 
-                                 qClass === "all" || 
-                                 qClass.includes("all classes") || 
-                                 qClass.includes("all") || 
-                                 qClass.includes(selectedClass) || 
-                                 targetList.includes(selectedClass);
+            const matchesClass = !qClass ||
+                qClass === selectedClass ||
+                qClass === "all classes" ||
+                qClass === "all" ||
+                qClass.includes("all classes") ||
+                qClass.includes("all") ||
+                qClass.includes(selectedClass) ||
+                targetList.includes(selectedClass);
 
             if (title && matchesSubject && matchesClass) {
                 quizSelect.innerHTML += `<option value="${title}">${title} (Offline)</option>`;
@@ -4890,7 +4873,7 @@ async function downloadScoreTemplate() {
     }
 }
 
-window.openBehaviorHistoryModal = async function(studentCode, studentName) {
+window.openBehaviorHistoryModal = async function (studentCode, studentName) {
     const modal = document.getElementById('behaviorHistoryModal');
     const title = document.getElementById('historyModalTitle');
     const tbody = document.getElementById('historyDetailTbody');
@@ -4930,7 +4913,7 @@ window.openBehaviorHistoryModal = async function(studentCode, studentName) {
             const pts = parseFloat(item.points) || 0;
             const color = pts > 0 ? '#10b981' : (pts < 0 ? '#e02d2d' : 'var(--text-dark)');
             const sign = pts > 0 ? '+' : '';
-            
+
             let dateStr = 'N/A';
             if (item.timestamp) {
                 const d = item.timestamp.seconds ? new Date(item.timestamp.seconds * 1000) : new Date(item.timestamp);
@@ -4961,7 +4944,7 @@ window.openBehaviorHistoryModal = async function(studentCode, studentName) {
     }
 };
 
-window.closeBehaviorHistoryModal = function() {
+window.closeBehaviorHistoryModal = function () {
     const modal = document.getElementById('behaviorHistoryModal');
     if (modal) {
         modal.classList.add('hidden');
@@ -4969,7 +4952,7 @@ window.closeBehaviorHistoryModal = function() {
     }
 };
 
-window.editPointEntry = async function(docId, currentReason, currentPoints, studentCode, studentName) {
+window.editPointEntry = async function (docId, currentReason, currentPoints, studentCode, studentName) {
     const newReason = prompt("Modify Reason / Event:", currentReason);
     if (newReason === null) return;
 
@@ -4999,7 +4982,7 @@ window.editPointEntry = async function(docId, currentReason, currentPoints, stud
     }
 };
 
-window.deletePointEntry = async function(docId, studentCode, studentName) {
+window.deletePointEntry = async function (docId, studentCode, studentName) {
     if (confirm("Are you sure you want to permanently delete this behavior entry?")) {
         try {
             await deleteDoc(doc(db, "student_points", docId));
@@ -5100,7 +5083,7 @@ if (bulkFileInput) {
 }
 
 // --- KEBAB & EDIT OFFLINE EXAM MODAL CONTROLLERS ---
-window.toggleOfflineQuizKebab = function(e, id) {
+window.toggleOfflineQuizKebab = function (e, id) {
     if (e) e.stopPropagation();
     const dropdown = document.getElementById(`offlineQuizKebab_${id}`);
     const isHidden = dropdown?.classList.contains('hidden');
@@ -5110,7 +5093,7 @@ window.toggleOfflineQuizKebab = function(e, id) {
     }
 };
 
-window.openEditOfflineQuizModal = async function(id) {
+window.openEditOfflineQuizModal = async function (id) {
     document.querySelectorAll('.profile-card-dropdown, .kebab-dropdown').forEach(d => d.classList.add('hidden'));
     try {
         const snap = await getDoc(doc(db, "system_quizzes", id));
@@ -5120,13 +5103,13 @@ window.openEditOfflineQuizModal = async function(id) {
         document.getElementById('editOfflineQuizId').value = id;
         document.getElementById('editOfflineQuizName').value = data.name || '';
         document.getElementById('editOfflineQuizType').value = data.type || (data.name.toLowerCase().includes('review') ? 'Review' : 'Quiz');
-        
+
         // Populate subject options in edit modal
         const subjectSelect = document.getElementById('editOfflineQuizSubject');
         if (subjectSelect) {
             subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
             const subjects = [
-                "English", "Mathematics", "Science", "Indonesian", "Social Studies", 
+                "English", "Mathematics", "Science", "Indonesian", "Social Studies",
                 "Civics / PPKN", "Religion", "Art & Culture", "Physical Education", "ICT / Computer"
             ];
             subjects.forEach(subj => {
@@ -5178,7 +5161,7 @@ window.openEditOfflineQuizModal = async function(id) {
     }
 };
 
-window.onEditOfflineQuizClassChange = function() {
+window.onEditOfflineQuizClassChange = function () {
     updateEditOfflineQuizClassLabel();
 };
 
@@ -5202,11 +5185,11 @@ function updateEditOfflineQuizClassLabel() {
     }
 }
 
-window.closeEditOfflineQuizModal = function() {
+window.closeEditOfflineQuizModal = function () {
     document.getElementById('editOfflineQuizModal')?.classList.add('hidden');
 };
 
-window.saveEditOfflineQuiz = async function() {
+window.saveEditOfflineQuiz = async function () {
     const id = document.getElementById('editOfflineQuizId').value;
     const name = document.getElementById('editOfflineQuizName').value.trim();
     const type = document.getElementById('editOfflineQuizType').value;
