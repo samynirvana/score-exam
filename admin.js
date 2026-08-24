@@ -2476,7 +2476,7 @@ async function loadQuizzesTable() {
                     <div class="kebab-menu">
                         <button class="kebab-btn" onclick="toggleMenu(event, 'quiz-${docSnap.id}')">⋮</button>
                         <div id="menu-quiz-${docSnap.id}" class="dropdown-menu">
-                            <button class="dropdown-item" onclick="viewQuizResults('${safeTitle}')">View Results</button>
+                            <button class="dropdown-item" onclick="viewQuizResults('${safeTitle}', '${docSnap.id}')">View Results</button>
                             <button class="dropdown-item" onclick="toggleQuizStatus('${docSnap.id}', '${status}')">${toggleLabel}</button>
                             <button class="dropdown-item" onclick="editQuiz('${docSnap.id}')">Edit Quiz</button>
                             <button class="dropdown-item danger" onclick="deleteQuiz('${docSnap.id}')">Delete Quiz</button>
@@ -2598,90 +2598,394 @@ async function deleteQuiz(id) {
 }
 window.deleteQuiz = deleteQuiz;
 
-// 1. Updated viewQuizResults with "Check" button added in the Action column
-window.viewQuizResults = async function (quizTitle) {
-    const modal = document.getElementById("quizResultsModal") || createQuizResultsModal();
+// --- QUIZ RESULTS & SCORE SUBMISSION (RESPONSIVE CLASS FILTERING & STATUS ICONS) ---
+window.quizResultsCurrentState = {
+    quizTitle: '',
+    quizId: '',
+    quizData: null,
+    eligibleStudents: [],
+    submissionsMap: {},
+    scoresMap: {},
+    distinctClasses: [],
+    selectedClass: 'all',
+    statusFilter: 'all',
+    searchKeyword: ''
+};
+
+window.viewQuizResults = async function (quizTitle, quizId = null) {
+    const modal = document.getElementById("quizResultsModal");
+    if (!modal) return;
 
     modal.classList.remove('hidden');
     modal.style.display = "flex";
 
     const tbody = modal.querySelector("#quizResultsTable tbody");
     const modalTitle = modal.querySelector("#quizResultsTitle");
+    const subjectTag = modal.querySelector("#quizResultsSubjectTag");
+    const targetTag = modal.querySelector("#quizResultsTargetTag");
+    const pillsContainer = modal.querySelector("#quizClassPillsContainer");
+    const searchInput = modal.querySelector("#quizStudentSearchInput");
 
-    if (modalTitle) modalTitle.innerText = `Results & Score Submission: ${quizTitle}`;
-    if (tbody) tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">Loading student records...</td></tr>`;
+    if (searchInput) searchInput.value = "";
+    if (modalTitle) modalTitle.innerText = quizTitle || "Quiz Submissions";
+    if (subjectTag) subjectTag.innerText = "Loading...";
+    if (targetTag) targetTag.innerText = "Assigned: Loading...";
+    if (pillsContainer) pillsContainer.innerHTML = `<span style="font-size:12px; color:#64748b;">Loading classes...</span>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 24px; color:#64748b;">Loading class rosters and submissions...</td></tr>`;
 
     try {
-        const studentsSnap = await getDocs(collection(db, "students"));
-
-        const scoresQuery = query(collection(db, "scores"), where("quizTitle", "==", quizTitle));
-        const scoresSnap = await getDocs(scoresQuery);
-
-        const existingScores = {};
-        scoresSnap.forEach(docSnap => {
-            const data = docSnap.data();
-            existingScores[data.studentCode || docSnap.id] = data.score;
-        });
-
-        if (tbody) tbody.innerHTML = "";
-
-        if (studentsSnap.empty) {
-            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">No students found in database.</td></tr>`;
-            return;
+        // 1. Fetch Quiz Info to get Assigned Classes
+        let quizData = null;
+        if (quizId) {
+            try {
+                const qSnap = await getDoc(doc(db, "quizzes", quizId));
+                if (qSnap.exists()) quizData = qSnap.data();
+            } catch (e) {
+                console.warn("Could not fetch quiz by id:", e);
+            }
+        }
+        if (!quizData) {
+            const qQuery = query(collection(db, "quizzes"), where("title", "==", quizTitle));
+            const qQuerySnap = await getDocs(qQuery);
+            if (!qQuerySnap.empty) {
+                quizData = qQuerySnap.docs[0].data();
+            }
         }
 
-        studentsSnap.forEach(docSnap => {
-            const student = docSnap.data();
-            const studentCode = student.code || docSnap.id;
-            const studentName = student.studentName || student.name || "Unknown Student";
-            const studentClass = student.studentClass || student.class || "N/A";
-            const currentScore = existingScores[studentCode] !== undefined ? existingScores[studentCode] : "";
+        const subject = quizData?.subject || "General";
+        if (subjectTag) subjectTag.innerText = subject;
 
-            tbody.innerHTML += `
-                <tr>
-                    <td><strong>${studentName}</strong> <br><small style="color: #64748b;">${studentCode}</small></td>
-                    <td>${studentClass}</td>
-                    <td>
+        // Parse Assigned Classes
+        let isAllClasses = false;
+        let assignedClasses = [];
+
+        if (Array.isArray(quizData?.targetClassesList) && quizData.targetClassesList.length > 0) {
+            if (quizData.targetClassesList.some(c => c.toLowerCase() === 'all' || c.toLowerCase() === 'all classes')) {
+                isAllClasses = true;
+            } else {
+                assignedClasses = quizData.targetClassesList.map(c => c.trim()).filter(Boolean);
+            }
+        } else if (quizData?.targetClass) {
+            if (quizData.targetClass.toLowerCase().includes('all class') || quizData.targetClass.toLowerCase() === 'all') {
+                isAllClasses = true;
+            } else {
+                assignedClasses = quizData.targetClass.split(',').map(c => c.trim()).filter(Boolean);
+            }
+        } else {
+            isAllClasses = true;
+        }
+
+        if (targetTag) {
+            targetTag.innerText = isAllClasses ? "Assigned: All Classes" : `Assigned: ${assignedClasses.join(', ')}`;
+        }
+
+        // 2. Fetch all students from Firestore
+        const studentsSnap = await getDocs(collection(db, "students"));
+        let eligibleStudents = [];
+
+        studentsSnap.forEach(docSnap => {
+            const sData = docSnap.data();
+            const sClass = (sData.studentClass || sData.class || sData.Class || 'N/A').trim();
+            const sCode = sData.code || docSnap.id;
+            const sName = sData.studentName || sData.name || 'Unknown Student';
+
+            if (isAllClasses) {
+                eligibleStudents.push({ id: docSnap.id, code: sCode, studentName: sName, studentClass: sClass });
+            } else {
+                const match = assignedClasses.some(c => c.toLowerCase() === sClass.toLowerCase());
+                if (match) {
+                    eligibleStudents.push({ id: docSnap.id, code: sCode, studentName: sName, studentClass: sClass });
+                }
+            }
+        });
+
+        // Sort students: by class then by name (A-Z)
+        eligibleStudents.sort((a, b) => {
+            const classComp = a.studentClass.localeCompare(b.studentClass, undefined, { numeric: true });
+            if (classComp !== 0) return classComp;
+            return a.studentName.localeCompare(b.studentName);
+        });
+
+        // 3. Fetch Quiz Submissions (quiz_results)
+        const submissionsMap = {};
+        try {
+            const qResults = query(collection(db, "quiz_results"), where("quizTitle", "==", quizTitle));
+            const subSnap = await getDocs(qResults);
+            subSnap.forEach(docSnap => {
+                const data = docSnap.data();
+                if (data.studentCode) {
+                    submissionsMap[data.studentCode] = { id: docSnap.id, ...data };
+                }
+            });
+        } catch (err) {
+            console.warn("Error fetching quiz_results:", err);
+        }
+
+        // 4. Fetch Saved Scores (scores)
+        const scoresMap = {};
+        try {
+            const scoresQuery = query(collection(db, "scores"), where("quizTitle", "==", quizTitle));
+            const scoresSnap = await getDocs(scoresQuery);
+            scoresSnap.forEach(docSnap => {
+                const data = docSnap.data();
+                const code = data.studentCode || docSnap.id;
+                scoresMap[code] = data.score;
+            });
+        } catch (err) {
+            console.warn("Error fetching scores:", err);
+        }
+
+        // 5. Build Distinct Classes List
+        let distinctClasses = [];
+        if (isAllClasses) {
+            distinctClasses = [...new Set(eligibleStudents.map(s => s.studentClass))].filter(c => c !== 'N/A').sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        } else {
+            const presentClasses = new Set(eligibleStudents.map(s => s.studentClass));
+            distinctClasses = assignedClasses.filter(c => presentClasses.has(c));
+            if (distinctClasses.length === 0) distinctClasses = assignedClasses;
+        }
+
+        // 6. Save in Global State
+        window.quizResultsCurrentState = {
+            quizTitle,
+            quizId,
+            quizData,
+            eligibleStudents,
+            submissionsMap,
+            scoresMap,
+            distinctClasses,
+            selectedClass: 'all',
+            statusFilter: 'all',
+            searchKeyword: ''
+        };
+
+        // 7. Render Class Selection Pills
+        renderQuizClassPills();
+
+        // 8. Render Results Table
+        renderQuizResultsTable();
+
+    } catch (error) {
+        console.error("Error loading quiz results:", error);
+        if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: #ef4444; padding: 20px;">Error loading data: ${error.message}</td></tr>`;
+    }
+};
+
+function renderQuizClassPills() {
+    const state = window.quizResultsCurrentState;
+    const container = document.getElementById("quizClassPillsContainer");
+    if (!container) return;
+
+    const totalCount = state.eligibleStudents.length;
+    let html = `
+        <button type="button" 
+            class="quiz-class-pill ${state.selectedClass === 'all' ? 'active' : ''}" 
+            onclick="window.setQuizClassFilter('all', this)">
+            All (${totalCount})
+        </button>
+    `;
+
+    state.distinctClasses.forEach(cls => {
+        const countInCls = state.eligibleStudents.filter(s => s.studentClass.toLowerCase() === cls.toLowerCase()).length;
+        const isActive = state.selectedClass.toLowerCase() === cls.toLowerCase();
+        html += `
+            <button type="button" 
+                class="quiz-class-pill ${isActive ? 'active' : ''}" 
+                onclick="window.setQuizClassFilter('${cls.replace(/'/g, "\\'")}', this)">
+                ${cls} (${countInCls})
+            </button>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+window.setQuizClassFilter = function (cls, btn) {
+    window.quizResultsCurrentState.selectedClass = cls;
+    
+    const container = document.getElementById("quizClassPillsContainer");
+    if (container) {
+        container.querySelectorAll(".quiz-class-pill").forEach(p => p.classList.remove("active"));
+        if (btn) btn.classList.add("active");
+    }
+
+    renderQuizResultsTable();
+};
+
+window.setQuizStatusFilter = function (status, btn) {
+    window.quizResultsCurrentState.statusFilter = status;
+
+    const buttons = document.querySelectorAll(".quiz-status-filter-btn");
+    buttons.forEach(b => b.classList.remove("active"));
+    if (btn) btn.classList.add("active");
+
+    renderQuizResultsTable();
+};
+
+window.filterQuizResults = function () {
+    const searchInput = document.getElementById("quizStudentSearchInput");
+    window.quizResultsCurrentState.searchKeyword = searchInput ? searchInput.value.trim().toLowerCase() : "";
+    renderQuizResultsTable();
+};
+
+function renderQuizResultsTable() {
+    const state = window.quizResultsCurrentState;
+    const tbody = document.querySelector("#quizResultsTable tbody");
+    if (!tbody) return;
+
+    // Filter students
+    let filtered = state.eligibleStudents.filter(s => {
+        // Class filter
+        if (state.selectedClass !== 'all' && s.studentClass.toLowerCase() !== state.selectedClass.toLowerCase()) {
+            return false;
+        }
+
+        // Status filter
+        const isDone = !!state.submissionsMap[s.code];
+        if (state.statusFilter === 'done' && !isDone) return false;
+        if (state.statusFilter === 'pending' && isDone) return false;
+
+        // Search filter
+        if (state.searchKeyword) {
+            const matchName = s.studentName.toLowerCase().includes(state.searchKeyword);
+            const matchCode = s.code.toLowerCase().includes(state.searchKeyword);
+            const matchClass = s.studentClass.toLowerCase().includes(state.searchKeyword);
+            if (!matchName && !matchCode && !matchClass) return false;
+        }
+
+        return true;
+    });
+
+    // Update Stats in Header
+    const inClassTotal = state.selectedClass === 'all' 
+        ? state.eligibleStudents.length 
+        : state.eligibleStudents.filter(s => s.studentClass.toLowerCase() === state.selectedClass.toLowerCase()).length;
+    
+    const inClassDone = state.selectedClass === 'all'
+        ? state.eligibleStudents.filter(s => !!state.submissionsMap[s.code]).length
+        : state.eligibleStudents.filter(s => s.studentClass.toLowerCase() === state.selectedClass.toLowerCase() && !!state.submissionsMap[s.code]).length;
+
+    const inClassPending = inClassTotal - inClassDone;
+
+    const totalEl = document.getElementById("statsTotalCount");
+    const doneEl = document.getElementById("statsDoneCount");
+    const pendingEl = document.getElementById("statsPendingCount");
+
+    if (totalEl) totalEl.innerText = inClassTotal;
+    if (doneEl) doneEl.innerText = inClassDone;
+    if (pendingEl) pendingEl.innerText = inClassPending;
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" style="text-align:center; padding: 32px 16px; color: #64748b;">
+                    <div style="font-size: 28px; margin-bottom: 8px;">📋</div>
+                    <div style="font-weight: 600; font-size: 14px; color: var(--text-dark, #334155);">No students match your filter</div>
+                    <div style="font-size: 12px; margin-top: 4px;">Try selecting another class tab or adjusting the search filter.</div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = "";
+
+    filtered.forEach(student => {
+        const studentCode = student.code;
+        const studentName = student.studentName;
+        const studentClass = student.studentClass;
+        const subData = state.submissionsMap[studentCode];
+        const isDone = !!subData;
+        const savedScore = state.scoresMap[studentCode] !== undefined ? state.scoresMap[studentCode] : "";
+
+        // Status Badge HTML with visual icon
+        let statusBadgeHtml = "";
+        if (isDone) {
+            const autoScoreTxt = (subData.totalAutoGradable && subData.totalAutoGradable > 0) 
+                ? `<small style="display:block; font-size:11px; color:#047857; font-weight:600; margin-top:2px;">Auto: ${subData.score ?? 0}/${subData.totalAutoGradable} pts</small>` 
+                : '';
+            
+            statusBadgeHtml = `
+                <div style="display:flex; flex-direction:column; align-items:center;">
+                    <span class="quiz-badge-status-done" title="Submitted Online">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        Done
+                    </span>
+                    ${autoScoreTxt}
+                </div>
+            `;
+        } else {
+            statusBadgeHtml = `
+                <div style="display:flex; flex-direction:column; align-items:center;">
+                    <span class="quiz-badge-status-pending" title="Not submitted yet">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        Not Done
+                    </span>
+                </div>
+            `;
+        }
+
+        const safeStudentName = studentName.replace(/'/g, "\\'");
+        const safeStudentClass = studentClass.replace(/'/g, "\\'");
+        const safeQuizTitle = state.quizTitle.replace(/'/g, "\\'");
+
+        tbody.innerHTML += `
+            <tr style="border-bottom: 1px solid var(--border-color, #f1f5f9);">
+                <td style="padding: 12px 14px;">
+                    <div style="font-weight: 700; color: var(--text-dark, #1e293b); font-size: 14px;">${studentName}</div>
+                    <div style="font-size: 11px; color: #64748b; font-family: monospace; margin-top: 1px;">ID: ${studentCode}</div>
+                </td>
+                <td style="padding: 12px 14px;">
+                    <span class="quiz-class-tag">${studentClass}</span>
+                </td>
+                <td style="padding: 12px 14px; text-align: center;">
+                    ${statusBadgeHtml}
+                </td>
+                <td style="padding: 12px 14px;">
+                    <div style="display:flex; align-items:center; gap:6px;">
                         <input 
                             type="number" 
                             id="score-input-${studentCode}" 
                             class="direct-score-input" 
-                            value="${currentScore}" 
+                            value="${savedScore}" 
                             placeholder="0 - 100" 
                             min="0" 
                             max="100"
-                            style="width: 80px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 6px;"
+                            style="width: 75px; padding: 6px 8px; font-size: 13px; font-weight: 700; text-align: center; border: 1px solid var(--border-color, #cbd5e1); border-radius: 8px; background: var(--bg-card, #ffffff); color: var(--text-dark, #1e293b);"
                         >
-                    </td>
-                    <td>
-                        <div style="display: flex; gap: 6px;">
-                            <button 
-                                class="btn-secondary" 
-                                onclick="viewStudentAnswers('${studentCode}', '${studentName.replace(/'/g, "\\'")}', '${quizTitle.replace(/'/g, "\\'")}')"
-                                style="padding: 6px 10px; font-size: 12px; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer;"
-                            >
-                                Check
-                            </button>
-                            <button 
-                                class="btn-primary" 
-                                onclick="saveDirectScore('${studentCode}', '${studentName.replace(/'/g, "\\'")}', '${studentClass}', '${quizTitle.replace(/'/g, "\\'")}')"
-                                style="padding: 6px 10px; font-size: 12px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer;"
-                            >
-                                Save
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        });
+                        <span id="score-badge-${studentCode}" style="${savedScore !== '' ? 'display:inline-flex;' : 'display:none;'} color:#10b981; font-weight:bold; font-size:14px;" title="Official score saved">✓</span>
+                    </div>
+                </td>
+                <td style="padding: 12px 14px; text-align: right;">
+                    <div style="display: inline-flex; gap: 6px; align-items: center;">
+                        <button 
+                            type="button"
+                            class="btn-quiz-check" 
+                            onclick="viewStudentAnswers('${studentCode}', '${safeStudentName}', '${safeQuizTitle}', '${safeStudentClass}')"
+                            style="display:inline-flex; align-items:center; gap:4px; padding: 6px 11px; font-size: 12px; font-weight: 600; background: ${isDone ? '#4f46e5' : '#64748b'}; color: white; border: none; border-radius: 7px; cursor: pointer; transition: all 0.2s;"
+                            title="${isDone ? 'Inspect submitted answers' : 'View student answers'}"
+                        >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            Check
+                        </button>
+                        <button 
+                            type="button"
+                            id="save-btn-${studentCode}"
+                            class="btn-quiz-save" 
+                            onclick="saveDirectScore('${studentCode}', '${safeStudentName}', '${safeStudentClass}', '${safeQuizTitle}', this)"
+                            style="display:inline-flex; align-items:center; gap:4px; padding: 6px 12px; font-size: 12px; font-weight: 600; background: #2563eb; color: white; border: none; border-radius: 7px; cursor: pointer; transition: all 0.2s;"
+                        >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                            Save
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+}
 
-    } catch (error) {
-        console.error("Error loading quiz results:", error);
-        if (tbody) tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: red;">Error loading data.</td></tr>`;
-    }
-};
-
-window.viewStudentAnswers = async function (studentCode, studentName, quizTitle) {
+window.viewStudentAnswers = async function (studentCode, studentName, quizTitle, studentClass = '') {
     const modal = document.getElementById("studentAnswersModal");
     if (!modal) return;
 
@@ -2689,15 +2993,49 @@ window.viewStudentAnswers = async function (studentCode, studentName, quizTitle)
     modal.style.display = "flex";
 
     const titleEl = document.getElementById("studentAnswersTitle");
+    const subTitleEl = document.getElementById("studentAnswersSubtitle");
     const autoScoreEl = document.getElementById("autoScoreReference");
     const container = document.getElementById("answersDetailContainer");
+    const footerEl = document.getElementById("answersModalFooter");
 
-    titleEl.innerText = `${studentName}'s Submission`;
-    autoScoreEl.innerHTML = `<em>Loading submission details...</em>`;
-    container.innerHTML = "";
+    if (titleEl) titleEl.innerText = `${studentName}'s Submission`;
+    if (subTitleEl) subTitleEl.innerText = studentClass ? `Class: ${studentClass} • Student ID: ${studentCode}` : `Student ID: ${studentCode}`;
+    if (autoScoreEl) autoScoreEl.innerHTML = `<em>Loading submission details...</em>`;
+    if (container) container.innerHTML = "";
+
+    // Pre-fill score in footer
+    const currentScore = window.quizResultsCurrentState?.scoresMap?.[studentCode] ?? "";
+    const safeStudentName = studentName.replace(/'/g, "\\'");
+    const safeStudentClass = studentClass.replace(/'/g, "\\'");
+    const safeQuizTitle = quizTitle.replace(/'/g, "\\'");
+
+    if (footerEl) {
+        footerEl.innerHTML = `
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <label style="font-size:13px; font-weight:700; color:var(--text-dark, #1e293b);">Assign Official Grade (0 - 100):</label>
+                <input 
+                    type="number" 
+                    id="modalDirectScoreInput" 
+                    value="${currentScore}" 
+                    placeholder="Score" 
+                    min="0" 
+                    max="100" 
+                    style="width:90px; padding:7px 10px; font-size:14px; font-weight:700; text-align:center; border-radius:8px; border:1px solid var(--border-color, #cbd5e1); background:var(--bg-card, #fff); color:var(--text-dark, #1e293b);"
+                >
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button 
+                    type="button" 
+                    onclick="saveModalGrade('${studentCode}', '${safeStudentName}', '${safeStudentClass}', '${safeQuizTitle}')" 
+                    style="background:#2563eb; color:white; border:none; padding:8px 18px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px;"
+                >
+                    💾 Save Grade & Close
+                </button>
+            </div>
+        `;
+    }
 
     try {
-        // Query the 'quiz_results' collection matching quizTitle and studentCode
         const q = query(
             collection(db, "quiz_results"),
             where("quizTitle", "==", quizTitle),
@@ -2706,12 +3044,24 @@ window.viewStudentAnswers = async function (studentCode, studentName, quizTitle)
         const querySnap = await getDocs(q);
 
         if (querySnap.empty) {
-            autoScoreEl.innerHTML = `<span style="color: #ef4444; font-weight:600;">No digital submission found for this student.</span>`;
-            container.innerHTML = `
-                <p style="color: #64748b; text-align: center;">
-                    The student has not submitted this quiz online yet.
-                </p>
-            `;
+            if (autoScoreEl) {
+                autoScoreEl.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:24px;">⏳</span>
+                        <div>
+                            <strong style="color: #f59e0b; font-size:14px;">No Online Submission Found</strong>
+                            <div style="color: #64748b; font-size:12px; margin-top:2px;">The student has not submitted this quiz digitally yet. You can still manually enter and save their offline grade below.</div>
+                        </div>
+                    </div>
+                `;
+            }
+            if (container) {
+                container.innerHTML = `
+                    <div style="padding: 24px; text-align: center; background: var(--bg-card-subtle, #f8fafc); border-radius: 10px; border: 1px dashed var(--border-color, #cbd5e1); color: #64748b;">
+                        <p style="margin: 0; font-size: 13px;">No item-by-item responses available for this student.</p>
+                    </div>
+                `;
+            }
             return;
         }
 
@@ -2720,60 +3070,59 @@ window.viewStudentAnswers = async function (studentCode, studentName, quizTitle)
         const totalMax = subData.totalAutoGradable !== undefined ? subData.totalAutoGradable : 0;
         const percentage = totalMax > 0 ? Math.round((score / totalMax) * 100) : 0;
         const responses = subData.responses || [];
+        const submittedTime = subData.submittedAt ? new Date(subData.submittedAt).toLocaleString() : "Recently";
 
-        autoScoreEl.innerHTML = `
-            <span style="color: #475569; font-size: 13px;">Auto-Graded Reference Score:</span><br>
-            <strong style="font-size: 18px; color: #1e293b;">${score} / ${totalMax} points (${percentage}%)</strong> 
-            <small style="color: #64748b; margin-left: 8px;">(For reference only — does not affect official grade)</small>
-        `;
+        if (autoScoreEl) {
+            autoScoreEl.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <div>
+                        <span style="color: #475569; font-size: 12px; font-weight:600;">Auto-Graded Reference:</span><br>
+                        <strong style="font-size: 18px; color: #1e293b;">${score} / ${totalMax} points (${percentage}%)</strong>
+                        <div style="color: #64748b; font-size: 11px; margin-top: 2px;">Submitted: ${submittedTime}</div>
+                    </div>
+                    <button type="button" onclick="document.getElementById('modalDirectScoreInput').value = ${percentage};" style="background:#e0e7ff; color:#4338ca; border:1px solid #c7d2fe; padding:6px 12px; font-size:12px; font-weight:600; border-radius:6px; cursor:pointer;" title="Apply auto-graded % to official score">
+                        Apply ${percentage}% as Grade
+                    </button>
+                </div>
+            `;
+        }
 
         if (!responses.length) {
-            container.innerHTML = `<p style="color: #64748b; text-align: center;">No detailed item responses logged for this submission.</p>`;
+            if (container) container.innerHTML = `<p style="color: #64748b; text-align: center;">No detailed item responses logged for this submission.</p>`;
             return;
         }
 
-        // Render each prompt and student response
-        container.innerHTML = responses.map((item, index) => {
-            return `
-                <div style="border: 1px solid #e2e8f0; padding: 12px 16px; margin-bottom: 12px; border-radius: 8px; background: #f8fafc; border-left: 4px solid #2563eb;">
-                    <p style="margin: 0 0 8px 0; font-weight: 600; color: #1e293b;">Q${index + 1}: ${item.prompt || 'Question'}</p>
-                    <p style="margin: 4px 0; font-size: 14px; color: #334155;">
-                        <strong>Student Answer:</strong> <span style="color: #0f172a; font-weight: 500;">${item.response || 'No answer'}</span>
-                    </p>
-                </div>
-            `;
-        }).join('');
+        if (container) {
+            container.innerHTML = responses.map((item, index) => {
+                return `
+                    <div style="border: 1px solid var(--border-color, #e2e8f0); padding: 14px 16px; margin-bottom: 12px; border-radius: 10px; background: var(--bg-card-subtle, #f8fafc); border-left: 4px solid #3b82f6;">
+                        <p style="margin: 0 0 8px 0; font-weight: 700; color: var(--text-dark, #1e293b); font-size:14px;">Q${index + 1}: ${item.prompt || 'Question'}</p>
+                        <div style="background: var(--bg-card, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px; padding: 8px 12px;">
+                            <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Student Answer:</span>
+                            <div style="color: var(--text-dark, #0f172a); font-weight: 500; font-size: 13px; margin-top: 2px; white-space: pre-wrap;">${item.response || 'No answer'}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
 
     } catch (err) {
         console.error("Error fetching student submission details:", err);
-        autoScoreEl.innerHTML = `<span style="color: #ef4444;">Error retrieving submission details from database.</span>`;
-    }
-};
-// 3. Function to close the inspection modal
-window.closeAnswersModal = function () {
-    const modal = document.getElementById("studentAnswersModal");
-    if (modal) {
-        modal.classList.add('hidden');
-        modal.style.display = "none";
+        if (autoScoreEl) autoScoreEl.innerHTML = `<span style="color: #ef4444;">Error retrieving submission details from database.</span>`;
     }
 };
 
-// Auto-load table on initial script boot
-loadQuizzesTable();
-
-// --- 2. SAVE INDIVIDUAL STUDENT SCORE TO FIRESTORE ---
-window.saveDirectScore = async function (studentCode, studentName, studentClass, quizTitle) {
-    const input = document.getElementById(`score-input-${studentCode}`);
+window.saveModalGrade = async function (studentCode, studentName, studentClass, quizTitle) {
+    const input = document.getElementById("modalDirectScoreInput");
     if (!input) return;
 
     const scoreValue = parseFloat(input.value);
     if (isNaN(scoreValue)) {
-        alert("Please enter a valid numeric score.");
+        alert("Please enter a valid numeric score (e.g. 85).");
         return;
     }
 
     try {
-        // Document ID pattern: STUDENTCODE_QUIZTITLE (ensures upsert/overwrite behavior)
         const scoreDocId = `${studentCode}_${quizTitle.replace(/[^a-zA-Z0-9]/g, "_")}`;
         const scoreRef = doc(db, "scores", scoreDocId);
 
@@ -2786,15 +3135,98 @@ window.saveDirectScore = async function (studentCode, studentName, studentClass,
             updatedAt: new Date().toISOString()
         }, { merge: true });
 
-        alert(`Score of ${scoreValue} saved for ${studentName}!`);
+        // Update state
+        if (window.quizResultsCurrentState?.scoresMap) {
+            window.quizResultsCurrentState.scoresMap[studentCode] = scoreValue;
+        }
 
-        // Refresh Manage Scores table if function exists
+        // Update main table input and checkmark badge
+        const mainInput = document.getElementById(`score-input-${studentCode}`);
+        if (mainInput) mainInput.value = scoreValue;
+        const mainBadge = document.getElementById(`score-badge-${studentCode}`);
+        if (mainBadge) mainBadge.style.display = "inline-flex";
+
+        closeAnswersModal();
+        alert(`Official score of ${scoreValue} saved for ${studentName}!`);
+
+        if (typeof window.loadScoresTable === "function") {
+            window.loadScoresTable();
+        }
+    } catch (error) {
+        console.error("Error saving score from modal:", error);
+        alert("Failed to save score: " + error.message);
+    }
+};
+
+window.closeAnswersModal = function () {
+    const modal = document.getElementById("studentAnswersModal");
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = "none";
+    }
+};
+
+// 4. Save individual student score from table
+window.saveDirectScore = async function (studentCode, studentName, studentClass, quizTitle, btn = null) {
+    const input = document.getElementById(`score-input-${studentCode}`);
+    if (!input) return;
+
+    const scoreValue = parseFloat(input.value);
+    if (isNaN(scoreValue)) {
+        alert("Please enter a valid numeric score (0 - 100).");
+        return;
+    }
+
+    const origBtnText = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span style="font-size:11px;">Saving...</span>`;
+    }
+
+    try {
+        const scoreDocId = `${studentCode}_${quizTitle.replace(/[^a-zA-Z0-9]/g, "_")}`;
+        const scoreRef = doc(db, "scores", scoreDocId);
+
+        await setDoc(scoreRef, {
+            studentCode: studentCode,
+            studentName: studentName,
+            targetClass: studentClass,
+            quizTitle: quizTitle,
+            score: scoreValue,
+            updatedAt: new Date().toISOString()
+        }, { merge: true });
+
+        // Update local state
+        if (window.quizResultsCurrentState?.scoresMap) {
+            window.quizResultsCurrentState.scoresMap[studentCode] = scoreValue;
+        }
+
+        // Show checkmark badge
+        const badge = document.getElementById(`score-badge-${studentCode}`);
+        if (badge) badge.style.display = "inline-flex";
+
+        if (btn) {
+            btn.innerHTML = `✓ Saved`;
+            btn.style.background = "#10b981";
+            setTimeout(() => {
+                btn.innerHTML = origBtnText;
+                btn.style.background = "#2563eb";
+                btn.disabled = false;
+            }, 2000);
+        } else {
+            alert(`Score of ${scoreValue} saved for ${studentName}!`);
+        }
+
         if (typeof window.loadScoresTable === "function") {
             window.loadScoresTable();
         }
     } catch (error) {
         console.error("Error saving score:", error);
-        alert("Failed to save score. Check console for details.");
+        alert("Failed to save score: " + error.message);
+        if (btn) {
+            btn.innerHTML = origBtnText;
+            btn.disabled = false;
+        }
     }
 };
 async function loadScoresTable() {
