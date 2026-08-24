@@ -96,7 +96,8 @@ onAuthStateChanged(auth, async (user) => {
                 loadPointsTable(),
                 loadStudentsDirectory(),
                 updateDashboardStats(),
-                loadQuizzesTable()
+                loadQuizzesTable(),
+                syncScoresToExamScores()
             ];
 
             if (typeof window.loadSystemDatabases === "function") {
@@ -2760,19 +2761,41 @@ window.viewQuizResults = async function (quizTitle, quizId = null) {
             console.warn("Error fetching quiz_results:", err);
         }
 
-        // 4. Fetch Saved Scores (scores)
+        // 4. Fetch Saved Scores (from unified exam_scores and legacy scores)
         const scoresMap = {};
         try {
+            // Query unified exam_scores by examName and quizName
+            const examScoresQuery = query(collection(db, "exam_scores"), where("examName", "==", quizTitle));
+            const examScoresSnap = await getDocs(examScoresQuery);
+            examScoresSnap.forEach(docSnap => {
+                const data = docSnap.data();
+                const code = (data.studentCode || '').toString().trim().toLowerCase();
+                const name = (data.studentName || '').toString().trim().toLowerCase();
+                if (code) scoresMap[code] = data.score;
+                if (name) scoresMap[`name_${name}`] = data.score;
+            });
+
+            const quizNameQuery = query(collection(db, "exam_scores"), where("quizName", "==", quizTitle));
+            const quizNameSnap = await getDocs(quizNameQuery);
+            quizNameSnap.forEach(docSnap => {
+                const data = docSnap.data();
+                const code = (data.studentCode || '').toString().trim().toLowerCase();
+                const name = (data.studentName || '').toString().trim().toLowerCase();
+                if (code && scoresMap[code] === undefined) scoresMap[code] = data.score;
+                if (name && scoresMap[`name_${name}`] === undefined) scoresMap[`name_${name}`] = data.score;
+            });
+
+            // Also check legacy scores collection
             const scoresQuery = query(collection(db, "scores"), where("quizTitle", "==", quizTitle));
             const scoresSnap = await getDocs(scoresQuery);
             scoresSnap.forEach(docSnap => {
                 const data = docSnap.data();
                 const code = (data.studentCode || docSnap.id || '').toString().trim().toLowerCase();
                 const name = (data.studentName || '').toString().trim().toLowerCase();
-                if (code) {
+                if (code && scoresMap[code] === undefined) {
                     scoresMap[code] = data.score;
                 }
-                if (name) {
+                if (name && scoresMap[`name_${name}`] === undefined) {
                     scoresMap[`name_${name}`] = data.score;
                 }
             });
@@ -3301,35 +3324,106 @@ window.viewStudentAnswers = async function (studentCode, studentName, quizTitle,
     }
 };
 
+function resolveQuizType(quizTitle, quizData = null) {
+    if (quizData && quizData.type) return quizData.type;
+    const lower = (quizTitle || '').toLowerCase();
+    if (lower.includes("review")) return "Review";
+    if (lower.includes("homework") || lower.includes("hw")) return "Homework";
+    if (lower.includes("exercise")) return "Exercise";
+    if (lower.includes("final") || lower.includes("exam") || lower.includes("midterm")) return "Final Test";
+    if (lower.includes("project")) return "Project";
+    if (lower.includes("skill")) return "Skill";
+    return "Quiz";
+}
+
 window.saveModalGrade = async function (studentCode, studentName, studentClass, quizTitle) {
     const input = document.getElementById("modalDirectScoreInput");
     if (!input) return;
 
-    const scoreValue = parseFloat(input.value);
-    if (isNaN(scoreValue)) {
-        alert("Please enter a valid numeric score (e.g. 85).");
+    const rawVal = input.value.trim();
+    if (rawVal === "") {
+        alert("Please enter a numeric score before saving.");
+        return;
+    }
+
+    const scoreValue = parseFloat(rawVal);
+    if (isNaN(scoreValue) || scoreValue < 0 || scoreValue > 100) {
+        alert("Please enter a valid numeric score (0 - 100).");
         return;
     }
 
     try {
+        const state = window.quizResultsCurrentState || {};
+        let subject = state.quizData?.subject || state.subject || "";
+        
+        if (!subject || subject === "General") {
+            const subjectTag = document.getElementById('quizResultsSubjectTag')?.innerText?.trim();
+            if (subjectTag && subjectTag !== "Subject" && subjectTag !== "Loading...") {
+                subject = subjectTag;
+            } else {
+                try {
+                    const qSnap = await getDocs(query(collection(db, "quizzes"), where("title", "==", quizTitle)));
+                    if (!qSnap.empty && qSnap.docs[0].data().subject) {
+                        subject = qSnap.docs[0].data().subject;
+                    }
+                } catch (e) {
+                    console.warn(e);
+                }
+            }
+        }
+        if (!subject) subject = (typeof teacherSubject !== "undefined" && teacherSubject && teacherSubject !== "all") ? teacherSubject : "English";
+
+        if (!studentClass || studentClass === "N/A") {
+            const matchStudent = (state.eligibleStudents || []).find(s => s.code === studentCode || s.id === studentCode);
+            if (matchStudent && matchStudent.studentClass) {
+                studentClass = matchStudent.studentClass;
+            }
+        }
+
+        const resolvedType = resolveQuizType(quizTitle, state.quizData);
+
+        // 1. Unified exam_scores collection (used by Ledger, Students page scores.html, main.js)
+        const customDocId = `${studentCode}_${subject}_${quizTitle}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+        const examScoreRef = doc(db, "exam_scores", customDocId);
+
+        await setDoc(examScoreRef, {
+            studentCode: studentCode,
+            studentName: studentName,
+            subject: subject,
+            studentClass: studentClass || "Grade 9A",
+            examName: quizTitle,
+            quizName: quizTitle,
+            type: resolvedType,
+            score: Number(scoreValue),
+            updatedAt: new Date()
+        }, { merge: true });
+
+        // 2. Legacy scores collection (for backward compatibility)
         const scoreDocId = `${studentCode}_${quizTitle.replace(/[^a-zA-Z0-9]/g, "_")}`;
         const scoreRef = doc(db, "scores", scoreDocId);
 
         await setDoc(scoreRef, {
             studentCode: studentCode,
             studentName: studentName,
-            targetClass: studentClass,
+            targetClass: studentClass || "Grade 9A",
+            studentClass: studentClass || "Grade 9A",
+            subject: subject,
             quizTitle: quizTitle,
-            score: scoreValue,
+            examName: quizTitle,
+            type: resolvedType,
+            score: Number(scoreValue),
             updatedAt: new Date().toISOString()
         }, { merge: true });
 
-        // Update state
-        if (window.quizResultsCurrentState?.scoresMap) {
-            window.quizResultsCurrentState.scoresMap[studentCode] = scoreValue;
+        // 3. Update local state
+        const normCode = (studentCode || '').toString().trim().toLowerCase();
+        const normName = (studentName || '').toString().trim().toLowerCase();
+        if (state.scoresMap) {
+            state.scoresMap[normCode] = scoreValue;
+            if (normName) state.scoresMap[`name_${normName}`] = scoreValue;
         }
 
-        // Update main table input and checkmark badge
+        // 4. Update main table input and checkmark badge
         const mainInput = document.getElementById(`score-input-${studentCode}`);
         if (mainInput) mainInput.value = scoreValue;
         const mainBadge = document.getElementById(`score-badge-${studentCode}`);
@@ -3338,6 +3432,9 @@ window.saveModalGrade = async function (studentCode, studentName, studentClass, 
         closeAnswersModal();
         alert(`Official score of ${scoreValue} saved for ${studentName}!`);
 
+        if (typeof window.loadAdminTable === "function") {
+            window.loadAdminTable();
+        }
         if (typeof window.loadScoresTable === "function") {
             window.loadScoresTable();
         }
@@ -3360,8 +3457,14 @@ window.saveDirectScore = async function (studentCode, studentName, studentClass,
     const input = document.getElementById(`score-input-${studentCode}`);
     if (!input) return;
 
-    const scoreValue = parseFloat(input.value);
-    if (isNaN(scoreValue)) {
+    const rawVal = input.value.trim();
+    if (rawVal === "") {
+        alert("Please enter a numeric score before saving.");
+        return;
+    }
+
+    const scoreValue = parseFloat(rawVal);
+    if (isNaN(scoreValue) || scoreValue < 0 || scoreValue > 100) {
         alert("Please enter a valid numeric score (0 - 100).");
         return;
     }
@@ -3373,21 +3476,74 @@ window.saveDirectScore = async function (studentCode, studentName, studentClass,
     }
 
     try {
+        const state = window.quizResultsCurrentState || {};
+        let subject = state.quizData?.subject || state.subject || "";
+        
+        if (!subject || subject === "General") {
+            const subjectTag = document.getElementById('quizResultsSubjectTag')?.innerText?.trim();
+            if (subjectTag && subjectTag !== "Subject" && subjectTag !== "Loading...") {
+                subject = subjectTag;
+            } else {
+                try {
+                    const qSnap = await getDocs(query(collection(db, "quizzes"), where("title", "==", quizTitle)));
+                    if (!qSnap.empty && qSnap.docs[0].data().subject) {
+                        subject = qSnap.docs[0].data().subject;
+                    }
+                } catch (e) {
+                    console.warn(e);
+                }
+            }
+        }
+        if (!subject) subject = (typeof teacherSubject !== "undefined" && teacherSubject && teacherSubject !== "all") ? teacherSubject : "English";
+
+        if (!studentClass || studentClass === "N/A") {
+            const matchStudent = (state.eligibleStudents || []).find(s => s.code === studentCode || s.id === studentCode);
+            if (matchStudent && matchStudent.studentClass) {
+                studentClass = matchStudent.studentClass;
+            }
+        }
+
+        const resolvedType = resolveQuizType(quizTitle, state.quizData);
+
+        // 1. Save directly to unified "exam_scores" collection
+        const customDocId = `${studentCode}_${subject}_${quizTitle}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+        const examScoreRef = doc(db, "exam_scores", customDocId);
+
+        await setDoc(examScoreRef, {
+            studentCode: studentCode,
+            studentName: studentName,
+            subject: subject,
+            studentClass: studentClass || "Grade 9A",
+            examName: quizTitle,
+            quizName: quizTitle,
+            type: resolvedType,
+            score: Number(scoreValue),
+            updatedAt: new Date()
+        }, { merge: true });
+
+        // 2. Save to legacy "scores" collection
         const scoreDocId = `${studentCode}_${quizTitle.replace(/[^a-zA-Z0-9]/g, "_")}`;
         const scoreRef = doc(db, "scores", scoreDocId);
 
         await setDoc(scoreRef, {
             studentCode: studentCode,
             studentName: studentName,
-            targetClass: studentClass,
+            targetClass: studentClass || "Grade 9A",
+            studentClass: studentClass || "Grade 9A",
+            subject: subject,
             quizTitle: quizTitle,
-            score: scoreValue,
+            examName: quizTitle,
+            type: resolvedType,
+            score: Number(scoreValue),
             updatedAt: new Date().toISOString()
         }, { merge: true });
 
-        // Update local state
-        if (window.quizResultsCurrentState?.scoresMap) {
-            window.quizResultsCurrentState.scoresMap[studentCode] = scoreValue;
+        // 3. Update local state
+        const normCode = (studentCode || '').toString().trim().toLowerCase();
+        const normName = (studentName || '').toString().trim().toLowerCase();
+        if (state.scoresMap) {
+            state.scoresMap[normCode] = scoreValue;
+            if (normName) state.scoresMap[`name_${normName}`] = scoreValue;
         }
 
         // Show checkmark badge
@@ -3406,6 +3562,9 @@ window.saveDirectScore = async function (studentCode, studentName, studentClass,
             alert(`Score of ${scoreValue} saved for ${studentName}!`);
         }
 
+        if (typeof window.loadAdminTable === "function") {
+            window.loadAdminTable();
+        }
         if (typeof window.loadScoresTable === "function") {
             window.loadScoresTable();
         }
@@ -3414,6 +3573,105 @@ window.saveDirectScore = async function (studentCode, studentName, studentClass,
         alert("Failed to save score: " + error.message);
         if (btn) {
             btn.innerHTML = origBtnText;
+            btn.disabled = false;
+        }
+    }
+};
+
+// 5. Batch save all entered scores from Quiz Results modal
+window.saveAllQuizResultsScores = async function (btn = null) {
+    const state = window.quizResultsCurrentState;
+    if (!state) return;
+
+    const quizTitle = state.quizTitle;
+    const inputs = document.querySelectorAll('#quizResultsTable .direct-score-input');
+    if (!inputs || inputs.length === 0) {
+        alert("No student score inputs found.");
+        return;
+    }
+
+    const origText = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span>Saving All...</span>`;
+    }
+
+    let savedCount = 0;
+    try {
+        let subject = state.quizData?.subject || state.subject || "";
+        if (!subject || subject === "General") {
+            const subjectTag = document.getElementById('quizResultsSubjectTag')?.innerText?.trim();
+            if (subjectTag && subjectTag !== "Subject" && subjectTag !== "Loading...") {
+                subject = subjectTag;
+            }
+        }
+        if (!subject) subject = (typeof teacherSubject !== "undefined" && teacherSubject && teacherSubject !== "all") ? teacherSubject : "English";
+        const resolvedType = resolveQuizType(quizTitle, state.quizData);
+
+        for (const input of inputs) {
+            const val = input.value.trim();
+            if (val === "") continue;
+
+            const scoreValue = parseFloat(val);
+            if (isNaN(scoreValue)) continue;
+
+            const studentCode = input.id.replace('score-input-', '');
+            const student = (state.eligibleStudents || []).find(s => s.code === studentCode || s.id === studentCode);
+            const studentName = student ? student.studentName : (input.getAttribute('data-name') || 'Student');
+            const studentClass = student ? student.studentClass : (input.getAttribute('data-class') || 'Grade 9A');
+
+            // Save to exam_scores
+            const customDocId = `${studentCode}_${subject}_${quizTitle}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+            await setDoc(doc(db, "exam_scores", customDocId), {
+                studentCode: studentCode,
+                studentName: studentName,
+                subject: subject,
+                studentClass: studentClass,
+                examName: quizTitle,
+                quizName: quizTitle,
+                type: resolvedType,
+                score: Number(scoreValue),
+                updatedAt: new Date()
+            }, { merge: true });
+
+            // Save to legacy scores
+            const scoreDocId = `${studentCode}_${quizTitle.replace(/[^a-zA-Z0-9]/g, "_")}`;
+            await setDoc(doc(db, "scores", scoreDocId), {
+                studentCode: studentCode,
+                studentName: studentName,
+                targetClass: studentClass,
+                studentClass: studentClass,
+                subject: subject,
+                quizTitle: quizTitle,
+                examName: quizTitle,
+                type: resolvedType,
+                score: Number(scoreValue),
+                updatedAt: new Date().toISOString()
+            }, { merge: true });
+
+            // Update state & badge
+            const normCode = (studentCode || '').toString().trim().toLowerCase();
+            const normName = (studentName || '').toString().trim().toLowerCase();
+            if (state.scoresMap) {
+                state.scoresMap[normCode] = scoreValue;
+                if (normName) state.scoresMap[`name_${normName}`] = scoreValue;
+            }
+            const badge = document.getElementById(`score-badge-${studentCode}`);
+            if (badge) badge.style.display = "inline-flex";
+
+            savedCount++;
+        }
+
+        alert(`Successfully saved ${savedCount} official score(s) to score database & student records!`);
+        if (typeof window.loadAdminTable === "function") {
+            window.loadAdminTable();
+        }
+    } catch (err) {
+        console.error("Error saving all quiz scores:", err);
+        alert("Error saving scores: " + err.message);
+    } finally {
+        if (btn) {
+            btn.innerHTML = origText;
             btn.disabled = false;
         }
     }
@@ -4432,6 +4690,123 @@ async function saveDirectScores() {
     }
 }
 
+// --- AUTO-SYNC LEGACY SCORES TO EXAM_SCORES ---
+async function syncScoresToExamScores(specificQuiz = null, specificSubject = null, specificClass = null) {
+    try {
+        let scoresSnap;
+        if (specificQuiz) {
+            scoresSnap = await getDocs(query(collection(db, "scores"), where("quizTitle", "==", specificQuiz)));
+            if (scoresSnap.empty) {
+                scoresSnap = await getDocs(query(collection(db, "scores"), where("examName", "==", specificQuiz)));
+            }
+        } else {
+            scoresSnap = await getDocs(collection(db, "scores"));
+        }
+
+        if (scoresSnap.empty) return 0;
+
+        // Fetch Quizzes for subject/type mapping
+        const quizzesSnap = await getDocs(collection(db, "quizzes"));
+        const quizSubjectMap = {};
+        const quizTypeMap = {};
+        quizzesSnap.forEach(d => {
+            const data = d.data();
+            const title = (data.title || data.quizName || '').trim();
+            if (title) {
+                if (data.subject) quizSubjectMap[title.toLowerCase()] = data.subject;
+                if (data.type) quizTypeMap[title.toLowerCase()] = data.type;
+            }
+        });
+
+        // Fetch offline system_quizzes too
+        try {
+            const sysQuizzesSnap = await getDocs(collection(db, "system_quizzes"));
+            sysQuizzesSnap.forEach(d => {
+                const data = d.data();
+                const title = (data.name || '').trim();
+                if (title) {
+                    if (data.subject && !quizSubjectMap[title.toLowerCase()]) quizSubjectMap[title.toLowerCase()] = data.subject;
+                    if (data.type && !quizTypeMap[title.toLowerCase()]) quizTypeMap[title.toLowerCase()] = data.type;
+                }
+            });
+        } catch (e) { }
+
+        // Fetch Students for class lookup
+        const studentsSnap = await getDocs(collection(db, "students"));
+        const studentClassMap = {};
+        const studentNameMap = {};
+        studentsSnap.forEach(d => {
+            const data = d.data();
+            const code = (data.code || d.id || '').toString().toUpperCase();
+            if (code) {
+                studentClassMap[code] = data.studentClass || data.class || data.Class || 'Grade 9A';
+                studentNameMap[code] = data.studentName || data.name;
+            }
+        });
+
+        let syncedCount = 0;
+        for (const docSnap of scoresSnap.docs) {
+            const data = docSnap.data();
+            const studentCode = (data.studentCode || docSnap.id.split('_')[0] || '').toString().trim();
+            const quizTitle = (data.quizTitle || data.examName || specificQuiz || '').toString().trim();
+            const scoreVal = parseFloat(data.score);
+
+            if (!studentCode || !quizTitle || isNaN(scoreVal)) continue;
+
+            const subject = data.subject || quizSubjectMap[quizTitle.toLowerCase()] || specificSubject || "English";
+            const studentClass = data.studentClass || data.targetClass || studentClassMap[studentCode.toUpperCase()] || specificClass || "Grade 9A";
+            const studentName = data.studentName || studentNameMap[studentCode.toUpperCase()] || "Student";
+            const resolvedType = data.type || quizTypeMap[quizTitle.toLowerCase()] || resolveQuizType(quizTitle);
+
+            const customDocId = `${studentCode}_${subject}_${quizTitle}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+
+            await setDoc(doc(db, "exam_scores", customDocId), {
+                studentCode: studentCode,
+                studentName: studentName,
+                subject: subject,
+                studentClass: studentClass,
+                examName: quizTitle,
+                quizName: quizTitle,
+                type: resolvedType,
+                score: Number(scoreVal),
+                updatedAt: new Date()
+            }, { merge: true });
+
+            syncedCount++;
+        }
+        return syncedCount;
+    } catch (e) {
+        console.warn("Auto-sync scores notice:", e);
+        return 0;
+    }
+}
+window.syncScoresToExamScores = syncScoresToExamScores;
+
+function renderLedgerRows(tbody, ledgerResults, sortOption, selectedQuiz) {
+    tbody.innerHTML = "";
+    ledgerResults.sort((a, b) => {
+        if (sortOption === 'score_desc') return (b.score || 0) - (a.score || 0);
+        if (sortOption === 'score_asc') return (a.score || 0) - (b.score || 0);
+        return (a.studentName || '').localeCompare(b.studentName || '');
+    });
+
+    ledgerResults.forEach(data => {
+        tbody.innerHTML += `
+            <tr>
+                <td>${data.examName || data.quizName || selectedQuiz}</td>
+                <td>${data.subject || '-'}</td>
+                <td>${data.studentName}</td>
+                <td><strong>${data.studentClass}</strong></td>
+                <td><strong>${data.studentCode}</strong></td>
+                <td><strong style="color: #28a745;">${data.score}</strong></td>
+                <td>
+                    <button class="delete-btn" onclick="deleteStudentScore('${data.id}')">Delete</button>
+                </td>
+            </tr>
+        `;
+    });
+}
+
 async function viewScoreLedger() {
     const selectedSubject = document.getElementById('ledgerSubjectSelect')?.value;
     const selectedClass = document.getElementById('ledgerClassSelect')?.value;
@@ -4458,13 +4833,51 @@ async function viewScoreLedger() {
         tbody.innerHTML = "<tr><td colspan='7' style='text-align:center;'>Fetching scores...</td></tr>";
 
         // Query unified exam_scores collection filtering by Subject, Class, and Exam
-        const q = query(collection(db, "exam_scores"),
+        let q = query(collection(db, "exam_scores"),
             where("subject", "==", selectedSubject),
             where("studentClass", "==", selectedClass),
             where("examName", "==", selectedQuiz)
         );
 
-        const snap = await getDocs(q);
+        let snap = await getDocs(q);
+
+        // If empty, auto-sync from legacy "scores" collection
+        if (snap.empty) {
+            await syncScoresToExamScores(selectedQuiz, selectedSubject, selectedClass);
+            snap = await getDocs(q);
+        }
+
+        // Fallback: also check by quizName field
+        if (snap.empty) {
+            const fallbackQ = query(collection(db, "exam_scores"),
+                where("subject", "==", selectedSubject),
+                where("studentClass", "==", selectedClass),
+                where("quizName", "==", selectedQuiz)
+            );
+            snap = await getDocs(fallbackQ);
+        }
+
+        // Broad fallback: match examName and filter case-insensitively in JS
+        if (snap.empty) {
+            const broadQ = query(collection(db, "exam_scores"), where("examName", "==", selectedQuiz));
+            const broadSnap = await getDocs(broadQ);
+            let ledgerResults = [];
+            broadSnap.forEach(docSnap => {
+                const d = docSnap.data();
+                const normSubj = (d.subject || '').trim().toLowerCase();
+                const normClass = (d.studentClass || '').trim().toLowerCase();
+                if ((normSubj === selectedSubject.toLowerCase() || !selectedSubject) &&
+                    (normClass === selectedClass.toLowerCase() || !selectedClass)) {
+                    ledgerResults.push({ id: docSnap.id, ...d });
+                }
+            });
+
+            if (ledgerResults.length > 0) {
+                renderLedgerRows(tbody, ledgerResults, sortOption, selectedQuiz);
+                return;
+            }
+        }
+
         tbody.innerHTML = "";
 
         if (snap.empty) {
@@ -4477,27 +4890,7 @@ async function viewScoreLedger() {
             ledgerResults.push({ id: docSnap.id, ...docSnap.data() });
         });
 
-        ledgerResults.sort((a, b) => {
-            if (sortOption === 'score_desc') return (b.score || 0) - (a.score || 0);
-            if (sortOption === 'score_asc') return (a.score || 0) - (b.score || 0);
-            return (a.studentName || '').localeCompare(b.studentName || '');
-        });
-
-        ledgerResults.forEach(data => {
-            tbody.innerHTML += `
-                <tr>
-                    <td>${data.examName || data.quizName || selectedQuiz}</td>
-                    <td>${data.subject || '-'}</td>
-                    <td>${data.studentName}</td>
-                    <td><strong>${data.studentClass}</strong></td>
-                    <td><strong>${data.studentCode}</strong></td>
-                    <td><strong style="color: #28a745;">${data.score}</strong></td>
-                    <td>
-                        <button class="delete-btn" onclick="deleteStudentScore('${data.id}')">Delete</button>
-                    </td>
-                </tr>
-            `;
-        });
+        renderLedgerRows(tbody, ledgerResults, sortOption, selectedQuiz);
 
     } catch (error) {
         console.error("Error loading ledger: ", error);

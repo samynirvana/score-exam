@@ -264,10 +264,12 @@ function renderUnifiedProfile(scoreSnap, pointSnap) {
         }
     }
 
-    // 2. Process student name & class from scores snap if available
+    // 2. Process student name & class and cache exam scores
+    cachedExamScores = [];
     if (!scoreSnap.empty) {
         scoreSnap.forEach((doc) => {
             const data = doc.data();
+            cachedExamScores.push({ id: doc.id, ...data });
             if (!studentName && data.studentName) studentName = data.studentName;
             if (!studentClass && data.studentClass) studentClass = data.studentClass;
         });
