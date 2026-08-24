@@ -95,7 +95,8 @@ onAuthStateChanged(auth, async (user) => {
                 loadAdminTable(),
                 loadPointsTable(),
                 loadStudentsDirectory(),
-                updateDashboardStats()
+                updateDashboardStats(),
+                loadQuizzesTable()
             ];
 
             if (typeof window.loadSystemDatabases === "function") {
@@ -1410,6 +1411,15 @@ document.querySelectorAll('.menu-btn').forEach(button => {
         button.classList.add('active');
         const targetTab = document.getElementById(tabId);
         if (targetTab) targetTab.classList.add('active');
+
+        // Automatically refresh tab data on switch
+        if (tabId === 'tab-manage-quizzes') {
+            loadQuizzesTable();
+        } else if (tabId === 'tab-manage-behavior') {
+            if (typeof refreshBehaviorTabLedgers === 'function') refreshBehaviorTabLedgers();
+        } else if (tabId === 'tab-manage-news') {
+            loadNewsTable();
+        }
     });
 });
 
@@ -2448,25 +2458,46 @@ window.toggleQuizStatus = toggleQuizStatus;
 
 // --- LOAD QUIZZES TABLE WITH FULL KEBAB MENU OPTIONS ---
 async function loadQuizzesTable() {
+    const tbody = document.querySelector("#quizTable tbody");
+    if (!tbody) return;
+
     try {
         const snap = await getDocs(collection(db, "quizzes"));
-        const tbody = document.querySelector("#quizTable tbody");
-        if (!tbody) return;
         tbody.innerHTML = "";
 
+        if (snap.empty) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-gray); padding: 30px;">No quizzes found. Click <strong>&quot;+ Create New Quiz&quot;</strong> above to create one.</td></tr>`;
+            return;
+        }
+
+        const quizzesList = [];
         snap.forEach(docSnap => {
-            const data = docSnap.data();
-            const safeTitle = (data.title || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-            const status = data.status || 'active';
+            quizzesList.push({ id: docSnap.id, ...docSnap.data() });
+        });
+
+        // Sort quizzes by creation/update date descending, or by title
+        quizzesList.sort((a, b) => {
+            const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+            const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+            if (timeB !== timeA) return timeB - timeA;
+            return (a.title || '').localeCompare(b.title || '');
+        });
+
+        quizzesList.forEach(quiz => {
+            const safeTitle = (quiz.title || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const displayTitle = escapeHtml(quiz.title || 'Untitled Quiz');
+            const displaySubject = escapeHtml(quiz.subject || '-');
+            const displayClass = escapeHtml(quiz.targetClass || '-');
+            const status = quiz.status || 'active';
 
             const badgeBg = status === 'active' ? '#ecfdf5' : '#f1f5f9';
             const badgeText = status === 'active' ? '#10b981' : '#64748b';
             const toggleLabel = status === 'active' ? 'Deactivate Quiz' : 'Activate Quiz';
 
             tbody.innerHTML += `<tr>
-                <td><strong>${data.title}</strong></td>
-                <td>${data.subject || '-'}</td>
-                <td>${data.targetClass || '-'}</td>
+                <td><strong>${displayTitle}</strong></td>
+                <td>${displaySubject}</td>
+                <td>${displayClass}</td>
                 <td>
                     <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; background: ${badgeBg}; color: ${badgeText};">
                         ${status.toUpperCase()}
@@ -2474,12 +2505,12 @@ async function loadQuizzesTable() {
                 </td>
                 <td>
                     <div class="kebab-menu">
-                        <button class="kebab-btn" onclick="toggleMenu(event, 'quiz-${docSnap.id}')">⋮</button>
-                        <div id="menu-quiz-${docSnap.id}" class="dropdown-menu">
-                            <button class="dropdown-item" onclick="viewQuizResults('${safeTitle}', '${docSnap.id}')">View Results</button>
-                            <button class="dropdown-item" onclick="toggleQuizStatus('${docSnap.id}', '${status}')">${toggleLabel}</button>
-                            <button class="dropdown-item" onclick="editQuiz('${docSnap.id}')">Edit Quiz</button>
-                            <button class="dropdown-item danger" onclick="deleteQuiz('${docSnap.id}')">Delete Quiz</button>
+                        <button class="kebab-btn" onclick="toggleMenu(event, 'quiz-${quiz.id}')">⋮</button>
+                        <div id="menu-quiz-${quiz.id}" class="dropdown-menu">
+                            <button class="dropdown-item" onclick="viewQuizResults('${safeTitle}', '${quiz.id}')">View Results</button>
+                            <button class="dropdown-item" onclick="toggleQuizStatus('${quiz.id}', '${status}')">${toggleLabel}</button>
+                            <button class="dropdown-item" onclick="editQuiz('${quiz.id}')">Edit Quiz</button>
+                            <button class="dropdown-item danger" onclick="deleteQuiz('${quiz.id}')">Delete Quiz</button>
                         </div>
                     </div>
                 </td>
@@ -2487,6 +2518,9 @@ async function loadQuizzesTable() {
         });
     } catch (e) {
         console.error("Error loading quizzes:", e);
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #ef4444; padding: 20px;">Failed to load quizzes: ${escapeHtml(e.message)}</td></tr>`;
+        }
     }
 }
 window.loadQuizzesTable = loadQuizzesTable;
@@ -2713,8 +2747,13 @@ window.viewQuizResults = async function (quizTitle, quizId = null) {
             const subSnap = await getDocs(qResults);
             subSnap.forEach(docSnap => {
                 const data = docSnap.data();
-                if (data.studentCode) {
-                    submissionsMap[data.studentCode] = { id: docSnap.id, ...data };
+                const sCode = (data.studentCode || '').toString().trim().toLowerCase();
+                const sName = (data.studentName || '').toString().trim().toLowerCase();
+                if (sCode) {
+                    submissionsMap[sCode] = { id: docSnap.id, ...data };
+                }
+                if (sName) {
+                    submissionsMap[`name_${sName}`] = { id: docSnap.id, ...data };
                 }
             });
         } catch (err) {
@@ -2728,21 +2767,29 @@ window.viewQuizResults = async function (quizTitle, quizId = null) {
             const scoresSnap = await getDocs(scoresQuery);
             scoresSnap.forEach(docSnap => {
                 const data = docSnap.data();
-                const code = data.studentCode || docSnap.id;
-                scoresMap[code] = data.score;
+                const code = (data.studentCode || docSnap.id || '').toString().trim().toLowerCase();
+                const name = (data.studentName || '').toString().trim().toLowerCase();
+                if (code) {
+                    scoresMap[code] = data.score;
+                }
+                if (name) {
+                    scoresMap[`name_${name}`] = data.score;
+                }
             });
         } catch (err) {
             console.warn("Error fetching scores:", err);
         }
 
-        // 5. Build Distinct Classes List
+        // 5. Build Distinct Classes List directly from eligible students
         let distinctClasses = [];
         if (isAllClasses) {
-            distinctClasses = [...new Set(eligibleStudents.map(s => s.studentClass))].filter(c => c !== 'N/A').sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+            distinctClasses = [...new Set(eligibleStudents.map(s => s.studentClass))].filter(c => c && c !== 'N/A').sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
         } else {
-            const presentClasses = new Set(eligibleStudents.map(s => s.studentClass));
-            distinctClasses = assignedClasses.filter(c => presentClasses.has(c));
-            if (distinctClasses.length === 0) distinctClasses = assignedClasses;
+            const studentClassesSet = new Set(eligibleStudents.map(s => (s.studentClass || '').toLowerCase().trim()));
+            distinctClasses = assignedClasses.filter(c => studentClassesSet.has(c.toLowerCase().trim()));
+            if (distinctClasses.length === 0) {
+                distinctClasses = [...new Set(eligibleStudents.map(s => s.studentClass))].filter(Boolean).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+            }
         }
 
         // 6. Save in Global State
@@ -2776,9 +2823,12 @@ function renderQuizClassPills() {
     const container = document.getElementById("quizClassPillsContainer");
     if (!container) return;
 
+    const normalize = (str) => (str || '').toString().trim().toLowerCase();
     const totalCount = state.eligibleStudents.length;
+
     let html = `
         <button type="button" 
+            data-class="all"
             class="quiz-class-pill ${state.selectedClass === 'all' ? 'active' : ''}" 
             onclick="window.setQuizClassFilter('all', this)">
             All (${totalCount})
@@ -2786,13 +2836,14 @@ function renderQuizClassPills() {
     `;
 
     state.distinctClasses.forEach(cls => {
-        const countInCls = state.eligibleStudents.filter(s => s.studentClass.toLowerCase() === cls.toLowerCase()).length;
-        const isActive = state.selectedClass.toLowerCase() === cls.toLowerCase();
+        const countInCls = state.eligibleStudents.filter(s => normalize(s.studentClass) === normalize(cls)).length;
+        const isActive = normalize(state.selectedClass) === normalize(cls);
         html += `
             <button type="button" 
+                data-class="${escapeHtml(cls)}"
                 class="quiz-class-pill ${isActive ? 'active' : ''}" 
                 onclick="window.setQuizClassFilter('${cls.replace(/'/g, "\\'")}', this)">
-                ${cls} (${countInCls})
+                ${escapeHtml(cls)} (${countInCls})
             </button>
         `;
     });
@@ -2800,24 +2851,29 @@ function renderQuizClassPills() {
     container.innerHTML = html;
 }
 
-window.setQuizClassFilter = function (cls, btn) {
+window.setQuizClassFilter = function (cls, btn = null) {
     window.quizResultsCurrentState.selectedClass = cls;
     
     const container = document.getElementById("quizClassPillsContainer");
     if (container) {
-        container.querySelectorAll(".quiz-class-pill").forEach(p => p.classList.remove("active"));
-        if (btn) btn.classList.add("active");
+        const normalize = (str) => (str || '').toString().trim().toLowerCase();
+        container.querySelectorAll(".quiz-class-pill").forEach(p => {
+            const pClass = p.getAttribute("data-class");
+            const isMatch = normalize(pClass) === normalize(cls);
+            p.classList.toggle("active", isMatch);
+        });
     }
 
     renderQuizResultsTable();
 };
 
-window.setQuizStatusFilter = function (status, btn) {
+window.setQuizStatusFilter = function (status, btn = null) {
     window.quizResultsCurrentState.statusFilter = status;
 
     const buttons = document.querySelectorAll(".quiz-status-filter-btn");
-    buttons.forEach(b => b.classList.remove("active"));
-    if (btn) btn.classList.add("active");
+    buttons.forEach(b => {
+        b.classList.toggle("active", b.getAttribute("data-filter") === status);
+    });
 
     renderQuizResultsTable();
 };
@@ -2833,40 +2889,30 @@ function renderQuizResultsTable() {
     const tbody = document.querySelector("#quizResultsTable tbody");
     if (!tbody) return;
 
-    // Filter students
-    let filtered = state.eligibleStudents.filter(s => {
-        // Class filter
-        if (state.selectedClass !== 'all' && s.studentClass.toLowerCase() !== state.selectedClass.toLowerCase()) {
-            return false;
-        }
+    const normalize = (str) => (str || '').toString().trim().toLowerCase();
 
-        // Status filter
-        const isDone = !!state.submissionsMap[s.code];
-        if (state.statusFilter === 'done' && !isDone) return false;
-        if (state.statusFilter === 'pending' && isDone) return false;
-
-        // Search filter
-        if (state.searchKeyword) {
-            const matchName = s.studentName.toLowerCase().includes(state.searchKeyword);
-            const matchCode = s.code.toLowerCase().includes(state.searchKeyword);
-            const matchClass = s.studentClass.toLowerCase().includes(state.searchKeyword);
-            if (!matchName && !matchCode && !matchClass) return false;
-        }
-
-        return true;
+    // 1. Filter by selected class first
+    const inClassStudents = state.eligibleStudents.filter(s => {
+        if (state.selectedClass === 'all') return true;
+        return normalize(s.studentClass) === normalize(state.selectedClass);
     });
 
-    // Update Stats in Header
-    const inClassTotal = state.selectedClass === 'all' 
-        ? state.eligibleStudents.length 
-        : state.eligibleStudents.filter(s => s.studentClass.toLowerCase() === state.selectedClass.toLowerCase()).length;
-    
-    const inClassDone = state.selectedClass === 'all'
-        ? state.eligibleStudents.filter(s => !!state.submissionsMap[s.code]).length
-        : state.eligibleStudents.filter(s => s.studentClass.toLowerCase() === state.selectedClass.toLowerCase() && !!state.submissionsMap[s.code]).length;
+    const inClassTotal = inClassStudents.length;
+    let inClassDone = 0;
+
+    inClassStudents.forEach(s => {
+        const normCode = normalize(s.code);
+        const normId = normalize(s.id);
+        const normName = normalize(s.studentName);
+        const subData = state.submissionsMap[normCode] || state.submissionsMap[normId] || state.submissionsMap[`name_${normName}`];
+        const savedScore = state.scoresMap[normCode] ?? state.scoresMap[normId] ?? state.scoresMap[`name_${normName}`];
+        const isDone = !!subData || (savedScore !== "" && savedScore !== undefined && savedScore !== null);
+        if (isDone) inClassDone++;
+    });
 
     const inClassPending = inClassTotal - inClassDone;
 
+    // Update Stats in Toolbar
     const totalEl = document.getElementById("statsTotalCount");
     const doneEl = document.getElementById("statsDoneCount");
     const pendingEl = document.getElementById("statsPendingCount");
@@ -2875,11 +2921,41 @@ function renderQuizResultsTable() {
     if (doneEl) doneEl.innerText = inClassDone;
     if (pendingEl) pendingEl.innerText = inClassPending;
 
+    // 2. Filter students by status and search keyword
+    let filtered = inClassStudents.filter(s => {
+        const normCode = normalize(s.code);
+        const normId = normalize(s.id);
+        const normName = normalize(s.studentName);
+        const subData = state.submissionsMap[normCode] || state.submissionsMap[normId] || state.submissionsMap[`name_${normName}`];
+        const savedScore = state.scoresMap[normCode] ?? state.scoresMap[normId] ?? state.scoresMap[`name_${normName}`];
+        const isDone = !!subData || (savedScore !== "" && savedScore !== undefined && savedScore !== null);
+
+        // Status filter
+        if (state.statusFilter === 'done' && !isDone) return false;
+        if (state.statusFilter === 'pending' && isDone) return false;
+
+        // Search filter
+        if (state.searchKeyword) {
+            const kw = state.searchKeyword;
+            const matchName = normName.includes(kw);
+            const matchCode = normCode.includes(kw) || normId.includes(kw);
+            const matchClass = normalize(s.studentClass).includes(kw);
+            if (!matchName && !matchCode && !matchClass) return false;
+        }
+
+        return true;
+    });
+
     if (filtered.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="5" style="text-align:center; padding: 32px 16px; color: #64748b;">
-                    <div style="font-size: 28px; margin-bottom: 8px;">📋</div>
+                <td colspan="5" style="text-align:center; padding: 36px 16px; color: #64748b;">
+                    <div style="margin-bottom: 10px; display: flex; justify-content: center;">
+                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                        </svg>
+                    </div>
                     <div style="font-weight: 600; font-size: 14px; color: var(--text-dark, #334155);">No students match your filter</div>
                     <div style="font-size: 12px; margin-top: 4px;">Try selecting another class tab or adjusting the search filter.</div>
                 </td>
@@ -2891,16 +2967,23 @@ function renderQuizResultsTable() {
     tbody.innerHTML = "";
 
     filtered.forEach(student => {
-        const studentCode = student.code;
+        const studentCode = student.code || student.id;
         const studentName = student.studentName;
         const studentClass = student.studentClass;
-        const subData = state.submissionsMap[studentCode];
-        const isDone = !!subData;
-        const savedScore = state.scoresMap[studentCode] !== undefined ? state.scoresMap[studentCode] : "";
+        
+        const normCode = normalize(student.code);
+        const normId = normalize(student.id);
+        const normName = normalize(student.studentName);
+
+        const subData = state.submissionsMap[normCode] || state.submissionsMap[normId] || state.submissionsMap[`name_${normName}`];
+        const isSubmittedOnline = !!subData;
+
+        const savedScore = state.scoresMap[normCode] ?? state.scoresMap[normId] ?? state.scoresMap[`name_${normName}`] ?? "";
+        const hasOfficialScore = savedScore !== "" && savedScore !== undefined && savedScore !== null;
 
         // Status Badge HTML with visual icon
         let statusBadgeHtml = "";
-        if (isDone) {
+        if (isSubmittedOnline) {
             const autoScoreTxt = (subData.totalAutoGradable && subData.totalAutoGradable > 0) 
                 ? `<small style="display:block; font-size:11px; color:#047857; font-weight:600; margin-top:2px;">Auto: ${subData.score ?? 0}/${subData.totalAutoGradable} pts</small>` 
                 : '';
@@ -2908,10 +2991,20 @@ function renderQuizResultsTable() {
             statusBadgeHtml = `
                 <div style="display:flex; flex-direction:column; align-items:center;">
                     <span class="quiz-badge-status-done" title="Submitted Online">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                         Done
                     </span>
                     ${autoScoreTxt}
+                </div>
+            `;
+        } else if (hasOfficialScore) {
+            statusBadgeHtml = `
+                <div style="display:flex; flex-direction:column; align-items:center;">
+                    <span class="quiz-badge-status-done" style="background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe;" title="Graded Offline">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        Graded
+                    </span>
+                    <small style="display:block; font-size:11px; color:#64748b; margin-top:2px;">Offline Score</small>
                 </div>
             `;
         } else {
@@ -2921,6 +3014,7 @@ function renderQuizResultsTable() {
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                         Not Done
                     </span>
+                    <small style="display:block; font-size:11px; color:#94a3b8; margin-top:2px;">Unsubmitted</small>
                 </div>
             `;
         }
@@ -2931,17 +3025,17 @@ function renderQuizResultsTable() {
 
         tbody.innerHTML += `
             <tr style="border-bottom: 1px solid var(--border-color, #f1f5f9);">
-                <td style="padding: 12px 14px;">
-                    <div style="font-weight: 700; color: var(--text-dark, #1e293b); font-size: 14px;">${studentName}</div>
+                <td style="padding: 10px 14px;">
+                    <div style="font-weight: 700; color: var(--text-dark, #1e293b); font-size: 13.5px;">${studentName}</div>
                     <div style="font-size: 11px; color: #64748b; font-family: monospace; margin-top: 1px;">ID: ${studentCode}</div>
                 </td>
-                <td style="padding: 12px 14px;">
+                <td style="padding: 10px 14px;">
                     <span class="quiz-class-tag">${studentClass}</span>
                 </td>
-                <td style="padding: 12px 14px; text-align: center;">
+                <td style="padding: 10px 14px; text-align: center;">
                     ${statusBadgeHtml}
                 </td>
-                <td style="padding: 12px 14px;">
+                <td style="padding: 10px 14px;">
                     <div style="display:flex; align-items:center; gap:6px;">
                         <input 
                             type="number" 
@@ -2951,32 +3045,35 @@ function renderQuizResultsTable() {
                             placeholder="0 - 100" 
                             min="0" 
                             max="100"
-                            style="width: 75px; padding: 6px 8px; font-size: 13px; font-weight: 700; text-align: center; border: 1px solid var(--border-color, #cbd5e1); border-radius: 8px; background: var(--bg-card, #ffffff); color: var(--text-dark, #1e293b);"
+                            style="width: 70px; height: 30px; padding: 0 6px; font-size: 13px; font-weight: 700; text-align: center; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px; background: var(--bg-card, #ffffff); color: var(--text-dark, #1e293b); margin: 0 !important;"
                         >
-                        <span id="score-badge-${studentCode}" style="${savedScore !== '' ? 'display:inline-flex;' : 'display:none;'} color:#10b981; font-weight:bold; font-size:14px;" title="Official score saved">✓</span>
+                        <span id="score-badge-${studentCode}" style="${savedScore !== '' ? 'display:inline-flex;' : 'display:none;'} align-items:center; color:#10b981;" title="Official score saved">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </span>
                     </div>
                 </td>
-                <td style="padding: 12px 14px; text-align: right;">
+                <td style="padding: 10px 14px; text-align: right;">
                     <div style="display: inline-flex; gap: 6px; align-items: center;">
                         <button 
                             type="button"
                             class="btn-quiz-check" 
                             onclick="viewStudentAnswers('${studentCode}', '${safeStudentName}', '${safeQuizTitle}', '${safeStudentClass}')"
-                            style="display:inline-flex; align-items:center; gap:4px; padding: 6px 11px; font-size: 12px; font-weight: 600; background: ${isDone ? '#4f46e5' : '#64748b'}; color: white; border: none; border-radius: 7px; cursor: pointer; transition: all 0.2s;"
-                            title="${isDone ? 'Inspect submitted answers' : 'View student answers'}"
+                            style="background: ${isSubmittedOnline ? '#4f46e5' : '#64748b'}; color: white;"
+                            title="${isSubmittedOnline ? 'Inspect submitted answers' : 'View student details & grade'}"
                         >
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                            Check
+                            <span>Check</span>
                         </button>
                         <button 
                             type="button"
                             id="save-btn-${studentCode}"
                             class="btn-quiz-save" 
                             onclick="saveDirectScore('${studentCode}', '${safeStudentName}', '${safeStudentClass}', '${safeQuizTitle}', this)"
-                            style="display:inline-flex; align-items:center; gap:4px; padding: 6px 12px; font-size: 12px; font-weight: 600; background: #2563eb; color: white; border: none; border-radius: 7px; cursor: pointer; transition: all 0.2s;"
+                            style="background: #2563eb; color: white;"
+                            title="Save score to ledger"
                         >
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                            Save
+                            <span>Save</span>
                         </button>
                     </div>
                 </td>
@@ -3020,16 +3117,17 @@ window.viewStudentAnswers = async function (studentCode, studentName, quizTitle,
                     placeholder="Score" 
                     min="0" 
                     max="100" 
-                    style="width:90px; padding:7px 10px; font-size:14px; font-weight:700; text-align:center; border-radius:8px; border:1px solid var(--border-color, #cbd5e1); background:var(--bg-card, #fff); color:var(--text-dark, #1e293b);"
+                    style="width:80px; height:32px; padding:0 8px; font-size:13.5px; font-weight:700; text-align:center; border-radius:8px; border:1px solid var(--border-color, #cbd5e1); background:var(--bg-card, #fff); color:var(--text-dark, #1e293b); margin:0 !important;"
                 >
             </div>
             <div style="display:flex; gap:8px;">
                 <button 
                     type="button" 
                     onclick="saveModalGrade('${studentCode}', '${safeStudentName}', '${safeStudentClass}', '${safeQuizTitle}')" 
-                    style="background:#2563eb; color:white; border:none; padding:8px 18px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px;"
+                    style="background:#2563eb; color:white; border:none; padding:8px 16px; border-radius:8px; font-size:12.5px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px; height:34px;"
                 >
-                    💾 Save Grade & Close
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                    <span>Save Grade & Close</span>
                 </button>
             </div>
         `;
@@ -3047,9 +3145,9 @@ window.viewStudentAnswers = async function (studentCode, studentName, quizTitle,
             if (autoScoreEl) {
                 autoScoreEl.innerHTML = `
                     <div style="display:flex; align-items:center; gap:10px;">
-                        <span style="font-size:24px;">⏳</span>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                         <div>
-                            <strong style="color: #f59e0b; font-size:14px;">No Online Submission Found</strong>
+                            <strong style="color: #f59e0b; font-size:13.5px;">No Online Submission Found</strong>
                             <div style="color: #64748b; font-size:12px; margin-top:2px;">The student has not submitted this quiz digitally yet. You can still manually enter and save their offline grade below.</div>
                         </div>
                     </div>
@@ -3092,14 +3190,105 @@ window.viewStudentAnswers = async function (studentCode, studentName, quizTitle,
             return;
         }
 
+        // Fetch Quiz Definition for accurate Answer Key comparison
+        let quizDocData = window.quizResultsCurrentState?.quizData;
+        if (!quizDocData || !quizDocData.items) {
+            try {
+                const qQuiz = query(collection(db, "quizzes"), where("title", "==", quizTitle));
+                const quizSnap = await getDocs(qQuiz);
+                if (!quizSnap.empty) {
+                    quizDocData = quizSnap.docs[0].data();
+                }
+            } catch (e) {
+                console.warn("Could not fetch quiz definition for answer key matching:", e);
+            }
+        }
+
+        const gradableQuizItems = (quizDocData?.items || quizDocData?.questions || []).filter(it => it.type !== 'header' && it.type !== 'passage');
+
         if (container) {
             container.innerHTML = responses.map((item, index) => {
+                const normStudentResp = (item.response || '').toString().trim().toLowerCase();
+                
+                // Find matching question from quiz definition
+                const originalQuizItem = gradableQuizItems[index] || gradableQuizItems.find(q => (q.prompt || q.question || '').trim().toLowerCase() === (item.prompt || '').trim().toLowerCase());
+
+                let isCorrect = item.isCorrect;
+                let expectedAnswer = item.expected || '';
+                let isEssay = item.isEssay || (originalQuizItem && originalQuizItem.type === 'essay');
+
+                if (isCorrect === undefined && originalQuizItem) {
+                    if (originalQuizItem.type === 'fill') {
+                        const acceptable = (originalQuizItem.answers || []).map(a => (a || '').toString().trim().toLowerCase());
+                        isCorrect = acceptable.length > 0 ? acceptable.includes(normStudentResp) : false;
+                        expectedAnswer = (originalQuizItem.answers || []).join(' / ');
+                    } else if (originalQuizItem.type === 'mcq' || (!originalQuizItem.type && originalQuizItem.question)) {
+                        const correctIdx = originalQuizItem.correct;
+                        const correctOption = (originalQuizItem.options && correctIdx !== undefined) ? originalQuizItem.options[correctIdx] : '';
+                        isCorrect = correctOption ? (normStudentResp === correctOption.toString().trim().toLowerCase()) : false;
+                        expectedAnswer = correctOption;
+                    } else if (originalQuizItem.type === 'matching') {
+                        const totalPairs = (originalQuizItem.lefts || []).length;
+                        isCorrect = totalPairs > 0 ? (normStudentResp.startsWith(`${totalPairs}/${totalPairs}`)) : false;
+                        expectedAnswer = (originalQuizItem.lefts || []).map((l, i) => `${l} → ${(originalQuizItem.rights || [])[i]}`).join(', ');
+                    } else if (originalQuizItem.type === 'essay') {
+                        isEssay = true;
+                    }
+                }
+
+                // Render Badge & Card Style
+                let statusBadge = '';
+                let borderLeftColor = '#3b82f6';
+                let expectedHtml = '';
+
+                if (isEssay) {
+                    statusBadge = `
+                        <span style="display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:14px; font-size:11.5px; font-weight:700; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe;">
+                            Manual Review
+                        </span>
+                    `;
+                    borderLeftColor = '#3b82f6';
+                } else if (isCorrect === true) {
+                    statusBadge = `
+                        <span style="display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:14px; font-size:11.5px; font-weight:700; background:#dcfce7; color:#15803d; border:1px solid #bbf7d0;">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            Correct
+                        </span>
+                    `;
+                    borderLeftColor = '#10b981';
+                } else if (isCorrect === false) {
+                    statusBadge = `
+                        <span style="display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:14px; font-size:11.5px; font-weight:700; background:#fee2e2; color:#b91c1c; border:1px solid #fecaca;">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#b91c1c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            Incorrect
+                        </span>
+                    `;
+                    borderLeftColor = '#ef4444';
+
+                    if (expectedAnswer) {
+                        expectedHtml = `
+                            <div style="margin-top: 8px; font-size: 12.5px; color: #991b1b; background: #fef2f2; padding: 6px 12px; border-radius: 6px; border: 1px solid #fee2e2; display: flex; align-items: center; gap: 6px;">
+                                <strong style="color: #7f1d1d;">Expected Answer:</strong>
+                                <span>${escapeHtml(expectedAnswer)}</span>
+                            </div>
+                        `;
+                    }
+                }
+
                 return `
-                    <div style="border: 1px solid var(--border-color, #e2e8f0); padding: 14px 16px; margin-bottom: 12px; border-radius: 10px; background: var(--bg-card-subtle, #f8fafc); border-left: 4px solid #3b82f6;">
-                        <p style="margin: 0 0 8px 0; font-weight: 700; color: var(--text-dark, #1e293b); font-size:14px;">Q${index + 1}: ${item.prompt || 'Question'}</p>
-                        <div style="background: var(--bg-card, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px; padding: 8px 12px;">
-                            <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Student Answer:</span>
-                            <div style="color: var(--text-dark, #0f172a); font-weight: 500; font-size: 13px; margin-top: 2px; white-space: pre-wrap;">${item.response || 'No answer'}</div>
+                    <div style="border: 1px solid var(--border-color, #e2e8f0); padding: 14px 16px; margin-bottom: 12px; border-radius: 10px; background: var(--bg-card-subtle, #f8fafc); border-left: 5px solid ${borderLeftColor};">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:8px;">
+                            <p style="margin: 0; font-weight: 700; color: var(--text-dark, #1e293b); font-size:14px; line-height: 1.4; flex: 1;">
+                                Q${index + 1}: ${item.prompt || 'Question'}
+                            </p>
+                            <div style="flex-shrink: 0;">
+                                ${statusBadge}
+                            </div>
+                        </div>
+                        <div style="background: var(--bg-card, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px; padding: 10px 14px;">
+                            <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Student Answer:</span>
+                            <div style="color: var(--text-dark, #0f172a); font-weight: 600; font-size: 13.5px; margin-top: 3px; white-space: pre-wrap;">${escapeHtml(item.response || 'No answer')}</div>
+                            ${expectedHtml}
                         </div>
                     </div>
                 `;

@@ -36,6 +36,9 @@ const initMobileNav = () => {
                     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
                     const targetTab = document.getElementById(tabId);
                     if (targetTab) targetTab.classList.add('active');
+                    if (tabId === 'tab-manage-quizzes' && typeof window.loadQuizzesTable === 'function') {
+                        window.loadQuizzesTable();
+                    }
                 }
 
                 const subtab = item.getAttribute('data-subtab');

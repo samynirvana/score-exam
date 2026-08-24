@@ -316,24 +316,39 @@ document.getElementById('submitQuizBtn').addEventListener('click', async (e) => 
             autoGradableCount++;
             const selected = form.querySelector(`input[name="item_${idx}"]:checked`);
             const val = selected ? parseInt(selected.value) : null;
-            if (val === item.correct) score++;
+            const isCorrect = (val === item.correct);
+            if (isCorrect) score++;
+            const expectedOption = (item.options && item.correct !== undefined) ? item.options[item.correct] : "";
             studentResponses.push({ 
                 prompt: item.prompt || item.question, 
-                response: val !== null && item.options ? item.options[val] : "No answer" 
+                response: val !== null && item.options ? item.options[val] : "No answer",
+                isCorrect: isCorrect,
+                expected: expectedOption
             });
         } 
         // Fill in Blank
         else if (item.type === 'fill') {
             autoGradableCount++;
             const input = form.querySelector(`[name="item_${idx}"]`);
-            const val = input ? input.value.trim().toLowerCase() : "";
-            if (item.answers && item.answers.map(a => a.toLowerCase()).includes(val)) score++;
-            studentResponses.push({ prompt: item.prompt, response: val || "No answer" });
+            const rawVal = input ? input.value.trim() : "";
+            const val = rawVal.toLowerCase();
+            const isCorrect = (item.answers && item.answers.map(a => a.toLowerCase().trim()).includes(val));
+            if (isCorrect) score++;
+            studentResponses.push({ 
+                prompt: item.prompt, 
+                response: rawVal || "No answer",
+                isCorrect: isCorrect,
+                expected: (item.answers || []).join(' / ')
+            });
         } 
         // Essay
         else if (item.type === 'essay') {
             const textarea = form.querySelector(`textarea[name="item_${idx}"]`);
-            studentResponses.push({ prompt: item.prompt, response: textarea ? textarea.value.trim() : "No answer" });
+            studentResponses.push({ 
+                prompt: item.prompt, 
+                response: textarea ? textarea.value.trim() : "No answer",
+                isEssay: true
+            });
         } 
         // Matching
         else if (item.type === 'matching') {
@@ -345,10 +360,13 @@ document.getElementById('submitQuizBtn').addEventListener('click', async (e) => 
                     correctMatches++;
                 }
             });
-            if (item.lefts && correctMatches === item.lefts.length) score++;
+            const isCorrect = (item.lefts && correctMatches === item.lefts.length);
+            if (isCorrect) score++;
             studentResponses.push({ 
                 prompt: item.prompt, 
-                response: `${correctMatches}/${(item.lefts || []).length} pairs matched` 
+                response: `${correctMatches}/${(item.lefts || []).length} pairs matched`,
+                isCorrect: isCorrect,
+                expected: (item.lefts || []).map((l, i) => `${l} → ${(item.rights || [])[i]}`).join(', ')
             });
         }
     });
