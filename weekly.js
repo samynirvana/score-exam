@@ -143,13 +143,19 @@ let draftWeeklySchedule = null;
 let draftWeeklyMaterials = {};
 let draftWeeklyUniforms = {};
 
+function isAdminUser() {
+  const user = auth.currentUser;
+  if (!user || !user.email) return false;
+  return user.email.toLowerCase() === 'adm@gc.com';
+}
+
 function isTeacherUser() {
   const user = auth.currentUser;
   if (!user || !user.email) return false;
   const emailLower = user.email.toLowerCase();
-  if (emailLower === 'adm@gc.com') return false;
+  if (isAdminUser()) return false;
 
-  if (appEntities.teacherEmails) {
+  if (appEntities && appEntities.teacherEmails) {
     const teacherName = Object.keys(appEntities.teacherEmails).find(
       name => (appEntities.teacherEmails[name] || '').toLowerCase() === emailLower
     );
@@ -163,7 +169,7 @@ function getLoggedInTeacherName() {
   if (!user || !user.email) return null;
   const emailLower = user.email.toLowerCase();
 
-  if (appEntities.teacherEmails) {
+  if (appEntities && appEntities.teacherEmails) {
     return Object.keys(appEntities.teacherEmails).find(
       name => (appEntities.teacherEmails[name] || '').toLowerCase() === emailLower
     ) || null;
@@ -174,11 +180,14 @@ function getLoggedInTeacherName() {
 function canUserEditClass(className) {
   const user = auth.currentUser;
   if (!user) return false;
-  if (!isTeacherUser()) return true; // Admin has full access to edit any class
+  if (isAdminUser()) return true; // Super Admin can edit any class weekly schedule
+
+  if (!isTeacherUser()) return false;
 
   const teacherName = getLoggedInTeacherName();
   if (!teacherName) return false;
   const assignedClass = appEntities.homeTeachers?.[teacherName];
+  // Only the assigned Home Teacher for this specific class can edit its weekly schedule
   return !!(assignedClass && assignedClass === className);
 }
 
@@ -227,26 +236,30 @@ function checkUserRoleAccess() {
     // Hide Admin Dashboard button for Teachers
     if (btnAdminView) btnAdminView.style.display = 'none';
 
-    // Hide Teacher Select dropdown container for Teachers
+    // Hide Teacher Select dropdown container for Teachers so they cannot view or switch to other teachers
     if (teacherSelectContainer) teacherSelectContainer.style.display = 'none';
 
-    // Lock Teacher Select dropdown to logged-in teacher's name
+    // Lock Teacher Select dropdown strictly to logged-in teacher's name
     const tName = getLoggedInTeacherName();
     const tSelect = document.getElementById('teacherSelectView');
     if (tSelect && tName) {
+      tSelect.innerHTML = `<option value="${tName}">${tName}</option>`;
       tSelect.value = tName;
-      renderTeacherView();
     }
+    renderTeacherView();
 
     // Switch away if currently on Admin View tab
     const adminTab = document.getElementById('adminView');
     if (adminTab && adminTab.classList.contains('active')) {
       switchTab('classView', document.getElementById('btnClassView'));
     }
-  } else {
+  } else if (isAdminUser()) {
     // Admin User: Show Admin tab and Teacher dropdown
     if (btnAdminView) btnAdminView.style.display = 'inline-flex';
     if (teacherSelectContainer) teacherSelectContainer.style.display = 'flex';
+  } else {
+    if (btnAdminView) btnAdminView.style.display = 'none';
+    if (teacherSelectContainer) teacherSelectContainer.style.display = 'none';
   }
 }
 
@@ -382,7 +395,7 @@ document.getElementById('btnTeacherView')?.addEventListener('click', (e) => swit
 document.getElementById('btnAdminView')?.addEventListener('click', (e) => switchTab('adminView', e.currentTarget));
 
 function switchTab(tabId, targetBtn) {
-  if (tabId === 'adminView' && isTeacherUser()) {
+  if (tabId === 'adminView' && !isAdminUser()) {
     alert("Access Denied: Only administrators can access the Admin Dashboard.");
     return;
   }
@@ -393,7 +406,11 @@ function switchTab(tabId, targetBtn) {
   const btn = targetBtn?.closest ? targetBtn.closest('.tab-btn') : targetBtn;
   btn?.classList.add('active');
 
-  if (tabId === 'adminView') {
+  if (tabId === 'classView') {
+    updateClassEditButtonState();
+  } else if (tabId === 'teacherView') {
+    renderTeacherView();
+  } else if (tabId === 'adminView') {
     renderEntityTables();
     renderManageScheduleTable();
     renderManageThemesTable();
@@ -941,6 +958,14 @@ function populateAdminSelects() {
   const teacherSelects = [document.getElementById('adminTeacherSelect'), document.getElementById('teacherSelectView')];
   teacherSelects.forEach(select => {
     if (select) {
+      if (select.id === 'teacherSelectView' && isTeacherUser()) {
+        const loggedInName = getLoggedInTeacherName();
+        if (loggedInName) {
+          select.innerHTML = `<option value="${loggedInName}">${loggedInName}</option>`;
+          select.value = loggedInName;
+          return;
+        }
+      }
       const currentVal = select.value;
       select.innerHTML = appEntities.teachers.map(t => `<option value="${t}">${t}</option>`).join('');
       if (currentVal && appEntities.teachers.includes(currentVal)) select.value = currentVal;
@@ -1140,8 +1165,8 @@ function renderEntityTables() {
     const list = type === 'teachers'
       ? (appEntities.teachers || []).filter(t => !appEntities.homeTeachers?.[t])
       : type === 'homeTeachers'
-      ? (appEntities.teachers || []).filter(t => !!appEntities.homeTeachers?.[t])
-      : (appEntities[type] || []);
+        ? (appEntities.teachers || []).filter(t => !!appEntities.homeTeachers?.[t])
+        : (appEntities[type] || []);
     const totalPages = Math.ceil(list.length / ENTITY_PAGE_SIZE) || 1;
     if (entityPageMap[type] < totalPages) {
       entityPageMap[type]++;
@@ -1673,7 +1698,10 @@ function attachClassEditTableListeners(selectedClass, calPrefix) {
 
 async function saveClassWeeklySchedule() {
   const selectedClass = document.getElementById('classSelectView')?.value;
-  if (!selectedClass) return;
+  if (!selectedClass || !canUserEditClass(selectedClass)) {
+    alert("You do not have permission to modify the schedule for this class.");
+    return;
+  }
   const calPrefix = getActiveCalendarPrefix('class');
   const overrideKey = `${calPrefix}_${selectedClass}`;
   const week = document.getElementById('classWeekSelect')?.value || 'this week';
@@ -1709,7 +1737,10 @@ async function saveClassWeeklySchedule() {
 
 async function resetClassWeeklySchedule() {
   const selectedClass = document.getElementById('classSelectView')?.value;
-  if (!selectedClass) return;
+  if (!selectedClass || !canUserEditClass(selectedClass)) {
+    alert("You do not have permission to reset the schedule for this class.");
+    return;
+  }
   const calPrefix = getActiveCalendarPrefix('class');
   const overrideKey = `${calPrefix}_${selectedClass}`;
   const week = document.getElementById('classWeekSelect')?.value || 'this week';
@@ -1991,7 +2022,9 @@ document.getElementById('btnPrintPDF')?.addEventListener('click', () => {
 document.getElementById('btnDownloadExcel')?.addEventListener('click', exportWeeklyToExcel);
 
 document.getElementById('btnTeacherPrintPDF')?.addEventListener('click', () => {
-  const teacherName = document.getElementById('teacherSelectView')?.value || '';
+  const teacherName = isTeacherUser()
+    ? (getLoggedInTeacherName() || '')
+    : (document.getElementById('teacherSelectView')?.value || '');
   const yr = (document.getElementById('teacherYearSelect')?.value || '2026/2027').replace('-', '/');
   const th = document.getElementById('teacherThemeSelect')?.value || '';
   const wk = document.getElementById('teacherWeekSelect')?.value || '';
@@ -2403,7 +2436,9 @@ function exportTeacherToExcel() {
   const theme = document.getElementById('teacherThemeSelect')?.value || '';
   const week = document.getElementById('teacherWeekSelect')?.value || '';
   const dates = document.getElementById('teacherDateBadge')?.textContent || '';
-  const teacherName = document.getElementById('teacherSelectView')?.value || 'Teacher';
+  const teacherName = isTeacherUser()
+    ? (getLoggedInTeacherName() || 'Teacher')
+    : (document.getElementById('teacherSelectView')?.value || 'Teacher');
 
   const table = document.querySelector('#teacherView .schedule-side table');
   if (!table) {
@@ -2640,8 +2675,21 @@ function getTeacherSlotAssignment(teacherName, day, slotId) {
 
 function renderTeacherView() {
   const selectElem = document.getElementById('teacherSelectView');
-  if (!selectElem) return;
-  const selectedTeacher = selectElem.value;
+  let selectedTeacher = selectElem ? selectElem.value : '';
+
+  if (isTeacherUser()) {
+    const loggedInName = getLoggedInTeacherName();
+    if (loggedInName) {
+      selectedTeacher = loggedInName;
+      if (selectElem && selectElem.value !== loggedInName) {
+        selectElem.innerHTML = `<option value="${loggedInName}">${loggedInName}</option>`;
+        selectElem.value = loggedInName;
+      }
+    } else {
+      selectedTeacher = '';
+    }
+  }
+
   const days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
   const calPrefix = getActiveCalendarPrefix('teacher');
 
@@ -3265,7 +3313,9 @@ onSnapshot(doc(db, "schedules", "classNotesData"), (docSnap) => {
 });
 
 document.getElementById('btnSaveClassNotes')?.addEventListener('click', async () => {
-  const selectedTeacher = document.getElementById('teacherSelectView')?.value;
+  const selectedTeacher = isTeacherUser()
+    ? (getLoggedInTeacherName() || '')
+    : (document.getElementById('teacherSelectView')?.value || '');
   const assignedClass = appEntities.homeTeachers?.[selectedTeacher];
   if (!assignedClass) return;
 

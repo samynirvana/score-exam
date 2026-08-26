@@ -15,7 +15,10 @@
       "linkconverter.py"
     ]
   },
-  "firestore": {
-    "rules": "firestore.rules"
-  }
+  "firestore": [
+    {
+      "database": "mrsyamdb",
+      "rules": "firestore.rules"
+    }
+  ]
 }
