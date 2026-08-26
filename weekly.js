@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import {
   getAuth,
   signInWithEmailAndPassword,
@@ -142,11 +142,37 @@ let isClassEditMode = false;
 let draftWeeklySchedule = null;
 let draftWeeklyMaterials = {};
 let draftWeeklyUniforms = {};
+let currentUserRole = null;
+
+async function fetchCurrentUserRole(user) {
+  if (!user) {
+    currentUserRole = null;
+    return;
+  }
+  try {
+    const userDoc = await getDoc(doc(db, "users", user.uid));
+    if (userDoc.exists()) {
+      currentUserRole = userDoc.data().role || null;
+    } else {
+      currentUserRole = null;
+    }
+  } catch (err) {
+    console.warn("Could not fetch user role from Firestore:", err);
+    currentUserRole = null;
+  }
+}
 
 function isAdminUser() {
   const user = auth.currentUser;
   if (!user || !user.email) return false;
-  return user.email.toLowerCase() === 'adm@gc.com';
+  if (currentUserRole === 'admin') return true;
+  const emailLower = user.email.toLowerCase();
+  return (
+    emailLower === 'adm@gc.com' ||
+    emailLower === 'admin@gc.com' ||
+    emailLower.startsWith('admin@') ||
+    emailLower.startsWith('adm@')
+  );
 }
 
 function isTeacherUser() {
@@ -264,7 +290,7 @@ function checkUserRoleAccess() {
 }
 
 // Firebase Auth State Observer
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   const loginModal = document.getElementById('loginModal');
   const appMain = document.getElementById('appMain');
   const userDisplayEmail = document.getElementById('userDisplayEmail');
@@ -276,8 +302,10 @@ onAuthStateChanged(auth, (user) => {
     if (userDisplayEmailText) userDisplayEmailText.textContent = `Logged in as: ${user.email}`;
     if (userDisplayEmail) userDisplayEmail.textContent = `Logged in as: ${user.email}`;
 
+    await fetchCurrentUserRole(user);
     checkUserRoleAccess();
   } else {
+    currentUserRole = null;
     if (loginModal) loginModal.style.display = 'flex';
     if (appMain) appMain.style.display = 'none';
   }
