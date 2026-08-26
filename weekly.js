@@ -10,7 +10,6 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { escapeHtml } from "./utils.js";
 
-
 const firebaseConfig = {
   apiKey: "AIzaSyBIUtrjlgHEI7TtOY-nRiXzQ0DIcdkT-W0",
   authDomain: "weekly-teacher.firebaseapp.com",
@@ -21,8 +20,7 @@ const firebaseConfig = {
   measurementId: "G-VFRECGLJFK"
 };
 
-
-// Initialize Primary Firebase & Auth
+// Initialize Dedicated Firebase App & Services for Weekly Schedule
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
@@ -841,7 +839,81 @@ function updateAdminPeriodSelectOptions() {
   }
 }
 
+function syncEntitiesFromMasterSchedules() {
+  if (!appEntities) appEntities = { teachers: [], classes: [], subjects: [], homeTeachers: {}, teacherEmails: {} };
+  if (!appEntities.classes) appEntities.classes = [];
+  if (!appEntities.teachers) appEntities.teachers = [];
+  if (!appEntities.subjects) appEntities.subjects = [];
+  if (!appEntities.homeTeachers) appEntities.homeTeachers = {};
+  if (!appEntities.teacherEmails) appEntities.teacherEmails = {};
+
+  let changed = false;
+  const classSet = new Set(appEntities.classes.map(c => (c || '').trim()).filter(Boolean));
+  const teacherSet = new Set(appEntities.teachers.map(t => (t || '').trim()).filter(Boolean));
+  const subjectSet = new Set(appEntities.subjects.map(s => (s || '').trim()).filter(Boolean));
+
+  // 1. Scan masterSchedules for all classes, teachers, and subjects
+  if (masterSchedules && typeof masterSchedules === 'object') {
+    Object.entries(masterSchedules).forEach(([className, classData]) => {
+      const trimmedClass = (className || '').trim();
+      if (trimmedClass && !classSet.has(trimmedClass)) {
+        classSet.add(trimmedClass);
+        appEntities.classes.push(trimmedClass);
+        changed = true;
+      }
+      if (classData && typeof classData === 'object') {
+        Object.values(classData).forEach(dayData => {
+          if (dayData && typeof dayData === 'object') {
+            Object.values(dayData).forEach(slotEntries => {
+              const entriesArr = Array.isArray(slotEntries) ? slotEntries : (slotEntries ? [slotEntries] : []);
+              entriesArr.forEach(entry => {
+                if (entry && entry.teacher) {
+                  const trimmedTeacher = entry.teacher.trim();
+                  if (trimmedTeacher && !teacherSet.has(trimmedTeacher)) {
+                    teacherSet.add(trimmedTeacher);
+                    appEntities.teachers.push(trimmedTeacher);
+                    changed = true;
+                  }
+                }
+                if (entry && entry.subject) {
+                  const cleanSub = entry.subject.replace(/\s*\(Section\s*\d+\)$/i, '').trim();
+                  if (cleanSub && !subjectSet.has(cleanSub)) {
+                    subjectSet.add(cleanSub);
+                    appEntities.subjects.push(cleanSub);
+                    changed = true;
+                  }
+                }
+              });
+            });
+          }
+        });
+      }
+    });
+  }
+
+  // 2. Scan weeklyOverrides for any additional classes
+  if (weeklyOverrides && typeof weeklyOverrides === 'object') {
+    Object.keys(weeklyOverrides).forEach(key => {
+      const lastUnderscore = key.lastIndexOf('_');
+      if (lastUnderscore !== -1) {
+        const potentialClass = key.substring(lastUnderscore + 1).trim();
+        if (potentialClass && !classSet.has(potentialClass)) {
+          classSet.add(potentialClass);
+          appEntities.classes.push(potentialClass);
+          changed = true;
+        }
+      }
+    });
+  }
+
+  // Naturally sort classes (e.g., Grade 7A, Grade 7B, Grade 8A, Grade 9A, Grade 9B, Grade 10, etc.)
+  appEntities.classes.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+
+  return changed;
+}
+
 function populateAdminSelects() {
+  syncEntitiesFromMasterSchedules();
   updateAdminPeriodSelectOptions();
 
   const classSelects = [
@@ -853,7 +925,9 @@ function populateAdminSelects() {
     if (select) {
       const currentVal = select.value;
       select.innerHTML = appEntities.classes.map(c => `<option value="${c}">${c}</option>`).join('');
-      if (currentVal && appEntities.classes.includes(currentVal)) select.value = currentVal;
+      if (currentVal && appEntities.classes.includes(currentVal)) {
+        select.value = currentVal;
+      }
     }
   });
 
@@ -3118,21 +3192,44 @@ onSnapshot(doc(db, "config", "academicCalendar"), (docSnap) => {
 onSnapshot(doc(db, "config", "appEntities"), (docSnap) => {
   if (docSnap.exists()) {
     appEntities = docSnap.data();
+    if (!appEntities.classes) appEntities.classes = [];
+    if (!appEntities.teachers) appEntities.teachers = [];
+    if (!appEntities.subjects) appEntities.subjects = [];
+    if (!appEntities.homeTeachers) appEntities.homeTeachers = {};
+    if (!appEntities.teacherEmails) appEntities.teacherEmails = {};
   } else {
     appEntities = {
       teachers: ["Mr. Syam", "Mr. Jerry"],
       classes: ["Grade 9A", "Grade 9B", "Grade 9C"],
-      subjects: ["English", "Pancasila", "ICT", "Math"]
+      subjects: ["English", "Pancasila", "ICT", "Math"],
+      homeTeachers: {},
+      teacherEmails: {}
     };
-    setDoc(doc(db, "config", "appEntities"), appEntities);
+  }
+  const hadNew = syncEntitiesFromMasterSchedules();
+  if (hadNew) {
+    setDoc(doc(db, "config", "appEntities"), appEntities, { merge: true }).catch(console.warn);
   }
   populateAdminSelects();
   renderClassSchedule();
   renderTeacherView();
 });
 
-onSnapshot(doc(db, "schedules", "masterSchedules"), (docSnap) => {
-  if (docSnap.exists()) masterSchedules = docSnap.data();
+onSnapshot(doc(db, "schedules", "masterSchedules"), async (docSnap) => {
+  if (docSnap.exists()) {
+    masterSchedules = docSnap.data();
+  } else {
+    masterSchedules = {};
+  }
+  const hadNew = syncEntitiesFromMasterSchedules();
+  if (hadNew) {
+    try {
+      await setDoc(doc(db, "config", "appEntities"), appEntities, { merge: true });
+    } catch (e) {
+      console.warn("Could not sync appEntities with masterSchedules:", e);
+    }
+  }
+  populateAdminSelects();
   renderClassSchedule();
   renderTeacherView();
   renderManageScheduleTable();
@@ -3142,6 +3239,10 @@ onSnapshot(doc(db, "schedules", "masterSchedules"), (docSnap) => {
 onSnapshot(doc(db, "schedules", "weeklyOverrides"), (docSnap) => {
   if (docSnap.exists()) weeklyOverrides = docSnap.data();
   else weeklyOverrides = {};
+  const hadNew = syncEntitiesFromMasterSchedules();
+  if (hadNew) {
+    populateAdminSelects();
+  }
   if (!isClassEditMode) {
     renderClassSchedule();
     renderTeacherView();
