@@ -2,6 +2,7 @@
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getStorage } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 export const firebaseConfig = {
     apiKey: "AIzaSyB3TY9M4oUG7xxCgxR6bSJB0K9ivcP5RQI",
@@ -24,6 +25,9 @@ export const defaultDb = getFirestore(app);
 
 // Authentication service
 export const auth = getAuth(app);
+
+// Firebase Storage service
+export const storage = getStorage(app);
 
 // Secondary Auth instance for creating teacher credentials without signing out admin
 export const secondaryApp = getApps().some(a => a.name === "SecondaryAuthApp")

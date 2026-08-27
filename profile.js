@@ -162,7 +162,7 @@ function resizeImageToDataUrl(file, maxWidth = 400, maxHeight = 400, quality = 0
     });
 }
 
-// Get Google Drive script URL from Firestore or LocalStorage
+// Fetch Google Drive Script URL from Firestore or LocalStorage
 async function getDriveScriptUrl() {
     let url = localStorage.getItem('googleDriveScriptUrl') || '';
     if (!url) {
@@ -179,30 +179,35 @@ async function getDriveScriptUrl() {
     return url;
 }
 
-// Upload photo to Google Drive (replaces existing file named studentCode.jpg)
-async function uploadPhotoToDrive(file, dataUrl, scriptUrl, studentCode) {
-    if (scriptUrl) {
-        try {
-            const base64Data = dataUrl.split(',')[1];
-            const fileName = `${studentCode}.jpg`;
-            const response = await fetch(scriptUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain' },
-                body: JSON.stringify({
-                    fileName: fileName,
-                    mimeType: file.type || 'image/jpeg',
-                    base64Data: base64Data
-                })
-            });
-            const resJson = await response.json();
-            if (resJson.status === 'success' && resJson.photoUrl) {
-                return resJson.photoUrl;
-            }
-        } catch (e) {
-            console.warn("Google Drive upload error, falling back to optimized direct data:", e);
-        }
+// Upload photo to Google Drive
+// The Apps Script checks if a photo named studentCode.jpg exists in the folder:
+// - If exists: replaces the old photo
+// - If not: adds new file and names it studentCode.jpg
+async function uploadPhotoToGoogleDrive(file, dataUrl, scriptUrl, studentCode) {
+    if (!scriptUrl) {
+        throw new Error("Google Drive Web App URL is not configured yet. Please configure it in Admin Settings.");
     }
-    return dataUrl;
+    
+    const base64Data = dataUrl.split(',')[1];
+    const fileName = `${studentCode}.jpg`;
+
+    const response = await fetch(scriptUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+            fileName: fileName,
+            studentCode: studentCode,
+            mimeType: file.type || 'image/jpeg',
+            base64Data: base64Data
+        })
+    });
+
+    const resJson = await response.json();
+    if (resJson.status === 'success' && resJson.photoUrl) {
+        return resJson.photoUrl;
+    } else {
+        throw new Error(resJson.message || "Google Drive upload failed.");
+    }
 }
 
 // Toast notification helper
@@ -243,20 +248,20 @@ studentPhotoInput?.addEventListener('change', async (e) => {
         if (spinner) spinner.classList.remove('hidden');
         if (modalChangeBtn) {
             modalChangeBtn.disabled = true;
-            modalChangeBtn.innerHTML = `<span>⏳ Uploading...</span>`;
+            modalChangeBtn.innerHTML = `<span>⏳ Uploading to Google Drive...</span>`;
         }
 
-        // 1. Resize and optimize image
+        // 1. Resize and optimize image for quick transfer
         const dataUrl = await resizeImageToDataUrl(file);
 
-        // 2. Fetch configured Google Drive Script URL
+        // 2. Fetch configured Google Drive Web App Script URL
         const scriptUrl = await getDriveScriptUrl();
 
-        // 3. Upload to Google Drive (replaces file named `${currentStudentCode}.jpg`)
-        const finalUrl = await uploadPhotoToDrive(file, dataUrl, scriptUrl, currentStudentCode);
+        // 3. Upload to Google Drive (Script checks for existing student code and replaces/adds)
+        const finalUrl = await uploadPhotoToGoogleDrive(file, dataUrl, scriptUrl, currentStudentCode);
         currentPhotoUrl = finalUrl;
 
-        // 4. Update Firestore Student Record
+        // 4. Update Firestore Student Record with the Google Drive link
         const studentRef = doc(db, "students", currentStudentCode);
         await updateDoc(studentRef, {
             photoUrl: finalUrl
@@ -288,7 +293,7 @@ studentPhotoInput?.addEventListener('change', async (e) => {
         }
         if (modalAvatarFallback) modalAvatarFallback.classList.add('hidden');
 
-        showToast('Profile photo updated & synced successfully!', true);
+        showToast('Photo uploaded to Google Drive & profile synced!', true);
 
         // Close modal after brief success feedback
         setTimeout(() => {
@@ -296,8 +301,8 @@ studentPhotoInput?.addEventListener('change', async (e) => {
         }, 700);
 
     } catch (err) {
-        console.error("Error updating student photo:", err);
-        showToast('Error uploading photo: ' + err.message, false);
+        console.error("Error updating student photo to Google Drive:", err);
+        showToast('Upload error: ' + err.message, false);
     } finally {
         if (spinner) spinner.classList.add('hidden');
         if (modalChangeBtn) {

@@ -12,10 +12,11 @@ service cloud.firestore {
     }
 
     // 1. Students & Student Profiles
-    // Students read without Firebase Auth; Staff/Admin can write
+    // Students can read and update (e.g., photoUrl); Staff/Admin can create/delete
     match /students/{studentId} {
       allow read: if true;
-      allow write: if isStaffOrAdmin();
+      allow update: if true;
+      allow create, delete: if isStaffOrAdmin();
     }
 
     // 2. Exam Scores & Grades
