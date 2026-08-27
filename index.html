@@ -11,8 +11,8 @@
     <title>MITRA KASIH SCHOOL - Student Portal</title>
     <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/1o_7O1hdx1SJOXfoFw9ZKxpl4zSOD_VYd">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="admin.css?v=333">
-    <link rel="stylesheet" href="student.css?v=333">
+    <link rel="stylesheet" href="admin.css?v=347">
+    <link rel="stylesheet" href="student.css?v=347">
 </head>
 
 <body>
@@ -297,6 +297,67 @@
 
                 <!-- LEFT COLUMN: QUICK CARDS & UNIFIED PROFILE -->
                 <div>
+                    <!-- ACTIVE ATTENDANCE CALL BANNER / PROMPT -->
+                    <div id="studentAttendanceBanner" class="hidden" style="margin-bottom: 24px; background: linear-gradient(135deg, #1e5eff 0%, #0d47a1 100%); border-radius: 18px; padding: 22px; color: #ffffff; box-shadow: 0 10px 25px -5px rgba(30, 94, 255, 0.4); position: relative; overflow: hidden;">
+                        <div style="position: absolute; right: -20px; bottom: -20px; opacity: 0.12; pointer-events: none;">
+                            <svg width="180" height="180" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.5"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="1"></rect><path d="M9 14l2 2 4-4"></path></svg>
+                        </div>
+                        
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                            <span style="background: rgba(255,255,255,0.2); padding: 3px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 6px;">
+                                <span style="width: 7px; height: 7px; border-radius: 50%; background: #4ade80; display: inline-block;"></span>
+                                Live Attendance Call
+                            </span>
+                            <span id="attStudentSessionSubjectBadge" style="background: #ffffff; color: #1e5eff; font-weight: 800; font-size: 12px; padding: 3px 10px; border-radius: 20px;">English</span>
+                        </div>
+
+                        <h2 id="attStudentSessionTitle" style="margin: 0 0 4px 0; font-size: 20px; font-weight: 800; color: #ffffff;">Please Mark Your Attendance</h2>
+                        <p id="attStudentSessionSubtitle" style="margin: 0 0 18px 0; font-size: 13.5px; color: rgba(255,255,255,0.85);">Teacher deployed attendance for today's class.</p>
+
+                        <!-- FORM STATE (When student hasn't marked or wants to update) -->
+                        <div id="attStudentFormContainer">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 14px;">
+                                <label style="background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.3); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s;">
+                                    <input type="radio" name="studentAttStatus" value="present" checked style="accent-color: #10b981;">
+                                    <span style="font-weight: 700; font-size: 14px;">🟢 Present</span>
+                                </label>
+                                <label style="background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.3); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s;">
+                                    <input type="radio" name="studentAttStatus" value="absent" style="accent-color: #ef4444;">
+                                    <span style="font-weight: 700; font-size: 14px;">🔴 Absent</span>
+                                </label>
+                                <label style="background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.3); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s;">
+                                    <input type="radio" name="studentAttStatus" value="others" style="accent-color: #f59e0b;">
+                                    <span style="font-weight: 700; font-size: 14px;">🟡 Others</span>
+                                </label>
+                            </div>
+
+                            <!-- Reason input when 'others' selected -->
+                            <div id="attStudentReasonWrapper" class="hidden" style="margin-bottom: 16px;">
+                                <label style="font-size: 12.5px; font-weight: 600; color: rgba(255,255,255,0.9); display: block; margin-bottom: 6px;">Reason (e.g. Sakit Flu, Izin Dokter, dll):</label>
+                                <input type="text" id="attStudentReasonInput" placeholder="Enter your reason here..." style="width: 100%; height: 42px; background: rgba(255,255,255,0.95); color: #0f172a; border-radius: 10px; padding: 0 14px; margin: 0; font-size: 13.5px;">
+                            </div>
+
+                            <button type="button" id="btnSubmitStudentAttendance" style="background: #ffffff; color: #1e5eff; border: none; padding: 12px 24px; border-radius: 10px; font-weight: 800; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.15); transition: transform 0.15s;">
+                                <span>Submit Attendance</span>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                            </button>
+                        </div>
+
+                        <!-- SUBMITTED CONFIRMATION STATE (When student already marked) -->
+                        <div id="attStudentSubmittedCard" class="hidden" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); border-radius: 12px; padding: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div id="attSubmittedIcon" style="width: 36px; height: 36px; border-radius: 50%; background: #ffffff; color: #10b981; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px; flex-shrink: 0;">✓</div>
+                                <div>
+                                    <div style="font-weight: 800; font-size: 14.5px; color: #ffffff;" id="attSubmittedStatusText">You are marked: Present</div>
+                                    <div style="font-size: 12px; color: rgba(255,255,255,0.8);" id="attSubmittedTimeText">Recorded at 08:30 AM</div>
+                                </div>
+                            </div>
+                            <button type="button" id="btnEditStudentAttendance" style="background: rgba(255,255,255,0.2); color: #ffffff; border: 1px solid rgba(255,255,255,0.4); padding: 7px 14px; border-radius: 8px; font-weight: 700; font-size: 12.5px; cursor: pointer;">
+                                Change Status
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- QUICK CARDS (2-COLUMN GRID) -->
                     <div class="quick-cards-row">
                         <!-- Take Online Quiz Card -->
@@ -411,8 +472,8 @@
         </main>
     </div>
 
-    <script type="module" src="main.js?v=336"></script>
-    <script type="module" src="studentNav.js?v=336"></script>
+    <script type="module" src="main.js?v=347"></script>
+    <script type="module" src="studentNav.js?v=347"></script>
 </body>
 
 </html>

@@ -1,4 +1,4 @@
-import { collection, query, where, getDocs, doc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { collection, query, where, getDocs, doc, getDoc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { db, auth } from "./firebase.js";
 import { escapeHtml } from "./utils.js";
@@ -51,6 +51,7 @@ async function checkStudentSession() {
         if (overlay) overlay.style.display = 'none';
         fetchStudentUnifiedData(currentLoggedInStudent.code);
         loadNewsTicker();
+        listenActiveStudentAttendance();
     } else {
         if (overlay) overlay.style.display = 'flex';
     }
@@ -147,6 +148,7 @@ async function handleStudentLogin() {
 
         fetchStudentUnifiedData(userIn);
         loadNewsTicker();
+        listenActiveStudentAttendance();
 
     } catch (err) {
         console.error("Student login error:", err);
@@ -445,3 +447,202 @@ function updateGreetingBanner(displayName) {
 updateGreetingBanner();
 checkStudentSession();
 loadNewsTicker();
+
+// ======================================================
+// STUDENT LIVE ATTENDANCE CALL & SELF-MARKING SYSTEM
+// ======================================================
+
+let activeStudentSessionDoc = null;
+let studentAttendanceRecordUnsub = null;
+
+function listenActiveStudentAttendance() {
+    if (!currentLoggedInStudent) return;
+
+    const banner = document.getElementById('studentAttendanceBanner');
+    if (!banner) return;
+
+    try {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        const todayStr = `${yyyy}-${mm}-${dd}`;
+
+        const studentClass = (currentLoggedInStudent.studentClass || '').trim();
+
+        // Listen for active sessions today
+        const sessionQuery = query(
+            collection(db, "attendance_sessions"),
+            where("date", "==", todayStr),
+            where("status", "==", "active")
+        );
+
+        onSnapshot(sessionQuery, (snapshot) => {
+            let matchingSession = null;
+
+            snapshot.forEach(docSnap => {
+                const sessionData = docSnap.data();
+                const target = (sessionData.targetClass || '').trim();
+                if (target === studentClass || target === "All Classes" || target === "all" || !target) {
+                    matchingSession = { id: docSnap.id, ...sessionData };
+                }
+            });
+
+            if (!matchingSession) {
+                banner.classList.add('hidden');
+                activeStudentSessionDoc = null;
+                if (studentAttendanceRecordUnsub) {
+                    studentAttendanceRecordUnsub();
+                    studentAttendanceRecordUnsub = null;
+                }
+                return;
+            }
+
+            // Session exists for student's class
+            activeStudentSessionDoc = matchingSession;
+            banner.classList.remove('hidden');
+
+            const subjBadge = document.getElementById('attStudentSessionSubjectBadge');
+            const titleEl = document.getElementById('attStudentSessionTitle');
+            const subTitleEl = document.getElementById('attStudentSessionSubtitle');
+
+            if (subjBadge) subjBadge.innerText = matchingSession.subject || 'Class';
+            if (titleEl) titleEl.innerText = matchingSession.sessionTitle || `${matchingSession.subject} Attendance Call`;
+            if (subTitleEl) subTitleEl.innerText = `Teacher ${matchingSession.teacherName || ''} deployed attendance for Class ${matchingSession.targetClass}. Please mark your status below.`;
+
+            // Listen to student's record for this session
+            const recordDocId = `${matchingSession.date}_${matchingSession.subject.replace(/\s+/g, '_')}_${currentLoggedInStudent.code}`;
+            const recordDocRef = doc(db, "attendance_records", recordDocId);
+
+            if (studentAttendanceRecordUnsub) {
+                studentAttendanceRecordUnsub();
+            }
+
+            studentAttendanceRecordUnsub = onSnapshot(recordDocRef, (recSnap) => {
+                const formContainer = document.getElementById('attStudentFormContainer');
+                const submittedCard = document.getElementById('attStudentSubmittedCard');
+                const statusText = document.getElementById('attSubmittedStatusText');
+                const timeText = document.getElementById('attSubmittedTimeText');
+                const iconEl = document.getElementById('attSubmittedIcon');
+
+                if (recSnap.exists()) {
+                    const rec = recSnap.data();
+                    if (formContainer) formContainer.classList.add('hidden');
+                    if (submittedCard) submittedCard.classList.remove('hidden');
+
+                    let statusLabel = 'Present';
+                    let statusColor = '#10b981';
+                    let iconChar = '✓';
+
+                    if (rec.status === 'present') {
+                        statusLabel = '🟢 Present (Hadir)';
+                        statusColor = '#10b981';
+                        iconChar = '✓';
+                    } else if (rec.status === 'absent') {
+                        statusLabel = '🔴 Absent (Tidak Hadir)';
+                        statusColor = '#ef4444';
+                        iconChar = '✕';
+                    } else if (rec.status === 'others') {
+                        statusLabel = `🟡 Others: ${rec.reason || 'Reason Provided'}`;
+                        statusColor = '#f59e0b';
+                        iconChar = 'ℹ';
+                    }
+
+                    if (statusText) statusText.innerText = `Status: ${statusLabel}`;
+                    if (timeText && rec.timestamp) {
+                        const t = new Date(rec.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        timeText.innerText = `Recorded at ${t} (${rec.markedBy === 'teacher' ? 'Marked by Teacher' : 'Self-Marked'})`;
+                    }
+                    if (iconEl) {
+                        iconEl.innerText = iconChar;
+                        iconEl.style.color = statusColor;
+                    }
+                } else {
+                    if (formContainer) formContainer.classList.remove('hidden');
+                    if (submittedCard) submittedCard.classList.add('hidden');
+                }
+            });
+
+        }, (err) => {
+            console.error("Error listening to student attendance sessions:", err);
+        });
+
+    } catch (e) {
+        console.error("Student attendance listener setup error:", e);
+    }
+}
+
+// Handle radio choice change for reason box toggle
+document.querySelectorAll('input[name="studentAttStatus"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+        const reasonWrapper = document.getElementById('attStudentReasonWrapper');
+        if (reasonWrapper) {
+            if (e.target.value === 'others') {
+                reasonWrapper.classList.remove('hidden');
+            } else {
+                reasonWrapper.classList.add('hidden');
+            }
+        }
+    });
+});
+
+// Handle "Change Status" button
+document.getElementById('btnEditStudentAttendance')?.addEventListener('click', () => {
+    document.getElementById('attStudentFormContainer')?.classList.remove('hidden');
+    document.getElementById('attStudentSubmittedCard')?.classList.add('hidden');
+});
+
+// Handle Student Attendance Submit
+document.getElementById('btnSubmitStudentAttendance')?.addEventListener('click', async () => {
+    if (!currentLoggedInStudent || !activeStudentSessionDoc) {
+        alert("No active attendance session found or you are not logged in.");
+        return;
+    }
+
+    const selectedRadio = document.querySelector('input[name="studentAttStatus"]:checked');
+    const status = selectedRadio ? selectedRadio.value : 'present';
+    const reasonInput = document.getElementById('attStudentReasonInput');
+    const reason = reasonInput ? reasonInput.value.trim() : '';
+
+    if (status === 'others' && !reason) {
+        alert("Please provide a reason for 'Others' (e.g. Sakit Flu, Izin Dokter, dll).");
+        reasonInput?.focus();
+        return;
+    }
+
+    const submitBtn = document.getElementById('btnSubmitStudentAttendance');
+    try {
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerText = "Submitting...";
+        }
+
+        const date = activeStudentSessionDoc.date;
+        const subject = activeStudentSessionDoc.subject;
+        const recordDocId = `${date}_${subject.replace(/\s+/g, '_')}_${currentLoggedInStudent.code}`;
+
+        await setDoc(doc(db, "attendance_records", recordDocId), {
+            sessionId: activeStudentSessionDoc.id,
+            date: date,
+            subject: subject,
+            studentCode: currentLoggedInStudent.code,
+            studentName: currentLoggedInStudent.name,
+            studentClass: currentLoggedInStudent.studentClass,
+            status: status,
+            reason: reason,
+            timestamp: new Date().toISOString(),
+            markedBy: 'student'
+        }, { merge: true });
+
+        alert(`Attendance Submitted!\nYou have marked: ${status.toUpperCase()} for ${subject}.`);
+
+    } catch (err) {
+        console.error("Error saving student attendance:", err);
+        alert("Failed to submit attendance: " + err.message);
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `<span>Submit Attendance</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>`;
+        }
+    }
+});

@@ -17,7 +17,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Inter:wght@400;500;600;700&family=Lato:wght@400;700&family=Lora:wght@400;600&family=Merriweather:wght@400;700&family=Montserrat:wght@400;600;700&family=Nunito:wght@400;600;700&family=Open+Sans:wght@400;600;700&family=Oswald:wght@400;600&family=Playfair+Display:wght@400;700&family=Poppins:wght@400;500;600;700&family=Raleway:wght@400;600;700&family=Roboto:wght@400;500;700&family=Source+Sans+3:wght@400;600;700&family=Ubuntu:wght@400;500;700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="admin.css?v=346">
+    <link rel="stylesheet" href="admin.css?v=347">
 </head>
 
 <body>
@@ -85,6 +85,18 @@
                         </polygon>
                     </svg>
                     <span class="menu-label">Students Behavior</span>
+                </button>
+
+                <!-- 3.5 Students Attendance -->
+                <button class="menu-btn" data-tab="tab-manage-attendance" data-label="Students Attendance"
+                    id="menuManageAttendance">
+                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path>
+                        <rect x="9" y="3" width="6" height="4" rx="1"></rect>
+                        <path d="M9 14l2 2 4-4"></path>
+                    </svg>
+                    <span class="menu-label">Attendance List</span>
                 </button>
 
                 <!-- 4. Databases (with sub tabs) -->
@@ -238,6 +250,17 @@
                             </polygon>
                         </svg>
                         <span>Students Behavior</span>
+                    </button>
+
+                    <!-- 3.5 Students Attendance -->
+                    <button class="kebab-item" data-tab="tab-manage-attendance" id="mobileMenuManageAttendance">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path>
+                            <rect x="9" y="3" width="6" height="4" rx="1"></rect>
+                            <path d="M9 14l2 2 4-4"></path>
+                        </svg>
+                        <span>Attendance List</span>
                     </button>
 
                     <!-- 4. Databases -->
@@ -1530,6 +1553,241 @@
                     </div>
                 </div>
             </div>
+
+            <!-- TAB 7: STUDENTS ATTENDANCE & PRESENT LIST -->
+            <div id="tab-manage-attendance" class="tab-content">
+                <!-- Top Toolbar & Header -->
+                <div class="attendance-header-wrapper" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; margin-bottom: 20px;">
+                    <div>
+                        <h2 style="margin: 0 0 6px 0; font-size: 22px; font-weight: 800; color: var(--text-dark);">📋 Students Attendance & Present List</h2>
+                        <p style="margin: 0; font-size: 13.5px; color: var(--text-gray);">Deploy live daily attendance sessions for your subject and monitor student presence in real-time.</p>
+                    </div>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button type="button" id="btnRefreshAttendance" class="btn-refresh" style="background: var(--card-bg, #ffffff); border: 1.5px solid var(--border-color, #cbd5e1); color: var(--text-dark); padding: 9px 15px; border-radius: 9px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 13px;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+                            Refresh
+                        </button>
+                        <button type="button" id="btnExportAttendanceExcel" style="background: #107c41; color: #ffffff; border: none; padding: 9px 16px; border-radius: 9px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 13px; box-shadow: 0 2px 8px rgba(16,124,65,0.25);">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            Export Excel
+                        </button>
+                        <button type="button" id="btnPrintAttendance" style="background: #475569; color: #ffffff; border: none; padding: 9px 16px; border-radius: 9px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 13px;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                            Print Sheet
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 1. Deployment & Session Control Card -->
+                <div class="box attendance-session-card" style="padding: 22px; margin-bottom: 22px; border-radius: 16px; border: 1.5px solid var(--border-color, #e2e8f0);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; border-bottom: 1px solid var(--border-color, #e2e8f0); padding-bottom: 14px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 36px; height: 36px; border-radius: 10px; background: rgba(30,94,255,0.12); color: #1e5eff; display: flex; align-items: center; justify-content: center;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                            </div>
+                            <div>
+                                <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: var(--text-dark);">Daily Attendance Session Deployment</h3>
+                                <p style="margin: 2px 0 0 0; font-size: 12.5px; color: var(--text-gray);">Select class and subject to deploy or inspect attendance records.</p>
+                            </div>
+                        </div>
+                        <div id="attSessionStatusBadge" class="att-status-pill pill-inactive" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 12.5px; font-weight: 700; background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1;">
+                            <span class="status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; display: inline-block;"></span>
+                            <span id="attStatusText">No Active Session Deployed</span>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 18px;">
+                        <!-- Date -->
+                        <div>
+                            <label style="font-size: 12px; font-weight: 700; color: var(--text-dark); display: block; margin-bottom: 4px;">📅 Session Date</label>
+                            <input type="date" id="attSessionDate" style="width: 100%; height: 42px; margin: 0;">
+                        </div>
+                        <!-- Subject -->
+                        <div>
+                            <label style="font-size: 12px; font-weight: 700; color: var(--text-dark); display: block; margin-bottom: 4px;">📚 Subject</label>
+                            <select id="attSessionSubject" style="width: 100%; height: 42px; margin: 0;">
+                                <option value="">-- Select Subject --</option>
+                            </select>
+                        </div>
+                        <!-- Class -->
+                        <div>
+                            <label style="font-size: 12px; font-weight: 700; color: var(--text-dark); display: block; margin-bottom: 4px;">🏫 Target Class</label>
+                            <select id="attSessionClass" style="width: 100%; height: 42px; margin: 0;">
+                                <option value="">-- Select Class --</option>
+                            </select>
+                        </div>
+                        <!-- Session Title / Notes -->
+                        <div>
+                            <label style="font-size: 12px; font-weight: 700; color: var(--text-dark); display: block; margin-bottom: 4px;">🏷️ Session Title / Note</label>
+                            <input type="text" id="attSessionTitle" placeholder="e.g. Regular Class / Period 1" value="Regular Class" style="width: 100%; height: 42px; margin: 0;">
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                        <div id="attActiveSessionInfo" style="font-size: 12.5px; color: var(--text-gray); font-style: italic;">
+                            Ready to deploy. When deployed, students visiting the portal will see an attendance prompt.
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button type="button" id="btnDeployAttendanceSession" style="background: #1e5eff; color: #ffffff; border: none; padding: 10px 22px; border-radius: 9px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 13.5px; box-shadow: 0 4px 12px rgba(30,94,255,0.25);">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                <span>Deploy Attendance Call</span>
+                            </button>
+                            <button type="button" id="btnCloseAttendanceSession" class="hidden" style="background: #ef4444; color: #ffffff; border: none; padding: 10px 20px; border-radius: 9px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 13.5px; box-shadow: 0 4px 12px rgba(239,68,68,0.25);">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+                                <span>Close / End Session</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Real-Time Stats Overview (5 Cards Grid) -->
+                <div class="attendance-stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; margin-bottom: 22px;">
+                    <!-- Total Enrolled -->
+                    <div class="stat-card att-metric-card" style="background: var(--card-bg); padding: 18px; border-radius: 14px; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 14px;">
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(30,94,255,0.12); color: #1e5eff; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        </div>
+                        <div>
+                            <p style="margin: 0; font-size: 12px; font-weight: 600; color: var(--text-gray); text-transform: uppercase;">Total Class</p>
+                            <h3 id="attCountTotal" style="margin: 4px 0 0 0; font-size: 22px; font-weight: 800; color: var(--text-dark);">0</h3>
+                        </div>
+                    </div>
+
+                    <!-- Present (Hadir) -->
+                    <div class="stat-card att-metric-card" style="background: var(--card-bg); padding: 18px; border-radius: 14px; border: 1px solid rgba(16,185,129,0.3); display: flex; align-items: center; gap: 14px;">
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(16,185,129,0.12); color: #10b981; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </div>
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <p style="margin: 0; font-size: 12px; font-weight: 600; color: #10b981; text-transform: uppercase;">Present</p>
+                                <span id="attPctPresent" style="font-size: 11px; font-weight: 700; color: #10b981; background: rgba(16,185,129,0.1); padding: 1px 6px; border-radius: 6px;">0%</span>
+                            </div>
+                            <h3 id="attCountPresent" style="margin: 4px 0 0 0; font-size: 22px; font-weight: 800; color: #10b981;">0</h3>
+                        </div>
+                    </div>
+
+                    <!-- Absent (Tidak Hadir) -->
+                    <div class="stat-card att-metric-card" style="background: var(--card-bg); padding: 18px; border-radius: 14px; border: 1px solid rgba(239,68,68,0.3); display: flex; align-items: center; gap: 14px;">
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(239,68,68,0.12); color: #ef4444; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </div>
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <p style="margin: 0; font-size: 12px; font-weight: 600; color: #ef4444; text-transform: uppercase;">Absent</p>
+                                <span id="attPctAbsent" style="font-size: 11px; font-weight: 700; color: #ef4444; background: rgba(239,68,68,0.1); padding: 1px 6px; border-radius: 6px;">0%</span>
+                            </div>
+                            <h3 id="attCountAbsent" style="margin: 4px 0 0 0; font-size: 22px; font-weight: 800; color: #ef4444;">0</h3>
+                        </div>
+                    </div>
+
+                    <!-- Others (Sakit / Izin) -->
+                    <div class="stat-card att-metric-card" style="background: var(--card-bg); padding: 18px; border-radius: 14px; border: 1px solid rgba(245,158,11,0.3); display: flex; align-items: center; gap: 14px;">
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(245,158,11,0.12); color: #f59e0b; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                        </div>
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <p style="margin: 0; font-size: 12px; font-weight: 600; color: #f59e0b; text-transform: uppercase;">Others (Reason)</p>
+                                <span id="attPctOthers" style="font-size: 11px; font-weight: 700; color: #f59e0b; background: rgba(245,158,11,0.1); padding: 1px 6px; border-radius: 6px;">0%</span>
+                            </div>
+                            <h3 id="attCountOthers" style="margin: 4px 0 0 0; font-size: 22px; font-weight: 800; color: #f59e0b;">0</h3>
+                        </div>
+                    </div>
+
+                    <!-- Not Marked Yet (Pending) -->
+                    <div class="stat-card att-metric-card" style="background: var(--card-bg); padding: 18px; border-radius: 14px; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 14px;">
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(100,116,139,0.12); color: #64748b; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        </div>
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <p style="margin: 0; font-size: 12px; font-weight: 600; color: var(--text-gray); text-transform: uppercase;">Pending</p>
+                                <span id="attPctPending" style="font-size: 11px; font-weight: 700; color: #64748b; background: rgba(100,116,139,0.1); padding: 1px 6px; border-radius: 6px;">0%</span>
+                            </div>
+                            <h3 id="attCountPending" style="margin: 4px 0 0 0; font-size: 22px; font-weight: 800; color: #64748b;">0</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Attendance Table & Filter Card -->
+                <div class="box" style="padding: 22px; border-radius: 16px;">
+                    <!-- Filter Toolbar -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 18px;">
+                        <!-- Status Filter Pills -->
+                        <div class="att-filter-pills" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button type="button" class="att-pill active" data-filter="all" onclick="filterAttendanceStatus('all')">All (<span id="pillAllCount">0</span>)</button>
+                            <button type="button" class="att-pill pill-present" data-filter="present" onclick="filterAttendanceStatus('present')">Present (<span id="pillPresentCount">0</span>)</button>
+                            <button type="button" class="att-pill pill-absent" data-filter="absent" onclick="filterAttendanceStatus('absent')">Absent (<span id="pillAbsentCount">0</span>)</button>
+                            <button type="button" class="att-pill pill-others" data-filter="others" onclick="filterAttendanceStatus('others')">Others (<span id="pillOthersCount">0</span>)</button>
+                            <button type="button" class="att-pill pill-pending" data-filter="pending" onclick="filterAttendanceStatus('pending')">Pending (<span id="pillPendingCount">0</span>)</button>
+                        </div>
+
+                        <!-- Search Student -->
+                        <div style="position: relative; min-width: 240px;">
+                            <input type="text" id="attSearchInput" placeholder="🔍 Search student name or code..." style="width: 100%; height: 38px; padding-left: 12px; margin: 0; font-size: 13px;">
+                        </div>
+                    </div>
+
+                    <!-- Table -->
+                    <div class="table-responsive">
+                        <table id="attendanceTable" style="width: 100%; border-collapse: separate; border-spacing: 0;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 48px; text-align: center;">#</th>
+                                    <th>Student</th>
+                                    <th>Code</th>
+                                    <th>Class</th>
+                                    <th>Attendance Status</th>
+                                    <th>Reason / Teacher Note</th>
+                                    <th>Logged Time</th>
+                                    <th style="text-align: right;">Manual Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendanceRecordsTbody">
+                                <tr>
+                                    <td colspan="8" style="text-align: center; color: var(--text-gray); padding: 36px 16px;">
+                                        Select a date and class to view or deploy attendance records.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+    </div>
+
+    <!-- MODAL FOR MANUAL ATTENDANCE / REASON OVERRIDE -->
+    <div id="attManualModal" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); z-index:1300; display:flex; justify-content:center; align-items:center; backdrop-filter: blur(4px); padding: 16px;">
+        <div class="box" style="width: 100%; max-width: 420px; padding: 24px; border-radius: 18px; position: relative;">
+            <button type="button" onclick="closeAttManualModal()" style="position:absolute; right:16px; top:16px; width:30px !important; height:30px !important; padding:0 !important; background:rgba(0,0,0,0.06); color:var(--text-gray); border-radius:50%; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; font-weight:bold;">✕</button>
+            <h3 style="margin: 0 0 14px 0; font-size: 17px; color: var(--text-dark);">✏️ Update Student Attendance</h3>
+            <p id="attManualStudentInfo" style="margin: 0 0 16px 0; font-size: 13px; color: var(--text-gray);">Student Name (Code)</p>
+            
+            <input type="hidden" id="attManualStudentCode">
+            <input type="hidden" id="attManualStudentName">
+            <input type="hidden" id="attManualStudentClass">
+
+            <div style="margin-bottom: 14px;">
+                <label style="font-size: 12.5px; font-weight: 700; color: var(--text-dark); display: block; margin-bottom: 6px;">Attendance Status</label>
+                <select id="attManualStatusSelect" style="width: 100%; height: 42px; margin: 0;" onchange="onAttManualStatusChange()">
+                    <option value="present">🟢 Present (Hadir)</option>
+                    <option value="absent">🔴 Absent (Tidak Hadir)</option>
+                    <option value="others">🟡 Others (Sakit / Izin / Lainnya)</option>
+                    <option value="pending">⚪ Clear / Unmarked</option>
+                </select>
+            </div>
+
+            <div id="attManualReasonBox" style="margin-bottom: 20px;">
+                <label style="font-size: 12.5px; font-weight: 700; color: var(--text-dark); display: block; margin-bottom: 6px;">Reason / Note</label>
+                <input type="text" id="attManualReasonInput" placeholder="e.g. Sakit Demam, Izin Dokter, dll" style="width: 100%; height: 42px; margin: 0;">
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" onclick="closeAttManualModal()" style="background: #f1f5f9; color: var(--text-dark); border: 1px solid #cbd5e1; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-weight: 600;">Cancel</button>
+                <button type="button" id="btnSaveAttManual" onclick="saveManualAttendanceRecord()" style="background: var(--primary-blue); color: white; border: none; padding: 10px 22px; border-radius: 8px; cursor: pointer; font-weight: 700;">Save Attendance</button>
+            </div>
+        </div>
     </div>
 
     <!-- Modal for Quiz Results -->
@@ -1867,8 +2125,8 @@
 
 
     <!-- Navigation & Core Scripts -->
-    <script src="studentNav.js?v=346"></script>
-    <script type="module" src="admin.js?v=346"></script>
+    <script src="studentNav.js?v=347"></script>
+    <script type="module" src="admin.js?v=347"></script>
 </body>
 
 </html>

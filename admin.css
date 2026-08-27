@@ -4279,3 +4279,183 @@ body.dark-mode .btn-close-modal:hover {
         height: 26px !important;
     }
 }
+
+/* ======================================================
+   STUDENTS ATTENDANCE & PRESENT LIST SYSTEM STYLES
+   ====================================================== */
+.att-status-pill.pill-active {
+    background: rgba(16, 185, 129, 0.12) !important;
+    color: #10b981 !important;
+    border-color: rgba(16, 185, 129, 0.3) !important;
+}
+.att-status-pill.pill-active .status-dot {
+    background: #10b981 !important;
+    box-shadow: 0 0 8px #10b981 !important;
+    animation: pulse-dot 1.8s infinite;
+}
+@keyframes pulse-dot {
+    0% { transform: scale(0.95); opacity: 0.8; }
+    50% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+.att-filter-pills {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.att-pill {
+    background: var(--input-bg, #f8fafc);
+    border: 1px solid var(--border-color, #cbd5e1);
+    color: var(--text-dark, #2b3674);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.att-pill:hover {
+    border-color: var(--primary-blue, #1e5eff);
+    color: var(--primary-blue, #1e5eff);
+}
+.att-pill.active {
+    background: #1e5eff !important;
+    color: #ffffff !important;
+    border-color: #1e5eff !important;
+    box-shadow: 0 2px 8px rgba(30, 94, 255, 0.25);
+}
+.att-pill.pill-present.active {
+    background: #10b981 !important;
+    border-color: #10b981 !important;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+}
+.att-pill.pill-absent.active {
+    background: #ef4444 !important;
+    border-color: #ef4444 !important;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
+}
+.att-pill.pill-others.active {
+    background: #f59e0b !important;
+    border-color: #f59e0b !important;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25);
+}
+.att-pill.pill-pending.active {
+    background: #64748b !important;
+    border-color: #64748b !important;
+    box-shadow: 0 2px 8px rgba(100, 116, 139, 0.25);
+}
+
+/* Attendance Status Badges inside table */
+.att-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.att-badge-present {
+    background: #ecfdf5;
+    color: #059669;
+    border: 1px solid #a7f3d0;
+}
+.att-badge-absent {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+.att-badge-others {
+    background: #fffbeb;
+    color: #d97706;
+    border: 1px solid #fde68a;
+}
+.att-badge-pending {
+    background: #f8fafc;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+
+/* Dark Mode Adjustments */
+body.dark-theme .att-badge-present {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border-color: rgba(16, 185, 129, 0.3);
+}
+body.dark-theme .att-badge-absent {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+body.dark-theme .att-badge-others {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border-color: rgba(245, 158, 11, 0.3);
+}
+body.dark-theme .att-badge-pending {
+    background: rgba(100, 116, 139, 0.15);
+    color: #94a3b8;
+    border-color: rgba(100, 116, 139, 0.3);
+}
+body.dark-theme .att-pill {
+    background: #1e293b;
+    border-color: #334155;
+    color: #cbd5e1;
+}
+
+/* Action Dropdown / Button in Attendance row */
+.att-action-btn {
+    background: var(--input-bg, #f8fafc);
+    border: 1px solid var(--border-color, #cbd5e1);
+    color: var(--text-dark, #2b3674);
+    padding: 5px 10px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s;
+}
+.att-action-btn:hover {
+    background: var(--primary-blue, #1e5eff);
+    color: #ffffff;
+    border-color: var(--primary-blue, #1e5eff);
+}
+
+/* Print Styles for Attendance */
+@media print {
+    .sidebar,
+    .topbar,
+    .mobile-kebab-container,
+    .attendance-header-wrapper button,
+    .attendance-session-card,
+    .att-filter-pills,
+    #attSearchInput,
+    th:last-child,
+    td:last-child {
+        display: none !important;
+    }
+    body, .app-container, .main-wrapper, .tab-content {
+        overflow: visible !important;
+        height: auto !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    #tab-manage-attendance {
+        display: block !important;
+    }
+    #attendanceTable {
+        border: 1px solid #000000 !important;
+    }
+    #attendanceTable th, #attendanceTable td {
+        border: 1px solid #cccccc !important;
+        padding: 6px 8px !important;
+        color: #000000 !important;
+    }
+}

@@ -1,5 +1,5 @@
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, where, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, where, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { app, db, auth, secondaryAuth } from "./firebase.js";
 import { escapeHtml, formatDate } from "./utils.js";
 
@@ -97,7 +97,8 @@ onAuthStateChanged(auth, async (user) => {
                 loadStudentsDirectory(),
                 updateDashboardStats(),
                 loadQuizzesTable(),
-                syncScoresToExamScores()
+                syncScoresToExamScores(),
+                initAttendanceTab()
             ];
 
             if (typeof window.loadSystemDatabases === "function") {
@@ -1420,6 +1421,8 @@ document.querySelectorAll('.menu-btn').forEach(button => {
             if (typeof refreshBehaviorTabLedgers === 'function') refreshBehaviorTabLedgers();
         } else if (tabId === 'tab-manage-news') {
             loadNewsTable();
+        } else if (tabId === 'tab-manage-attendance') {
+            checkAndLoadAttendance();
         }
     });
 });
@@ -6252,3 +6255,664 @@ window.saveEditOfflineQuiz = async function () {
 
 window.getSelectedEditOfflineQuizClasses = getSelectedEditOfflineQuizClasses;
 window.updateEditOfflineQuizClassLabel = updateEditOfflineQuizClassLabel;
+
+// ======================================================
+// STUDENTS ATTENDANCE & PRESENT LIST SYSTEM (ADMIN/TEACHER)
+// ======================================================
+
+let activeAttendanceSession = null;
+let attendanceEnrolledStudents = [];
+let attendanceRecordsMap = {}; // keyed by studentCode
+let currentAttStatusFilter = 'all';
+let attSearchQuery = '';
+let attendanceRecordsUnsubscribe = null;
+
+async function initAttendanceTab() {
+    try {
+        const dateInput = document.getElementById('attSessionDate');
+        const subjectSelect = document.getElementById('attSessionSubject');
+        const classSelect = document.getElementById('attSessionClass');
+
+        // Set default date to today in YYYY-MM-DD
+        if (dateInput && !dateInput.value) {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            dateInput.value = `${yyyy}-${mm}-${dd}`;
+        }
+
+        // Populate Subjects
+        await populateAttendanceSubjects();
+
+        // Populate Classes
+        await populateAttendanceClasses();
+
+        // Attach change events
+        dateInput?.addEventListener('change', () => checkAndLoadAttendance());
+        subjectSelect?.addEventListener('change', () => checkAndLoadAttendance());
+        classSelect?.addEventListener('change', () => checkAndLoadAttendance());
+
+        // Buttons
+        document.getElementById('btnDeployAttendanceSession')?.addEventListener('click', deployAttendanceSession);
+        document.getElementById('btnCloseAttendanceSession')?.addEventListener('click', closeAttendanceSession);
+        document.getElementById('btnRefreshAttendance')?.addEventListener('click', () => checkAndLoadAttendance());
+        document.getElementById('btnExportAttendanceExcel')?.addEventListener('click', exportAttendanceToExcel);
+        document.getElementById('btnPrintAttendance')?.addEventListener('click', () => window.print());
+
+        // Search Input
+        const searchInput = document.getElementById('attSearchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', debounce((e) => {
+                attSearchQuery = e.target.value.trim().toLowerCase();
+                renderAttendanceTable();
+            }, 200));
+        }
+
+        // Initial check if values are ready
+        if (subjectSelect?.value && classSelect?.value) {
+            await checkAndLoadAttendance();
+        }
+    } catch (err) {
+        console.error("Error initializing attendance tab:", err);
+    }
+}
+
+async function populateAttendanceSubjects() {
+    const subjectSelect = document.getElementById('attSessionSubject');
+    if (!subjectSelect) return;
+
+    const previousVal = subjectSelect.value;
+    subjectSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+
+    const uniqueSubjects = new Set();
+    if (userRole === 'admin') {
+        try {
+            const usersSnap = await getDocs(collection(db, "users"));
+            usersSnap.forEach(doc => {
+                const data = doc.data();
+                const sub = data.subject || data.Subject || data.course;
+                if (data.role === 'teacher' && sub && sub !== "Unassigned") {
+                    sub.split(',').map(s => s.trim()).filter(Boolean).forEach(s => uniqueSubjects.add(s));
+                }
+            });
+            // Also add standard subjects if list is small
+            ["English", "Math", "Science", "Indonesian", "Social Studies", "Art", "PE", "Religion"].forEach(s => uniqueSubjects.add(s));
+        } catch (e) {
+            console.warn("Could not query subjects from users collection:", e);
+        }
+    } else if (teacherSubject && teacherSubject !== "Unassigned") {
+        teacherSubject.split(',').map(s => s.trim()).filter(Boolean).forEach(s => uniqueSubjects.add(s));
+    }
+
+    Array.from(uniqueSubjects).sort().forEach(sub => {
+        const opt = document.createElement('option');
+        opt.value = sub;
+        opt.textContent = sub;
+        subjectSelect.appendChild(opt);
+    });
+
+    if (userRole === 'teacher' && teacherSubject && teacherSubject !== "Unassigned") {
+        subjectSelect.value = teacherSubject.split(',')[0].trim();
+        subjectSelect.disabled = true;
+    } else if (previousVal && uniqueSubjects.has(previousVal)) {
+        subjectSelect.value = previousVal;
+    } else if (subjectSelect.options.length > 1) {
+        subjectSelect.selectedIndex = 1;
+    }
+}
+
+async function populateAttendanceClasses() {
+    const classSelect = document.getElementById('attSessionClass');
+    if (!classSelect) return;
+
+    const previousVal = classSelect.value;
+    classSelect.innerHTML = '<option value="">-- Select Class --</option>';
+
+    const uniqueClasses = new Set();
+    try {
+        const studentsSnap = await getDocs(collection(db, "students"));
+        studentsSnap.forEach(docSnap => {
+            const d = docSnap.data();
+            const c = (d.studentClass || d.class || '').trim();
+            if (c) uniqueClasses.add(c);
+        });
+    } catch (e) {
+        console.warn("Could not query classes for attendance:", e);
+    }
+
+    if (uniqueClasses.size === 0) {
+        ["7A", "7B", "8A", "8B", "9A", "9B", "10A", "10B", "11A", "11B", "12A", "12B"].forEach(c => uniqueClasses.add(c));
+    }
+
+    Array.from(uniqueClasses).sort().forEach(cls => {
+        const opt = document.createElement('option');
+        opt.value = cls;
+        opt.textContent = `Class ${cls}`;
+        classSelect.appendChild(opt);
+    });
+
+    if (previousVal && uniqueClasses.has(previousVal)) {
+        classSelect.value = previousVal;
+    } else if (classSelect.options.length > 1) {
+        classSelect.selectedIndex = 1;
+    }
+}
+
+async function checkAndLoadAttendance() {
+    const date = document.getElementById('attSessionDate')?.value;
+    const subject = document.getElementById('attSessionSubject')?.value;
+    const selectedClass = document.getElementById('attSessionClass')?.value;
+
+    const statusBadge = document.getElementById('attSessionStatusBadge');
+    const statusText = document.getElementById('attStatusText');
+    const activeInfo = document.getElementById('attActiveSessionInfo');
+    const deployBtn = document.getElementById('btnDeployAttendanceSession');
+    const closeBtn = document.getElementById('btnCloseAttendanceSession');
+    const titleInput = document.getElementById('attSessionTitle');
+
+    if (!date || !subject || !selectedClass) {
+        if (statusBadge) {
+            statusBadge.className = 'att-status-pill pill-inactive';
+            if (statusText) statusText.innerText = 'Select Date, Subject & Class';
+        }
+        return;
+    }
+
+    // 1. Check for Session in Firestore
+    try {
+        const sessionQuery = query(
+            collection(db, "attendance_sessions"),
+            where("date", "==", date),
+            where("subject", "==", subject)
+        );
+        const sessionSnap = await getDocs(sessionQuery);
+
+        let foundSession = null;
+        sessionSnap.forEach(docSnap => {
+            const data = docSnap.data();
+            if (data.targetClass === selectedClass || data.targetClass === "All Classes" || data.targetClass === "all") {
+                foundSession = { id: docSnap.id, ...data };
+            }
+        });
+
+        activeAttendanceSession = foundSession;
+
+        if (foundSession && foundSession.status === 'active') {
+            if (statusBadge) {
+                statusBadge.className = 'att-status-pill pill-active';
+                if (statusText) statusText.innerText = `🟢 Live Attendance Open (${foundSession.sessionTitle || 'Active'})`;
+            }
+            if (activeInfo) activeInfo.innerText = `Live session deployed on ${foundSession.date} for ${foundSession.subject} - Class ${foundSession.targetClass}. Real-time student responses streaming below.`;
+            if (closeBtn) closeBtn.classList.remove('hidden');
+            if (deployBtn) deployBtn.innerHTML = `<span>Update Session Title</span>`;
+            if (titleInput && foundSession.sessionTitle) titleInput.value = foundSession.sessionTitle;
+        } else if (foundSession && foundSession.status === 'closed') {
+            if (statusBadge) {
+                statusBadge.className = 'att-status-pill pill-inactive';
+                if (statusText) statusText.innerText = `🔴 Session Closed (${foundSession.sessionTitle || 'Ended'})`;
+            }
+            if (activeInfo) activeInfo.innerText = `This attendance session was closed on ${foundSession.date}. You can re-open/deploy it anytime.`;
+            if (closeBtn) closeBtn.classList.add('hidden');
+            if (deployBtn) deployBtn.innerHTML = `<span>🚀 Re-Open Attendance Call</span>`;
+            if (titleInput && foundSession.sessionTitle) titleInput.value = foundSession.sessionTitle;
+        } else {
+            if (statusBadge) {
+                statusBadge.className = 'att-status-pill pill-inactive';
+                if (statusText) statusText.innerText = '⚪ No Active Session Deployed';
+            }
+            if (activeInfo) activeInfo.innerText = 'No session deployed yet for this date, subject, and class. Click "Deploy Attendance Call" to open attendance for students.';
+            if (closeBtn) closeBtn.classList.add('hidden');
+            if (deployBtn) deployBtn.innerHTML = `<span>🚀 Deploy Attendance Call</span>`;
+        }
+
+        // 2. Fetch Enrolled Students for this Class
+        const studentsQuery = query(collection(db, "students"), where("studentClass", "==", selectedClass));
+        const studentsSnap = await getDocs(studentsQuery);
+        attendanceEnrolledStudents = [];
+        studentsSnap.forEach(docSnap => {
+            attendanceEnrolledStudents.push({
+                code: docSnap.id,
+                ...docSnap.data()
+            });
+        });
+
+        // Sort students alphabetically by name
+        attendanceEnrolledStudents.sort((a, b) => (a.studentName || '').localeCompare(b.studentName || ''));
+
+        // 3. Listen to Attendance Records in Real Time
+        if (attendanceRecordsUnsubscribe) {
+            attendanceRecordsUnsubscribe();
+            attendanceRecordsUnsubscribe = null;
+        }
+
+        const recordsQuery = query(
+            collection(db, "attendance_records"),
+            where("date", "==", date),
+            where("subject", "==", subject)
+        );
+
+        attendanceRecordsUnsubscribe = onSnapshot(recordsQuery, (snapshot) => {
+            attendanceRecordsMap = {};
+            snapshot.forEach(docSnap => {
+                const rec = docSnap.data();
+                if (rec.studentCode) {
+                    attendanceRecordsMap[rec.studentCode] = { id: docSnap.id, ...rec };
+                }
+            });
+            renderAttendanceTable();
+        }, (err) => {
+            console.error("Attendance real-time snapshot error:", err);
+        });
+
+    } catch (err) {
+        console.error("Error checking and loading attendance:", err);
+    }
+}
+
+function renderAttendanceTable() {
+    const tbody = document.getElementById('attendanceRecordsTbody');
+    if (!tbody) return;
+
+    let presentCount = 0;
+    let absentCount = 0;
+    let othersCount = 0;
+    let pendingCount = 0;
+
+    const totalStudents = attendanceEnrolledStudents.length;
+
+    // Process all enrolled students and compute metrics
+    const studentRows = attendanceEnrolledStudents.map(student => {
+        const rec = attendanceRecordsMap[student.code];
+        const status = rec ? rec.status : 'pending';
+        const reason = rec ? (rec.reason || '') : '';
+        const timestamp = rec ? (rec.timestamp || '') : '';
+        const markedBy = rec ? (rec.markedBy || 'student') : '';
+
+        if (status === 'present') presentCount++;
+        else if (status === 'absent') absentCount++;
+        else if (status === 'others') othersCount++;
+        else pendingCount++;
+
+        return {
+            student,
+            record: rec,
+            status,
+            reason,
+            timestamp,
+            markedBy
+        };
+    });
+
+    // Update Counter Badges & Percentages
+    const calcPct = (count) => totalStudents > 0 ? Math.round((count / totalStudents) * 100) + '%' : '0%';
+
+    const countTotalEl = document.getElementById('attCountTotal');
+    const countPresentEl = document.getElementById('attCountPresent');
+    const countAbsentEl = document.getElementById('attCountAbsent');
+    const countOthersEl = document.getElementById('attCountOthers');
+    const countPendingEl = document.getElementById('attCountPending');
+
+    if (countTotalEl) countTotalEl.innerText = totalStudents;
+    if (countPresentEl) countPresentEl.innerText = presentCount;
+    if (countAbsentEl) countAbsentEl.innerText = absentCount;
+    if (countOthersEl) countOthersEl.innerText = othersCount;
+    if (countPendingEl) countPendingEl.innerText = pendingCount;
+
+    const pctPresentEl = document.getElementById('attPctPresent');
+    const pctAbsentEl = document.getElementById('attPctAbsent');
+    const pctOthersEl = document.getElementById('attPctOthers');
+    const pctPendingEl = document.getElementById('attPctPending');
+
+    if (pctPresentEl) pctPresentEl.innerText = calcPct(presentCount);
+    if (pctAbsentEl) pctAbsentEl.innerText = calcPct(absentCount);
+    if (pctOthersEl) pctOthersEl.innerText = calcPct(othersCount);
+    if (pctPendingEl) pctPendingEl.innerText = calcPct(pendingCount);
+
+    // Update Pill Count Badges
+    const pAll = document.getElementById('pillAllCount');
+    const pPresent = document.getElementById('pillPresentCount');
+    const pAbsent = document.getElementById('pillAbsentCount');
+    const pOthers = document.getElementById('pillOthersCount');
+    const pPending = document.getElementById('pillPendingCount');
+
+    if (pAll) pAll.innerText = totalStudents;
+    if (pPresent) pPresent.innerText = presentCount;
+    if (pAbsent) pAbsent.innerText = absentCount;
+    if (pOthers) pOthers.innerText = othersCount;
+    if (pPending) pPending.innerText = pendingCount;
+
+    // Filter list
+    let filtered = studentRows;
+    if (currentAttStatusFilter !== 'all') {
+        filtered = filtered.filter(item => item.status === currentAttStatusFilter);
+    }
+    if (attSearchQuery) {
+        filtered = filtered.filter(item => {
+            const name = (item.student.studentName || '').toLowerCase();
+            const code = (item.student.code || '').toLowerCase();
+            return name.includes(attSearchQuery) || code.includes(attSearchQuery);
+        });
+    }
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align: center; color: var(--text-gray); padding: 32px 16px;">
+                    ${totalStudents === 0 ? 'No students enrolled in this class.' : 'No students match the current status filter or search query.'}
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = "";
+    filtered.forEach((item, index) => {
+        const s = item.student;
+        const status = item.status;
+        const reason = item.reason;
+        const timeStr = item.timestamp ? formatTimeDisplay(item.timestamp) : '-';
+
+        let badgeHtml = '';
+        if (status === 'present') {
+            badgeHtml = `<span class="att-badge att-badge-present">🟢 Present (Hadir)</span>`;
+        } else if (status === 'absent') {
+            badgeHtml = `<span class="att-badge att-badge-absent">🔴 Absent (Tidak Hadir)</span>`;
+        } else if (status === 'others') {
+            badgeHtml = `<span class="att-badge att-badge-others" title="${escapeHtml(reason)}">🟡 Others (${escapeHtml(reason || 'Reason Given')})</span>`;
+        } else {
+            badgeHtml = `<span class="att-badge att-badge-pending">⚪ Not Marked (Pending)</span>`;
+        }
+
+        const reasonDisplay = reason ? `<span style="font-size: 13px; font-weight: 500; color: var(--text-dark);">${escapeHtml(reason)}</span>` : `<span style="color: var(--text-gray); font-size: 12px; font-style: italic;">None</span>`;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="text-align: center; font-weight: 600; color: var(--text-gray); font-size: 13px;">${index + 1}</td>
+            <td>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 32px; height: 32px; border-radius: 50%; background: #e0e7ff; color: #4338ca; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0;">
+                        ${(s.studentName || 'S').charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                        <strong style="color: var(--text-dark); font-size: 13.5px; display: block;">${escapeHtml(s.studentName || 'Student')}</strong>
+                        <span style="font-size: 11.5px; color: var(--text-gray);">${s.gender ? escapeHtml(s.gender) : ''}</span>
+                    </div>
+                </div>
+            </td>
+            <td><code style="background: var(--input-bg); padding: 3px 6px; border-radius: 6px; font-weight: 700; font-size: 12px; color: var(--primary-blue); border: 1px solid var(--border-color);">${escapeHtml(s.code)}</code></td>
+            <td style="font-weight: 600; font-size: 13px; color: var(--text-dark);">${escapeHtml(s.studentClass || '')}</td>
+            <td>${badgeHtml}</td>
+            <td>${reasonDisplay}</td>
+            <td style="font-size: 12px; color: var(--text-gray); white-space: nowrap;">${timeStr}</td>
+            <td style="text-align: right; white-space: nowrap;">
+                <div style="display: inline-flex; gap: 6px; align-items: center;">
+                    <button type="button" class="att-action-btn" title="Quick Mark Present" onclick="quickMarkAttendance('${escapeHtml(s.code)}', '${escapeHtml(s.studentName || '')}', '${escapeHtml(s.studentClass || '')}', 'present')">
+                        ✅ Present
+                    </button>
+                    <button type="button" class="att-action-btn" title="Quick Mark Absent" onclick="quickMarkAttendance('${escapeHtml(s.code)}', '${escapeHtml(s.studentName || '')}', '${escapeHtml(s.studentClass || '')}', 'absent')">
+                        ❌ Absent
+                    </button>
+                    <button type="button" class="att-action-btn" title="Edit / Set Reason" onclick="openAttManualModal('${escapeHtml(s.code)}', '${escapeHtml(s.studentName || '')}', '${escapeHtml(s.studentClass || '')}', '${status}', '${escapeHtml(reason)}')">
+                        ✏️ Edit / Note
+                    </button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function formatTimeDisplay(raw) {
+    if (!raw) return '-';
+    try {
+        const d = new Date(raw);
+        if (isNaN(d.getTime())) return '-';
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+        return '-';
+    }
+}
+
+window.filterAttendanceStatus = function(status) {
+    currentAttStatusFilter = status;
+    document.querySelectorAll('.att-pill').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-filter') === status);
+    });
+    renderAttendanceTable();
+};
+
+async function deployAttendanceSession() {
+    const date = document.getElementById('attSessionDate')?.value;
+    const subject = document.getElementById('attSessionSubject')?.value;
+    const selectedClass = document.getElementById('attSessionClass')?.value;
+    const title = document.getElementById('attSessionTitle')?.value.trim() || 'Regular Class';
+
+    if (!date || !subject || !selectedClass) {
+        alert("Please select Session Date, Subject, and Target Class.");
+        return;
+    }
+
+    const deployBtn = document.getElementById('btnDeployAttendanceSession');
+    try {
+        if (deployBtn) {
+            deployBtn.disabled = true;
+            deployBtn.innerText = "Deploying...";
+        }
+
+        const sessionId = `${date}_${subject.replace(/\s+/g, '_')}_${selectedClass.replace(/\s+/g, '_')}`;
+        
+        await setDoc(doc(db, "attendance_sessions", sessionId), {
+            date: date,
+            subject: subject,
+            targetClass: selectedClass,
+            sessionTitle: title,
+            status: 'active',
+            teacherName: document.getElementById('sidebarUserName')?.innerText || 'Teacher',
+            teacherEmail: auth.currentUser ? auth.currentUser.email : 'teacher@mks.sch.id',
+            updatedAt: new Date().toISOString()
+        }, { merge: true });
+
+        alert(`Attendance Session Deployed Successfully!\nSubject: ${subject}\nClass: ${selectedClass}\nDate: ${date}\n\nStudents visiting the portal will now see the attendance call.`);
+        await checkAndLoadAttendance();
+
+    } catch (err) {
+        console.error("Error deploying attendance session:", err);
+        alert("Failed to deploy attendance session: " + err.message);
+    } finally {
+        if (deployBtn) {
+            deployBtn.disabled = false;
+            deployBtn.innerHTML = `<span>🚀 Deploy Attendance Call</span>`;
+        }
+    }
+}
+
+async function closeAttendanceSession() {
+    if (!activeAttendanceSession) {
+        alert("No active session found.");
+        return;
+    }
+
+    if (confirm(`Are you sure you want to CLOSE the attendance session for ${activeAttendanceSession.subject} - Class ${activeAttendanceSession.targetClass}? Students will no longer see the attendance prompt.`)) {
+        try {
+            await updateDoc(doc(db, "attendance_sessions", activeAttendanceSession.id), {
+                status: 'closed',
+                closedAt: new Date().toISOString()
+            });
+
+            alert("Attendance session has been closed.");
+            await checkAndLoadAttendance();
+
+        } catch (err) {
+            console.error("Error closing attendance session:", err);
+            alert("Failed to close session: " + err.message);
+        }
+    }
+}
+
+window.quickMarkAttendance = async function(studentCode, studentName, studentClass, newStatus) {
+    const date = document.getElementById('attSessionDate')?.value;
+    const subject = document.getElementById('attSessionSubject')?.value;
+
+    if (!date || !subject) {
+        alert("Please ensure Session Date and Subject are selected.");
+        return;
+    }
+
+    try {
+        const recordId = `${date}_${subject.replace(/\s+/g, '_')}_${studentCode}`;
+        await setDoc(doc(db, "attendance_records", recordId), {
+            sessionId: activeAttendanceSession ? activeAttendanceSession.id : `${date}_${subject}_${studentClass}`,
+            date: date,
+            subject: subject,
+            studentCode: studentCode,
+            studentName: studentName,
+            studentClass: studentClass,
+            status: newStatus,
+            reason: '',
+            timestamp: new Date().toISOString(),
+            markedBy: 'teacher'
+        }, { merge: true });
+
+    } catch (err) {
+        console.error("Error updating attendance:", err);
+        alert("Failed to update attendance: " + err.message);
+    }
+};
+
+window.openAttManualModal = function(studentCode, studentName, studentClass, currentStatus, currentReason) {
+    const modal = document.getElementById('attManualModal');
+    if (!modal) return;
+
+    document.getElementById('attManualStudentCode').value = studentCode;
+    document.getElementById('attManualStudentName').value = studentName;
+    document.getElementById('attManualStudentClass').value = studentClass;
+    document.getElementById('attManualStudentInfo').innerText = `${studentName} (Class ${studentClass} • Code: ${studentCode})`;
+
+    const statusSelect = document.getElementById('attManualStatusSelect');
+    if (statusSelect) {
+        statusSelect.value = (currentStatus === 'present' || currentStatus === 'absent' || currentStatus === 'others') ? currentStatus : 'present';
+    }
+
+    const reasonInput = document.getElementById('attManualReasonInput');
+    if (reasonInput) {
+        reasonInput.value = currentReason || '';
+    }
+
+    onAttManualStatusChange();
+    modal.classList.remove('hidden');
+};
+
+window.closeAttManualModal = function() {
+    document.getElementById('attManualModal')?.classList.add('hidden');
+};
+
+window.onAttManualStatusChange = function() {
+    const status = document.getElementById('attManualStatusSelect')?.value;
+    const reasonBox = document.getElementById('attManualReasonBox');
+    if (reasonBox) {
+        // Show reason input for others or as optional note
+        reasonBox.style.display = (status === 'others' || status === 'absent' || status === 'present') ? 'block' : 'none';
+        const label = reasonBox.querySelector('label');
+        if (label) {
+            label.innerText = status === 'others' ? 'Reason / Explanation (Required for Others)' : 'Optional Teacher Note';
+        }
+    }
+};
+
+window.saveManualAttendanceRecord = async function() {
+    const studentCode = document.getElementById('attManualStudentCode')?.value;
+    const studentName = document.getElementById('attManualStudentName')?.value;
+    const studentClass = document.getElementById('attManualStudentClass')?.value;
+    const status = document.getElementById('attManualStatusSelect')?.value;
+    const reason = document.getElementById('attManualReasonInput')?.value.trim();
+
+    const date = document.getElementById('attSessionDate')?.value;
+    const subject = document.getElementById('attSessionSubject')?.value;
+
+    if (!studentCode || !date || !subject) {
+        alert("Missing student code, date, or subject.");
+        return;
+    }
+
+    if (status === 'others' && !reason) {
+        alert("Please provide a reason for 'Others' (e.g. Sakit Demam, Izin Dokter, dll).");
+        return;
+    }
+
+    const recordId = `${date}_${subject.replace(/\s+/g, '_')}_${studentCode}`;
+
+    try {
+        if (status === 'pending') {
+            // Delete record to reset to unmarked
+            await deleteDoc(doc(db, "attendance_records", recordId));
+        } else {
+            await setDoc(doc(db, "attendance_records", recordId), {
+                sessionId: activeAttendanceSession ? activeAttendanceSession.id : `${date}_${subject}_${studentClass}`,
+                date: date,
+                subject: subject,
+                studentCode: studentCode,
+                studentName: studentName,
+                studentClass: studentClass,
+                status: status,
+                reason: reason,
+                timestamp: new Date().toISOString(),
+                markedBy: 'teacher'
+            }, { merge: true });
+        }
+
+        closeAttManualModal();
+    } catch (err) {
+        console.error("Error saving manual attendance:", err);
+        alert("Failed to save attendance: " + err.message);
+    }
+};
+
+function exportAttendanceToExcel() {
+    if (typeof XLSX === 'undefined') {
+        alert("Excel export library is loading, please try again in a moment.");
+        return;
+    }
+
+    const date = document.getElementById('attSessionDate')?.value || 'Today';
+    const subject = document.getElementById('attSessionSubject')?.value || 'Subject';
+    const selectedClass = document.getElementById('attSessionClass')?.value || 'Class';
+
+    if (attendanceEnrolledStudents.length === 0) {
+        alert("No student attendance data to export.");
+        return;
+    }
+
+    const rows = [
+        ["MITRA KASIH SCHOOL - ATTENDANCE REPORT"],
+        [`Date: ${date}`, `Subject: ${subject}`, `Class: ${selectedClass}`],
+        [""],
+        ["No", "Student Name", "Student Code", "Class", "Attendance Status", "Reason / Note", "Time Logged", "Marked By"]
+    ];
+
+    attendanceEnrolledStudents.forEach((student, i) => {
+        const rec = attendanceRecordsMap[student.code];
+        const status = rec ? rec.status.toUpperCase() : 'PENDING (NOT MARKED)';
+        const reason = rec ? (rec.reason || '') : '';
+        const time = rec && rec.timestamp ? new Date(rec.timestamp).toLocaleTimeString() : '-';
+        const markedBy = rec ? (rec.markedBy || 'Student') : '-';
+
+        rows.push([
+            i + 1,
+            student.studentName || '',
+            student.code,
+            student.studentClass || '',
+            status,
+            reason,
+            time,
+            markedBy
+        ]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Attendance");
+
+    const fileName = `Attendance_${subject}_${selectedClass}_${date}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+}

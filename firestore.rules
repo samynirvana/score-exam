@@ -98,6 +98,17 @@ service cloud.firestore {
       allow write: if isStaffOrAdmin();
     }
 
+    // 10. Attendance Sessions & Student Attendance Records
+    match /attendance_sessions/{sessionId} {
+      allow read: if true;
+      allow write: if isStaffOrAdmin();
+    }
+
+    match /attendance_records/{recordId} {
+      allow read, create, update: if true;
+      allow delete: if isStaffOrAdmin();
+    }
+
     // Default fallback for any other subcollections
     match /{document=**} {
       allow read: if true;
