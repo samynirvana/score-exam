@@ -535,15 +535,15 @@ function listenActiveStudentAttendance() {
                     let iconChar = '✓';
 
                     if (rec.status === 'present') {
-                        statusLabel = '🟢 Present (Hadir)';
+                        statusLabel = 'Present (Hadir)';
                         statusColor = '#10b981';
                         iconChar = '✓';
                     } else if (rec.status === 'absent') {
-                        statusLabel = '🔴 Absent (Tidak Hadir)';
+                        statusLabel = 'Absent (Tidak Hadir)';
                         statusColor = '#ef4444';
                         iconChar = '✕';
                     } else if (rec.status === 'others') {
-                        statusLabel = `🟡 Others: ${rec.reason || 'Reason Provided'}`;
+                        statusLabel = `Others: ${rec.reason || 'Reason Provided'}`;
                         statusColor = '#f59e0b';
                         iconChar = 'ℹ';
                     }

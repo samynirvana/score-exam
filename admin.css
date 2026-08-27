@@ -4301,49 +4301,73 @@ body.dark-mode .btn-close-modal:hover {
 
 .att-filter-pills {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     flex-wrap: wrap;
+    align-items: center;
 }
 .att-pill {
+    width: auto !important;
+    height: 32px !important;
+    margin: 0 !important;
     background: var(--input-bg, #f8fafc);
     border: 1px solid var(--border-color, #cbd5e1);
     color: var(--text-dark, #2b3674);
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 12.5px;
+    padding: 0 12px !important;
+    border-radius: 8px !important;
+    font-size: 12px !important;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    text-transform: none;
 }
 .att-pill:hover {
     border-color: var(--primary-blue, #1e5eff);
     color: var(--primary-blue, #1e5eff);
+    transform: translateY(-1px);
+}
+.att-pill-count {
+    display: inline-block;
+    background: rgba(0, 0, 0, 0.06);
+    color: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 10px;
+    line-height: 1.2;
 }
 .att-pill.active {
     background: #1e5eff !important;
     color: #ffffff !important;
     border-color: #1e5eff !important;
-    box-shadow: 0 2px 8px rgba(30, 94, 255, 0.25);
+    box-shadow: 0 2px 6px rgba(30, 94, 255, 0.25);
+}
+.att-pill.active .att-pill-count {
+    background: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
 }
 .att-pill.pill-present.active {
     background: #10b981 !important;
     border-color: #10b981 !important;
-    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
 }
 .att-pill.pill-absent.active {
     background: #ef4444 !important;
     border-color: #ef4444 !important;
-    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.25);
 }
 .att-pill.pill-others.active {
     background: #f59e0b !important;
     border-color: #f59e0b !important;
-    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25);
+    box-shadow: 0 2px 6px rgba(245, 158, 11, 0.25);
 }
 .att-pill.pill-pending.active {
     background: #64748b !important;
     border-color: #64748b !important;
-    box-shadow: 0 2px 8px rgba(100, 116, 139, 0.25);
+    box-shadow: 0 2px 6px rgba(100, 116, 139, 0.25);
 }
 
 /* Attendance Status Badges inside table */
@@ -4351,9 +4375,9 @@ body.dark-mode .btn-close-modal:hover {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 5px 12px;
-    border-radius: 8px;
-    font-size: 12.5px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
     font-weight: 700;
     white-space: nowrap;
 }
@@ -4404,26 +4428,51 @@ body.dark-theme .att-pill {
     border-color: #334155;
     color: #cbd5e1;
 }
+body.dark-theme .att-pill-count {
+    background: rgba(255, 255, 255, 0.08);
+}
+body.dark-theme .att-action-btn {
+    background: #1e293b;
+    border-color: #334155;
+    color: #cbd5e1;
+}
 
-/* Action Dropdown / Button in Attendance row */
+/* Action Button in Attendance row */
 .att-action-btn {
-    background: var(--input-bg, #f8fafc);
+    width: auto !important;
+    height: 30px !important;
+    margin: 0 !important;
+    background: var(--card-bg, #ffffff);
     border: 1px solid var(--border-color, #cbd5e1);
     color: var(--text-dark, #2b3674);
-    padding: 5px 10px;
-    border-radius: 7px;
-    font-size: 12px;
-    font-weight: 600;
+    padding: 0 10px !important;
+    border-radius: 6px !important;
+    font-size: 11.5px !important;
+    font-weight: 600 !important;
     cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    transition: all 0.15s;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px;
+    transition: all 0.15s ease;
+    white-space: nowrap;
 }
 .att-action-btn:hover {
-    background: var(--primary-blue, #1e5eff);
-    color: #ffffff;
-    border-color: var(--primary-blue, #1e5eff);
+    transform: translateY(-1px);
+}
+.att-action-btn.att-action-present:hover {
+    background: #ecfdf5;
+    color: #059669;
+    border-color: #10b981;
+}
+.att-action-btn.att-action-absent:hover {
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #ef4444;
+}
+.att-action-btn.att-action-edit:hover {
+    background: #eff6ff;
+    color: #1e5eff;
+    border-color: #1e5eff;
 }
 
 /* Print Styles for Attendance */

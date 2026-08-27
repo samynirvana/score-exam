@@ -1379,7 +1379,7 @@ window.switchDbView = function (viewName) {
 
 // Main Menu Button Handlers
 document.querySelectorAll('.menu-btn').forEach(button => {
-    button.addEventListener('click', (e) => {
+    button.addEventListener('click', async (e) => {
         const tabId = button.getAttribute('data-tab');
         if (!tabId) return;
         const dbGroup = document.getElementById('groupDatabases');
@@ -1422,6 +1422,8 @@ document.querySelectorAll('.menu-btn').forEach(button => {
         } else if (tabId === 'tab-manage-news') {
             loadNewsTable();
         } else if (tabId === 'tab-manage-attendance') {
+            await populateAttendanceSubjects();
+            await populateAttendanceClasses();
             checkAndLoadAttendance();
         }
     });
@@ -4116,6 +4118,11 @@ window.loadSystemDatabases = async function () {
             if (bulkSubjSelect) bulkSubjSelect.value = teacherSubject;
         }
 
+        // Also keep Attendance subject dropdown synced
+        if (typeof populateAttendanceSubjects === 'function') {
+            populateAttendanceSubjects();
+        }
+
         // 3. Fetch Class Dropdown Elements
         const classTbody = document.querySelector("#classesTable tbody");
         const classSelect = document.getElementById("directClassSelect");
@@ -6329,22 +6336,21 @@ async function populateAttendanceSubjects() {
     if (userRole === 'admin') {
         try {
             const usersSnap = await getDocs(collection(db, "users"));
-            usersSnap.forEach(doc => {
-                const data = doc.data();
+            usersSnap.forEach(docSnap => {
+                const data = docSnap.data();
                 const sub = data.subject || data.Subject || data.course;
                 if (data.role === 'teacher' && sub && sub !== "Unassigned") {
                     sub.split(',').map(s => s.trim()).filter(Boolean).forEach(s => uniqueSubjects.add(s));
                 }
             });
-            // Also add standard subjects if list is small
-            ["English", "Math", "Science", "Indonesian", "Social Studies", "Art", "PE", "Religion"].forEach(s => uniqueSubjects.add(s));
         } catch (e) {
-            console.warn("Could not query subjects from users collection:", e);
+            console.warn("Could not query teacher subjects from users collection:", e);
         }
     } else if (teacherSubject && teacherSubject !== "Unassigned") {
         teacherSubject.split(',').map(s => s.trim()).filter(Boolean).forEach(s => uniqueSubjects.add(s));
     }
 
+    // Populate dropdown with database-synced teacher subjects
     Array.from(uniqueSubjects).sort().forEach(sub => {
         const opt = document.createElement('option');
         opt.value = sub;
@@ -6353,8 +6359,15 @@ async function populateAttendanceSubjects() {
     });
 
     if (userRole === 'teacher' && teacherSubject && teacherSubject !== "Unassigned") {
-        subjectSelect.value = teacherSubject.split(',')[0].trim();
-        subjectSelect.disabled = true;
+        const teacherSubs = teacherSubject.split(',').map(s => s.trim()).filter(Boolean);
+        if (teacherSubs.length > 0) {
+            subjectSelect.value = teacherSubs[0];
+            if (teacherSubs.length === 1) {
+                subjectSelect.disabled = true;
+            } else {
+                subjectSelect.disabled = false;
+            }
+        }
     } else if (previousVal && uniqueSubjects.has(previousVal)) {
         subjectSelect.value = previousVal;
     } else if (subjectSelect.options.length > 1) {
@@ -6441,29 +6454,29 @@ async function checkAndLoadAttendance() {
         if (foundSession && foundSession.status === 'active') {
             if (statusBadge) {
                 statusBadge.className = 'att-status-pill pill-active';
-                if (statusText) statusText.innerText = `🟢 Live Attendance Open (${foundSession.sessionTitle || 'Active'})`;
+                if (statusText) statusText.innerText = `Live Attendance Open (${foundSession.sessionTitle || 'Active'})`;
             }
             if (activeInfo) activeInfo.innerText = `Live session deployed on ${foundSession.date} for ${foundSession.subject} - Class ${foundSession.targetClass}. Real-time student responses streaming below.`;
             if (closeBtn) closeBtn.classList.remove('hidden');
-            if (deployBtn) deployBtn.innerHTML = `<span>Update Session Title</span>`;
+            if (deployBtn) deployBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> <span>Update Session Title</span>`;
             if (titleInput && foundSession.sessionTitle) titleInput.value = foundSession.sessionTitle;
         } else if (foundSession && foundSession.status === 'closed') {
             if (statusBadge) {
                 statusBadge.className = 'att-status-pill pill-inactive';
-                if (statusText) statusText.innerText = `🔴 Session Closed (${foundSession.sessionTitle || 'Ended'})`;
+                if (statusText) statusText.innerText = `Session Closed (${foundSession.sessionTitle || 'Ended'})`;
             }
             if (activeInfo) activeInfo.innerText = `This attendance session was closed on ${foundSession.date}. You can re-open/deploy it anytime.`;
             if (closeBtn) closeBtn.classList.add('hidden');
-            if (deployBtn) deployBtn.innerHTML = `<span>🚀 Re-Open Attendance Call</span>`;
+            if (deployBtn) deployBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> <span>Re-Open Attendance Call</span>`;
             if (titleInput && foundSession.sessionTitle) titleInput.value = foundSession.sessionTitle;
         } else {
             if (statusBadge) {
                 statusBadge.className = 'att-status-pill pill-inactive';
-                if (statusText) statusText.innerText = '⚪ No Active Session Deployed';
+                if (statusText) statusText.innerText = 'No Active Session Deployed';
             }
             if (activeInfo) activeInfo.innerText = 'No session deployed yet for this date, subject, and class. Click "Deploy Attendance Call" to open attendance for students.';
             if (closeBtn) closeBtn.classList.add('hidden');
-            if (deployBtn) deployBtn.innerHTML = `<span>🚀 Deploy Attendance Call</span>`;
+            if (deployBtn) deployBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> <span>Deploy Attendance Call</span>`;
         }
 
         // 2. Fetch Enrolled Students for this Class
@@ -6615,13 +6628,13 @@ function renderAttendanceTable() {
 
         let badgeHtml = '';
         if (status === 'present') {
-            badgeHtml = `<span class="att-badge att-badge-present">🟢 Present (Hadir)</span>`;
+            badgeHtml = `<span class="att-badge att-badge-present"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg> Present (Hadir)</span>`;
         } else if (status === 'absent') {
-            badgeHtml = `<span class="att-badge att-badge-absent">🔴 Absent (Tidak Hadir)</span>`;
+            badgeHtml = `<span class="att-badge att-badge-absent"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> Absent (Tidak Hadir)</span>`;
         } else if (status === 'others') {
-            badgeHtml = `<span class="att-badge att-badge-others" title="${escapeHtml(reason)}">🟡 Others (${escapeHtml(reason || 'Reason Given')})</span>`;
+            badgeHtml = `<span class="att-badge att-badge-others" title="${escapeHtml(reason)}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> Others${reason ? ` (${escapeHtml(reason)})` : ''}</span>`;
         } else {
-            badgeHtml = `<span class="att-badge att-badge-pending">⚪ Not Marked (Pending)</span>`;
+            badgeHtml = `<span class="att-badge att-badge-pending"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Not Marked</span>`;
         }
 
         const reasonDisplay = reason ? `<span style="font-size: 13px; font-weight: 500; color: var(--text-dark);">${escapeHtml(reason)}</span>` : `<span style="color: var(--text-gray); font-size: 12px; font-style: italic;">None</span>`;
@@ -6647,14 +6660,17 @@ function renderAttendanceTable() {
             <td style="font-size: 12px; color: var(--text-gray); white-space: nowrap;">${timeStr}</td>
             <td style="text-align: right; white-space: nowrap;">
                 <div style="display: inline-flex; gap: 6px; align-items: center;">
-                    <button type="button" class="att-action-btn" title="Quick Mark Present" onclick="quickMarkAttendance('${escapeHtml(s.code)}', '${escapeHtml(s.studentName || '')}', '${escapeHtml(s.studentClass || '')}', 'present')">
-                        ✅ Present
+                    <button type="button" class="att-action-btn att-action-present" title="Quick Mark Present" onclick="quickMarkAttendance('${escapeHtml(s.code)}', '${escapeHtml(s.studentName || '')}', '${escapeHtml(s.studentClass || '')}', 'present')">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span>Present</span>
                     </button>
-                    <button type="button" class="att-action-btn" title="Quick Mark Absent" onclick="quickMarkAttendance('${escapeHtml(s.code)}', '${escapeHtml(s.studentName || '')}', '${escapeHtml(s.studentClass || '')}', 'absent')">
-                        ❌ Absent
+                    <button type="button" class="att-action-btn att-action-absent" title="Quick Mark Absent" onclick="quickMarkAttendance('${escapeHtml(s.code)}', '${escapeHtml(s.studentName || '')}', '${escapeHtml(s.studentClass || '')}', 'absent')">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        <span>Absent</span>
                     </button>
-                    <button type="button" class="att-action-btn" title="Edit / Set Reason" onclick="openAttManualModal('${escapeHtml(s.code)}', '${escapeHtml(s.studentName || '')}', '${escapeHtml(s.studentClass || '')}', '${status}', '${escapeHtml(reason)}')">
-                        ✏️ Edit / Note
+                    <button type="button" class="att-action-btn att-action-edit" title="Edit / Set Reason" onclick="openAttManualModal('${escapeHtml(s.code)}', '${escapeHtml(s.studentName || '')}', '${escapeHtml(s.studentClass || '')}', '${status}', '${escapeHtml(reason)}')">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        <span>Note</span>
                     </button>
                 </div>
             </td>
@@ -6722,7 +6738,7 @@ async function deployAttendanceSession() {
     } finally {
         if (deployBtn) {
             deployBtn.disabled = false;
-            deployBtn.innerHTML = `<span>🚀 Deploy Attendance Call</span>`;
+            deployBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> <span>Deploy Attendance Call</span>`;
         }
     }
 }
