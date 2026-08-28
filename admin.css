@@ -9,28 +9,61 @@
 
 :root {
     --font-display: 'Outfit', sans-serif;
-    --bg-body: #f1f5f9;
-    --sidebar-bg: #0f172a;
-    --sidebar-hover: #1e293b;
-    --primary-blue: #4338ca;
-    --accent-gold: #d97706;
+    --bg-body: oklch(96.8% 0.008 245); /* Warm slate surface tint instead of flat gray #f1f5f9 */
+    --sidebar-bg: oklch(20% 0.035 255); /* Deep slate navy #0f172a */
+    --sidebar-hover: oklch(27% 0.04 255);
+    --primary-blue: oklch(50% 0.22 260); /* Vibrant royal blue #2563eb */
+    --primary-blue-glow: rgba(37, 99, 235, 0.22);
+    --accent-gold: oklch(68% 0.16 75); /* Warm academic gold #d97706 */
+    --accent-gold-glow: rgba(217, 119, 6, 0.22);
     --table-blue: #0f172a;
-    --purple-header: #4338ca;
-    --text-dark: #0f172a;
-    --text-gray: #64748b;
-    --border-color: #cbd5e1;
+    --purple-header: oklch(48% 0.20 270);
+    --text-dark: oklch(18% 0.03 255); /* #0f172a */
+    --text-gray: oklch(45% 0.03 255); /* Warm slate medium #64748b */
+    --text-muted: oklch(60% 0.02 255);
+    --border-color: oklch(89% 0.015 250); /* #cbd5e1 soft tinted border */
+    --border-color-hover: oklch(75% 0.06 255);
     --card-bg: #ffffff;
+    --card-bg-tint: oklch(99.2% 0.004 245);
 
     /* Dedicated Input & Box Variables */
-    --input-bg: #f8fafc;
-    --input-text: #0f172a;
-    --input-placeholder: #94a3b8;
-    --quiz-box-bg: #f1f5f9;
+    --input-bg: oklch(98.5% 0.005 245);
+    --input-text: oklch(18% 0.03 255);
+    --input-placeholder: oklch(65% 0.02 255);
+    --quiz-box-bg: oklch(97.2% 0.006 245);
+
+    /* Semantic Status & Category Palette */
+    --color-success: oklch(52% 0.17 155); /* Emerald Green */
+    --color-success-bg: oklch(96% 0.03 155);
+    --color-success-border: oklch(85% 0.07 155);
+    
+    --color-warning: oklch(62% 0.16 65); /* Warm Amber/Orange */
+    --color-warning-bg: oklch(97% 0.04 65);
+    --color-warning-border: oklch(88% 0.09 65);
+    
+    --color-danger: oklch(52% 0.22 25); /* Rich Crimson/Rose */
+    --color-danger-bg: oklch(96% 0.04 25);
+    --color-danger-border: oklch(86% 0.09 25);
+    
+    --color-info: oklch(50% 0.16 230); /* Ocean Blue/Teal */
+    --color-info-bg: oklch(96% 0.03 230);
+    --color-info-border: oklch(86% 0.08 230);
+    
+    --color-purple: oklch(50% 0.18 300); /* Amethyst Violet */
+    --color-purple-bg: oklch(96.5% 0.03 300);
+    --color-purple-border: oklch(86% 0.08 300);
+
+    /* Category Chips */
+    --chip-math: oklch(52% 0.20 260);
+    --chip-science: oklch(54% 0.16 180);
+    --chip-english: oklch(62% 0.16 65);
+    --chip-character: oklch(55% 0.17 150);
 }
 
-body {
+html, body {
     font-family: 'Plus Jakarta Sans', sans-serif;
-    margin: 0;
+    margin: 0 !important;
+    padding: 0 !important;
     background: var(--bg-body);
     color: var(--text-dark);
     display: flex;

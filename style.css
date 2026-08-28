@@ -37,15 +37,11 @@ button:active:not(:disabled) {
     }
 }
 
-/* Update your existing body rule */
-body {
-    background-color: #f4f7f6;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    margin: 0;
-    padding: 20px;
+/* Global body reset */
+html, body {
+    background-color: var(--bg-body, #f4f7f6);
+    margin: 0 !important;
+    padding: 0 !important;
     box-sizing: border-box;
 }
 
@@ -65,7 +61,7 @@ body {
     padding: 30px;
     border-radius: 12px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-    text-align: center;
+    text-align: left;
     width: 100%;
 }
 
@@ -127,7 +123,7 @@ body {
     padding: 30px;
     border-radius: 12px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    text-align: center;
+    text-align: left;
     width: 100%;
     max-width: 400px;
 }
@@ -210,4 +206,99 @@ body {
     height: 18px !important;
     object-fit: contain !important;
     flex-shrink: 0 !important;
+}
+
+/* ======================================================
+   SEMANTIC STATUS BADGES & TINTED CHIPS SYSTEM
+   ====================================================== */
+.badge-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.4;
+    letter-spacing: 0.2px;
+}
+
+.badge-success {
+    background: oklch(96% 0.03 155);
+    color: oklch(48% 0.17 155);
+    border: 1px solid oklch(85% 0.07 155);
+}
+
+.badge-warning {
+    background: oklch(97% 0.04 65);
+    color: oklch(52% 0.16 65);
+    border: 1px solid oklch(88% 0.09 65);
+}
+
+.badge-danger {
+    background: oklch(96% 0.04 25);
+    color: oklch(48% 0.22 25);
+    border: 1px solid oklch(86% 0.09 25);
+}
+
+.badge-info {
+    background: oklch(96% 0.03 230);
+    color: oklch(46% 0.16 230);
+    border: 1px solid oklch(86% 0.08 230);
+}
+
+.badge-purple {
+    background: oklch(96.5% 0.03 300);
+    color: oklch(46% 0.18 300);
+    border: 1px solid oklch(86% 0.08 300);
+}
+
+/* Category Chip Utilities */
+.chip-subject {
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.chip-math {
+    background: oklch(95.5% 0.03 260);
+    color: oklch(48% 0.20 260);
+    border: 1px solid oklch(85% 0.08 260);
+}
+
+.chip-science {
+    background: oklch(95.5% 0.03 180);
+    color: oklch(46% 0.16 180);
+    border: 1px solid oklch(85% 0.08 180);
+}
+
+.chip-english {
+    background: oklch(96.5% 0.04 65);
+    color: oklch(50% 0.16 65);
+    border: 1px solid oklch(86% 0.09 65);
+}
+
+.chip-character {
+    background: oklch(96% 0.03 150);
+    color: oklch(46% 0.17 150);
+    border: 1px solid oklch(85% 0.07 150);
+}
+
+/* Surface Tint Wrappers */
+.surface-tint-warm {
+    background: oklch(98.8% 0.005 245);
+    border: 1px solid oklch(90% 0.015 250);
+}
+
+.card-accent-left {
+    border-left: 4px solid var(--primary-blue, oklch(50% 0.22 260));
+}
+.card-accent-left-gold {
+    border-left: 4px solid var(--accent-gold, oklch(68% 0.16 75));
+}
+.card-accent-left-emerald {
+    border-left: 4px solid oklch(52% 0.17 155);
 }

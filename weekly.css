@@ -2,13 +2,18 @@
 
 :root {
   --font-display: 'Outfit', -apple-system, sans-serif;
-  --border-color: #cbd5e1;
-  --header-bg: #f1f5f9;
-  --break-bg: #e2e8f0;
-  --accent: #4338ca;
-  --accent-gold: #d97706;
-  --text-dark: #0f172a;
+  --border-color: oklch(89% 0.015 250);
+  --header-bg: oklch(96.8% 0.008 245);
+  --break-bg: oklch(94% 0.015 245);
+  --accent: oklch(50% 0.22 260);
+  --accent-gold: oklch(68% 0.16 75);
+  --text-dark: oklch(18% 0.03 255);
   --card-bg: #ffffff;
+  --color-success: oklch(52% 0.17 155);
+  --color-warning: oklch(62% 0.16 65);
+  --color-danger: oklch(52% 0.22 25);
+  --color-info: oklch(50% 0.16 230);
+  --color-purple: oklch(50% 0.18 300);
 
   /* Motion Tokens */
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);

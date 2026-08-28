@@ -2,18 +2,21 @@
    1. COLOR VARIABLES & THEME DEFINITIONS
    ========================================================================== */
 :root {
-    --bg-color: #f1f5f9;
+    --bg-color: oklch(96.8% 0.008 245);
     --card-bg: #ffffff;
-    --border-color: #cbd5e1;
-    --text-main: #0f172a;
-    --text-muted: #64748b;
-    --primary-color: #2563eb;
-    --primary-hover: #1d4ed8;
-    --input-bg: #ffffff;
-    --comment-bg: #f8fafc;
-    --avatar-bg: #dbeafe;
-    --avatar-text: #1d4ed8;
-    --kebab-hover: #e2e8f0;
+    --border-color: oklch(89% 0.015 250);
+    --text-main: oklch(18% 0.03 255);
+    --text-muted: oklch(45% 0.03 255);
+    --primary-color: oklch(50% 0.22 260);
+    --primary-hover: oklch(42% 0.22 260);
+    --input-bg: oklch(98.5% 0.005 245);
+    --comment-bg: oklch(97.2% 0.006 245);
+    --avatar-bg: oklch(94% 0.04 250);
+    --avatar-text: oklch(42% 0.20 260);
+    --kebab-hover: oklch(92% 0.015 250);
+    --color-gold: oklch(68% 0.16 75);
+    --color-emerald: oklch(52% 0.17 155);
+    --color-crimson: oklch(52% 0.22 25);
 
     /* Motion Tokens */
     --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
@@ -155,17 +158,27 @@ input, textarea, button {
     background-color: transparent !important;
     width: 100%;
     box-sizing: border-box;
+    text-align: left !important;
 }
 
 #timelineFeed {
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
+    text-align: left !important;
 }
 
 .timeline-feed-header {
-    padding: 14px 0;
-    margin-bottom: 18px;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+    background: var(--bg-color, #f1f5f9) !important;
+    backdrop-filter: blur(12px) !important;
+    padding-bottom: 14px !important;
+    margin-top: -24px !important;
+    padding-top: 24px !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    margin-bottom: 18px !important;
 }
 
 .timeline-user-subtext {
@@ -566,14 +579,15 @@ body.dark-mode #mobileTopbarKebabBtn.mobile-kebab-btn {
 }
 
 .comment-item { 
-    background: var(--comment-bg); 
-    padding: 12px 16px; 
-    border-radius: 8px; 
+    background: transparent !important; 
+    padding: 6px 0 !important; 
+    border-radius: 0 !important; 
     font-size: 14px; 
     display: flex; 
     justify-content: space-between; 
     align-items: flex-start;
-    border: 1px solid var(--border-color);
+    border: none !important;
+    box-shadow: none !important;
 }
 
 .comment-content {
