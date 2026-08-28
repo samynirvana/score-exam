@@ -30,19 +30,21 @@ button, input, select, textarea {
   justify-content: space-between;
   align-items: center;
   background: #ffffff;
-  padding: 12px 24px;
+  padding: 12px 20px;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
   box-shadow: 0 4px 15px -2px rgba(15, 23, 42, 0.05);
   margin-bottom: 24px;
-  flex-wrap: wrap;
-  gap: 16px;
+  flex-wrap: nowrap;
+  gap: 12px;
 }
 
 .topbar-brand {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .brand-icon {
@@ -63,7 +65,7 @@ button, input, select, textarea {
 }
 
 .brand-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: #0f172a;
   line-height: 1.2;
@@ -81,24 +83,49 @@ button, input, select, textarea {
   background: #f1f5f9;
   padding: 4px;
   border-radius: 10px;
-  gap: 4px;
+  gap: 3px;
   border: 1px solid #e2e8f0;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: pan-x;
+  scroll-behavior: smooth;
+}
+
+.nav-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-tabs:active,
+.nav-tabs.is-dragging {
+  cursor: grabbing;
+  scroll-behavior: auto;
+}
+
+.nav-tabs.is-dragging .tab-btn {
+  pointer-events: none;
 }
 
 .tab-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 18px;
+  gap: 6px;
+  padding: 7px 14px;
   border: none;
   background: transparent;
   color: #64748b;
   border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 12.5px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   outline: none;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .tab-btn:hover {
@@ -114,8 +141,9 @@ button, input, select, textarea {
 }
 
 .tab-icon {
-  font-size: 15px;
-  display: inline-block;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
   transition: transform 0.2s ease;
 }
 
@@ -127,7 +155,9 @@ button, input, select, textarea {
 .topbar-user {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .user-email-badge,
@@ -138,11 +168,12 @@ button, input, select, textarea {
   font-weight: 600;
   color: #334155;
   background: #f8fafc;
-  padding: 6px 14px;
+  padding: 6px 12px;
   border-radius: 8px;
   border: 1px solid #cbd5e1;
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .user-email-btn:hover {
@@ -161,7 +192,7 @@ button, input, select, textarea {
   background: #fef2f2;
   color: #dc2626;
   border: 1px solid #fecaca;
-  padding: 7px 14px;
+  padding: 6px 12px;
   border-radius: 8px;
   font-size: 12px;
   font-weight: 600;
@@ -170,6 +201,7 @@ button, input, select, textarea {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
 }
 
 .logout-btn:hover {
@@ -2871,5 +2903,15 @@ select:focus {
   .meeting-layout-grid,
   #meetingView .meeting-card {
     display: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-topbar {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .topbar-brand, .topbar-user {
+    justify-content: center;
   }
 }

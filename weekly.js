@@ -437,6 +437,66 @@ document.getElementById('btnRewardView')?.addEventListener('click', (e) => switc
 document.getElementById('btnMeetingView')?.addEventListener('click', (e) => switchTab('meetingView', e.currentTarget));
 document.getElementById('btnAdminView')?.addEventListener('click', (e) => switchTab('adminView', e.currentTarget));
 
+// Draggable Navigation Tabs Helper
+export function initDraggableNavTabs() {
+  const containers = document.querySelectorAll('.nav-tabs');
+  containers.forEach(container => {
+    if (container._dragAttached) return;
+    container._dragAttached = true;
+
+    let isDown = false;
+    let startX = 0;
+    let scrollLeft = 0;
+    let isDragging = false;
+
+    container.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      isDown = true;
+      isDragging = false;
+      startX = e.pageX - container.offsetLeft;
+      scrollLeft = container.scrollLeft;
+    });
+
+    const stopDragging = () => {
+      if (!isDown) return;
+      isDown = false;
+      setTimeout(() => {
+        container.classList.remove('is-dragging');
+      }, 50);
+    };
+
+    window.addEventListener('mouseup', stopDragging);
+    container.addEventListener('mouseleave', stopDragging);
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDown) return;
+      const x = e.pageX - container.offsetLeft;
+      const walk = x - startX;
+      if (Math.abs(walk) > 5) {
+        if (!isDragging) {
+          isDragging = true;
+          container.classList.add('is-dragging');
+        }
+        e.preventDefault();
+        container.scrollLeft = scrollLeft - walk;
+      }
+    });
+
+    container.addEventListener('wheel', (e) => {
+      if (e.deltaY !== 0 && container.scrollWidth > container.clientWidth) {
+        e.preventDefault();
+        container.scrollLeft += e.deltaY;
+      }
+    }, { passive: false });
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initDraggableNavTabs);
+} else {
+  initDraggableNavTabs();
+}
+
 export function autoResizeTextarea(el) {
   if (!el) return;
   el.style.height = 'auto';
@@ -477,6 +537,7 @@ function switchTab(tabId, targetBtn) {
   document.getElementById(tabId)?.classList.add('active');
   const btn = targetBtn?.closest ? targetBtn.closest('.tab-btn') : targetBtn;
   btn?.classList.add('active');
+  btn?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
 
   if (tabId === 'classView') {
     updateClassEditButtonState();
