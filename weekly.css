@@ -1084,8 +1084,8 @@ button, input, select, textarea {
 
 .modern-textarea {
   width: 100%;
-  min-height: 100px;
-  padding: 14px 16px;
+  min-height: 80px;
+  padding: 12px 14px;
   font-size: 13.5px;
   font-weight: 500;
   color: #0f172a;
@@ -1096,7 +1096,9 @@ button, input, select, textarea {
   outline: none;
   line-height: 1.6;
   resize: vertical;
-  transition: all 0.2s ease;
+  overflow-y: hidden;
+  field-sizing: content;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
   font-family: inherit;
 }
 
@@ -2461,9 +2463,16 @@ select:focus {
   color: #94a3b8;
 }
 
-.report-content-grid {
+.report-body-wrapper {
+  display: flex;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.report-text-columns {
+  flex: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
 }
 
@@ -2472,6 +2481,70 @@ select:focus {
   border: 1px solid #f1f5f9;
   border-radius: 8px;
   padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.report-image-side-block {
+  width: 130px;
+  flex-shrink: 0;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  justify-content: flex-start;
+  box-sizing: border-box;
+}
+
+.report-image-side-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: #2563eb;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.report-image-side-thumb {
+  width: 100%;
+  height: 95px;
+  display: block;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  position: relative;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.report-image-side-thumb:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+  border-color: #3b82f6;
+}
+
+.report-image-side-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+@media (max-width: 680px) {
+  .report-body-wrapper {
+    flex-direction: column;
+  }
+  .report-image-side-block {
+    width: 100%;
+    max-width: 180px;
+  }
 }
 
 .report-block-title {

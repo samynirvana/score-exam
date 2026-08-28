@@ -437,6 +437,35 @@ document.getElementById('btnRewardView')?.addEventListener('click', (e) => switc
 document.getElementById('btnMeetingView')?.addEventListener('click', (e) => switchTab('meetingView', e.currentTarget));
 document.getElementById('btnAdminView')?.addEventListener('click', (e) => switchTab('adminView', e.currentTarget));
 
+export function autoResizeTextarea(el) {
+  if (!el) return;
+  el.style.height = 'auto';
+  if (el.scrollHeight > 0) {
+    el.style.height = (el.scrollHeight) + 'px';
+  }
+}
+
+function initAutoResizeTextareas() {
+  document.querySelectorAll('textarea.modern-textarea, textarea.form-control, textarea').forEach(ta => {
+    if (ta._autoResizeAttached) return;
+    ta._autoResizeAttached = true;
+    ta.addEventListener('input', () => autoResizeTextarea(ta));
+    autoResizeTextarea(ta);
+  });
+}
+
+function loadDriveFolderSettings() {
+  const inputScript = document.getElementById('inputMeetingDriveScriptUrl');
+  const inputFolder = document.getElementById('inputMeetingDriveFolderId');
+
+  if (inputScript) {
+    inputScript.value = localStorage.getItem('meetingDriveScriptUrl') || localStorage.getItem('googleDriveScriptUrl') || '';
+  }
+  if (inputFolder) {
+    inputFolder.value = localStorage.getItem('meetingDriveFolderId') || '';
+  }
+}
+
 function switchTab(tabId, targetBtn) {
   if (tabId === 'adminView' && !isAdminUser()) {
     alert("Access Denied: Only administrators can access the Admin Dashboard.");
@@ -461,7 +490,14 @@ function switchTab(tabId, targetBtn) {
     renderEntityTables();
     renderManageScheduleTable();
     renderManageThemesTable();
+    loadDriveFolderSettings();
   }
+
+  // Adjust all visible textareas to their content height
+  setTimeout(() => {
+    initAutoResizeTextareas();
+    document.querySelectorAll('.tab-content.active textarea').forEach(ta => autoResizeTextarea(ta));
+  }, 50);
 }
 
 // Helper to retrieve slot assignments normalized as an array, prioritizing weekly overrides
@@ -492,6 +528,10 @@ function getSlotAssignments(className, day, slotId, viewCalPrefix = null) {
 document.getElementById('btnSubAdd')?.addEventListener('click', (e) => switchAdminSubTab('subTabAdd', e.target));
 document.getElementById('btnSubManage')?.addEventListener('click', (e) => switchAdminSubTab('subTabManage', e.target));
 document.getElementById('btnSubCalendar')?.addEventListener('click', (e) => switchAdminSubTab('subTabCalendar', e.target));
+document.getElementById('btnSubDrive')?.addEventListener('click', (e) => {
+  switchAdminSubTab('subTabDrive', e.target);
+  loadDriveFolderSettings();
+});
 
 function switchAdminSubTab(subTabId, targetBtn) {
   document.querySelectorAll('.subtab-content').forEach(el => el.classList.remove('active'));
@@ -2757,6 +2797,7 @@ function renderTeacherView() {
 
     if (noteInput) {
       noteInput.value = classNotesData[notesKey] || '';
+      autoResizeTextarea(noteInput);
     }
   } else if (homeSection) {
     homeSection.style.display = 'none';
@@ -4245,12 +4286,7 @@ function initMeetingView() {
 
 function populateMeetingReportSelects() {
   const teacherSel = document.getElementById('reportTeacherSelect');
-  const subjectSel = document.getElementById('reportSubjectSelect');
-  const classSel = document.getElementById('reportClassSelect');
-
   const teachers = appEntities.teachers || [];
-  const subjects = appEntities.subjects || [];
-  const classes = appEntities.classes || [];
 
   if (teacherSel) {
     const currentVal = teacherSel.value;
@@ -4263,22 +4299,6 @@ function populateMeetingReportSelects() {
       }
     } else if (currentVal && teachers.includes(currentVal)) {
       teacherSel.value = currentVal;
-    }
-  }
-
-  if (subjectSel) {
-    const currentVal = subjectSel.value;
-    subjectSel.innerHTML = subjects.map(s => `<option value="${s}">${s}</option>`).join('');
-    if (currentVal && subjects.includes(currentVal)) {
-      subjectSel.value = currentVal;
-    }
-  }
-
-  if (classSel) {
-    const currentVal = classSel.value;
-    classSel.innerHTML = classes.map(c => `<option value="${c}">${c}</option>`).join('');
-    if (currentVal && classes.includes(currentVal)) {
-      classSel.value = currentVal;
     }
   }
 }
@@ -4400,27 +4420,9 @@ function initReportImageUpload() {
   const dropZone = document.getElementById('reportImageDropZone');
   const removeBtn = document.getElementById('btnRemoveReportImage');
 
-  // Google Drive Settings Modal Event Listeners
-  document.getElementById('btnOpenDriveFolderModal')?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const modal = document.getElementById('driveFolderModal');
-    const inputScript = document.getElementById('inputMeetingDriveScriptUrl');
-    const inputFolder = document.getElementById('inputMeetingDriveFolderId');
+  loadDriveFolderSettings();
 
-    if (inputScript) {
-      inputScript.value = localStorage.getItem('meetingDriveScriptUrl') || localStorage.getItem('googleDriveScriptUrl') || '';
-    }
-    if (inputFolder) {
-      inputFolder.value = localStorage.getItem('meetingDriveFolderId') || '';
-    }
-    if (modal) modal.style.display = 'flex';
-  });
-
-  document.getElementById('btnCloseDriveFolderModal')?.addEventListener('click', () => {
-    const modal = document.getElementById('driveFolderModal');
-    if (modal) modal.style.display = 'none';
-  });
-
+  // Google Drive Settings Save Event Listener
   document.getElementById('btnSaveDriveFolderSettings')?.addEventListener('click', () => {
     const scriptUrl = document.getElementById('inputMeetingDriveScriptUrl')?.value.trim() || '';
     const folderId = document.getElementById('inputMeetingDriveFolderId')?.value.trim() || '';
@@ -4437,9 +4439,7 @@ function initReportImageUpload() {
       localStorage.removeItem('meetingDriveFolderId');
     }
 
-    const modal = document.getElementById('driveFolderModal');
-    if (modal) modal.style.display = 'none';
-    alert("Google Drive Folder Settings for Meeting & Teaching Documentation saved successfully!");
+    alert("Google Drive Folder Settings saved successfully!");
   });
 
   fileInput?.addEventListener('change', async (e) => {
@@ -4605,6 +4605,7 @@ function renderMeetingView() {
   }
   if (summaryInput) {
     summaryInput.value = meetingRecord.summary || '';
+    autoResizeTextarea(summaryInput);
   }
 
   // Parse attendees
@@ -4680,8 +4681,8 @@ function renderTeacherReportsCompilation(reportsList, year, theme, week) {
         <div class="report-item-header">
           <div class="report-item-pills">
             <span class="report-pill-teacher">👨‍🏫 ${escapeHtml(rep.teacher || 'Teacher')}</span>
-            <span class="report-pill-subject">📚 ${escapeHtml(rep.subject || 'Subject')}</span>
-            <span class="report-pill-class">🏫 ${escapeHtml(rep.className || 'Class')}</span>
+            ${rep.subject ? `<span class="report-pill-subject">📚 ${escapeHtml(rep.subject)}</span>` : ''}
+            ${rep.className ? `<span class="report-pill-class">🏫 ${escapeHtml(rep.className)}</span>` : ''}
           </div>
           <div style="display: flex; align-items: center; gap: 8px;">
             ${formattedDate ? `<span class="report-item-time">${formattedDate}</span>` : ''}
@@ -4692,23 +4693,25 @@ function renderTeacherReportsCompilation(reportsList, year, theme, week) {
           </div>
         </div>
 
-        <div class="report-content-grid">
-          <div class="report-content-block">
-            <div class="report-block-title progress-title">1. Weekly Progress & Material</div>
-            <div class="report-block-text">${escapeHtml(rep.progress || '-')}</div>
+        <div class="report-body-wrapper ${imgUrl ? 'has-image' : ''}">
+          <div class="report-text-columns">
+            <div class="report-content-block">
+              <div class="report-block-title progress-title">1. Weekly Progress & Material</div>
+              <div class="report-block-text">${escapeHtml(rep.progress || '-')}</div>
+            </div>
+            <div class="report-content-block">
+              <div class="report-block-title challenges-title">2. Observations & Challenges</div>
+              <div class="report-block-text">${escapeHtml(rep.challenges || '-')}</div>
+            </div>
           </div>
-          <div class="report-content-block">
-            <div class="report-block-title challenges-title">2. Observations & Challenges</div>
-            <div class="report-block-text">${escapeHtml(rep.challenges || '-')}</div>
-            ${imgUrl ? `
-              <div style="margin-top: 8px;">
-                <div style="font-size: 10.5px; font-weight: 700; color: #2563eb; margin-bottom: 3px;">📸 Attached Documentation</div>
-                <a href="${escapeHtml(imgUrl)}" target="_blank" class="report-image-thumb-link" title="Click to view full image">
-                  <img src="${escapeHtml(imgUrl)}" alt="Report Photo">
-                </a>
-              </div>
-            ` : ''}
-          </div>
+          ${imgUrl ? `
+            <div class="report-image-side-block">
+              <div class="report-image-side-label">📸 Photo</div>
+              <a href="${escapeHtml(imgUrl)}" target="_blank" class="report-image-side-thumb" title="Click to view full image">
+                <img src="${escapeHtml(imgUrl)}" alt="Report Photo">
+              </a>
+            </div>
+          ` : ''}
         </div>
       </div>
     `;
@@ -4750,12 +4753,13 @@ function renderPrintableMeetingSheet(year, theme, week, meetingRecord, reportsLi
   let rowsHtml = '';
   reportsList.forEach((rep, index) => {
     const imgUrl = rep.imageUrl || rep.finalUrl || rep.photoUrl || '';
+    const subjectInfo = rep.subject ? `<div style="font-size: 8.5pt; color: #2563eb; font-weight: 600;">${escapeHtml(rep.subject)}</div>` : '';
     rowsHtml += `
       <tr>
         <td style="text-align: center; font-weight: bold;">${index + 1}</td>
         <td>
           <strong>${escapeHtml(rep.teacher || '-')}</strong>
-          <div style="font-size: 8.5pt; color: #2563eb; font-weight: 600;">${escapeHtml(rep.subject || '-')}</div>
+          ${subjectInfo}
         </td>
         <td style="font-weight: 600;">${escapeHtml(rep.className || '-')}</td>
         <td style="white-space: pre-wrap;">${escapeHtml(rep.progress || '-')}</td>
@@ -4832,9 +4836,6 @@ async function submitTeacherReport() {
   const week = document.getElementById('meetingWeekSelect')?.value || 'Week 1';
 
   const teacher = document.getElementById('reportTeacherSelect')?.value || '';
-  const subject = document.getElementById('reportSubjectSelect')?.value || '';
-  const className = document.getElementById('reportClassSelect')?.value || '';
-
   const progress = document.getElementById('reportProgressInput')?.value.trim() || '';
   const challenges = document.getElementById('reportChallengesInput')?.value.trim() || '';
   const imageUrl = currentReportImageData.finalUrl || currentReportImageData.dataUrl || '';
@@ -4858,8 +4859,6 @@ async function submitTeacherReport() {
       existingReports[targetIdx] = {
         ...existingReports[targetIdx],
         teacher,
-        subject,
-        className,
         progress,
         challenges,
         imageUrl: imageUrl || existingReports[targetIdx].imageUrl || '',
@@ -4869,15 +4868,14 @@ async function submitTeacherReport() {
     }
     editingReportId = null;
   } else {
-    // Check if teacher already has a report for the same subject & class in this week
-    const duplicateIdx = existingReports.findIndex(r => r.teacher === teacher && r.subject === subject && r.className === className);
+    // Check if teacher already has a report in this week
+    const duplicateIdx = existingReports.findIndex(r => r.teacher === teacher);
     if (duplicateIdx !== -1) {
-      if (confirm(`A report for ${teacher} (${subject} - ${className}) already exists for ${week}. Do you want to overwrite it?`)) {
+      if (confirm(`A report for ${teacher} already exists for ${week}. Do you want to overwrite it?`)) {
         existingReports[duplicateIdx] = {
+          ...existingReports[duplicateIdx],
           id: existingReports[duplicateIdx].id || String(Date.now()),
           teacher,
-          subject,
-          className,
           progress,
           challenges,
           imageUrl: imageUrl || existingReports[duplicateIdx].imageUrl || '',
@@ -4891,8 +4889,6 @@ async function submitTeacherReport() {
       existingReports.push({
         id: String(Date.now()),
         teacher,
-        subject,
-        className,
         progress,
         challenges,
         imageUrl: imageUrl,
@@ -4914,12 +4910,14 @@ async function submitTeacherReport() {
     await setDoc(doc(db, "schedules", "meetingCoordination"), meetingCoordinationData, { merge: true });
 
     // Reset report input fields
-    document.getElementById('reportProgressInput').value = '';
-    document.getElementById('reportChallengesInput').value = '';
+    const progEl = document.getElementById('reportProgressInput');
+    const chalEl = document.getElementById('reportChallengesInput');
+    if (progEl) { progEl.value = ''; autoResizeTextarea(progEl); }
+    if (chalEl) { chalEl.value = ''; autoResizeTextarea(chalEl); }
     clearReportImage();
 
     renderMeetingView();
-    alert(`Weekly Teaching Report successfully saved for ${teacher} (${subject} - ${className})!`);
+    alert(`Weekly Teaching Report successfully saved for ${teacher}!`);
   } catch (err) {
     console.error("Error submitting teacher report:", err);
     alert("Failed to submit report: " + err.message);
@@ -4952,15 +4950,12 @@ window.editTeacherReportByIndex = function (index) {
   editingReportId = rep.id || String(index);
 
   const teacherSel = document.getElementById('reportTeacherSelect');
-  const subjectSel = document.getElementById('reportSubjectSelect');
-  const classSel = document.getElementById('reportClassSelect');
-
   if (teacherSel && rep.teacher) teacherSel.value = rep.teacher;
-  if (subjectSel && rep.subject) subjectSel.value = rep.subject;
-  if (classSel && rep.className) classSel.value = rep.className;
 
-  document.getElementById('reportProgressInput').value = rep.progress || '';
-  document.getElementById('reportChallengesInput').value = rep.challenges || '';
+  const progEl = document.getElementById('reportProgressInput');
+  const chalEl = document.getElementById('reportChallengesInput');
+  if (progEl) { progEl.value = rep.progress || ''; autoResizeTextarea(progEl); }
+  if (chalEl) { chalEl.value = rep.challenges || ''; autoResizeTextarea(chalEl); }
 
   if (rep.imageUrl || rep.finalUrl) {
     const url = rep.imageUrl || rep.finalUrl;
@@ -4985,7 +4980,7 @@ window.editTeacherReportByIndex = function (index) {
     clearReportImage();
   }
 
-  document.getElementById('reportProgressInput')?.focus();
+  progEl?.focus();
   document.querySelector('.meeting-layout-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
@@ -5013,8 +5008,10 @@ window.deleteTeacherReportByIndex = async function (index) {
 
 document.getElementById('btnResetReportForm')?.addEventListener('click', () => {
   editingReportId = null;
-  document.getElementById('reportProgressInput').value = '';
-  document.getElementById('reportChallengesInput').value = '';
+  const progEl = document.getElementById('reportProgressInput');
+  const chalEl = document.getElementById('reportChallengesInput');
+  if (progEl) { progEl.value = ''; autoResizeTextarea(progEl); }
+  if (chalEl) { chalEl.value = ''; autoResizeTextarea(chalEl); }
   clearReportImage();
 });
 
