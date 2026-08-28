@@ -169,16 +169,169 @@ input, textarea, button {
 }
 
 .timeline-feed-header {
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 100 !important;
-    background: var(--bg-color, #f1f5f9) !important;
-    backdrop-filter: blur(12px) !important;
+    position: static !important;
+    top: auto !important;
+    z-index: auto !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
     padding-bottom: 14px !important;
-    margin-top: -24px !important;
-    padding-top: 24px !important;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
     border-bottom: 1px solid var(--border-color) !important;
     margin-bottom: 18px !important;
+}
+
+/* Timeline Post Image Attachment Styling */
+.post-image-container {
+    width: 100% !important;
+    margin: 10px 0 12px 0 !important;
+    display: flex !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    overflow: hidden !important;
+}
+
+.post-attached-image {
+    max-width: 100% !important;
+    max-height: 440px !important;
+    width: auto !important;
+    height: auto !important;
+    object-fit: contain !important;
+    border-radius: 12px !important;
+    border: 1px solid var(--border-color, #cbd5e1) !important;
+    cursor: pointer !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+    display: block !important;
+    background: var(--input-bg, #f8fafc) !important;
+}
+
+.post-attached-image:hover {
+    transform: scale(1.01) !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+}
+
+.composer-image-preview-container {
+    margin: 4px 0 14px 0 !important;
+    padding: 10px 14px !important;
+    background: var(--input-bg, #f8fafc) !important;
+    border: 1.5px dashed var(--border-color, #cbd5e1) !important;
+    border-radius: 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 14px !important;
+}
+
+.composer-preview-img-wrapper {
+    position: relative !important;
+    width: 60px !important;
+    height: 60px !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+    flex-shrink: 0 !important;
+    border: 1px solid var(--border-color) !important;
+    background: #000 !important;
+}
+
+.composer-preview-img-wrapper img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+}
+
+.composer-remove-img-btn {
+    position: absolute !important;
+    top: 2px !important;
+    right: 2px !important;
+    background: rgba(0, 0, 0, 0.7) !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 50% !important;
+    width: 20px !important;
+    height: 20px !important;
+    font-size: 14px !important;
+    line-height: 1 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+}
+
+.composer-image-info {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    overflow: hidden !important;
+    flex: 1 !important;
+}
+
+.composer-image-name {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: var(--text-main) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.composer-image-status {
+    font-size: 12px !important;
+    font-weight: 700 !important;
+}
+
+.composer-action-tools {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex-wrap: nowrap !important;
+    flex: 1 !important;
+}
+
+.btn-composer-tool {
+    background: var(--input-bg, #f8fafc) !important;
+    border: 1px solid var(--border-color, #cbd5e1) !important;
+    border-radius: 20px !important;
+    padding: 6px 14px !important;
+    color: var(--text-main) !important;
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    transition: all 0.2s ease !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    max-height: 38px !important;
+    width: auto !important;
+    min-width: fit-content !important;
+    box-sizing: border-box !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+}
+
+.btn-composer-tool:hover {
+    background: var(--card-bg, #ffffff) !important;
+    border-color: var(--primary-color, #2563eb) !important;
+    color: var(--primary-color, #2563eb) !important;
+}
+
+.btn-composer-tool.icon-only {
+    width: 38px !important;
+    min-width: 38px !important;
+    height: 38px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+}
+
+.btn-composer-tool svg {
+    flex-shrink: 0 !important;
+}
+
+.admin-only-view.hidden {
+    display: none !important;
 }
 
 .timeline-user-subtext {
@@ -307,37 +460,60 @@ body.dark-mode #mobileTopbarKebabBtn.mobile-kebab-btn {
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
-    margin-top: 4px !important;
+    margin-top: 6px !important;
     padding-top: 12px !important;
     border-top: 1px solid var(--border-color) !important;
-    gap: 12px !important;
+    gap: 10px !important;
+}
+
+.target-selector-wrapper {
+    display: inline-flex !important;
+    align-items: center !important;
+    width: auto !important;
+    flex-shrink: 0 !important;
 }
 
 .target-selector-wrapper select,
 #postTargetClass {
-    padding: 8px 14px !important;
-    border-radius: 10px !important;
-    border: 1px solid var(--border-color) !important;
+    padding: 6px 14px !important;
+    border-radius: 20px !important;
+    border: 1px solid var(--border-color, #cbd5e1) !important;
     background: var(--input-bg, #f8fafc) !important;
     color: var(--text-main) !important;
     font-size: 13.5px !important;
     font-weight: 600 !important;
     cursor: pointer !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    max-height: 38px !important;
+    width: auto !important;
+    display: inline-block !important;
+    box-sizing: border-box !important;
+    outline: none !important;
+    white-space: nowrap !important;
 }
 
 #submitPostBtn { 
     background: var(--primary-color, #1e5eff) !important; 
     color: #ffffff !important; 
     border: none !important; 
-    padding: 9px 24px !important; 
+    padding: 0 24px !important; 
     border-radius: 20px !important; 
     cursor: pointer !important; 
     font-weight: 700 !important; 
     font-size: 14px !important;
+    height: 38px !important;
     min-height: 38px !important;
+    max-height: 38px !important;
     width: auto !important; 
+    min-width: 80px !important;
+    flex-shrink: 0 !important;
+    margin-left: auto !important;
     box-shadow: 0 2px 8px rgba(30, 94, 255, 0.25) !important;
     transition: all 0.2s ease !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 #submitPostBtn:hover {
@@ -433,15 +609,16 @@ body.dark-mode #mobileTopbarKebabBtn.mobile-kebab-btn {
 }
 
 .post-body { 
-    font-size: 18px;
-    font-weight: 400;
-    color: var(--text-main); 
-    margin-bottom: 8px;
-    white-space: pre-wrap; 
-    line-height: 1.6;
-    padding-left: 56px;
-    overflow-wrap: break-word;
-    word-break: break-word;
+    font-size: 15.5px !important;
+    font-weight: 400 !important;
+    color: var(--text-main) !important; 
+    margin: 4px 0 10px 0 !important;
+    white-space: pre-wrap !important; 
+    line-height: 1.6 !important;
+    padding-left: 0 !important;
+    padding: 0 !important;
+    overflow-wrap: break-word !important;
+    word-break: break-word !important;
 }
 
 /* ==========================================================================
@@ -491,43 +668,73 @@ body.dark-mode #mobileTopbarKebabBtn.mobile-kebab-btn {
 }
 
 .kebab-dropdown {
-    position: absolute;
-    right: 0;
-    top: 100%;
-    margin-top: 4px;
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
-    z-index: 100;
-    min-width: 140px;
-    overflow: hidden;
+    position: absolute !important;
+    right: 0 !important;
+    top: 100% !important;
+    margin-top: 4px !important;
+    background: var(--card-bg, #ffffff) !important;
+    border: 1px solid var(--border-color, #cbd5e1) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+    z-index: 9999 !important;
+    min-width: 150px !important;
+    overflow: hidden !important;
+    padding: 4px !important;
 }
 
-.kebab-dropdown.hidden { display: none !important; }
+.kebab-dropdown.hidden { 
+    display: none !important; 
+}
+
+.kebab-dropdown.show,
+.kebab-dropdown.active,
+.kebab-dropdown:not(.hidden) {
+    display: flex !important;
+    flex-direction: column !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+body.dark-theme .kebab-dropdown,
+body.dark-mode .kebab-dropdown {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+}
 
 .kebab-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    padding: 10px 14px;
-    background: transparent;
-    border: none;
-    color: var(--text-main);
-    font-size: 14px;
-    font-weight: 500;
-    text-align: left;
-    cursor: pointer;
-    transition: background 0.15s;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    padding: 10px 14px !important;
+    background: transparent !important;
+    border: none !important;
+    color: var(--text-main) !important;
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    text-align: left !important;
+    cursor: pointer !important;
+    border-radius: 6px !important;
+    transition: background 0.15s ease !important;
+    white-space: nowrap !important;
 }
 
 .kebab-item:hover {
-    background: var(--comment-bg);
+    background: var(--comment-bg, #f1f5f9) !important;
+}
+
+body.dark-theme .kebab-item:hover,
+body.dark-mode .kebab-item:hover {
+    background: #334155 !important;
 }
 
 .kebab-item.danger {
-    color: #ef4444;
+    color: #ef4444 !important;
+}
+
+.kebab-item.danger:hover {
+    background: rgba(239, 68, 68, 0.12) !important;
 }
 
 /* ==========================================================================
@@ -813,11 +1020,22 @@ body.dark-theme .target-class-badge {
 
 @media (max-width: 480px) {
     .post-options-row {
-        flex-direction: column;
-        align-items: stretch;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 8px !important;
     }
-    .target-selector-wrapper select {
-        width: 100%;
+    .composer-action-tools {
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        flex-wrap: wrap !important;
+    }
+    .target-selector-wrapper select,
+    #postTargetClass {
+        width: auto !important;
+        max-width: 130px !important;
     }
 }
 

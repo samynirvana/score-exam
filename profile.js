@@ -68,6 +68,8 @@ window.openPhotoEditModal = function() {
     if (modal) modal.classList.remove('hidden');
 };
 
+let currentBirthDate = '';
+
 window.closePhotoEditModal = function() {
     const modal = document.getElementById('photoEditModal');
     if (modal) modal.classList.add('hidden');
@@ -77,6 +79,90 @@ window.triggerStudentPhotoInput = function() {
     document.getElementById('studentPhotoInput')?.click();
 };
 
+// Toggle DOB Kebab Menu
+window.toggleDobMenu = function (e) {
+    e?.stopPropagation();
+    const dropdown = document.getElementById('dobKebabDropdown');
+    if (dropdown) {
+        dropdown.classList.toggle('hidden');
+    }
+};
+
+window.openDobModal = function (e) {
+    e?.stopPropagation();
+    const dropdown = document.getElementById('dobKebabDropdown');
+    if (dropdown) {
+        dropdown.classList.add('hidden');
+    }
+
+    const input = document.getElementById('studentDobInput');
+    if (input) {
+        input.value = currentBirthDate || '';
+    }
+
+    const modal = document.getElementById('dobEditModal');
+    if (modal) modal.classList.remove('hidden');
+};
+
+window.closeDobModal = function () {
+    const modal = document.getElementById('dobEditModal');
+    if (modal) modal.classList.add('hidden');
+};
+
+window.saveStudentDob = async function (e) {
+    e.preventDefault();
+    const input = document.getElementById('studentDobInput');
+    const newDob = input?.value.trim() || '';
+    const saveBtn = document.getElementById('btnSaveDob');
+
+    if (!currentStudentCode) {
+        showToast('Student code not found.', false);
+        return;
+    }
+
+    try {
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerText = 'Saving...';
+        }
+
+        // 1. Update Firestore student document
+        const studentRef = doc(db, "students", currentStudentCode);
+        await updateDoc(studentRef, {
+            birthDate: newDob,
+            dateOfBirth: newDob
+        });
+
+        // 2. Update local session storage
+        currentBirthDate = newDob;
+        const rawSession = sessionStorage.getItem('studentLoggedInSession') || sessionStorage.getItem('studentTimelineSession');
+        if (rawSession) {
+            try {
+                const sessionObj = JSON.parse(rawSession);
+                sessionObj.birthDate = newDob;
+                sessionObj.dateOfBirth = newDob;
+                sessionStorage.setItem('studentLoggedInSession', JSON.stringify(sessionObj));
+            } catch (sErr) {
+                console.warn(sErr);
+            }
+        }
+
+        // 3. Update UI display
+        document.getElementById('profileBirthDate').innerText = formatBirthDate(newDob);
+
+        showToast('Date of birth updated successfully!', true);
+        closeDobModal();
+    } catch (err) {
+        console.error("Error updating birth date:", err);
+        showToast('Error saving date of birth: ' + err.message, false);
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerText = 'Save Date';
+        }
+    }
+};
+
 // Close dropdown when clicking outside
 document.addEventListener('click', (e) => {
     const menu = document.getElementById('profileCardDropdown');
@@ -84,6 +170,14 @@ document.addEventListener('click', (e) => {
     if (menu && !menu.classList.contains('hidden')) {
         if (!menu.contains(e.target) && !btn?.contains(e.target)) {
             menu.classList.add('hidden');
+        }
+    }
+
+    const dobMenu = document.getElementById('dobKebabDropdown');
+    const dobBtn = document.getElementById('btnDobKebab');
+    if (dobMenu && !dobMenu.classList.contains('hidden')) {
+        if (!dobMenu.contains(e.target) && !dobBtn?.contains(e.target)) {
+            dobMenu.classList.add('hidden');
         }
     }
 });
@@ -128,8 +222,8 @@ function resolvePhotoUrl(rawUrl) {
     return trimmed;
 }
 
-// Resize image to max 400x400 data URL for optimal speed & storage
-function resizeImageToDataUrl(file, maxWidth = 400, maxHeight = 400, quality = 0.85) {
+// Resize image to max 500x500 data URL for optimal speed & storage
+function resizeImageToDataUrl(file, maxWidth = 500, maxHeight = 500, quality = 0.9) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -138,21 +232,16 @@ function resizeImageToDataUrl(file, maxWidth = 400, maxHeight = 400, quality = 0
                 let width = img.width;
                 let height = img.height;
                 if (width > maxWidth || height > maxHeight) {
-                    if (width > height) {
-                        height = Math.round((height * maxWidth) / width);
-                        width = maxWidth;
-                    } else {
-                        width = Math.round((width * maxHeight) / height);
-                        maxHeight = Math.round((width * maxHeight) / height);
-                        height = maxHeight;
-                    }
+                    const ratio = Math.min(maxWidth / width, maxHeight / height);
+                    width = Math.round(width * ratio);
+                    height = Math.round(height * ratio);
                 }
                 const canvas = document.createElement('canvas');
                 canvas.width = width;
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
-                resolve(canvas.toDataURL(file.type || 'image/jpeg', quality));
+                resolve(canvas.toDataURL('image/jpeg', quality));
             };
             img.onerror = reject;
             img.src = e.target.result;
@@ -164,24 +253,33 @@ function resizeImageToDataUrl(file, maxWidth = 400, maxHeight = 400, quality = 0
 
 // Fetch Google Drive Script URL from Firestore or LocalStorage
 async function getDriveScriptUrl() {
-    let url = localStorage.getItem('googleDriveScriptUrl') || '';
-    if (!url) {
-        try {
-            const snap = await getDoc(doc(db, "system_settings", "googleDrive"));
-            if (snap.exists() && snap.data().scriptUrl) {
-                url = snap.data().scriptUrl;
+    let url = localStorage.getItem('profileDriveScriptUrl') || localStorage.getItem('googleDriveScriptUrl') || '';
+    try {
+        let snap = await getDoc(doc(db, "system_settings", "google_drive"));
+        if (!snap.exists()) {
+            snap = await getDoc(doc(db, "system_settings", "googleDrive"));
+        }
+        if (snap.exists()) {
+            const data = snap.data();
+            const profileScript = data.profileScriptUrl || data.scriptUrlProfile || data.scriptUrl;
+            if (profileScript) {
+                url = profileScript;
+                localStorage.setItem('profileDriveScriptUrl', url);
                 localStorage.setItem('googleDriveScriptUrl', url);
             }
-        } catch (e) {
-            console.warn("Could not fetch system_settings for Google Drive:", e);
+            if (data.profileFolderId || data.folderIdProfile) {
+                localStorage.setItem('profileDriveFolderId', data.profileFolderId || data.folderIdProfile);
+            }
         }
+    } catch (e) {
+        console.warn("Could not fetch system_settings for Google Drive:", e);
     }
     return url;
 }
 
 // Upload photo to Google Drive
 // The Apps Script checks if a photo named studentCode.jpg exists in the folder:
-// - If exists: replaces the old photo
+// - If exists: replaces the old photo safely
 // - If not: adds new file and names it studentCode.jpg
 async function uploadPhotoToGoogleDrive(file, dataUrl, scriptUrl, studentCode) {
     if (!scriptUrl) {
@@ -190,6 +288,7 @@ async function uploadPhotoToGoogleDrive(file, dataUrl, scriptUrl, studentCode) {
     
     const base64Data = dataUrl.split(',')[1];
     const fileName = `${studentCode}.jpg`;
+    const folderId = localStorage.getItem('profileDriveFolderId') || '';
 
     const response = await fetch(scriptUrl, {
         method: 'POST',
@@ -197,14 +296,26 @@ async function uploadPhotoToGoogleDrive(file, dataUrl, scriptUrl, studentCode) {
         body: JSON.stringify({
             fileName: fileName,
             studentCode: studentCode,
-            mimeType: file.type || 'image/jpeg',
-            base64Data: base64Data
+            mimeType: 'image/jpeg',
+            base64Data: base64Data,
+            folderName: "picdb",
+            folderId: folderId,
+            replaceExisting: true
         })
     });
 
-    const resJson = await response.json();
-    if (resJson.status === 'success' && resJson.photoUrl) {
-        return resJson.photoUrl;
+    const resText = await response.text();
+    let resJson;
+    try {
+        resJson = JSON.parse(resText);
+    } catch (pErr) {
+        console.error("Raw response from Apps Script:", resText);
+        throw new Error("Invalid response received from Google Apps Script.");
+    }
+
+    const photoUrl = resJson.photoUrl || resJson.url || resJson.directUrl || (resJson.fileId ? `https://lh3.googleusercontent.com/d/${resJson.fileId}` : null);
+    if (resJson.status === 'success' && photoUrl) {
+        return photoUrl;
     } else {
         throw new Error(resJson.message || "Google Drive upload failed.");
     }
@@ -248,7 +359,7 @@ studentPhotoInput?.addEventListener('change', async (e) => {
         if (spinner) spinner.classList.remove('hidden');
         if (modalChangeBtn) {
             modalChangeBtn.disabled = true;
-            modalChangeBtn.innerHTML = `<span>⏳ Uploading to Google Drive...</span>`;
+            modalChangeBtn.innerHTML = `<span>Processing the Image...</span>`;
         }
 
         // 1. Resize and optimize image for quick transfer
@@ -293,7 +404,7 @@ studentPhotoInput?.addEventListener('change', async (e) => {
         }
         if (modalAvatarFallback) modalAvatarFallback.classList.add('hidden');
 
-        showToast('Photo uploaded to Google Drive & profile synced!', true);
+        showToast('Photo updated successfully!', true);
 
         // Close modal after brief success feedback
         setTimeout(() => {
@@ -307,13 +418,7 @@ studentPhotoInput?.addEventListener('change', async (e) => {
         if (spinner) spinner.classList.add('hidden');
         if (modalChangeBtn) {
             modalChangeBtn.disabled = false;
-            modalChangeBtn.innerHTML = `
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                    <circle cx="12" cy="13" r="4"></circle>
-                </svg>
-                <span>Change Photo</span>
-            `;
+            modalChangeBtn.innerHTML = `<span>Change Photo</span>`;
         }
         studentPhotoInput.value = '';
     }
@@ -362,6 +467,7 @@ async function loadStudentProfile() {
 
         currentStudentName = name;
         currentPhotoUrl = photoUrl;
+        currentBirthDate = birthDate;
 
         // 2. Render Text Elements
         document.getElementById('profileStudentName').innerText = name;

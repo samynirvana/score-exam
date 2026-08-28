@@ -10,9 +10,9 @@
     <title>My Profile - Student Portal</title>
     <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/1o_7O1hdx1SJOXfoFw9ZKxpl4zSOD_VYd">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=347">
-    <link rel="stylesheet" href="admin.css?v=348">
-    <link rel="stylesheet" href="student.css?v=348">
+    <link rel="stylesheet" href="style.css?v=356">
+    <link rel="stylesheet" href="admin.css?v=356">
+    <link rel="stylesheet" href="student.css?v=356">
     <style>
         .profile-container {
             max-width: 720px;
@@ -130,6 +130,124 @@
             background: rgba(255, 255, 255, 0.06) !important;
             color: #94a3b8 !important;
             border-color: #334155 !important;
+        }
+
+        /* Info Card Kebab Menu */
+        .info-kebab-wrapper {
+            position: absolute !important;
+            top: 8px !important;
+            right: 8px !important;
+            z-index: 15 !important;
+        }
+
+        .info-kebab-btn,
+        #btnDobKebab {
+            width: 28px !important;
+            height: 28px !important;
+            min-width: 28px !important;
+            max-width: 28px !important;
+            min-height: 28px !important;
+            max-height: 28px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border-radius: 6px !important;
+            background: transparent !important;
+            background-color: transparent !important;
+            color: #64748b !important;
+            border: none !important;
+            outline: none !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            cursor: pointer !important;
+            box-shadow: none !important;
+            transition: all 0.2s ease !important;
+        }
+
+        .info-kebab-btn:hover,
+        #btnDobKebab:hover {
+            background: rgba(0, 0, 0, 0.07) !important;
+            color: var(--primary-blue, #1e5eff) !important;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .info-kebab-btn svg {
+            display: block !important;
+            pointer-events: none !important;
+            fill: currentColor !important;
+            color: inherit !important;
+        }
+
+        body.dark-theme .info-kebab-btn,
+        body.dark-mode .info-kebab-btn {
+            color: #94a3b8 !important;
+        }
+
+        body.dark-theme .info-kebab-btn:hover,
+        body.dark-mode .info-kebab-btn:hover {
+            background: rgba(255, 255, 255, 0.12) !important;
+            color: #60a5fa !important;
+        }
+
+        .info-kebab-dropdown {
+            position: absolute;
+            top: 32px;
+            right: 0;
+            background: var(--card-bg, #ffffff);
+            border: 1px solid var(--border-color, #e2e8f0);
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            min-width: 120px;
+            padding: 4px;
+            z-index: 100;
+            animation: fadeInDown 0.15s ease-out;
+        }
+
+        .info-kebab-dropdown.hidden {
+            display: none !important;
+        }
+
+        .info-kebab-item {
+            width: 100% !important;
+            background: transparent !important;
+            border: none !important;
+            color: var(--text-dark, #334155) !important;
+            padding: 7px 10px !important;
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            border-radius: 6px !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            cursor: pointer !important;
+            text-align: left !important;
+            white-space: nowrap !important;
+            box-shadow: none !important;
+            transition: background 0.15s ease !important;
+        }
+
+        .info-kebab-item:hover {
+            background: rgba(30, 94, 255, 0.08) !important;
+            color: var(--primary-blue, #1e5eff) !important;
+        }
+
+        body.dark-theme .info-kebab-dropdown,
+        body.dark-mode .info-kebab-dropdown {
+            background: #1e293b;
+            border-color: #334155;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        body.dark-theme .info-kebab-item,
+        body.dark-mode .info-kebab-item {
+            color: #cbd5e1 !important;
+        }
+
+        body.dark-theme .info-kebab-item:hover,
+        body.dark-mode .info-kebab-item:hover {
+            background: rgba(255, 255, 255, 0.08) !important;
+            color: #60a5fa !important;
         }
 
         .profile-card-dropdown {
@@ -690,7 +808,7 @@
                     <!-- PROFILE ATTRIBUTES GRID -->
                     <div class="profile-info-grid">
                         <!-- Birth Date -->
-                        <div class="info-card">
+                        <div class="info-card" style="position: relative;">
                             <div class="info-icon-circle" style="background: #fef3c7; color: #d97706;">
                                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -699,9 +817,28 @@
                                     <line x1="3" y1="10" x2="21" y2="10"></line>
                                 </svg>
                             </div>
-                            <div>
+                            <div style="flex: 1; min-width: 0; padding-right: 24px;">
                                 <h4 class="info-title">Date of Birth</h4>
                                 <p class="info-value" id="profileBirthDate">Not Set</p>
+                            </div>
+                            <!-- Kebab Menu for DOB on top right of box -->
+                            <div class="info-kebab-wrapper" style="position: absolute; top: 10px; right: 10px; z-index: 15;">
+                                <div role="button" tabindex="0" class="info-kebab-btn" id="btnDobKebab" onclick="toggleDobMenu(event)" title="Options" style="all: unset; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: transparent; border-radius: 6px; color: #64748b;">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none; display: block;">
+                                        <circle cx="12" cy="12" r="1.5" fill="#64748b" stroke="#64748b"></circle>
+                                        <circle cx="12" cy="5" r="1.5" fill="#64748b" stroke="#64748b"></circle>
+                                        <circle cx="12" cy="19" r="1.5" fill="#64748b" stroke="#64748b"></circle>
+                                    </svg>
+                                </div>
+                                <div class="info-kebab-dropdown hidden" id="dobKebabDropdown" style="top: 100%; right: 0; margin-top: 4px;">
+                                    <button type="button" class="info-kebab-item" onclick="openDobModal(event)">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                        </svg>
+                                        <span>Edit Date</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -783,15 +920,15 @@
 
     <!-- MODAL FOR EDITING PROFILE PICTURE -->
     <div id="photoEditModal" class="hidden"
-        style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); z-index:1200; display:flex; justify-content:center; align-items:center; backdrop-filter: blur(4px);">
-        <div class="box"
-            style="width: 90%; max-width: 420px; position: relative; text-align: center; padding: 30px 24px; border-radius: 20px; box-shadow: 0 16px 40px rgba(0,0,0,0.25);">
+        style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.65); z-index:10000; display:flex; justify-content:center; align-items:center; backdrop-filter: blur(4px); padding: 16px; box-sizing: border-box;">
+        <div class="photo-modal-card"
+            style="width: 100% !important; max-width: 400px !important; margin: auto !important; position: relative !important; text-align: center !important; padding: 28px 24px !important; border-radius: 20px !important; box-shadow: 0 20px 50px rgba(0,0,0,0.35) !important; background: var(--card-bg, #ffffff) !important; border: 1px solid var(--border-color, #e2e8f0) !important; box-sizing: border-box !important;">
             <button type="button" onclick="closePhotoEditModal()"
                 style="position:absolute; right:16px; top:16px; width:32px !important; height:32px !important; padding:0 !important; background:rgba(0,0,0,0.06); color:var(--text-gray); border-radius:50%; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size: 14px; font-weight: bold;">
                 ✕
             </button>
 
-            <h3 style="margin: 0 0 6px; font-size: 18px; color: var(--text-main);">📸 Edit Profile Picture</h3>
+            <h3 style="margin: 0 0 6px; font-size: 18px; color: var(--text-main); font-weight: 700;">Edit Profile Picture</h3>
             <p style="margin: 0 0 20px; font-size: 13px; color: var(--text-gray);">Update your photo to display across the student portal</p>
 
             <div style="width: 135px; height: 180px; margin: 0 auto 20px; position: relative; border-radius: 16px; padding: 4px; background: linear-gradient(135deg, #1e5eff, #3b82f6, #60a5fa); box-shadow: 0 8px 24px rgba(30, 94, 255, 0.25); aspect-ratio: 6 / 8;">
@@ -805,18 +942,41 @@
             </div>
 
             <div style="margin-bottom: 24px;">
-                <h4 style="margin: 0 0 4px; font-size: 16px; color: var(--text-main);" id="modalStudentName">Student Name</h4>
+                <h4 style="margin: 0 0 4px; font-size: 16px; color: var(--text-main); font-weight: 700;" id="modalStudentName">Student Name</h4>
                 <span style="font-family: monospace; font-size: 13px; color: var(--primary-blue); font-weight: 700;" id="modalStudentCode">-----</span>
             </div>
 
             <button type="button" id="modalChangePhotoBtn" onclick="triggerStudentPhotoInput()"
-                style="background: var(--primary-blue, #1e5eff) !important; color: #ffffff !important; width: 100% !important; padding: 12px 20px !important; font-size: 14.5px !important; font-weight: 700 !important; border-radius: 12px !important; border: none !important; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(30, 94, 255, 0.35) !important;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                    <circle cx="12" cy="13" r="4"></circle>
-                </svg>
+                style="background: var(--primary-blue, #1e5eff) !important; color: #ffffff !important; width: 100% !important; padding: 12px 20px !important; font-size: 14.5px !important; font-weight: 700 !important; border-radius: 12px !important; border: none !important; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(30, 94, 255, 0.35) !important;">
                 <span>Change Photo</span>
             </button>
+        </div>
+    </div>
+
+    <!-- MODAL FOR EDITING DATE OF BIRTH -->
+    <div id="dobEditModal" class="hidden"
+        style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.65); z-index:10000; display:flex; justify-content:center; align-items:center; backdrop-filter: blur(4px); padding: 16px; box-sizing: border-box;">
+        <div class="photo-modal-card"
+            style="width: 100% !important; max-width: 380px !important; margin: auto !important; position: relative !important; text-align: left !important; padding: 26px 24px !important; border-radius: 20px !important; box-shadow: 0 20px 50px rgba(0,0,0,0.35) !important; background: var(--card-bg, #ffffff) !important; border: 1px solid var(--border-color, #e2e8f0) !important; box-sizing: border-box !important;">
+            <button type="button" onclick="closeDobModal()"
+                style="position:absolute; right:16px; top:16px; width:32px !important; height:32px !important; padding:0 !important; background:rgba(0,0,0,0.06); color:var(--text-gray); border-radius:50%; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size: 14px; font-weight: bold;">
+                ✕
+            </button>
+
+            <h3 style="margin: 0 0 6px; font-size: 17px; color: var(--text-main); font-weight: 700;">Edit Date of Birth</h3>
+            <p style="margin: 0 0 18px; font-size: 13px; color: var(--text-gray);">Set or update your birth date in the student record.</p>
+
+            <form id="dobEditForm" onsubmit="saveStudentDob(event)">
+                <div style="margin-bottom: 20px;">
+                    <label for="studentDobInput" style="display: block; font-size: 12.5px; font-weight: 700; color: var(--text-main); margin-bottom: 6px;">Select Date of Birth:</label>
+                    <input type="date" id="studentDobInput" required style="width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-color, #cbd5e1); background: var(--input-bg, #f8fafc); color: var(--text-main); font-size: 14px; box-sizing: border-box;">
+                </div>
+
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="button" onclick="closeDobModal()" style="background: transparent; color: var(--text-gray); border: 1px solid var(--border-color, #cbd5e1); padding: 9px 16px; border-radius: 10px; font-size: 13.5px; font-weight: 600; cursor: pointer;">Cancel</button>
+                    <button type="submit" id="btnSaveDob" style="background: var(--primary-blue, #1e5eff); color: #ffffff; border: none; padding: 9px 20px; border-radius: 10px; font-size: 13.5px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px;">Save Date</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -827,8 +987,8 @@
     </div>
 
     <!-- Scripts -->
-    <script type="module" src="profile.js?v=348"></script>
-    <script src="studentNav.js?v=348"></script>
+    <script type="module" src="profile.js?v=357"></script>
+    <script src="studentNav.js?v=357"></script>
 </body>
 
 </html>

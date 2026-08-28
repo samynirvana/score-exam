@@ -12,8 +12,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=347">
-  <link rel="stylesheet" href="weekly.css">
+  <link rel="stylesheet" href="style.css?v=353">
+  <link rel="stylesheet" href="weekly.css?v=353">
   <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 </head>
 
@@ -1152,7 +1152,6 @@
             <button class="subtab-btn active" id="btnSubAdd">Add Resource</button>
             <button class="subtab-btn" id="btnSubManage">Manage Entities</button>
             <button class="subtab-btn" id="btnSubCalendar">Academic Calendar</button>
-            <button class="subtab-btn" id="btnSubDrive">Drive Settings</button>
           </div>
 
           <!-- Sub-Tab 1: Add Form -->
@@ -1419,55 +1418,6 @@
               </div>
             </div>
           </div>
-
-          <!-- Sub-Tab 4: Google Drive Folder Settings -->
-          <div id="subTabDrive" class="subtab-content">
-            <div class="admin-card">
-              <div class="admin-card-header" style="margin-bottom: 16px;">
-                <h3 class="admin-card-title" style="display: flex; align-items: center; gap: 8px;">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                  </svg>
-                  <span>Google Drive Folder Settings</span>
-                </h3>
-                <p class="admin-card-subtitle">Configure Google Apps Script Web App and dedicated Google Drive folder for Meeting & Teaching report photo uploads.</p>
-              </div>
-
-              <div class="form-group" style="margin-bottom: 14px;">
-                <label for="inputMeetingDriveScriptUrl" style="font-size: 12px; font-weight: 700; color: #0f172a; display: block; margin-bottom: 4px;">
-                  Google Apps Script Web App URL (for Teaching & Meeting Reports):
-                </label>
-                <input type="url" id="inputMeetingDriveScriptUrl" placeholder="https://script.google.com/macros/s/.../exec" class="form-control" style="font-size: 12.5px;">
-                <small style="color: #64748b; font-size: 11px; display: block; margin-top: 4px;">
-                  Paste the Web App URL deployed specifically for your <strong>Weekly Teaching Reports</strong> folder, or leave empty to use default.
-                </small>
-              </div>
-
-              <div class="form-group" style="margin-bottom: 16px;">
-                <label for="inputMeetingDriveFolderId" style="font-size: 12px; font-weight: 700; color: #0f172a; display: block; margin-bottom: 4px;">
-                  Target Google Drive Folder ID / Name:
-                </label>
-                <input type="text" id="inputMeetingDriveFolderId" placeholder="e.g. 1AbC_xyz987... or 'Teacher Weekly Reports'" class="form-control" style="font-size: 12.5px;">
-              </div>
-
-              <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px 14px; margin-bottom: 18px;">
-                <div style="font-size: 12px; font-weight: 700; color: #15803d; margin-bottom: 3px;">📁 Folder Separation:</div>
-                <div style="font-size: 11.5px; color: #166534; line-height: 1.45;">
-                  All photo attachments uploaded in <strong>Meeting & Coordination</strong> will be automatically uploaded directly to this dedicated Google Drive folder.
-                </div>
-              </div>
-
-              <button type="button" id="btnSaveDriveFolderSettings" class="save-btn" style="display: inline-flex; align-items: center; gap: 6px;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                  <polyline points="17 21 17 13 7 13 7 21" />
-                  <polyline points="7 3 7 8 15 8" />
-                </svg>
-                <span>Save Drive Settings</span>
-              </button>
-            </div>
-          </div>
-
         </div>
 
         <!-- Right Column: Period Assignment Panel -->
@@ -1534,7 +1484,7 @@
       </div>
     </div>
 
-    <script type="module" src="weekly.js"></script>
+    <script type="module" src="weekly.js?v=353"></script>
 </body>
 
 </html>

@@ -46,15 +46,65 @@ if (themeToggleBtn) {
     });
 }
 
-// Close open Kebab Menus when clicking outside
-document.addEventListener('click', (e) => {
+// --- GLOBAL KEBAB & ACTIONS DELEGATED EVENT LISTENER ---
+document.addEventListener('click', async (e) => {
+    // 1. Check if user clicked Delete Post button
+    const delPostBtn = e.target.closest('.btn-delete-post');
+    if (delPostBtn) {
+        e.stopPropagation();
+        e.preventDefault();
+        const postId = delPostBtn.getAttribute('data-post-id');
+        if (postId) {
+            await window.deletePost(postId);
+        }
+        return;
+    }
+
+    // 2. Check if user clicked Delete Comment/Reply button
+    const delCommentBtn = e.target.closest('.btn-delete-comment');
+    if (delCommentBtn) {
+        e.stopPropagation();
+        e.preventDefault();
+        const commentId = delCommentBtn.getAttribute('data-comment-id');
+        if (commentId) {
+            await window.deleteComment(commentId);
+        }
+        return;
+    }
+
+    // 3. Check if user clicked a Kebab button
+    const kebabBtn = e.target.closest('.kebab-btn');
+    if (kebabBtn) {
+        e.stopPropagation();
+        e.preventDefault();
+        const wrapper = kebabBtn.closest('.kebab-wrapper');
+        const dropdown = wrapper ? wrapper.querySelector('.kebab-dropdown') : null;
+        if (dropdown) {
+            const isCurrentlyHidden = dropdown.classList.contains('hidden');
+            // Close all other dropdowns
+            document.querySelectorAll('.kebab-dropdown').forEach(menu => {
+                menu.classList.add('hidden');
+            });
+            if (isCurrentlyHidden) {
+                dropdown.classList.remove('hidden');
+            }
+        }
+        return;
+    }
+
+    // 4. Clicking anywhere else outside kebab-wrapper closes all dropdowns
     if (!e.target.closest('.kebab-wrapper')) {
-        document.querySelectorAll('.kebab-dropdown').forEach(menu => menu.classList.add('hidden'));
+        document.querySelectorAll('.kebab-dropdown').forEach(menu => {
+            menu.classList.add('hidden');
+        });
     }
 });
 
 window.toggleKebabMenu = function(event, menuId) {
-    event.stopPropagation();
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
     const targetMenu = document.getElementById(menuId);
     
     // Close all other open kebab dropdowns first
@@ -64,6 +114,43 @@ window.toggleKebabMenu = function(event, menuId) {
 
     if (targetMenu) {
         targetMenu.classList.toggle('hidden');
+    }
+};
+
+window.deletePost = async function(postId) {
+    if (!currentUser) return;
+    if (!confirm("Are you sure you want to delete this post? This action cannot be undone.")) {
+        return;
+    }
+    try {
+        await deleteDoc(doc(db, "timeline_posts", postId));
+        
+        // Clean up associated comments in background
+        try {
+            const commentsSnap = await getDocs(query(collection(db, "timeline_comments"), where("postId", "==", postId)));
+            commentsSnap.forEach(async (cDoc) => {
+                await deleteDoc(doc(db, "timeline_comments", cDoc.id));
+            });
+        } catch (cErr) {
+            console.warn("Error cleaning up comments:", cErr);
+        }
+
+        const postEl = document.getElementById('post-' + postId);
+        if (postEl) postEl.remove();
+    } catch (err) {
+        alert("Failed to delete post: " + err.message);
+    }
+};
+
+window.deleteComment = async function(commentId) {
+    if (!currentUser) return;
+    if (!confirm("Are you sure you want to delete this reply?")) {
+        return;
+    }
+    try {
+        await deleteDoc(doc(db, "timeline_comments", commentId));
+    } catch (err) {
+        alert("Failed to delete reply: " + err.message);
     }
 };
 
@@ -237,14 +324,37 @@ async function showTimelineApp() {
     if (sidebarName) sidebarName.innerText = currentUser.name;
     if (sidebarClass) sidebarClass.innerText = currentUser.studentClass ? `Class: ${currentUser.studentClass}` : 'Logged in';
 
+function isTimelineAdmin() {
+    if (!currentUser) return false;
+    if (currentUser.type === 'staff') {
+        const nameLower = (currentUser.name || '').toLowerCase();
+        const codeLower = (currentUser.code || '').toLowerCase();
+        const emailLower = (auth.currentUser?.email || '').toLowerCase();
+        return (
+            currentUser.role === 'admin' ||
+            nameLower.includes('admin') ||
+            codeLower.includes('admin') ||
+            emailLower.includes('admin') ||
+            emailLower.includes('adm@') ||
+            nameLower === 'administrator'
+        );
+    }
+    return false;
+}
+
     // Hide student-only navigation tabs (Dashboard, Online Quiz, Profile, Scores) for Staff (Teacher / Admin)
     const isStaff = currentUser.type === 'staff';
+    const isAdmin = isTimelineAdmin();
     document.querySelectorAll('.student-only-nav').forEach(el => {
         el.classList.toggle('hidden', isStaff);
+    });
+    document.querySelectorAll('.admin-only-view').forEach(el => {
+        el.classList.toggle('hidden', !isAdmin);
     });
 
     await fetchAllNames();
     await populateClassDropdown();
+    initTimelineImageUpload();
     loadPosts();
     loadNotifications();
     initDMSystem();
@@ -488,6 +598,186 @@ if (document.readyState === 'loading') {
     initPostTextareaAutoResize();
 }
 
+// --- GOOGLE DRIVE IMAGE ATTACHMENT SYSTEM FOR TIMELINE ---
+let currentTimelineImageData = null;
+let timelineDriveConfig = {
+    scriptUrl: '',
+    folderId: ''
+};
+
+async function syncDriveConfigFromFirestore() {
+    try {
+        let snap = await getDoc(doc(db, "system_settings", "google_drive"));
+        if (!snap.exists()) {
+            snap = await getDoc(doc(db, "system_settings", "googleDrive"));
+        }
+        if (snap.exists()) {
+            const data = snap.data();
+            timelineDriveConfig.scriptUrl = data.timelineScriptUrl || data.scriptUrlTimeline || data.scriptUrl || '';
+            timelineDriveConfig.folderId = data.timelineFolderId || data.folderIdTimeline || data.folderId || '';
+            if (timelineDriveConfig.scriptUrl) {
+                localStorage.setItem('timelineDriveScriptUrl', timelineDriveConfig.scriptUrl);
+            }
+            if (timelineDriveConfig.folderId) {
+                localStorage.setItem('timelineDriveFolderId', timelineDriveConfig.folderId);
+            }
+        } else {
+            timelineDriveConfig.scriptUrl = localStorage.getItem('timelineDriveScriptUrl') || '';
+            timelineDriveConfig.folderId = localStorage.getItem('timelineDriveFolderId') || '';
+        }
+    } catch (err) {
+        console.warn("Could not sync Drive config from Firestore:", err);
+        timelineDriveConfig.scriptUrl = localStorage.getItem('timelineDriveScriptUrl') || '';
+        timelineDriveConfig.folderId = localStorage.getItem('timelineDriveFolderId') || '';
+    }
+}
+
+function initTimelineImageUpload() {
+    const attachBtn = document.getElementById('btnAttachImage');
+    const fileInput = document.getElementById('timelineImageInput');
+    const removeBtn = document.getElementById('btnRemoveComposerImage');
+
+    // Sync configuration from Firestore
+    syncDriveConfigFromFirestore();
+
+    // File selection
+    attachBtn?.addEventListener('click', () => {
+        fileInput?.click();
+    });
+
+    fileInput?.addEventListener('change', async (e) => {
+        const file = e.target.files?.[0];
+        if (file) handleTimelineImageFile(file);
+    });
+
+    removeBtn?.addEventListener('click', () => {
+        clearTimelineComposerImage();
+    });
+}
+
+function clearTimelineComposerImage() {
+    currentTimelineImageData = null;
+    const fileInput = document.getElementById('timelineImageInput');
+    const previewContainer = document.getElementById('composerImagePreviewContainer');
+    const previewImg = document.getElementById('composerPreviewImg');
+    const statusEl = document.getElementById('composerImageUploadStatus');
+    if (fileInput) fileInput.value = '';
+    if (previewImg) previewImg.src = '';
+    if (statusEl) {
+        statusEl.innerText = 'Ready to post';
+        statusEl.style.color = '#2563eb';
+    }
+    if (previewContainer) previewContainer.classList.add('hidden');
+}
+
+async function handleTimelineImageFile(file) {
+    if (!file.type.startsWith('image/')) {
+        alert("Please select a valid image file.");
+        return;
+    }
+
+    if (file.size > 15 * 1024 * 1024) {
+        alert("Image is too large. Please select an image under 15MB.");
+        return;
+    }
+
+    const previewContainer = document.getElementById('composerImagePreviewContainer');
+    const previewImg = document.getElementById('composerPreviewImg');
+    const fileNameEl = document.getElementById('composerImageFileName');
+    const statusEl = document.getElementById('composerImageUploadStatus');
+
+    if (fileNameEl) fileNameEl.innerText = file.name;
+    if (previewContainer) previewContainer.classList.remove('hidden');
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+        const dataUrl = event.target.result;
+        if (previewImg) previewImg.src = dataUrl;
+
+        currentTimelineImageData = {
+            file: file,
+            dataUrl: dataUrl,
+            finalUrl: dataUrl,
+            fileName: file.name,
+            uploading: false
+        };
+
+        const scriptUrl = timelineDriveConfig.scriptUrl || localStorage.getItem('timelineDriveScriptUrl') || localStorage.getItem('googleDriveScriptUrl') || '';
+        const folderId = timelineDriveConfig.folderId || localStorage.getItem('timelineDriveFolderId') || '';
+
+        if (scriptUrl) {
+            if (statusEl) {
+                statusEl.innerText = "⏳ Uploading to Google Drive...";
+                statusEl.style.color = "#d97706";
+            }
+            currentTimelineImageData.uploading = true;
+
+            try {
+                const base64Data = dataUrl.split(',')[1];
+                const response = await fetch(scriptUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify({
+                        fileName: file.name,
+                        mimeType: file.type || 'image/jpeg',
+                        base64Data: base64Data,
+                        folderName: "TimelineDB",
+                        folderId: folderId,
+                        type: "timeline_post"
+                    })
+                });
+
+                const resText = await response.text();
+                let resJson;
+                try {
+                    resJson = JSON.parse(resText);
+                } catch(pErr) {
+                    console.warn("Raw Google Drive script response:", resText);
+                }
+
+                if (resJson && (resJson.url || resJson.directUrl || resJson.viewUrl)) {
+                    currentTimelineImageData.finalUrl = resJson.url || resJson.directUrl || resJson.viewUrl;
+                    if (statusEl) {
+                        statusEl.innerText = "✓ Uploaded to Google Drive (" + (folderId ? "Folder ID" : "TimelineDB") + ")";
+                        statusEl.style.color = "#16a34a";
+                    }
+                } else if (resJson && resJson.status === 'success' && resJson.fileId) {
+                    currentTimelineImageData.finalUrl = "https://lh3.googleusercontent.com/d/" + resJson.fileId;
+                    if (statusEl) {
+                        statusEl.innerText = "✓ Uploaded to Google Drive (" + (folderId ? "Folder ID" : "TimelineDB") + ")";
+                        statusEl.style.color = "#16a34a";
+                    }
+                } else if (resJson && resJson.status === 'error') {
+                    console.error("Google Drive Apps Script Error:", resJson.message);
+                    if (statusEl) {
+                        statusEl.innerText = "⚠️ Drive Error: " + resJson.message;
+                        statusEl.style.color = "#ef4444";
+                    }
+                } else {
+                    if (statusEl) {
+                        statusEl.innerText = "⚠️ Drive upload response unverified";
+                        statusEl.style.color = "#d97706";
+                    }
+                }
+            } catch (uploadErr) {
+                console.warn("Google Drive upload error:", uploadErr);
+                if (statusEl) {
+                    statusEl.innerText = "⚠️ Upload error (saved locally)";
+                    statusEl.style.color = "#d97706";
+                }
+            } finally {
+                if (currentTimelineImageData) currentTimelineImageData.uploading = false;
+            }
+        } else {
+            if (statusEl) {
+                statusEl.innerText = "✓ Ready to post (Configure Drive ⚙️ for Drive upload)";
+                statusEl.style.color = "#2563eb";
+            }
+        }
+    };
+    reader.readAsDataURL(file);
+}
+
 document.getElementById('submitPostBtn')?.addEventListener('click', async () => {
     if (!currentUser) return alert("Please log in first to submit a post.");
     const postMsgEl = document.getElementById('postMessage');
@@ -495,17 +785,28 @@ document.getElementById('submitPostBtn')?.addEventListener('click', async () => 
     const message = postMsgEl.value.trim();
     const targetClass = document.getElementById('postTargetClass') ? document.getElementById('postTargetClass').value : 'All';
 
-    if (!message) return alert("You must write a message first.");
+    if (!message && !currentTimelineImageData) return alert("You must write a message or attach a photo.");
+
+    if (currentTimelineImageData && currentTimelineImageData.uploading) {
+        alert("Photo is still uploading to Google Drive. Please wait a moment.");
+        return;
+    }
 
     try {
-        const postRef = await addDoc(collection(db, "timeline_posts"), {
+        const postData = {
             authorCode: currentUser.code || '',
             authorName: currentUser.name || 'Student',
             isStaff: currentUser.type === 'staff',
             message: message,
             targetClass: targetClass, // Saved class target
             timestamp: new Date().toISOString()
-        });
+        };
+
+        if (currentTimelineImageData && currentTimelineImageData.finalUrl) {
+            postData.imageUrl = currentTimelineImageData.finalUrl;
+        }
+
+        const postRef = await addDoc(collection(db, "timeline_posts"), postData);
         
         const mentions = extractMentions(message);
         for (let m of mentions) {
@@ -514,6 +815,7 @@ document.getElementById('submitPostBtn')?.addEventListener('click', async () => 
 
         postMsgEl.value = '';
         postMsgEl.style.height = '80px';
+        clearTimelineComposerImage();
     } catch (error) {
         alert("Failed to publish post: " + error.message);
     }
@@ -549,16 +851,27 @@ function loadPosts() {
             const initialLetter = escapeHtml(post.authorName ? post.authorName.charAt(0).toUpperCase() : 'U');
             const safeAuthor = escapeHtml(post.authorName || 'Student');
 
+            const canDeletePost = (currentUser.type === 'staff') || (currentUser.code && post.authorCode === currentUser.code);
             let kebabMenuHTML = '';
-            if (currentUser.type === 'staff') {
+            if (canDeletePost) {
                 kebabMenuHTML = `
                     <div class="kebab-wrapper">
-                        <button class="kebab-btn" onclick="toggleKebabMenu(event, 'kebab-post-${postId}')">⋮</button>
+                        <button type="button" class="kebab-btn" title="Options" data-post-id="${postId}">⋮</button>
                         <div id="kebab-post-${postId}" class="kebab-dropdown hidden">
-                            <button class="kebab-item danger" onclick="deletePost('${postId}')">
-                                🗑️ Delete Post
+                            <button type="button" class="kebab-item danger btn-delete-post" data-post-id="${postId}">
+                                Delete Post
                             </button>
                         </div>
+                    </div>
+                `;
+            }
+
+            let imageHTML = '';
+            if (post.imageUrl) {
+                const safeImgUrl = escapeHtml(post.imageUrl);
+                imageHTML = `
+                    <div class="post-image-container" style="margin-top: 10px;">
+                        <img src="${safeImgUrl}" class="post-attached-image" alt="Post Photo" loading="lazy" onclick="window.open('${safeImgUrl}', '_blank')">
                     </div>
                 `;
             }
@@ -583,7 +896,8 @@ function loadPosts() {
                     ${kebabMenuHTML}
                 </div>
 
-                <div class="post-body">${formatMessageMentions(post.message)}</div>
+                ${post.message ? `<div class="post-body">${formatMessageMentions(post.message)}</div>` : ''}
+                ${imageHTML}
                 
                 <div class="post-actions-bar">
                     <button class="action-btn" onclick="toggleComments('${postId}')">
@@ -634,14 +948,15 @@ function loadCommentsForPost(postId) {
             const badgeHTML = comment.isStaff ? `<span class="staff-badge">✓</span>` : '';
             const safeCommentAuthor = escapeHtml(comment.authorName || 'Student');
             
+            const canDeleteComment = (currentUser.type === 'staff') || (currentUser.code && comment.authorCode === currentUser.code);
             let commentKebabHTML = '';
-            if (currentUser.type === 'staff') {
+            if (canDeleteComment) {
                 commentKebabHTML = `
                     <div class="kebab-wrapper">
-                        <button class="kebab-btn" style="font-size: 16px; padding: 2px 6px;" onclick="toggleKebabMenu(event, 'kebab-comment-${comment.id}')">⋮</button>
+                        <button type="button" class="kebab-btn" style="font-size: 16px; padding: 2px 6px;" title="Options" data-comment-id="${comment.id}">⋮</button>
                         <div id="kebab-comment-${comment.id}" class="kebab-dropdown hidden">
-                            <button class="kebab-item danger" onclick="deleteComment('${comment.id}')">
-                                🗑️ Delete Reply
+                            <button type="button" class="kebab-item danger btn-delete-comment" data-comment-id="${comment.id}">
+                                Delete Reply
                             </button>
                         </div>
                     </div>
@@ -1037,7 +1352,7 @@ function subscribeDMThreads() {
                         <div class="kebab-wrapper" style="position: relative;" onclick="event.stopPropagation();">
                             <button class="dm-icon-btn thread-kebab-btn" onclick="toggleKebabMenu(event, 'dmThreadKebab_${safeCode}')" title="Options" style="color: var(--text-muted) !important; font-size: 16px !important; padding: 2px 6px !important;">&#8942;</button>
                             <div class="kebab-dropdown hidden" id="dmThreadKebab_${safeCode}">
-                                <button class="kebab-item delete-item" onclick="deleteDMChatroom('${thread.partnerCode}', '${safePartnerName.replace(/'/g, "\\'")}')" style="color: #ef4444 !important;">🗑 Delete Chat</button>
+                                <button class="kebab-item delete-item" onclick="deleteDMChatroom('${thread.partnerCode}', '${safePartnerName.replace(/'/g, "\\'")}')" style="color: #ef4444 !important;">Delete Chat</button>
                             </div>
                         </div>
                     </div>
@@ -1114,7 +1429,7 @@ function renderLocalDMThreads() {
                 <div class="kebab-wrapper" style="position: relative;" onclick="event.stopPropagation();">
                     <button class="dm-icon-btn thread-kebab-btn" onclick="toggleKebabMenu(event, 'dmThreadKebab_${safeCode}')" title="Options" style="color: var(--text-muted) !important; font-size: 16px !important; padding: 2px 6px !important;">&#8942;</button>
                     <div class="kebab-dropdown hidden" id="dmThreadKebab_${safeCode}">
-                        <button class="kebab-item delete-item" onclick="deleteDMChatroom('${thread.partnerCode}', '${safePartnerName.replace(/'/g, "\\'")}')" style="color: #ef4444 !important;">🗑 Delete Chat</button>
+                        <button class="kebab-item delete-item" onclick="deleteDMChatroom('${thread.partnerCode}', '${safePartnerName.replace(/'/g, "\\'")}')" style="color: #ef4444 !important;">Delete Chat</button>
                     </div>
                 </div>
             </div>

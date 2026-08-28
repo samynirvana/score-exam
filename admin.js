@@ -71,7 +71,7 @@ onAuthStateChanged(auth, async (user) => {
                     subjectInput.placeholder = "Subject Name (e.g. English)";
                 }
                 if (tableTitle) tableTitle.innerText = "Master Registry Ledger - All Subjects & Classes";
-                if (welcomeTitle) welcomeTitle.innerText = "Administrator Master System Workspace";
+                if (welcomeTitle) welcomeTitle.innerText = "Admin Dashboard";
 
             } else {
                 document.querySelectorAll('.admin-only-view').forEach(el => el.classList.add('hidden'));
@@ -88,6 +88,8 @@ onAuthStateChanged(auth, async (user) => {
                     directSubSelect.value = teacherSubject;
                 }
             }
+
+            window.loadAdminDriveSettings();
 
             // 4. Build array of tasks to fetch concurrently in PARALLEL
             const parallelTasks = [
@@ -675,7 +677,9 @@ async function uploadPhotoToDriveOrDirect(file, dataUrl, scriptUrl) {
                 body: JSON.stringify({
                     fileName: file.name,
                     mimeType: file.type || 'image/jpeg',
-                    base64Data: base64Data
+                    base64Data: base64Data,
+                    folderName: "picdb",
+                    replaceExisting: true
                 })
             });
             const resJson = await response.json();
@@ -810,41 +814,201 @@ async function processBulkPhotoFiles(files) {
     }
 }
 
-// --- GOOGLE DRIVE SCRIPT SETTINGS ---
+// --- GOOGLE DRIVE SCRIPT SETTINGS (PERMANENT FIRESTORE CONFIG) ---
+window.loadAdminDriveSettings = async function () {
+    try {
+        let profileUrl = localStorage.getItem('profileDriveScriptUrl') || localStorage.getItem('googleDriveScriptUrl') || '';
+        let profileFolderId = localStorage.getItem('profileDriveFolderId') || '';
+
+        let timelineUrl = localStorage.getItem('timelineDriveScriptUrl') || localStorage.getItem('googleDriveScriptUrl') || '';
+        let timelineFolderId = localStorage.getItem('timelineDriveFolderId') || '';
+
+        let weeklyUrl = localStorage.getItem('meetingDriveScriptUrl') || localStorage.getItem('weeklyDriveScriptUrl') || '';
+        let weeklyFolderId = localStorage.getItem('meetingDriveFolderId') || '';
+
+        // Try loading from Firestore system_settings/google_drive first, then googleDrive
+        try {
+            let snap = await getDoc(doc(db, "system_settings", "google_drive"));
+            if (!snap.exists()) {
+                snap = await getDoc(doc(db, "system_settings", "googleDrive"));
+            }
+
+            if (snap.exists()) {
+                const data = snap.data();
+                profileUrl = data.profileScriptUrl || data.scriptUrlProfile || profileUrl || data.scriptUrl;
+                profileFolderId = data.profileFolderId || data.folderIdProfile || profileFolderId;
+
+                timelineUrl = data.timelineScriptUrl || data.scriptUrlTimeline || timelineUrl || data.scriptUrl;
+                timelineFolderId = data.timelineFolderId || data.folderIdTimeline || timelineFolderId || data.folderId;
+
+                weeklyUrl = data.weeklyScriptUrl || data.scriptUrlWeekly || data.meetingScriptUrl || weeklyUrl;
+                weeklyFolderId = data.weeklyFolderId || data.folderIdWeekly || data.meetingFolderId || weeklyFolderId;
+            }
+        } catch (fErr) {
+            console.warn("Could not fetch Firestore system_settings/google_drive:", fErr);
+        }
+
+        const inProfileUrl = document.getElementById('scriptUrlProfile');
+        const inProfileFolderId = document.getElementById('folderIdProfile');
+        const inTimelineUrl = document.getElementById('scriptUrlTimeline');
+        const inTimelineFolderId = document.getElementById('folderIdTimeline');
+        const inWeeklyUrl = document.getElementById('scriptUrlWeekly');
+        const inWeeklyFolderId = document.getElementById('folderIdWeekly');
+
+        if (inProfileUrl) inProfileUrl.value = profileUrl;
+        if (inProfileFolderId) inProfileFolderId.value = profileFolderId;
+        if (inTimelineUrl) inTimelineUrl.value = timelineUrl;
+        if (inTimelineFolderId) inTimelineFolderId.value = timelineFolderId;
+        if (inWeeklyUrl) inWeeklyUrl.value = weeklyUrl;
+        if (inWeeklyFolderId) inWeeklyFolderId.value = weeklyFolderId;
+
+        const bulkScriptInput = document.getElementById('googleDriveScriptUrl');
+        if (bulkScriptInput) bulkScriptInput.value = profileUrl;
+
+        // Synchronize local storage
+        if (profileUrl) {
+            localStorage.setItem('googleDriveScriptUrl', profileUrl);
+            localStorage.setItem('profileDriveScriptUrl', profileUrl);
+        }
+        if (profileFolderId) localStorage.setItem('profileDriveFolderId', profileFolderId);
+
+        if (timelineUrl) localStorage.setItem('timelineDriveScriptUrl', timelineUrl);
+        if (timelineFolderId) localStorage.setItem('timelineDriveFolderId', timelineFolderId);
+
+        if (weeklyUrl) localStorage.setItem('meetingDriveScriptUrl', weeklyUrl);
+        if (weeklyFolderId) localStorage.setItem('meetingDriveFolderId', weeklyFolderId);
+
+    } catch (e) {
+        console.warn("Could not load Google Drive settings from Firestore:", e);
+    }
+};
+
+window.saveAdminDriveSettings = async function () {
+    const profileUrl = document.getElementById('scriptUrlProfile')?.value.trim() || '';
+    const profileFolderId = document.getElementById('folderIdProfile')?.value.trim() || '';
+
+    const timelineUrl = document.getElementById('scriptUrlTimeline')?.value.trim() || '';
+    const timelineFolderId = document.getElementById('folderIdTimeline')?.value.trim() || '';
+
+    const weeklyUrl = document.getElementById('scriptUrlWeekly')?.value.trim() || '';
+    const weeklyFolderId = document.getElementById('folderIdWeekly')?.value.trim() || '';
+
+    const msgEl = document.getElementById('scriptingSaveMsg');
+
+    try {
+        const payload = {
+            // 1. Profile photos (picdb)
+            profileScriptUrl: profileUrl,
+            profileFolderId: profileFolderId,
+            profileFolderName: "picdb",
+
+            // 2. Timeline uploads (TimelineDB)
+            timelineScriptUrl: timelineUrl,
+            timelineFolderId: timelineFolderId,
+            timelineFolderName: "TimelineDB",
+            scriptUrl: timelineUrl, // fallback
+            folderId: timelineFolderId,
+
+            // 3. Weekly / Meeting coordination reports (Meeting Coordination)
+            weeklyScriptUrl: weeklyUrl,
+            weeklyFolderId: weeklyFolderId,
+            weeklyFolderName: "Meeting Coordination",
+            meetingScriptUrl: weeklyUrl,
+
+            updatedAt: new Date().toISOString(),
+            updatedBy: auth.currentUser?.email || 'admin'
+        };
+
+        // Save to both document keys for bulletproof compatibility
+        await setDoc(doc(db, "system_settings", "google_drive"), payload, { merge: true });
+        await setDoc(doc(db, "system_settings", "googleDrive"), payload, { merge: true });
+
+        // Update local storage
+        if (profileUrl) {
+            localStorage.setItem('googleDriveScriptUrl', profileUrl);
+            localStorage.setItem('profileDriveScriptUrl', profileUrl);
+        } else {
+            localStorage.removeItem('googleDriveScriptUrl');
+            localStorage.removeItem('profileDriveScriptUrl');
+        }
+        if (profileFolderId) {
+            localStorage.setItem('profileDriveFolderId', profileFolderId);
+        } else {
+            localStorage.removeItem('profileDriveFolderId');
+        }
+
+        if (timelineUrl) {
+            localStorage.setItem('timelineDriveScriptUrl', timelineUrl);
+        } else {
+            localStorage.removeItem('timelineDriveScriptUrl');
+        }
+        if (timelineFolderId) {
+            localStorage.setItem('timelineDriveFolderId', timelineFolderId);
+        } else {
+            localStorage.removeItem('timelineDriveFolderId');
+        }
+
+        if (weeklyUrl) {
+            localStorage.setItem('meetingDriveScriptUrl', weeklyUrl);
+        } else {
+            localStorage.removeItem('meetingDriveScriptUrl');
+        }
+        if (weeklyFolderId) {
+            localStorage.setItem('meetingDriveFolderId', weeklyFolderId);
+        } else {
+            localStorage.removeItem('meetingDriveFolderId');
+        }
+
+        const bulkScriptInput = document.getElementById('googleDriveScriptUrl');
+        if (bulkScriptInput) bulkScriptInput.value = profileUrl;
+
+        if (msgEl) {
+            msgEl.innerText = "✅ All 3 Google Drive Scripts saved permanently to Firestore!";
+            msgEl.style.color = "#16a34a";
+            setTimeout(() => { if (msgEl) msgEl.innerText = ""; }, 4000);
+        }
+
+        alert("All 3 Google Drive script configurations have been saved successfully to Firestore and applied across the app!");
+    } catch (err) {
+        console.error("Error saving scripts to Firestore:", err);
+        if (msgEl) {
+            msgEl.innerText = "❌ Error: " + err.message;
+            msgEl.style.color = "#ef4444";
+        }
+        alert("Failed to save settings: " + err.message);
+    }
+};
+
 window.toggleDriveScriptSettings = async function () {
     const box = document.getElementById('driveScriptSettingsBox');
     if (box) box.classList.toggle('hidden');
-    const input = document.getElementById('googleDriveScriptUrl');
-    if (input) {
-        let url = localStorage.getItem('googleDriveScriptUrl') || '';
-        if (!url) {
-            try {
-                const snap = await getDoc(doc(db, "system_settings", "googleDrive"));
-                if (snap.exists() && snap.data().scriptUrl) {
-                    url = snap.data().scriptUrl;
-                    localStorage.setItem('googleDriveScriptUrl', url);
-                }
-            } catch (e) {
-                console.warn(e);
-            }
-        }
-        input.value = url;
-    }
+    window.loadAdminDriveSettings();
 };
 
 window.saveDriveScriptUrl = async function () {
     const input = document.getElementById('googleDriveScriptUrl');
     const url = input?.value.trim() || '';
+    const folderId = localStorage.getItem('timelineDriveFolderId') || '';
+
+    const payload = {
+        scriptUrl: url,
+        folderId: folderId,
+        folderName: "TimelineDB",
+        updatedAt: new Date().toISOString(),
+        updatedBy: auth.currentUser?.email || 'admin'
+    };
+
     localStorage.setItem('googleDriveScriptUrl', url);
+    localStorage.setItem('timelineDriveScriptUrl', url);
     try {
-        await setDoc(doc(db, "system_settings", "googleDrive"), {
-            scriptUrl: url,
-            updatedAt: new Date().toISOString()
-        }, { merge: true });
+        await setDoc(doc(db, "system_settings", "google_drive"), payload, { merge: true });
+        await setDoc(doc(db, "system_settings", "googleDrive"), payload, { merge: true });
     } catch (e) {
         console.warn("Could not save to Firestore system_settings:", e);
     }
-    alert("Google Drive Web App Script URL saved & synced successfully!");
+    const adminScriptInput = document.getElementById('adminDriveScriptUrl');
+    if (adminScriptInput) adminScriptInput.value = url;
+    alert("Google Drive Web App Script URL saved & synced to Firestore permanently!");
 };
 
 // --- EDIT STUDENT PROFILE MODAL ---
@@ -1346,7 +1510,7 @@ document.getElementById('filterPointsClass')?.addEventListener('change', loadPoi
 
 // --- TAB & SUB-TAB NAVIGATION LOGIC ---
 window.switchDbView = function (viewName) {
-    const validViews = ['students', 'teachers', 'quizzes', 'all'];
+    const validViews = ['students', 'teachers', 'quizzes', 'scripting', 'all'];
     if (!validViews.includes(viewName)) viewName = 'students';
 
     // 1. Update Sidebar Submenu Active States
@@ -1354,7 +1518,8 @@ window.switchDbView = function (viewName) {
     const subtabMap = {
         'students': 'subtabStudents',
         'teachers': 'subtabTeachers',
-        'quizzes': 'subtabQuizzes'
+        'quizzes': 'subtabQuizzes',
+        'scripting': 'subtabScripting'
     };
     if (subtabMap[viewName]) {
         const activeSubBtn = document.getElementById(subtabMap[viewName]);
@@ -1365,6 +1530,7 @@ window.switchDbView = function (viewName) {
     const secStudents = document.getElementById('db-section-students');
     const secTeachers = document.getElementById('db-section-teachers');
     const secQuizzes = document.getElementById('db-section-quizzes');
+    const secScripting = document.getElementById('db-section-scripting');
 
     if (secStudents) {
         secStudents.style.display = (viewName === 'all' || viewName === 'students') ? 'contents' : 'none';
@@ -1374,6 +1540,12 @@ window.switchDbView = function (viewName) {
     }
     if (secQuizzes) {
         secQuizzes.style.display = (viewName === 'all' || viewName === 'quizzes') ? 'contents' : 'none';
+    }
+    if (secScripting) {
+        secScripting.style.display = (viewName === 'all' || viewName === 'scripting') ? 'contents' : 'none';
+        if ((viewName === 'all' || viewName === 'scripting') && window.loadAdminDriveSettings) {
+            window.loadAdminDriveSettings();
+        }
     }
 };
 
@@ -1652,7 +1824,7 @@ async function addNewsUpdate() {
                 btn.innerText = "Post Notice";
                 btn.style.background = "var(--primary-blue)";
             }
-            document.getElementById('newsFormTitle').innerText = "Post News / Notice";
+            document.getElementById('newsFormTitle').innerText = "Create a Notice";
         } else {
             // Create new notice
             await addDoc(collection(db, "news_updates"), {
@@ -4521,7 +4693,7 @@ async function addManualQuiz() {
         // 5. Restore UI Button State
         if (submitBtn) {
             submitBtn.disabled = false;
-            submitBtn.innerText = "Add Offline Exam";
+            submitBtn.innerText = "Add Assignment";
         }
     }
 }

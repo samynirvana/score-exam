@@ -3588,7 +3588,7 @@ body.dark-theme .multi-select-option-row:hover {
 /* ======================================================
    ROUNDED PILL BUTTON STYLING SYSTEM (LIGHT & DARK THEME)
    ====================================================== */
-button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(.kebab-item):not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.card-kebab-btn):not(#profileCardKebabBtn):not(.profile-dropdown-item),
+button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(.kebab-item):not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.card-kebab-btn):not(#profileCardKebabBtn):not(.profile-dropdown-item):not(.info-kebab-btn):not(#btnDobKebab):not(.info-kebab-item),
 .btn:not(.dropdown-item):not(.kebab-item),
 .action-btn:not(.dropdown-item):not(.kebab-item),
 .add-btn,
@@ -3611,7 +3611,7 @@ button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(
     transition: all 0.2s ease !important;
 }
 
-button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(.kebab-item):not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.card-kebab-btn):not(#profileCardKebabBtn):not(.profile-dropdown-item):hover,
+button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(.kebab-item):not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.card-kebab-btn):not(#profileCardKebabBtn):not(.profile-dropdown-item):not(.info-kebab-btn):not(#btnDobKebab):not(.info-kebab-item):hover,
 .btn:not(.dropdown-item):not(.kebab-item):hover,
 .action-btn:not(.dropdown-item):not(.kebab-item):hover,
 .add-btn:hover,
@@ -3624,14 +3624,14 @@ button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
 }
 
-button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(.kebab-item):not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):active,
+button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(.kebab-item):not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.info-kebab-btn):not(#btnDobKebab):active,
 .btn:not(.dropdown-item):not(.kebab-item):active {
     transform: translateY(0) !important;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
 }
 
 /* Dark Theme Overrides for Admin Buttons */
-body.dark-theme button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(.kebab-item):not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.card-kebab-btn):not(#profileCardKebabBtn):not(.profile-dropdown-item),
+body.dark-theme button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(.kebab-item):not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.card-kebab-btn):not(#profileCardKebabBtn):not(.profile-dropdown-item):not(.info-kebab-btn):not(#btnDobKebab):not(.info-kebab-item),
 body.dark-theme .btn:not(.dropdown-item):not(.kebab-item),
 body.dark-theme .action-btn:not(.dropdown-item):not(.kebab-item),
 body.dark-theme .add-btn,
@@ -3644,7 +3644,7 @@ body.dark-theme .modal-btn {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
 }
 
-body.dark-theme button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(.kebab-item):not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):hover,
+body.dark-theme button:not(.menu-btn):not(.submenu-btn):not(.kebab-btn):not(.dropdown-item):not(.kebab-item):not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.info-kebab-btn):not(#btnDobKebab):hover,
 body.dark-theme .btn:not(.dropdown-item):not(.kebab-item):hover,
 body.dark-theme .action-btn:not(.dropdown-item):not(.kebab-item):hover,
 body.dark-theme .add-btn:hover,
@@ -4600,4 +4600,46 @@ body.dark-theme .att-action-btn {
         padding: 6px 8px !important;
         color: #000000 !important;
     }
+}
+
+/* Fix Students Database header controls layout */
+.db-header-controls {
+    display: flex !important;
+    gap: 8px !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+}
+
+#searchDbStudents {
+    width: 180px !important;
+    min-width: 150px !important;
+    max-width: 220px !important;
+    height: 38px !important;
+    padding: 6px 12px !important;
+    font-size: 13px !important;
+    display: inline-block !important;
+    flex: 0 1 180px !important;
+    margin: 0 !important;
+}
+
+#filterDbStudentClass {
+    width: auto !important;
+    min-width: 125px !important;
+    height: 38px !important;
+    padding: 6px 10px !important;
+    font-size: 13px !important;
+    display: inline-block !important;
+    flex: 0 0 auto !important;
+    margin: 0 !important;
+}
+
+#dbStudentsPerPage {
+    width: auto !important;
+    min-width: 95px !important;
+    height: 38px !important;
+    padding: 6px 10px !important;
+    font-size: 13px !important;
+    display: inline-block !important;
+    flex: 0 0 auto !important;
+    margin: 0 !important;
 }

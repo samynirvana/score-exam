@@ -540,16 +540,29 @@ function initAutoResizeTextareas() {
   });
 }
 
-function loadDriveFolderSettings() {
+async function loadDriveFolderSettings() {
   const inputScript = document.getElementById('inputMeetingDriveScriptUrl');
   const inputFolder = document.getElementById('inputMeetingDriveFolderId');
 
-  if (inputScript) {
-    inputScript.value = localStorage.getItem('meetingDriveScriptUrl') || localStorage.getItem('googleDriveScriptUrl') || '';
+  let scriptUrl = localStorage.getItem('meetingDriveScriptUrl') || localStorage.getItem('weeklyDriveScriptUrl') || '';
+  let folderId = localStorage.getItem('meetingDriveFolderId') || '';
+
+  try {
+    let snap = await getDoc(doc(db, "system_settings", "google_drive"));
+    if (!snap.exists()) snap = await getDoc(doc(db, "system_settings", "googleDrive"));
+    if (snap.exists()) {
+      const data = snap.data();
+      scriptUrl = data.weeklyScriptUrl || data.scriptUrlWeekly || data.meetingScriptUrl || scriptUrl;
+      folderId = data.weeklyFolderId || data.folderIdWeekly || data.meetingFolderId || folderId;
+      if (scriptUrl) localStorage.setItem('meetingDriveScriptUrl', scriptUrl);
+      if (folderId) localStorage.setItem('meetingDriveFolderId', folderId);
+    }
+  } catch (e) {
+    console.warn("Could not load weekly drive settings from Firestore:", e);
   }
-  if (inputFolder) {
-    inputFolder.value = localStorage.getItem('meetingDriveFolderId') || '';
-  }
+
+  if (inputScript) inputScript.value = scriptUrl;
+  if (inputFolder) inputFolder.value = folderId;
 }
 
 function switchTab(tabId, targetBtn) {
@@ -4509,26 +4522,6 @@ function initReportImageUpload() {
 
   loadDriveFolderSettings();
 
-  // Google Drive Settings Save Event Listener
-  document.getElementById('btnSaveDriveFolderSettings')?.addEventListener('click', () => {
-    const scriptUrl = document.getElementById('inputMeetingDriveScriptUrl')?.value.trim() || '';
-    const folderId = document.getElementById('inputMeetingDriveFolderId')?.value.trim() || '';
-
-    if (scriptUrl) {
-      localStorage.setItem('meetingDriveScriptUrl', scriptUrl);
-    } else {
-      localStorage.removeItem('meetingDriveScriptUrl');
-    }
-
-    if (folderId) {
-      localStorage.setItem('meetingDriveFolderId', folderId);
-    } else {
-      localStorage.removeItem('meetingDriveFolderId');
-    }
-
-    alert("Google Drive Folder Settings saved successfully!");
-  });
-
   fileInput?.addEventListener('change', async (e) => {
     const file = e.target.files?.[0];
     if (file) handleReportImageFile(file);
@@ -4605,8 +4598,8 @@ async function handleReportImageFile(file) {
             fileName: file.name,
             mimeType: file.type || 'image/jpeg',
             base64Data: base64Data,
-            targetFolder: "Teacher Weekly Reports",
-            folderName: "Teacher Weekly Reports",
+            targetFolder: "Meeting Coordination",
+            folderName: "Meeting Coordination",
             folderId: folderId,
             type: "weekly_coordination"
           })

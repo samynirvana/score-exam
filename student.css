@@ -823,7 +823,7 @@ body.dark-mode .behavior-item-title {
 /* ======================================================
    ROUNDED PILL BUTTON STYLING SYSTEM (LIGHT & DARK THEME)
    ====================================================== */
-button:not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.card-kebab-btn):not(#profileCardKebabBtn):not(.profile-dropdown-item):not(.menu-btn):not(.submenu-btn):not(.kebab-item):not(.kebab-btn):not(.edit-btn):not(.delete-btn),
+button:not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.card-kebab-btn):not(#profileCardKebabBtn):not(.profile-dropdown-item):not(.info-kebab-btn):not(#btnDobKebab):not(.info-kebab-item):not(.menu-btn):not(.submenu-btn):not(.kebab-item):not(.kebab-btn):not(.edit-btn):not(.delete-btn),
 .btn-pill,
 .teacher-btn,
 .theme-toggle-btn,
@@ -849,7 +849,7 @@ button:not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#no
     transition: all 0.2s ease !important;
 }
 
-button:not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.card-kebab-btn):not(#profileCardKebabBtn):not(.profile-dropdown-item):hover,
+button:not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.card-kebab-btn):not(#profileCardKebabBtn):not(.profile-dropdown-item):not(.info-kebab-btn):not(#btnDobKebab):not(.info-kebab-item):not(.kebab-btn):not(.kebab-item):hover,
 .btn-pill:hover,
 .teacher-btn:hover,
 .theme-toggle-btn:hover,
@@ -872,7 +872,7 @@ button:active,
 }
 
 /* Dark Theme Button Overrides */
-.dark-theme button:not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.card-kebab-btn):not(#profileCardKebabBtn):not(.profile-dropdown-item):not(.menu-btn):not(.submenu-btn):not(.kebab-item):not(.kebab-btn):not(.edit-btn):not(.delete-btn),
+.dark-theme button:not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.card-kebab-btn):not(#profileCardKebabBtn):not(.profile-dropdown-item):not(.info-kebab-btn):not(#btnDobKebab):not(.info-kebab-item):not(.menu-btn):not(.submenu-btn):not(.kebab-item):not(.kebab-btn):not(.edit-btn):not(.delete-btn),
 .dark-theme .btn-pill,
 .dark-theme .teacher-btn,
 .dark-theme .theme-toggle-btn,
@@ -888,7 +888,7 @@ button:active,
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
 }
 
-.dark-theme button:not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.card-kebab-btn):not(#profileCardKebabBtn):not(.profile-dropdown-item):not(.menu-btn):not(.submenu-btn):not(.kebab-item):not(.kebab-btn):not(.edit-btn):not(.delete-btn):hover,
+.dark-theme button:not(.mobile-kebab-btn):not(#mobileTopbarKebabBtn):not(.notif-btn):not(#notifToggleBtn):not(.card-kebab-btn):not(#profileCardKebabBtn):not(.profile-dropdown-item):not(.info-kebab-btn):not(#btnDobKebab):not(.info-kebab-item):not(.menu-btn):not(.submenu-btn):not(.kebab-item):not(.kebab-btn):not(.edit-btn):not(.delete-btn):hover,
 .dark-theme .btn-pill:hover,
 .dark-theme .teacher-btn:hover,
 .dark-theme .theme-toggle-btn:hover,
@@ -1408,4 +1408,46 @@ body.dark-mode #mobileTopbarKebabBtn svg {
     .main-wrapper {
         padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px)) !important;
     }
+}
+
+/* --- Profile Photo Edit Modal --- */
+#photoEditModal {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(0, 0, 0, 0.65) !important;
+    z-index: 10000 !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    backdrop-filter: blur(4px) !important;
+    padding: 16px !important;
+    box-sizing: border-box !important;
+}
+
+#photoEditModal.hidden {
+    display: none !important;
+}
+
+.photo-modal-card {
+    width: 100% !important;
+    max-width: 400px !important;
+    margin: auto !important;
+    position: relative !important;
+    text-align: center !important;
+    padding: 28px 24px !important;
+    border-radius: 20px !important;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35) !important;
+    background: var(--card-bg, #ffffff) !important;
+    border: 1px solid var(--border-color, #e2e8f0) !important;
+    box-sizing: border-box !important;
+}
+
+body.dark-theme .photo-modal-card,
+body.dark-mode .photo-modal-card {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6) !important;
 }

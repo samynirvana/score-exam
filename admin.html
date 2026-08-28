@@ -146,6 +146,15 @@
                             </svg>
                             <span>Quiz</span>
                         </button>
+                        <button class="submenu-btn" data-tab="tab-view-ledgers" data-subtab="scripting"
+                            id="subtabScripting">
+                            <svg class="submenu-icon" viewBox="0 0 24 24" width="16" height="16" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="16 18 22 12 16 6"></polyline>
+                                <polyline points="8 6 2 12 8 18"></polyline>
+                            </svg>
+                            <span>Scripting</span>
+                        </button>
                     </div>
                 </div>
 
@@ -579,9 +588,7 @@
                         <div
                             style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                             <div>
-                                <h3 style="margin: 0; font-size: 18px; font-weight: 700;">Active News & Notices</h3>
-                                <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-gray);">School
-                                    announcements & bulletins</p>
+                                <h3 style="margin: 0; font-size: 18px; font-weight: 700;">Active Notices</h3>
                             </div>
                             <a href="#" onclick="document.getElementById('menuNewsOnly').click(); return false;"
                                 style="font-size: 13px; font-weight: 600; color: var(--primary-blue); text-decoration: none; display: flex; align-items: center; gap: 4px;">
@@ -597,7 +604,7 @@
 
                         <button onclick="document.getElementById('menuNewsOnly').click()"
                             style="margin-top: auto; width: 100%; background: var(--primary-blue); font-weight: 600; padding: 12px; border-radius: 10px;">
-                            + Post News / Notice
+                            + Create a Notice
                         </button>
                     </div>
 
@@ -719,9 +726,7 @@
 
                 <!-- 3. View Score Ledger Panel -->
                 <div class="box">
-                    <h3 style="margin-top:0; margin-bottom: 8px;">View Score Ledger</h3>
-                    <p style="font-size: 14px; color: var(--text-gray); margin-bottom: 16px;">Select a specific Subject,
-                        Class, and Quiz/Review to view the student score ledger.</p>
+                    <h3 style="margin-top:0; margin-bottom: 16px;">View Score</h3>
 
                     <div class="form-row">
                         <!-- ADDED: Subject Dropdown -->
@@ -790,7 +795,7 @@
 
                     <!-- Top Box: Form -->
                     <div class="box" style="grid-column: 1 / -1;">
-                        <h3 style="margin-top: 0; margin-bottom: 20px;">Manage Behavior Points</h3>
+                        <h3 style="margin-top: 0; margin-bottom: 20px;">Behavior Point</h3>
 
                         <div class="behavior-form-container">
 
@@ -824,7 +829,7 @@
                                     <input type="number" id="customPointValue" placeholder="Custom +/- (e.g. 5 or -2)"
                                         step="0.1">
                                     <button id="saveCustomPointBtn" style="background: var(--purple-header);">
-                                        Commit Custom Point
+                                        Submit Points
                                     </button>
                                 </div>
                             </div>
@@ -836,9 +841,7 @@
                         <div
                             style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                             <div>
-                                <h3 style="margin: 0;">Top 10 Behavior Analytics Diagram</h3>
-                                <p style="font-size: 13px; color: var(--text-gray); margin: 4px 0 0 0;">Visualized
-                                    breakdown of top positive and negative conduct reasons.</p>
+                                <h3 style="margin: 0;">Analytics Diagram</h3>
                             </div>
                             <button type="button" id="btnToggleBehaviorCharts" onclick="toggleBehaviorCharts()"
                                 style="width: auto; padding: 8px 16px; font-size: 13px; background: var(--primary-blue);">Show
@@ -873,7 +876,7 @@
                     <div class="box" style="grid-column: 1 / -1;">
                         <div
                             style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                            <h3 style="margin: 0;">Full Behavior Points Ledger</h3>
+                            <h3 style="margin: 0;">Behavior Point Database</h3>
                         </div>
                         <div class="table-responsive" style="max-height: 400px;">
                             <table id="behaviorTabPointsTable">
@@ -904,14 +907,14 @@
                         <div class="box" style="grid-column: 1 / -1;">
                             <div
                                 style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 12px;">
-                                <h3 style="margin: 0;">Register Student & Manage Profiles</h3>
+                                <h3 style="margin: 0;">Register student</h3>
                                 <div class="register-mode-toggle">
                                     <button type="button" class="toggle-mode-btn active" id="btnModeSingle"
                                         onclick="setStudentRegMode('single')">Single Student</button>
                                     <button type="button" class="toggle-mode-btn" id="btnModeBulk"
-                                        onclick="setStudentRegMode('bulk')">Bulk Register (Excel)</button>
+                                        onclick="setStudentRegMode('bulk')">Multiple Students</button>
                                     <button type="button" class="toggle-mode-btn" id="btnModePhotos"
-                                        onclick="setStudentRegMode('photos')">📸 Bulk Photos (Google Drive / Drop)</button>
+                                        onclick="setStudentRegMode('photos')">Students Photo</button>
                                 </div>
                             </div>
 
@@ -1021,25 +1024,22 @@
                             <div
                                 style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <h3 style="margin: 0;">Students Master Directory</h3>
+                                    <h3 style="margin: 0;">Students Database</h3>
                                     <span id="dbStudentsCountBadge"
                                         style="background: rgba(30, 94, 255, 0.1); color: var(--primary-blue); font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 12px;">0</span>
                                 </div>
-                                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                <div class="db-header-controls">
                                     <!-- Search Input -->
                                     <input type="text" id="searchDbStudents" placeholder="Search students..."
-                                        oninput="onDbStudentSearchChange()"
-                                        style="width: 180px; margin: 0; padding: 8px 12px; font-size: 13px;">
+                                        oninput="onDbStudentSearchChange()">
 
                                     <!-- Filter Class Dropdown -->
-                                    <select id="filterDbStudentClass" onchange="onDbStudentFilterChange()"
-                                        style="width: auto; min-width: 130px; margin: 0; padding: 8px 12px; font-size: 13px;">
+                                    <select id="filterDbStudentClass" onchange="onDbStudentFilterChange()">
                                         <option value="all">All Classes</option>
                                     </select>
 
                                     <!-- Rows Per Page Dropdown -->
-                                    <select id="dbStudentsPerPage" onchange="onDbStudentPerPageChange()"
-                                        style="width: auto; margin: 0; padding: 8px 12px; font-size: 13px;">
+                                    <select id="dbStudentsPerPage" onchange="onDbStudentPerPageChange()">
                                         <option value="10">Show 10</option>
                                         <option value="20">Show 20</option>
                                         <option value="50">Show 50</option>
@@ -1081,7 +1081,7 @@
                             <div
                                 style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                                 <div>
-                                    <h3 style="margin: 0;">Active Classes</h3>
+                                    <h3 style="margin: 0;">Class Database</h3>
                                     <p style="font-size: 13px; color: var(--text-gray); margin: 4px 0 0 0;">Classes are
                                         automatically populated based on registered Student profiles.</p>
                                 </div>
@@ -1149,7 +1149,7 @@
 
                         <!-- TEACHERS MASTER DIRECTORY -->
                         <div class="box" style="grid-column: 1 / -1;">
-                            <h3 style="margin-top: 0; margin-bottom: 16px;">Teachers Master Directory</h3>
+                            <h3 style="margin-top: 0; margin-bottom: 16px;">Teachers Database</h3>
                             <div class="table-responsive" style="max-height: 350px;">
                                 <table id="teachersDirectoryTable">
                                     <thead>
@@ -1172,7 +1172,7 @@
                             <div
                                 style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                                 <div>
-                                    <h3 style="margin: 0;">Active Subjects</h3>
+                                    <h3 style="margin: 0;">Subjects Database</h3>
                                     <p style="font-size: 13px; color: var(--text-gray); margin: 4px 0 0 0;">Subjects are
                                         automatically populated based on registered Teacher accounts.</p>
                                 </div>
@@ -1201,7 +1201,7 @@
                         style="grid-column: 1 / -1; display: contents;">
                         <!-- Manual Offline Quizzes / Exams -->
                         <div class="box" style="grid-column: 1 / -1;">
-                            <h3>Manage Offline Exams / Quizzes</h3>
+                            <h3>Create new Assignment</h3>
                             <p style="font-size: 13px; color: var(--text-gray);">Add offline exams here. Digital quizzes
                                 from the Quiz Builder are automatically linked.</p>
 
@@ -1251,8 +1251,7 @@
                                 </div>
                             </div>
 
-                            <button onclick="addManualQuiz()" style="background: var(--primary-blue);">Add Offline
-                                Exam</button>
+                            <button onclick="addManualQuiz()" style="background: var(--primary-blue);">Add Assignment</button>
 
                             <div class="table-responsive" style="margin-top: 15px; max-height: 350px;">
                                 <table id="quizzesDatabaseTable">
@@ -1271,7 +1270,134 @@
                         </div>
                     </div>
 
-                </div>
+                    <!-- SCRIPTING & GOOGLE DRIVE CONFIGURATION CENTER -->
+                    <div id="db-section-scripting" class="db-section-group"
+                        style="grid-column: 1 / -1; display: none;">
+
+                        <!-- Header Card -->
+                        <div class="box" style="grid-column: 1 / -1; margin-bottom: 0;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                                <div>
+                                    <h3 style="margin: 0; font-size: 18px; font-weight: 800; color: var(--text-dark); display: flex; align-items: center; gap: 8px;">
+                                        ⚡ Google Apps Script & Cloud Storage Center
+                                    </h3>
+                                    <p style="font-size: 13px; color: var(--text-gray); margin: 6px 0 0 0;">
+                                        Configure and manage your 3 dedicated Google Drive upload scripts in one central place. All settings are <strong>stored permanently in Firestore</strong> and automatically synchronized across the application.
+                                    </p>
+                                </div>
+                                <span style="font-size: 12px; font-weight: 700; color: #16a34a; background: rgba(22, 163, 74, 0.1); padding: 5px 12px; border-radius: 8px; border: 1px solid rgba(22, 163, 74, 0.2);">
+                                    ☁️ Firestore Permanent Storage
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- 1. Student Profile Picture Script (picdb) -->
+                        <div class="box" style="grid-column: 1 / -1; border-left: 4px solid #3b82f6;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+                                <div>
+                                    <h4 style="margin: 0; font-size: 15.5px; font-weight: 700; color: var(--text-dark); display: flex; align-items: center; gap: 8px;">
+                                        👤 1. Student Profile Pictures Script
+                                    </h4>
+                                    <p style="font-size: 13px; color: var(--text-gray); margin: 4px 0 0 0;">
+                                        Used for student avatar uploads, profile picture changes, and bulk photo matching in <strong>picdb</strong>.
+                                    </p>
+                                </div>
+                                <span style="font-size: 11.5px; font-weight: 700; color: #3b82f6; background: rgba(59, 130, 246, 0.1); padding: 3px 10px; border-radius: 12px;">
+                                    Target Folder: picdb
+                                </span>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 10px;">
+                                <div>
+                                    <label style="font-size: 12px; font-weight: 700; color: var(--text-dark); display: block; margin-bottom: 5px;">
+                                        Google Apps Script Web App URL (Profile Photos):
+                                    </label>
+                                    <input type="url" id="scriptUrlProfile" placeholder="https://script.google.com/macros/s/.../exec" style="width: 100%; padding: 10px 12px; font-size: 13px; border-radius: 8px; border: 1px solid var(--border-color); box-sizing: border-box; background: var(--input-bg);">
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px; font-weight: 700; color: var(--text-dark); display: block; margin-bottom: 5px;">
+                                        Google Drive Folder ID (e.g. picdb Folder ID - Optional):
+                                    </label>
+                                    <input type="text" id="folderIdProfile" placeholder="Leave empty to auto-search 'picdb' folder" style="width: 100%; padding: 10px 12px; font-size: 13px; border-radius: 8px; border: 1px solid var(--border-color); box-sizing: border-box; background: var(--input-bg);">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. Timeline Uploads Script (TimelineDB) -->
+                        <div class="box" style="grid-column: 1 / -1; border-left: 4px solid #10b981;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+                                <div>
+                                    <h4 style="margin: 0; font-size: 15.5px; font-weight: 700; color: var(--text-dark); display: flex; align-items: center; gap: 8px;">
+                                        📰 2. Classroom Timeline Uploads Script
+                                    </h4>
+                                    <p style="font-size: 13px; color: var(--text-gray); margin: 4px 0 0 0;">
+                                        Used for student and teacher media attachments and post photo uploads in <strong>TimelineDB</strong>.
+                                    </p>
+                                </div>
+                                <span style="font-size: 11.5px; font-weight: 700; color: #10b981; background: rgba(16, 185, 129, 0.1); padding: 3px 10px; border-radius: 12px;">
+                                    Target Folder: TimelineDB
+                                </span>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 10px;">
+                                <div>
+                                    <label style="font-size: 12px; font-weight: 700; color: var(--text-dark); display: block; margin-bottom: 5px;">
+                                        Google Apps Script Web App URL (Timeline):
+                                    </label>
+                                    <input type="url" id="scriptUrlTimeline" placeholder="https://script.google.com/macros/s/.../exec" style="width: 100%; padding: 10px 12px; font-size: 13px; border-radius: 8px; border: 1px solid var(--border-color); box-sizing: border-box; background: var(--input-bg);">
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px; font-weight: 700; color: var(--text-dark); display: block; margin-bottom: 5px;">
+                                        Google Drive Folder ID (e.g. TimelineDB Folder ID - Optional):
+                                    </label>
+                                    <input type="text" id="folderIdTimeline" placeholder="Leave empty to auto-search 'TimelineDB' folder" style="width: 100%; padding: 10px 12px; font-size: 13px; border-radius: 8px; border: 1px solid var(--border-color); box-sizing: border-box; background: var(--input-bg);">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. Teacher Weekly & Meeting Coordination Script (Meeting Coordination) -->
+                        <div class="box" style="grid-column: 1 / -1; border-left: 4px solid #8b5cf6;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+                                <div>
+                                    <h4 style="margin: 0; font-size: 15.5px; font-weight: 700; color: var(--text-dark); display: flex; align-items: center; gap: 8px;">
+                                        📊 3. Teacher Weekly Report & Meeting Photos Script
+                                    </h4>
+                                    <p style="font-size: 13px; color: var(--text-gray); margin: 4px 0 0 0;">
+                                        Used for teacher weekly coordination reports and meeting documentation in <strong>Meeting Coordination</strong>.
+                                    </p>
+                                </div>
+                                <span style="font-size: 11.5px; font-weight: 700; color: #8b5cf6; background: rgba(139, 92, 246, 0.1); padding: 3px 10px; border-radius: 12px;">
+                                    Target Folder: Meeting Coordination
+                                </span>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 10px;">
+                                <div>
+                                    <label style="font-size: 12px; font-weight: 700; color: var(--text-dark); display: block; margin-bottom: 5px;">
+                                        Google Apps Script Web App URL (Weekly & Meeting Reports):
+                                    </label>
+                                    <input type="url" id="scriptUrlWeekly" placeholder="https://script.google.com/macros/s/.../exec" style="width: 100%; padding: 10px 12px; font-size: 13px; border-radius: 8px; border: 1px solid var(--border-color); box-sizing: border-box; background: var(--input-bg);">
+                                </div>
+                                <div>
+                                    <label style="font-size: 12px; font-weight: 700; color: var(--text-dark); display: block; margin-bottom: 5px;">
+                                        Google Drive Folder ID (e.g. Meeting Coordination Folder ID - Optional):
+                                    </label>
+                                    <input type="text" id="folderIdWeekly" placeholder="Leave empty to auto-search 'Meeting Coordination' folder" style="width: 100%; padding: 10px 12px; font-size: 13px; border-radius: 8px; border: 1px solid var(--border-color); box-sizing: border-box; background: var(--input-bg);">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Master Save Action Bar -->
+                        <div class="box" style="grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; background: linear-gradient(to right, rgba(30, 94, 255, 0.05), rgba(16, 185, 129, 0.05)); border: 1.5px solid var(--primary-blue);">
+                            <div>
+                                <span id="scriptingSaveMsg" style="font-size: 13px; font-weight: 700;"></span>
+                            </div>
+                            <button type="button" id="btnSaveAllScripts" onclick="saveAdminDriveSettings()" style="background: var(--primary-blue); color: #ffffff; border: none; padding: 12px 28px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px rgba(30, 94, 255, 0.3);">
+                                💾 Save All Script Configurations to Firestore
+                            </button>
+                        </div>
+
+                    </div>
             </div>
 
             <!-- TAB 5: Manage News -->
@@ -1279,7 +1405,7 @@
                 <div class="dashboard-grid">
                     <!-- Post / Edit Form -->
                     <div class="box">
-                        <h3 id="newsFormTitle">Post News / Notice</h3>
+                        <h3 id="newsFormTitle">Create a Notice</h3>
                         <input type="text" id="newsTitle" placeholder="Notice Title">
                         <textarea id="newsContent" rows="4" placeholder="Enter notice details here..."></textarea>
 
@@ -1312,7 +1438,7 @@
 
                     <!-- Manage Existing Notices -->
                     <div class="box">
-                        <h3>Manage Active Notices</h3>
+                        <h3>Notices List</h3>
                         <div class="table-responsive">
                             <table id="manageNewsTable">
                                 <thead>
@@ -1351,7 +1477,7 @@
 
                     <!-- Existing Quizzes Box -->
                     <div class="box">
-                        <h3>Existing Quizzes</h3>
+                        <h3>Quiz Created</h3>
                         <div class="table-responsive">
                             <table id="quizTable">
                                 <thead>
@@ -1561,9 +1687,8 @@
                             <div style="width: 34px; height: 34px; border-radius: 9px; background: rgba(30,94,255,0.12); color: var(--primary-blue, #1e5eff); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                                 <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="m9 14 2 2 4-4"></path></svg>
                             </div>
-                            <h2 style="margin: 0; font-size: 21px; font-weight: 800; color: var(--text-dark);">Students Attendance & Present List</h2>
+                            <h2 style="margin: 0; font-size: 21px; font-weight: 800; color: var(--text-dark);">Present List</h2>
                         </div>
-                        <p style="margin: 0; font-size: 13.5px; color: var(--text-gray);">Deploy live daily attendance sessions for your subject and monitor student presence in real-time.</p>
                     </div>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                         <button type="button" id="btnRefreshAttendance" class="btn-refresh" style="width: auto !important; height: 38px !important; margin: 0 !important; background: var(--card-bg, #ffffff); border: 1.5px solid var(--border-color, #cbd5e1); color: var(--text-dark); padding: 0 15px !important; border-radius: 9px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 13px;">
@@ -1589,8 +1714,7 @@
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><circle cx="12" cy="20" r="1"></circle></svg>
                             </div>
                             <div>
-                                <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: var(--text-dark);">Daily Attendance Session Deployment</h3>
-                                <p style="margin: 2px 0 0 0; font-size: 12.5px; color: var(--text-gray);">Select class and subject to deploy or inspect attendance records.</p>
+                                <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: var(--text-dark);">Daily Present List</h3>
                             </div>
                         </div>
                         <div id="attSessionStatusBadge" class="att-status-pill pill-inactive" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 12.5px; font-weight: 700; background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1;">
@@ -1632,7 +1756,7 @@
                         <div>
                             <label style="font-size: 12px; font-weight: 700; color: var(--text-dark); display: flex; align-items: center; gap: 5px; margin-bottom: 5px;">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
-                                Session Title / Note
+                                Notes
                             </label>
                             <input type="text" id="attSessionTitle" placeholder="e.g. Regular Class / Period 1" value="Regular Class" style="width: 100%; height: 42px; margin: 0;">
                         </div>
@@ -2166,8 +2290,8 @@
 
 
     <!-- Navigation & Core Scripts -->
-    <script src="studentNav.js?v=347"></script>
-    <script type="module" src="admin.js?v=347"></script>
+    <script src="studentNav.js?v=351"></script>
+    <script type="module" src="admin.js?v=351"></script>
 </body>
 
 </html>
