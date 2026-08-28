@@ -1,6 +1,6 @@
 import { doc, getDoc, getDocs, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { db } from "./firebase.js";
-import { escapeHtml } from "./utils.js";
+import { escapeHtml, triggerCelebration, attachRippleEffect } from "./utils.js";
 
 let currentStudent = null;
 let activeQuiz = null;
@@ -391,6 +391,8 @@ document.getElementById('submitQuizBtn').addEventListener('click', async (e) => 
         document.getElementById('takeQuizSection').classList.add('hidden');
         document.getElementById('scoreSummary').innerText = `You scored ${score} out of ${autoGradableCount} auto-graded points!`;
         document.getElementById('resultSection').classList.remove('hidden');
+        triggerCelebration();
+        attachRippleEffect('button, .action-btn');
 
     } catch (err) {
         alert("Error submitting quiz: " + err.message);

@@ -8,7 +8,7 @@ import {
   createUserWithEmailAndPassword,
   updatePassword
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { escapeHtml } from "./utils.js";
+import { escapeHtml, triggerCelebration, attachRippleEffect, initStaggeredReveals } from "./utils.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBIUtrjlgHEI7TtOY-nRiXzQ0DIcdkT-W0",
@@ -317,6 +317,9 @@ onAuthStateChanged(auth, async (user) => {
 
     await fetchCurrentUserRole(user);
     checkUserRoleAccess();
+    triggerCelebration();
+    attachRippleEffect('button, .login-btn, .save-btn, .export-btn, .nav-item, .quick-link-card');
+    initStaggeredReveals();
   } else {
     currentUserRole = null;
     if (loginModal) loginModal.style.display = 'flex';
@@ -360,6 +363,7 @@ document.getElementById('changePasswordForm')?.addEventListener('submit', async 
   const confirmPass = document.getElementById('confirmPasswordInput')?.value || '';
   const msgDiv = document.getElementById('changePasswordMsg');
   const submitBtn = document.getElementById('btnSubmitChangePassword');
+  const card = document.querySelector('#changePasswordModal .login-card');
 
   if (!msgDiv || !submitBtn) return;
 
@@ -368,12 +372,22 @@ document.getElementById('changePasswordForm')?.addEventListener('submit', async 
   if (newPass !== confirmPass) {
     msgDiv.textContent = 'Passwords do not match. Please re-enter confirm password.';
     msgDiv.style.cssText = 'display: block; background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; margin-top: 12px;';
+    if (card) {
+      card.classList.remove('shake-error');
+      void card.offsetWidth;
+      card.classList.add('shake-error');
+    }
     return;
   }
 
   if (newPass.length < 6) {
     msgDiv.textContent = 'Password must be at least 6 characters long.';
     msgDiv.style.cssText = 'display: block; background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; margin-top: 12px;';
+    if (card) {
+      card.classList.remove('shake-error');
+      void card.offsetWidth;
+      card.classList.add('shake-error');
+    }
     return;
   }
 
@@ -384,6 +398,7 @@ document.getElementById('changePasswordForm')?.addEventListener('submit', async 
     await updatePassword(user, newPass);
     msgDiv.textContent = 'Password updated successfully!';
     msgDiv.style.cssText = 'display: block; background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; margin-top: 12px;';
+    triggerCelebration();
 
     setTimeout(() => {
       const modal = document.getElementById('changePasswordModal');
@@ -396,6 +411,11 @@ document.getElementById('changePasswordForm')?.addEventListener('submit', async 
       msgDiv.textContent = err.message ? err.message.replace('Firebase: ', '') : 'Failed to update password.';
     }
     msgDiv.style.cssText = 'display: block; background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; margin-top: 12px;';
+    if (card) {
+      card.classList.remove('shake-error');
+      void card.offsetWidth;
+      card.classList.add('shake-error');
+    }
   } finally {
     submitBtn.disabled = false;
     submitBtn.textContent = 'Update Password';
@@ -409,6 +429,7 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
   const password = document.getElementById('loginPassword').value.trim();
   const errDiv = document.getElementById('loginError');
   const submitBtn = document.getElementById('btnLoginSubmit');
+  const card = document.querySelector('#loginModal .login-card');
 
   errDiv.style.display = 'none';
   submitBtn.disabled = true;
@@ -419,6 +440,11 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
   } catch (err) {
     errDiv.textContent = err.message.replace("Firebase: ", "");
     errDiv.style.display = 'block';
+    if (card) {
+      card.classList.remove('shake-error');
+      void card.offsetWidth;
+      card.classList.add('shake-error');
+    }
   } finally {
     submitBtn.disabled = false;
     submitBtn.textContent = 'Sign In';
