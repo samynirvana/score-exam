@@ -61,6 +61,8 @@ const initMobileNav = () => {
     const navScores = dropdown.querySelector('.nav-scores');
     const navProfile = dropdown.querySelector('.nav-profile');
 
+    const navWeekly = dropdown.querySelector('.nav-weekly');
+
     if (currentPath === 'index.html' || currentPath === '') {
         navDashboard?.classList.add('active');
     } else if (currentPath === 'quiz.html') {
@@ -71,6 +73,8 @@ const initMobileNav = () => {
         navScores?.classList.add('active');
     } else if (currentPath === 'profile.html') {
         navProfile?.classList.add('active');
+    } else if (currentPath === 'weekly.html') {
+        navWeekly?.classList.add('active');
     }
 
     // Sync active state when desktop menu buttons are clicked (for admin.html)

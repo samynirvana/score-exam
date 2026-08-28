@@ -1201,14 +1201,14 @@ body.dark-mode #mobileTopbarKebabBtn svg {
 
 .mobile-topbar-dropdown {
     position: fixed !important;
-    top: 54px !important;
-    right: 12px !important;
-    width: 240px !important;
+    top: calc(56px + env(safe-area-inset-top, 0px)) !important;
+    right: max(12px, env(safe-area-inset-right, 0px)) !important;
+    width: 250px !important;
     max-width: calc(100vw - 24px) !important;
     background: var(--card-bg, #ffffff) !important;
     border: 1px solid var(--border-color, #e2e8f0) !important;
     border-radius: 16px !important;
-    padding: 12px !important;
+    padding: 10px !important;
     box-shadow: 0 20px 45px -5px rgba(0, 0, 0, 0.45) !important;
     z-index: 999999 !important;
     display: flex !important;
@@ -1247,8 +1247,9 @@ body.dark-mode #mobileTopbarKebabBtn svg {
     align-items: center !important;
     gap: 12px !important;
     padding: 10px 12px !important;
+    min-height: 44px !important;
     border-radius: 10px !important;
-    font-size: 13.5px !important;
+    font-size: 14px !important;
     font-weight: 600 !important;
     color: var(--text-dark, #0f172a) !important;
     text-decoration: none !important;
@@ -1313,5 +1314,9 @@ body.dark-mode #mobileTopbarKebabBtn svg {
 
     .mobile-kebab-container {
         display: block !important;
+    }
+
+    .main-wrapper {
+        padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px)) !important;
     }
 }

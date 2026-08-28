@@ -26,6 +26,27 @@
         @media (max-width: 900px) {
             .analytics-grid {
                 grid-template-columns: 1fr;
+                gap: 16px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .analytics-card {
+                padding: 16px !important;
+                border-radius: 16px !important;
+            }
+            .chart-container-box {
+                height: 210px !important;
+            }
+            .stat-grid-4 {
+                grid-template-columns: 1fr 1fr !important;
+                gap: 10px !important;
+            }
+        }
+
+        @media (max-width: 420px) {
+            .stat-grid-4 {
+                grid-template-columns: 1fr !important;
             }
         }
 

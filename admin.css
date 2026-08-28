@@ -3277,13 +3277,30 @@ body.dark-mode #mobileTopbarKebabBtn {
     }
 
     .main-wrapper {
-        padding: 0 16px 32px !important;
+        padding: 0 14px calc(36px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    input, select, textarea, button {
+        font-size: 16px;
+    }
+
+    .modal-card, .editor-modal {
+        max-width: calc(100vw - 24px) !important;
+        max-height: calc(100dvh - 32px) !important;
+        overflow-y: auto !important;
+    }
+
+    .gform-floating-toolbar {
+        bottom: calc(14px + env(safe-area-inset-bottom, 0px)) !important;
     }
 }
 
 @media screen and (max-width: 480px) {
     .stats-grid {
         grid-template-columns: 1fr !important;
+    }
+    .main-wrapper {
+        padding: 0 10px calc(28px + env(safe-area-inset-bottom, 0px)) !important;
     }
 }
 

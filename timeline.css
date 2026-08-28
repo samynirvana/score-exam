@@ -856,23 +856,38 @@ body.dark-mode .notif-btn svg {
     body { padding: 0 !important; margin: 0 !important; }
     .app-container { width: 100% !important; padding: 0 !important; margin: 0 !important; }
     .sidebar, .student-sidebar { width: 100% !important; border-radius: 0 !important; padding: 0 12px !important; }
-    .main-wrapper { padding: 8px 14px 24px !important; }
+    .main-wrapper { padding: 8px 12px calc(32px + env(safe-area-inset-bottom, 0px)) !important; }
     .timeline-container { width: 100% !important; }
     .post-body { padding-left: 0; }
     .top-nav { flex-direction: row; gap: 10px; }
+    .dm-floating-btn {
+        bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+        right: 16px !important;
+    }
+    .dm-popup-widget {
+        bottom: calc(68px + env(safe-area-inset-bottom, 0px)) !important;
+        right: 12px !important;
+        width: calc(100vw - 24px) !important;
+        max-height: calc(100dvh - 100px) !important;
+    }
 }
 
 @media (max-width: 480px) {
     body { font-size: 15px; padding: 0 !important; margin: 0 !important; }
-    .main-wrapper { padding: 6px 12px 24px !important; }
-    .timeline-post, .post-box { padding: 16px; margin-bottom: 14px; }
+    .main-wrapper { padding: 6px 10px calc(28px + env(safe-area-inset-bottom, 0px)) !important; }
+    .timeline-post, .post-box { padding: 14px; margin-bottom: 12px; border-radius: 14px; }
     .reply-box { flex-direction: column; }
-    .reply-box button { width: 100%; }
+    .reply-box button { width: 100%; min-height: 42px; }
     .avatar-circle { width: 38px; height: 38px; font-size: 16px; }
     .sender-name { font-size: 15px; }
     .post-body { 
-        font-size: 16px; /* Responsive size for mobile screens */
-        padding-left: 0;}
+        font-size: 15px;
+        padding-left: 0;
+    }
+    .action-btn, .reaction-btn {
+        min-height: 38px;
+        padding: 6px 10px;
+    }
 }
 
 /* --- ICON & LOGO UTILITY CLASSES --- */

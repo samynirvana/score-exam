@@ -378,25 +378,36 @@
 
         @media (max-width: 600px) {
             .profile-container {
-                padding: 12px 10px 40px;
+                padding: 12px 10px calc(36px + env(safe-area-inset-bottom, 0px));
             }
 
             .profile-hero-card {
-                padding: 24px 16px;
+                padding: 20px 14px;
             }
 
             .profile-avatar-wrapper {
-                width: 135px;
-                height: 180px;
-                border-radius: 16px;
+                width: 120px;
+                height: 160px;
+                border-radius: 14px;
             }
 
             .profile-name {
-                font-size: 20px;
+                font-size: 19px;
             }
 
             .profile-info-grid {
                 grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .profile-stats-shortcuts {
+                grid-template-columns: 1fr !important;
+                gap: 10px !important;
+            }
+
+            .stat-shortcut-card {
+                padding: 14px;
+                min-height: 44px;
             }
         }
     </style>
