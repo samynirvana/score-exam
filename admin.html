@@ -195,17 +195,34 @@
                 </a>
             </div>
 
-            <!-- USER PROFILE BOTTOM (DESKTOP) -->
-            <div class="user-profile-bottom desktop-user-actions">
-                <div id="userAvatarCircle"
-                    style="width: 36px; height: 36px; background: #1e5eff; color: #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; flex-shrink: 0;">
-                    A
-                </div>
-                <div style="overflow: hidden;">
-                    <h4 id="sidebarUserName"
-                        style="margin: 0; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                        Administrator</h4>
-                    <p id="sidebarUserRole" style="margin: 0; font-size: 12px; color: var(--text-gray);">Super Admin</p>
+            <!-- USER PROFILE & ACTIONS (DESKTOP NAVBAR) -->
+            <div class="user-profile-bottom desktop-user-actions" style="display: flex; flex-direction: row; align-items: center; gap: 8px; margin: 0; padding: 0;">
+                <!-- 1. Dark Mode Toggle (Smaller, Left of User) -->
+                <button id="themeToggleBtn" class="theme-toggle-btn"
+                    style="height: 32px; min-height: 32px; padding: 4px 12px; font-size: 12px; border-radius: 20px; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; cursor: pointer; white-space: nowrap; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.08); color: #ffffff; transition: 0.2s;">
+                    <img id="adminThemeIcon" src="https://lh3.googleusercontent.com/d/1N2sZUgBKIQCviZYYm4ibVWCXc4XVhnnh"
+                        alt="Theme Icon" class="btn-icon" style="width: 14px; height: 14px; object-fit: contain; margin: 0;">
+                    <span id="adminThemeText" style="line-height: 1;">Dark Mode</span>
+                </button>
+
+                <!-- 2. Logout Button (Smaller, Left of User) -->
+                <button id="logoutBtn" class="logout-btn"
+                    style="height: 32px; min-height: 32px; padding: 4px 14px; font-size: 12px; border-radius: 20px; font-weight: 600; cursor: pointer; white-space: nowrap; border: 1px solid rgba(239, 68, 68, 0.35); background: rgba(239, 68, 68, 0.15); color: #ff6b6b; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s;">
+                    Logout
+                </button>
+
+                <!-- 3. User Info Badge (Right) -->
+                <div style="display: flex; align-items: center; gap: 8px; margin-left: 4px;">
+                    <div id="userAvatarCircle"
+                        style="width: 32px; height: 32px; background: #1e5eff; color: #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13.5px; flex-shrink: 0;">
+                        A
+                    </div>
+                    <div style="overflow: hidden; line-height: 1.2;">
+                        <h4 id="sidebarUserName"
+                            style="margin: 0; font-size: 13px; font-weight: 700; color: #ffffff; white-space: nowrap; max-width: 130px; overflow: hidden; text-overflow: ellipsis;">
+                            Administrator</h4>
+                        <p id="sidebarUserRole" style="margin: 0; font-size: 11px; color: #94a3b8; font-weight: 500;">Super Admin</p>
+                    </div>
                 </div>
             </div>
 
@@ -362,21 +379,21 @@
         <!-- MAIN CONTENT AREA -->
         <main class="main-wrapper">
 
-            <!-- TOPBAR -->
-            <header class="topbar">
-                <div class="header-title">
-                    <h1 id="welcomeTitle">Teacher Page</h1>
-                    <p id="welcomeSub">Welcome back, <strong class="welcome-user-highlight" id="welcomeUserName">Teacher</strong></p>
+            <!-- GREETING HERO BANNER WITH BUILDING GRAPHIC (ADMIN & TEACHER) -->
+            <div class="student-greeting-banner admin-greeting-banner">
+                <div class="greeting-text-container">
+                    <h1 class="greeting-title" id="welcomeTitle">Good morning, Teacher 👋</h1>
+                    <p class="greeting-subtitle" id="welcomeSub">Welcome back to your workspace. Here’s what’s happening today.</p>
                 </div>
-                <div class="topbar-actions desktop-user-actions">
-                    <button id="themeToggleBtn" class="theme-toggle-btn">
-                        <img id="adminThemeIcon" src="https://lh3.googleusercontent.com/d/YOUR_DARK_MODE_ICON_FILE_ID"
-                            alt="Theme Icon" class="btn-icon">
-                        <span id="adminThemeText">Dark Mode</span>
-                    </button>
-                    <button id="logoutBtn" class="logout-btn">Logout</button>
+                <div class="school-building-img-wrapper">
+                    <video autoplay loop muted playsinline class="school-building-video">
+                        <source src="Background.mp4" type="video/mp4">
+                        <source
+                            src="https://drive.usercontent.google.com/download?id=1nzwskEqY_WMN_E1i_LHY4f33btUBXQru&export=download"
+                            type="video/mp4">
+                    </video>
                 </div>
-            </header>
+            </div>
 
             <!-- TAB 0: DASHBOARD OVERVIEW -->
             <div id="tab-dashboard" class="tab-content active">
@@ -678,11 +695,6 @@
 
                     <!-- Bulk Update / Multiple Input Score Mode -->
                     <div id="scoreInputBulkView" class="hidden">
-                        <p style="font-size: 13px; color: var(--text-gray); margin-top: 0; margin-bottom: 16px;">
-                            Select a Subject, Class, and Quiz to download an auto-populated Excel template. Fill in the
-                            scores, then upload the file back to update the ledger.
-                        </p>
-
                         <!-- Step A: Choose Options & Download Template -->
                         <div class="form-row">
                             <div class="form-group">
@@ -945,20 +957,23 @@
                                     style="background: var(--primary-blue); width: auto; padding: 10px 24px;">Generate
                                     Student Code</button>
                             </div>
-
-                            <!-- Bulk Register Mode -->
+                            <!-- Bulk Register & Update Mode -->
                             <div id="studentRegBulkForm" class="hidden">
-                                <p
-                                    style="font-size: 13px; color: var(--text-gray); margin-top: 0; margin-bottom: 12px;">
-                                    Upload an Excel (.xlsx, .csv) file containing columns for <strong>Student
-                                        Name</strong>, <strong>Class</strong>, and optional <strong>Birth Date</strong>.
-                                </p>
-                                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                                    <input type="file" id="bulkStudentsFile" accept=".xlsx, .xls, .csv"
-                                        style="max-width: 320px; margin: 0;">
-                                    <button id="uploadBulkStudentsBtn"
-                                        style="background: var(--primary-blue); width: auto; padding: 10px 24px; margin: 0;">Upload
-                                        & Process Bulk Students</button>
+                                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; padding-top: 4px;">
+                                    <div style="flex: 0 0 auto;">
+                                        <button type="button" onclick="downloadStudentsTemplate()"
+                                            style="background: #10b981; color: white; width: auto !important; padding: 10px 20px !important; border-radius: 8px; border: none; font-weight: 700; font-size: 13.5px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
+                                            📥 Download Template (.xlsx)
+                                        </button>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1; justify-content: flex-end;">
+                                        <input type="file" id="bulkStudentsFile" accept=".xlsx, .xls, .csv"
+                                            style="max-width: 270px; margin: 0; padding: 8px 12px; font-size: 13px;">
+                                        <button id="uploadBulkStudentsBtn"
+                                            style="background: var(--primary-blue); color: white; width: auto !important; padding: 10px 24px !important; margin: 0; font-weight: 700; font-size: 13.5px; border-radius: 8px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                                            Upload & Sync Students
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -973,9 +988,6 @@
                                             Configure Google Drive URL
                                         </button>
                                     </div>
-                                    <p style="font-size: 12.5px; color: var(--text-gray); margin: 0;">
-                                        💡 <strong>Automatic Matching:</strong> Name your image files with the <strong>Student Code</strong> (e.g. <code style="background: rgba(0,0,0,0.06); padding: 2px 5px; border-radius: 4px;">MK101.jpg</code>, <code style="background: rgba(0,0,0,0.06); padding: 2px 5px; border-radius: 4px;">BLXVC.png</code>) or <strong>Full Student Name</strong> (e.g. <code style="background: rgba(0,0,0,0.06); padding: 2px 5px; border-radius: 4px;">Quinnella Meiko Dinata.jpg</code>).
-                                    </p>
 
                                     <!-- Collapsible Script URL Setting -->
                                     <div id="driveScriptSettingsBox" class="hidden" style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border-color);">
@@ -1082,8 +1094,6 @@
                                 style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                                 <div>
                                     <h3 style="margin: 0;">Class Database</h3>
-                                    <p style="font-size: 13px; color: var(--text-gray); margin: 4px 0 0 0;">Classes are
-                                        automatically populated based on registered Student profiles.</p>
                                 </div>
                                 <button type="button" id="btnToggleClassesTable" onclick="toggleActiveClassesTable()"
                                     style="width: auto; padding: 8px 16px; font-size: 13px; background: var(--primary-blue);">Show
@@ -1173,8 +1183,6 @@
                                 style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                                 <div>
                                     <h3 style="margin: 0;">Subjects Database</h3>
-                                    <p style="font-size: 13px; color: var(--text-gray); margin: 4px 0 0 0;">Subjects are
-                                        automatically populated based on registered Teacher accounts.</p>
                                 </div>
                                 <button type="button" id="btnToggleSubjectsTable" onclick="toggleActiveSubjectsTable()"
                                     style="width: auto; padding: 8px 16px; font-size: 13px; background: var(--primary-blue);">Show
@@ -1202,8 +1210,6 @@
                         <!-- Manual Offline Quizzes / Exams -->
                         <div class="box" style="grid-column: 1 / -1;">
                             <h3>Create new Assignment</h3>
-                            <p style="font-size: 13px; color: var(--text-gray);">Add offline exams here. Digital quizzes
-                                from the Quiz Builder are automatically linked.</p>
 
                             <input type="text" id="newManualQuiz"
                                 placeholder="Enter Offline Exam Name (e.g., Midterm Paper)">
@@ -1398,11 +1404,12 @@
                         </div>
 
                     </div>
+                </div>
             </div>
 
             <!-- TAB 5: Manage News -->
             <div id="tab-manage-news" class="tab-content">
-                <div class="dashboard-grid">
+                <div class="dashboard-grid news-dashboard-grid">
                     <!-- Post / Edit Form -->
                     <div class="box">
                         <h3 id="newsFormTitle">Create a Notice</h3>
@@ -1680,29 +1687,13 @@
 
             <!-- TAB 7: STUDENTS ATTENDANCE & PRESENT LIST -->
             <div id="tab-manage-attendance" class="tab-content">
-                <!-- Top Toolbar & Header -->
-                <div class="attendance-header-wrapper" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; margin-bottom: 20px;">
-                    <div>
-                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
-                            <div style="width: 34px; height: 34px; border-radius: 9px; background: rgba(30,94,255,0.12); color: var(--primary-blue, #1e5eff); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="m9 14 2 2 4-4"></path></svg>
-                            </div>
-                            <h2 style="margin: 0; font-size: 21px; font-weight: 800; color: var(--text-dark);">Present List</h2>
+                <!-- Top Header -->
+                <div class="attendance-header-wrapper" style="margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 34px; height: 34px; border-radius: 9px; background: rgba(30,94,255,0.12); color: var(--primary-blue, #1e5eff); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="m9 14 2 2 4-4"></path></svg>
                         </div>
-                    </div>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-                        <button type="button" id="btnRefreshAttendance" class="btn-refresh" style="width: auto !important; height: 38px !important; margin: 0 !important; background: var(--card-bg, #ffffff); border: 1.5px solid var(--border-color, #cbd5e1); color: var(--text-dark); padding: 0 15px !important; border-radius: 9px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 13px;">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
-                            Refresh
-                        </button>
-                        <button type="button" id="btnExportAttendanceExcel" style="width: auto !important; height: 38px !important; margin: 0 !important; background: #107c41; color: #ffffff; border: none; padding: 0 16px !important; border-radius: 9px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; box-shadow: 0 2px 8px rgba(16,124,65,0.25);">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                            Export Excel
-                        </button>
-                        <button type="button" id="btnPrintAttendance" style="width: auto !important; height: 38px !important; margin: 0 !important; background: #475569; color: #ffffff; border: none; padding: 0 16px !important; border-radius: 9px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 13px;">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-                            Print Sheet
-                        </button>
+                        <h2 style="margin: 0; font-size: 21px; font-weight: 800; color: var(--text-dark);">Present List</h2>
                     </div>
                 </div>
 
@@ -1763,10 +1754,20 @@
                     </div>
 
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                        <div id="attActiveSessionInfo" style="font-size: 12.5px; color: var(--text-gray); font-style: italic;">
-                            Ready to deploy. When deployed, students visiting the portal will see an attendance prompt.
-                        </div>
-                        <div style="display: flex; gap: 10px; align-items: center;">
+                        <div id="attActiveSessionInfo" style="font-size: 12.5px; color: var(--text-gray); font-style: italic;"></div>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <button type="button" id="btnRefreshAttendance" class="btn-refresh" style="width: auto !important; height: 42px !important; margin: 0 !important; background: var(--card-bg, #ffffff); border: 1.5px solid var(--border-color, #cbd5e1); color: var(--text-dark); padding: 0 16px !important; border-radius: 9px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 13px;">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+                                Refresh
+                            </button>
+                            <button type="button" id="btnExportAttendanceExcel" style="width: auto !important; height: 42px !important; margin: 0 !important; background: #107c41; color: #ffffff; border: none; padding: 0 16px !important; border-radius: 9px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; box-shadow: 0 2px 8px rgba(16,124,65,0.25);">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                Export Excel
+                            </button>
+                            <button type="button" id="btnPrintAttendance" style="width: auto !important; height: 42px !important; margin: 0 !important; background: #475569; color: #ffffff; border: none; padding: 0 16px !important; border-radius: 9px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 13px;">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                                Print Sheet
+                            </button>
                             <button type="button" id="btnDeployAttendanceSession" style="width: auto !important; height: 42px !important; margin: 0 !important; background: #1e5eff; color: #ffffff; border: none; padding: 0 22px !important; border-radius: 9px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; box-shadow: 0 4px 12px rgba(30,94,255,0.25);">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                                 <span>Deploy Attendance Call</span>
@@ -1891,22 +1892,21 @@
 
                     <!-- Table -->
                     <div class="table-responsive">
-                        <table id="attendanceTable" style="width: 100%; border-collapse: separate; border-spacing: 0;">
+                        <table id="attendanceTable">
                             <thead>
                                 <tr>
-                                    <th style="width: 48px; text-align: center;">#</th>
-                                    <th>Student</th>
-                                    <th>Code</th>
-                                    <th>Class</th>
-                                    <th>Attendance Status</th>
-                                    <th>Reason / Teacher Note</th>
-                                    <th>Logged Time</th>
-                                    <th style="text-align: right;">Manual Action</th>
+                                    <th style="width: 40px; text-align: center;">#</th>
+                                    <th style="min-width: 150px;">Student</th>
+                                    <th style="width: 85px;">Class</th>
+                                    <th style="width: 140px;">Attendance Status</th>
+                                    <th style="min-width: 130px;">Reason / Teacher Note</th>
+                                    <th style="width: 85px;">Logged Time</th>
+                                    <th style="width: 195px; text-align: right;">Manual Action</th>
                                 </tr>
                             </thead>
                             <tbody id="attendanceRecordsTbody">
                                 <tr>
-                                    <td colspan="8" style="text-align: center; color: var(--text-gray); padding: 36px 16px;">
+                                    <td colspan="7" style="text-align: center; color: var(--text-gray); padding: 36px 16px;">
                                         Select a date and class to view or deploy attendance records.
                                     </td>
                                 </tr>

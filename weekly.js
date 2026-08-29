@@ -4812,14 +4812,44 @@ function renderPrintableMeetingSheet(year, theme, week, meetingRecord, reportsLi
   const printAttendees = document.getElementById('printMeetingAttendees');
   const printSummary = document.getElementById('printMeetingSummary');
 
-  const attendeesText = Array.isArray(meetingRecord.attendeesList)
-    ? meetingRecord.attendeesList.join(', ')
-    : (meetingRecord.attendees || '-');
+  const attendeesList = Array.isArray(meetingRecord.attendeesList)
+    ? meetingRecord.attendeesList
+    : (meetingRecord.attendees ? meetingRecord.attendees.split(',').map(s => s.trim()).filter(Boolean) : []);
+  const attendeesSet = new Set(attendeesList.map(n => n.trim().toLowerCase()));
+  const attendeesText = attendeesList.join(', ') || '-';
 
   if (printDate) printDate.textContent = meetingRecord.date || '-';
   if (printAgenda) printAgenda.textContent = meetingRecord.agenda || '-';
-  if (printAttendees) printAttendees.textContent = attendeesText || '-';
+  if (printAttendees) printAttendees.textContent = attendeesText;
   if (printSummary) printSummary.textContent = meetingRecord.summary || '-';
+
+  // Populate Attendees Presence table
+  const presenceTbody = document.getElementById('printAttendeesPresenceBody');
+  if (presenceTbody) {
+    const allTeachers = (appEntities && Array.isArray(appEntities.teachers) && appEntities.teachers.length > 0)
+      ? appEntities.teachers
+      : (attendeesList.length > 0 ? attendeesList : []);
+
+    if (allTeachers.length === 0) {
+      presenceTbody.innerHTML = `<tr><td colspan="3" style="text-align:center;padding:8px 10px;color:#94a3b8;font-style:italic;border:1px solid #cbd5e1;">No teacher data available.</td></tr>`;
+    } else {
+      let presenceRows = '';
+      allTeachers.forEach((teacher, idx) => {
+        const isPresent = attendeesSet.has((teacher || '').trim().toLowerCase());
+        const statusStyle = isPresent
+          ? 'color:#15803d;font-weight:700;'
+          : 'color:#dc2626;font-weight:700;';
+        const statusLabel = isPresent ? '✔ Present' : '✘ Absent';
+        presenceRows += `
+          <tr>
+            <td style="text-align:center;border:1px solid #cbd5e1;padding:4px 8px;font-size:9pt;">${idx + 1}</td>
+            <td style="border:1px solid #cbd5e1;padding:4px 8px;font-size:9pt;">${escapeHtml(teacher)}</td>
+            <td style="text-align:center;border:1px solid #cbd5e1;padding:4px 8px;font-size:9pt;${statusStyle}">${statusLabel}</td>
+          </tr>`;
+      });
+      presenceTbody.innerHTML = presenceRows;
+    }
+  }
 
   // Teacher Reports Print Table
   const tbody = document.getElementById('printTeacherReportsBody');

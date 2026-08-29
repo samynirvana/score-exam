@@ -1,4 +1,4 @@
-import { collection, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { collection, query, where, onSnapshot, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { db } from "./firebase.js";
 import { escapeHtml } from "./utils.js";
 
@@ -39,8 +39,32 @@ document.getElementById('studentLogoutBtn')?.addEventListener('click', () => {
     window.location.href = "index.html";
 });
 
+let quizTypeCatalog = {};
+
+// --- FETCH QUIZ TYPES FROM DATABASE CATALOG ---
+async function fetchQuizTypeCatalog() {
+    try {
+        const [qSnap, sysSnap] = await Promise.all([
+            getDocs(collection(db, "quizzes")),
+            getDocs(collection(db, "system_quizzes"))
+        ]);
+        qSnap.forEach(d => {
+            const data = d.data();
+            const title = (data.title || data.quizName || data.name || d.id).trim().toLowerCase();
+            if (data.type && title) quizTypeCatalog[title] = data.type;
+        });
+        sysSnap.forEach(d => {
+            const data = d.data();
+            const title = (data.name || data.title || data.quizName || d.id).trim().toLowerCase();
+            if (data.type && title) quizTypeCatalog[title] = data.type;
+        });
+    } catch (e) {
+        console.warn("Could not fetch quiz catalog:", e);
+    }
+}
+
 // --- INITIALIZE REAL-TIME LISTENER ---
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
     const savedLoggedIn = sessionStorage.getItem('studentLoggedInSession') || sessionStorage.getItem('studentTimelineSession');
     let studentCode = '';
 
@@ -62,27 +86,118 @@ window.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    initRealTimeScoresListener(studentCode);
+    const cleanCode = studentCode.trim().toUpperCase();
+
+    // Fetch quiz database types first so badges accurately match the quiz database
+    await fetchQuizTypeCatalog();
+
+    initRealTimeScoresListener(cleanCode);
 });
 
-// --- REAL-TIME FIRESTORE LISTENER ---
-function initRealTimeScoresListener(studentCode) {
-    const scoreQuery = query(collection(db, "exam_scores"), where("studentCode", "==", studentCode));
+// --- SUBJECT RESOLVER HELPER ---
+function resolveSubject(rawSubject, examName) {
+    const s = (rawSubject || '').toString().trim();
+    if (s && s.toLowerCase() !== 'general' && s.toLowerCase() !== 'general assessment' && s.toLowerCase() !== 'n/a' && s.toLowerCase() !== 'unknown') {
+        return s;
+    }
+    const name = (examName || '').toLowerCase();
+    if (name.includes('ict') || name.includes('brand') || name.includes('computer') || name.includes('tech') || name.includes('python')) {
+        return 'ICT';
+    }
+    return 'English';
+}
 
-    unsubscribeScoresListener = onSnapshot(scoreQuery, (snapshot) => {
-        cachedExamScores = [];
+// --- REAL-TIME FIRESTORE LISTENER (CASE-INSENSITIVE & DEDUPLICATED BY EXAM TITLE) ---
+function initRealTimeScoresListener(studentCode) {
+    const rawCode = (studentCode || '').toString().trim();
+    const upperCode = rawCode.toUpperCase();
+    const lowerCode = rawCode.toLowerCase();
+
+    const scoreQuery = query(collection(db, "exam_scores"), where("studentCode", "==", upperCode));
+
+    unsubscribeScoresListener = onSnapshot(scoreQuery, async (snapshot) => {
+        const scoresMap = new Map();
         const optionsSet = new Set();
         const subjectsSet = new Set();
 
         snapshot.forEach((docSnap) => {
             const data = docSnap.data();
-            cachedExamScores.push({ id: docSnap.id, ...data });
+            const examTitle = (data.examName || data.quizName || docSnap.id).trim();
+            const subject = resolveSubject(data.subject, examTitle);
+            const normTitle = examTitle.toLowerCase();
 
-            const title = data.examName || data.quizName;
-            if (title) optionsSet.add(title);
-
-            const subject = data.subject || 'General';
+            scoresMap.set(normTitle, {
+                id: docSnap.id,
+                ...data,
+                examName: examTitle,
+                quizName: examTitle,
+                subject: subject,
+                score: data.score
+            });
+            if (examTitle) optionsSet.add(examTitle);
             if (subject) subjectsSet.add(subject);
+        });
+
+        // 1. Check lowercase studentCode in exam_scores if different
+        if (upperCode !== lowerCode) {
+            try {
+                const lowerSnap = await getDocs(query(collection(db, "exam_scores"), where("studentCode", "==", lowerCode)));
+                lowerSnap.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const examTitle = (data.examName || data.quizName || docSnap.id).trim();
+                    const normTitle = examTitle.toLowerCase();
+
+                    if (!scoresMap.has(normTitle)) {
+                        const subject = resolveSubject(data.subject, examTitle);
+                        scoresMap.set(normTitle, {
+                            id: docSnap.id,
+                            ...data,
+                            examName: examTitle,
+                            quizName: examTitle,
+                            subject: subject,
+                            score: data.score
+                        });
+                        if (examTitle) optionsSet.add(examTitle);
+                        if (subject) subjectsSet.add(subject);
+                    }
+                });
+            } catch (e) { }
+        }
+
+        // 2. Check legacy "scores" collection ONLY for exams not already in exam_scores
+        try {
+            const legacySnap = await getDocs(query(collection(db, "scores"), where("studentCode", "==", upperCode)));
+            legacySnap.forEach(docSnap => {
+                const data = docSnap.data();
+                const examTitle = (data.quizTitle || data.examName || docSnap.id).trim();
+                const normTitle = examTitle.toLowerCase();
+
+                if (!scoresMap.has(normTitle) && data.score !== undefined && data.score !== null && !isNaN(parseFloat(data.score))) {
+                    const subject = resolveSubject(data.subject, examTitle);
+                    scoresMap.set(normTitle, {
+                        id: docSnap.id,
+                        examName: examTitle,
+                        quizName: examTitle,
+                        subject: subject,
+                        score: data.score,
+                        studentCode: upperCode,
+                        studentName: data.studentName,
+                        studentClass: data.studentClass,
+                        type: data.type || resolveScoreType(data)
+                    });
+                    if (examTitle) optionsSet.add(examTitle);
+                    if (subject) subjectsSet.add(subject);
+                }
+            });
+        } catch (e) { }
+
+        cachedExamScores = Array.from(scoresMap.values());
+
+        // Sort chronologically or by updated date
+        cachedExamScores.sort((a, b) => {
+            const tA = a.updatedAt ? (a.updatedAt.seconds ? a.updatedAt.seconds : new Date(a.updatedAt).getTime()) : 0;
+            const tB = b.updatedAt ? (b.updatedAt.seconds ? b.updatedAt.seconds : new Date(b.updatedAt).getTime()) : 0;
+            return tB - tA;
         });
 
         // Populate Dropdowns
@@ -148,7 +263,7 @@ function updateSummaryMetrics() {
         const score = parseFloat(item.score) || 0;
         totalSum += score;
 
-        const subject = item.subject || 'General';
+        const subject = resolveSubject(item.subject, item.examName);
         if (!subjectMap[subject]) {
             subjectMap[subject] = { sum: 0, count: 0, highest: 0 };
         }
@@ -220,7 +335,7 @@ function renderSubjectComparisonChart(isDark, textColor, gridColor) {
     // Aggregate by Subject
     const subjectMap = {};
     cachedExamScores.forEach(item => {
-        const subject = item.subject || 'General';
+        const subject = resolveSubject(item.subject, item.examName);
         const score = parseFloat(item.score) || 0;
         if (!subjectMap[subject]) {
             subjectMap[subject] = { sum: 0, count: 0 };
@@ -445,14 +560,27 @@ document.getElementById('progressSubjectFilter')?.addEventListener('change', (e)
 // --- QUIZ TYPE RESOLVER & BADGE HELPER ---
 function resolveScoreType(data) {
     if (data.type) return data.type;
-    const name = (data.examName || data.quizName || '').toLowerCase();
-    if (name.includes('review')) return 'Review';
-    if (name.includes('final') || name.includes('exam') || name.includes('midterm')) return 'Final Test';
-    if (name.includes('homework') || name.includes('hw')) return 'Homework';
-    if (name.includes('exercise')) return 'Exercise';
-    if (name.includes('project')) return 'Project';
-    if (name.includes('skill')) return 'Skill';
-    return 'Quiz';
+    const name = (data.examName || data.quizName || '').trim();
+    const lowerName = name.toLowerCase();
+
+    // 1. Direct catalog lookup from quizzes and system_quizzes
+    if (quizTypeCatalog[lowerName]) {
+        return quizTypeCatalog[lowerName];
+    }
+    // 2. Partial match in catalog
+    for (const [catTitle, catType] of Object.entries(quizTypeCatalog)) {
+        if (lowerName.includes(catTitle) || catTitle.includes(lowerName)) {
+            return catType;
+        }
+    }
+
+    if (lowerName.includes('review')) return 'Review';
+    if (lowerName.includes('final') || lowerName.includes('exam') || lowerName.includes('midterm')) return 'Final Test';
+    if (lowerName.includes('homework') || lowerName.includes('hw')) return 'Homework';
+    if (lowerName.includes('exercise')) return 'Exercise';
+    if (lowerName.includes('project')) return 'Project';
+    if (lowerName.includes('skill')) return 'Skill';
+    return 'Exercise'; // Default to Exercise
 }
 
 function getTypeBadgeHtml(type) {
@@ -493,12 +621,12 @@ function getTypeBadgeHtml(type) {
 // --- SPOTLIGHT HANDLER ---
 function spotlightScore(data) {
     const title = data.examName || data.quizName || 'Assessment Result';
-    const subject = data.subject || 'General Assessment';
+    const subject = resolveSubject(data.subject, title);
     const scoreVal = data.score !== undefined ? data.score : '--';
     const type = resolveScoreType(data);
 
     document.getElementById('spotlightTitle').innerText = title;
-    document.getElementById('spotlightSubject').innerHTML = `<span style="display: inline-flex; align-items: center; gap: 8px;"><span>Subject: <strong>${subject}</strong></span> <span style="background: rgba(255,255,255,0.18); padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 700; border: 1px solid rgba(255,255,255,0.3);">${type}</span></span>`;
+    document.getElementById('spotlightSubject').innerHTML = `<span style="display: inline-flex; align-items: center; gap: 8px;"><span>Subject: <strong>${escapeHtml(subject)}</strong></span> <span style="background: rgba(255,255,255,0.18); padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 700; border: 1px solid rgba(255,255,255,0.3);">${type}</span></span>`;
     document.getElementById('spotlightScoreValue').innerText = scoreVal;
 }
 
@@ -518,8 +646,8 @@ function renderScoreCards(filterValue) {
     }
 
     filtered.forEach((data) => {
-        const title = data.examName || data.quizName || 'N/A';
-        const subject = data.subject || 'N/A';
+        const title = data.examName || data.quizName || 'Assessment';
+        const subject = resolveSubject(data.subject, title);
         const score = data.score;
         const numScore = parseFloat(score) || 0;
         const type = resolveScoreType(data);

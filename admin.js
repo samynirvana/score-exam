@@ -47,16 +47,35 @@ onAuthStateChanged(auth, async (user) => {
             const sidebarRoleEl = document.getElementById('sidebarUserRole');
             const avatarCircleEl = document.getElementById('userAvatarCircle');
 
+            const roleDisplayName = userRole === "admin" ? "Super Admin" : `Teacher (${teacherSubject})`;
+
             if (sidebarNameEl) sidebarNameEl.innerText = formattedName;
-            if (sidebarRoleEl) {
-                sidebarRoleEl.innerText = userRole === "admin" ? "Super Admin" : `Teacher (${teacherSubject})`;
-            }
-            if (avatarCircleEl) {
-                avatarCircleEl.innerText = formattedName.charAt(0).toUpperCase();
+            if (sidebarRoleEl) sidebarRoleEl.innerText = roleDisplayName;
+            if (avatarCircleEl) avatarCircleEl.innerText = formattedName.charAt(0).toUpperCase();
+
+            const welcomeTitleEl = document.getElementById('welcomeTitle') || document.querySelector('.greeting-title');
+            const welcomeSubEl = document.getElementById('welcomeSub') || document.querySelector('.greeting-subtitle');
+
+            const getGreetingPrefix = () => {
+                const hour = new Date().getHours();
+                if (hour >= 12 && hour < 17) return "Good afternoon";
+                if (hour >= 17 || hour < 5) return "Good evening";
+                return "Good morning";
+            };
+
+            const firstName = formattedName ? formattedName.split(' ')[0] : (userRole === "admin" ? "Admin" : "Teacher");
+
+            if (welcomeTitleEl) {
+                welcomeTitleEl.innerText = `${getGreetingPrefix()}, ${firstName} 👋`;
             }
 
-            const welcomeSubEl = document.querySelector('.header-title p');
-            if (welcomeSubEl) welcomeSubEl.innerHTML = `Welcome back, <strong class="welcome-user-highlight">${formattedName}</strong>`;
+            if (welcomeSubEl) {
+                if (userRole === "admin") {
+                    welcomeSubEl.innerText = "Here’s what’s happening today across school administration.";
+                } else {
+                    welcomeSubEl.innerText = `Here’s what’s happening today in your ${teacherSubject || 'Class'} department.`;
+                }
+            }
 
             loginScreen.classList.add('hidden');
             adminDashboard.classList.remove('hidden');
@@ -71,7 +90,6 @@ onAuthStateChanged(auth, async (user) => {
                     subjectInput.placeholder = "Subject Name (e.g. English)";
                 }
                 if (tableTitle) tableTitle.innerText = "Master Registry Ledger - All Subjects & Classes";
-                if (welcomeTitle) welcomeTitle.innerText = "Admin Dashboard";
 
             } else {
                 document.querySelectorAll('.admin-only-view').forEach(el => el.classList.add('hidden'));
@@ -81,7 +99,6 @@ onAuthStateChanged(auth, async (user) => {
                     subjectInput.disabled = true;
                 }
                 if (tableTitle) tableTitle.innerText = `Departmental Performance Ledger: ${teacherSubject}`;
-                if (welcomeTitle) welcomeTitle.innerText = "Teacher Page";
 
                 const directSubSelect = document.getElementById('directSubjectSelect');
                 if (directSubSelect && teacherSubject) {
@@ -1256,31 +1273,148 @@ async function processExcel() {
         try {
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
-            const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+
+            if (!rawRows || rawRows.length === 0) {
+                alert("The uploaded Excel file appears to be empty.");
+                return;
+            }
+
+            let topSubject = "";
+            let topClass = "";
+            let topExamName = "";
+            let headerRowIndex = -1;
+            let colMap = {};
+
+            // 1. Scan the first 10 rows for metadata & table headers
+            for (let r = 0; r < Math.min(rawRows.length, 10); r++) {
+                const row = rawRows[r] || [];
+                const firstCell = String(row[0] || "").trim().toLowerCase();
+                const secondCell = String(row[1] || "").trim();
+
+                if (firstCell.includes("subject")) {
+                    topSubject = secondCell || String(row[2] || "").trim();
+                } else if (firstCell.includes("class")) {
+                    topClass = secondCell || String(row[2] || "").trim();
+                } else if (firstCell.includes("exam") || firstCell.includes("quiz")) {
+                    topExamName = secondCell || String(row[2] || "").trim();
+                }
+
+                // Identify the table header row
+                const rowCells = row.map(c => String(c || "").trim().toLowerCase());
+                if (rowCells.some(c => c.includes("student") || c.includes("code") || c.includes("score"))) {
+                    headerRowIndex = r;
+                    row.forEach((cellVal, cIdx) => {
+                        const h = String(cellVal || "").trim().toLowerCase();
+                        if (h.includes("code")) colMap.code = cIdx;
+                        else if (h.includes("name") && !h.includes("exam") && !h.includes("quiz")) colMap.name = cIdx;
+                        else if (h.includes("score")) colMap.score = cIdx;
+                        else if (h.includes("class")) colMap.sClass = cIdx;
+                        else if (h.includes("subject")) colMap.subject = cIdx;
+                        else if (h.includes("exam") || h.includes("quiz")) colMap.examName = cIdx;
+                    });
+                    break;
+                }
+            }
+
+            // Fetch quiz types mapping from quizzes and system_quizzes
+            const quizTypeMap = {};
+            try {
+                const [quizzesSnap, sysQuizzesSnap] = await Promise.all([
+                    getDocs(collection(db, "quizzes")),
+                    getDocs(collection(db, "system_quizzes"))
+                ]);
+                quizzesSnap.forEach(d => {
+                    const data = d.data();
+                    const t = (data.title || data.quizName || data.name || d.id).trim().toLowerCase();
+                    if (data.type && t) quizTypeMap[t] = data.type;
+                });
+                sysQuizzesSnap.forEach(d => {
+                    const data = d.data();
+                    const t = (data.name || data.title || data.quizName || d.id).trim().toLowerCase();
+                    if (data.type && t) quizTypeMap[t] = data.type;
+                });
+            } catch (te) {
+                console.warn("Could not fetch quiz types for excel sync:", te);
+            }
+
+            // Fallback: If header row wasn't detected, try standard JSON parse
+            if (headerRowIndex === -1 || colMap.code === undefined || colMap.score === undefined) {
+                const jsonData = XLSX.utils.sheet_to_json(sheet);
+                let successCount = 0;
+                let skippedCount = 0;
+
+                for (const row of jsonData) {
+                    const code = String(row["Student Code"] || row["Code"] || "").toUpperCase().trim();
+                    const name = String(row["Student Name"] || row["Name"] || "").trim();
+                    const sClass = String(row["Class"] || topClass || "").trim();
+                    const examName = String(row["Exam Name"] || row["Exam"] || row["Quiz Name"] || topExamName || "").trim();
+                    const fileSubject = String(row["Subject"] || topSubject || "").trim();
+                    const subject = userRole === "admin" ? fileSubject : teacherSubject;
+
+                    const rawScore = row["Score"] !== undefined ? row["Score"] : row["score"];
+                    if (rawScore === undefined || rawScore === null || rawScore === "") continue;
+                    const score = parseInt(rawScore);
+
+                    if (userRole !== "admin" && fileSubject && fileSubject.toLowerCase() !== teacherSubject.toLowerCase()) {
+                        skippedCount++;
+                        continue;
+                    }
+
+                    if (code && examName && subject && !isNaN(score)) {
+                        const customDocId = `${code}_${subject}_${examName}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+                        const resolvedType = quizTypeMap[examName.toLowerCase()] || resolveQuizType(examName);
+
+                        await setDoc(doc(db, "exam_scores", customDocId), {
+                            studentCode: code,
+                            studentName: name || "Unknown",
+                            studentClass: sClass || "N/A",
+                            examName: examName,
+                            quizName: examName,
+                            subject: subject,
+                            type: resolvedType,
+                            score: score,
+                            updatedAt: new Date()
+                        }, { merge: true });
+                        successCount++;
+                    }
+                }
+
+                alert(`Excel Process Complete!\nUpdated/Saved: ${successCount} entries${skippedCount > 0 ? `\nSkipped (Unauthorized Subject): ${skippedCount}` : ''}`);
+                fileInput.value = "";
+                if (typeof loadAdminTable === "function") loadAdminTable();
+                return;
+            }
 
             let successCount = 0;
             let skippedCount = 0;
 
-            for (const row of jsonData) {
-                const code = String(row["Student Code"] || row["Code"] || "").toUpperCase().trim();
-                const name = String(row["Student Name"] || row["Name"] || "").trim();
-                const sClass = String(row["Class"] || "").trim();
-                const examName = String(row["Exam Name"] || row["Exam"] || row["Quiz Name"] || "").trim();
-                const fileSubject = String(row["Subject"] || "").trim();
+            // 2. Iterate through student score data rows
+            for (let r = headerRowIndex + 1; r < rawRows.length; r++) {
+                const row = rawRows[r] || [];
+                if (!row || row.length === 0) continue;
+
+                const code = String(colMap.code !== undefined ? (row[colMap.code] || "") : "").toUpperCase().trim();
+                const name = String(colMap.name !== undefined ? (row[colMap.name] || "") : "").trim();
+                const sClass = String((colMap.sClass !== undefined && row[colMap.sClass]) ? row[colMap.sClass] : topClass).trim();
+                const fileSubject = String((colMap.subject !== undefined && row[colMap.subject]) ? row[colMap.subject] : topSubject).trim();
+                const examName = String((colMap.examName !== undefined && row[colMap.examName]) ? row[colMap.examName] : topExamName).trim();
                 const subject = userRole === "admin" ? fileSubject : teacherSubject;
 
-                const rawScore = row["Score"] !== undefined ? row["Score"] : row["score"];
+                const rawScore = colMap.score !== undefined ? row[colMap.score] : "";
+                if (rawScore === "" || rawScore === undefined || rawScore === null) continue;
                 const score = parseInt(rawScore);
 
                 // Check authorization for non-admin teachers
-                if (userRole !== "admin" && fileSubject.toLowerCase() !== teacherSubject.toLowerCase()) {
+                if (userRole !== "admin" && fileSubject && fileSubject.toLowerCase() !== teacherSubject.toLowerCase()) {
                     skippedCount++;
                     continue;
                 }
 
                 if (code && examName && subject && !isNaN(score)) {
-                    // Unique Document ID pattern prevents duplicate score documents
                     const customDocId = `${code}_${subject}_${examName}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+                    const resolvedType = quizTypeMap[examName.toLowerCase()] || resolveQuizType(examName);
 
                     await setDoc(doc(db, "exam_scores", customDocId), {
                         studentCode: code,
@@ -1289,6 +1423,7 @@ async function processExcel() {
                         examName: examName,
                         quizName: examName,
                         subject: subject,
+                        type: resolvedType,
                         score: score,
                         updatedAt: new Date()
                     }, { merge: true });
@@ -1300,10 +1435,10 @@ async function processExcel() {
             alert(`Excel Process Complete!\nUpdated/Saved: ${successCount} entries${skippedCount > 0 ? `\nSkipped (Unauthorized Subject): ${skippedCount}` : ''}`);
             fileInput.value = "";
 
-            // Refresh admin table if active
             if (typeof loadAdminTable === "function") loadAdminTable();
 
         } catch (err) {
+            console.error("Error processing Excel file:", err);
             alert("Error processing Excel file: " + err.message);
         }
     };
@@ -1630,6 +1765,14 @@ document.querySelectorAll('.submenu-btn').forEach(subBtn => {
             window.loadSystemDatabases();
         }
     });
+});
+
+// Close database dropdown when clicking outside
+document.addEventListener('click', (e) => {
+    const dbGroup = document.getElementById('groupDatabases');
+    if (dbGroup && !dbGroup.contains(e.target)) {
+        dbGroup.classList.remove('open');
+    }
 });
 
 
@@ -4171,7 +4314,97 @@ async function fetchAndRenderScores(quizId, tbodyElement) {
     }
 }
 
-// --- BULK UPLOAD STUDENTS LOGIC ---
+// --- HELPER: PARSE & FORMAT EXCEL DATES ---
+function formatExcelDate(rawVal) {
+    if (rawVal === undefined || rawVal === null || rawVal === "") return "";
+    if (typeof rawVal === "number") {
+        // Convert Excel serial date to YYYY-MM-DD
+        const jsDate = new Date(Math.round((rawVal - 25569) * 86400 * 1000));
+        if (!isNaN(jsDate.getTime())) {
+            const y = jsDate.getUTCFullYear();
+            const m = String(jsDate.getUTCMonth() + 1).padStart(2, '0');
+            const d = String(jsDate.getUTCDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+    }
+    const str = String(rawVal).trim();
+    // Handle DD/MM/YYYY or DD-MM-YYYY
+    const ddmmyyyy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (ddmmyyyy) {
+        const d = String(ddmmyyyy[1]).padStart(2, '0');
+        const m = String(ddmmyyyy[2]).padStart(2, '0');
+        const y = ddmmyyyy[3];
+        return `${y}-${m}-${d}`;
+    }
+    // Handle YYYY/MM/DD or YYYY-MM-DD
+    const yyyymmdd = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    if (yyyymmdd) {
+        const y = yyyymmdd[1];
+        const m = String(yyyymmdd[2]).padStart(2, '0');
+        const d = String(yyyymmdd[3]).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+    return str;
+}
+
+// --- DOWNLOAD STUDENTS TEMPLATE (PRE-POPULATED WITH EXISTING STUDENTS) ---
+window.downloadStudentsTemplate = async function () {
+    try {
+        const studentsSnap = await getDocs(collection(db, "students"));
+        const studentsList = [];
+
+        studentsSnap.forEach(docSnap => {
+            const data = docSnap.data();
+            studentsList.push({
+                code: docSnap.id,
+                name: data.studentName || "",
+                studentClass: data.studentClass || data.class || data.Class || "",
+                birthDate: data.birthDate || data.dateOfBirth || ""
+            });
+        });
+
+        // Sort by Class then Student Name
+        studentsList.sort((a, b) => {
+            const classCompare = a.studentClass.localeCompare(b.studentClass, undefined, { numeric: true, sensitivity: 'base' });
+            if (classCompare !== 0) return classCompare;
+            return a.name.localeCompare(b.name);
+        });
+
+        const wsData = [
+            ["No", "Student Code", "Student Name", "Class", "Birth Date (YYYY-MM-DD)"]
+        ];
+
+        studentsList.forEach((st, idx) => {
+            wsData.push([
+                idx + 1,
+                st.code,
+                st.name,
+                st.studentClass,
+                st.birthDate
+            ]);
+        });
+
+        const worksheet = XLSX.utils.aoa_to_sheet(wsData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Students");
+
+        worksheet["!cols"] = [
+            { wch: 6 },  // No
+            { wch: 16 }, // Student Code
+            { wch: 32 }, // Student Name
+            { wch: 16 }, // Class
+            { wch: 22 }  // Birth Date
+        ];
+
+        XLSX.writeFile(workbook, "Students_Database_Template.xlsx");
+
+    } catch (err) {
+        console.error("Error generating students template:", err);
+        alert("Failed to export students template: " + err.message);
+    }
+};
+
+// --- BULK UPLOAD & SMART MERGE STUDENTS LOGIC ---
 async function processBulkStudents() {
     const fileInput = document.getElementById('bulkStudentsFile');
     const file = fileInput ? fileInput.files[0] : null;
@@ -4181,52 +4414,120 @@ async function processBulkStudents() {
         return;
     }
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-        try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-            const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+    const uploadBtn = document.getElementById('uploadBulkStudentsBtn');
+    const originalText = uploadBtn ? uploadBtn.innerText : "Upload";
 
-            let successCount = 0;
-            let skippedCount = 0;
+    try {
+        if (uploadBtn) {
+            uploadBtn.innerText = "Processing...";
+            uploadBtn.disabled = true;
+        }
 
-            for (const row of jsonData) {
-                // Support multiple possible header naming variations
-                const name = row["Student Name"] || row["Name"] || row["studentName"];
-                const sClass = row["Class"] || row["Class Room"] || row["studentClass"] || row["class"];
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(new Uint8Array(data), { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet);
 
-                if (name && sClass) {
-                    const uniqueCode = await generateUniqueStudentCode();
+        if (!jsonData || jsonData.length === 0) {
+            alert("The uploaded file appears to be empty.");
+            return;
+        }
 
-                    await setDoc(doc(db, "students", uniqueCode), {
-                        studentName: String(name).trim(),
-                        studentClass: String(sClass).trim()
-                    });
+        // 1. Fetch all existing students to match codes & prevent duplicates
+        const existingSnap = await getDocs(collection(db, "students"));
+        const studentsByCode = new Map();
+        const studentsByNameClass = new Map();
 
-                    successCount++;
-                } else {
-                    skippedCount++;
+        existingSnap.forEach(docSnap => {
+            const sData = docSnap.data();
+            const code = docSnap.id.toUpperCase().trim();
+            studentsByCode.set(code, { id: docSnap.id, ...sData });
+
+            const normKey = `${(sData.studentName || '').toLowerCase().trim()}_${(sData.studentClass || sData.class || '').toLowerCase().trim()}`;
+            if (normKey !== '_') {
+                studentsByNameClass.set(normKey, { id: docSnap.id, ...sData });
+            }
+        });
+
+        let updatedCount = 0;
+        let createdCount = 0;
+        let skippedCount = 0;
+
+        // 2. Iterate through rows
+        for (const row of jsonData) {
+            const rawCode = String(row["Student Code"] || row["Code"] || row["studentCode"] || "").toUpperCase().trim();
+            const name = String(row["Student Name"] || row["Name"] || row["studentName"] || "").trim();
+            const sClass = String(row["Class"] || row["Class Room"] || row["studentClass"] || row["class"] || "").trim();
+            const rawBirthDate = row["Birth Date"] || row["Birth Date (YYYY-MM-DD)"] || row["BirthDate"] || row["DOB"] || row["Date of Birth"] || row["birthDate"] || "";
+            const birthDate = formatExcelDate(rawBirthDate);
+
+            if (!name && !rawCode) {
+                skippedCount++;
+                continue;
+            }
+
+            // Find existing student by Code first, then by Name + Class
+            let targetStudent = null;
+            if (rawCode && studentsByCode.has(rawCode)) {
+                targetStudent = studentsByCode.get(rawCode);
+            } else if (name && sClass) {
+                const normKey = `${name.toLowerCase()}_${sClass.toLowerCase()}`;
+                if (studentsByNameClass.has(normKey)) {
+                    targetStudent = studentsByNameClass.get(normKey);
                 }
             }
 
-            alert(`Bulk Student Registration Complete!\n• Created: ${successCount} profiles${skippedCount > 0 ? `\n• Skipped (Missing Name/Class): ${skippedCount}` : ''}`);
+            if (targetStudent) {
+                // UPDATE / MERGE existing student record (Preserves Student Code, Scores & History)
+                const updatePayload = {};
+                if (name) updatePayload.studentName = name;
+                if (sClass) updatePayload.studentClass = sClass;
+                if (birthDate) updatePayload.birthDate = birthDate;
 
-            fileInput.value = "";
+                await setDoc(doc(db, "students", targetStudent.id), updatePayload, { merge: true });
+                updatedCount++;
+            } else if (name && sClass) {
+                // CREATE NEW student with unique code
+                const uniqueCode = rawCode || (await generateUniqueStudentCode());
 
-            // Refresh directories and databases
-            if (typeof loadStudentsDirectory === "function") loadStudentsDirectory();
-            if (typeof renderDbStudentsTable === "function") renderDbStudentsTable();
-            if (typeof loadPointsTable === "function") loadPointsTable();
-            if (typeof window.loadSystemDatabases === "function") window.loadSystemDatabases();
+                const newStudentPayload = {
+                    studentName: name,
+                    studentClass: sClass,
+                    photoUrl: ""
+                };
+                if (birthDate) newStudentPayload.birthDate = birthDate;
 
-        } catch (err) {
-            alert("Error processing Excel file: " + err.message);
+                await setDoc(doc(db, "students", uniqueCode), newStudentPayload, { merge: true });
+
+                // Add to lookup maps in case duplicate rows exist in same upload file
+                studentsByCode.set(uniqueCode, { id: uniqueCode, ...newStudentPayload });
+                studentsByNameClass.set(`${name.toLowerCase()}_${sClass.toLowerCase()}`, { id: uniqueCode, ...newStudentPayload });
+
+                createdCount++;
+            } else {
+                skippedCount++;
+            }
         }
-    };
 
-    reader.readAsArrayBuffer(file);
+        alert(`Students Database Sync Complete!\n• Updated Existing Students: ${updatedCount}\n• Registered New Students: ${createdCount}${skippedCount > 0 ? `\n• Skipped (Incomplete Data): ${skippedCount}` : ''}\n\n✓ All student exam scores, points, and records remain 100% safe and intact.`);
+
+        fileInput.value = "";
+
+        // Refresh all student views
+        if (typeof loadStudentsDirectory === "function") loadStudentsDirectory();
+        if (typeof renderDbStudentsTable === "function") renderDbStudentsTable();
+        if (typeof loadPointsTable === "function") loadPointsTable();
+        if (typeof window.loadSystemDatabases === "function") window.loadSystemDatabases();
+
+    } catch (err) {
+        console.error("Error processing Excel file:", err);
+        alert("Error processing Excel file: " + err.message);
+    } finally {
+        if (uploadBtn) {
+            uploadBtn.innerText = originalText;
+            uploadBtn.disabled = false;
+        }
+    }
 }
 
 // Bind button event listener
@@ -6019,39 +6320,50 @@ async function downloadScoreTemplate() {
             existingScores[data.studentCode] = data.score;
         });
 
-        // 3. Construct rows array
-        let excelRows = [];
+        // 3. Construct clean 2D array: Metadata on top rows, followed by compact student table
+        const wsData = [
+            ["Subject:", subject],
+            ["Class:", studentClass],
+            ["Exam Name:", quiz],
+            [""], // Empty separator row
+            ["No", "Student Code", "Student Name", "Score"]
+        ];
+
+        let sortedStudents = [];
         studentsSnap.forEach(docSnap => {
             const sData = docSnap.data();
             const code = docSnap.id;
             const currentScore = existingScores[code] !== undefined ? existingScores[code] : "";
-
-            excelRows.push({
-                "Student Code": code,
-                "Student Name": sData.studentName || "",
-                "Class": studentClass,
-                "Subject": subject,
-                "Exam Name": quiz,
-                "Score": currentScore
+            sortedStudents.push({
+                code: code,
+                name: sData.studentName || "",
+                score: currentScore
             });
         });
 
         // Sort alphabetically by Student Name (A-Z)
-        excelRows.sort((a, b) => a["Student Name"].localeCompare(b["Student Name"]));
+        sortedStudents.sort((a, b) => a.name.localeCompare(b.name));
+
+        sortedStudents.forEach((st, idx) => {
+            wsData.push([
+                idx + 1,
+                st.code,
+                st.name,
+                st.score !== undefined && st.score !== "" ? st.score : ""
+            ]);
+        });
 
         // 4. Generate worksheet using SheetJS
-        const worksheet = XLSX.utils.json_to_sheet(excelRows);
+        const worksheet = XLSX.utils.aoa_to_sheet(wsData);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Scores");
 
         // Format column widths for clarity
         worksheet["!cols"] = [
+            { wch: 6 },  // No
             { wch: 16 }, // Student Code
-            { wch: 28 }, // Student Name
-            { wch: 12 }, // Class
-            { wch: 18 }, // Subject
-            { wch: 24 }, // Exam Name
-            { wch: 10 }  // Score
+            { wch: 32 }, // Student Name
+            { wch: 12 }  // Score
         ];
 
         // 5. Trigger download file
@@ -6646,7 +6958,7 @@ async function checkAndLoadAttendance() {
                 statusBadge.className = 'att-status-pill pill-inactive';
                 if (statusText) statusText.innerText = 'No Active Session Deployed';
             }
-            if (activeInfo) activeInfo.innerText = 'No session deployed yet for this date, subject, and class. Click "Deploy Attendance Call" to open attendance for students.';
+            if (activeInfo) activeInfo.innerText = '';
             if (closeBtn) closeBtn.classList.add('hidden');
             if (deployBtn) deployBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg> <span>Deploy Attendance Call</span>`;
         }
@@ -6783,7 +7095,7 @@ function renderAttendanceTable() {
     if (filtered.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" style="text-align: center; color: var(--text-gray); padding: 32px 16px;">
+                <td colspan="7" style="text-align: center; color: var(--text-gray); padding: 32px 16px;">
                     ${totalStudents === 0 ? 'No students enrolled in this class.' : 'No students match the current status filter or search query.'}
                 </td>
             </tr>
@@ -6825,23 +7137,22 @@ function renderAttendanceTable() {
                     </div>
                 </div>
             </td>
-            <td><code style="background: var(--input-bg); padding: 3px 6px; border-radius: 6px; font-weight: 700; font-size: 12px; color: var(--primary-blue); border: 1px solid var(--border-color);">${escapeHtml(s.code)}</code></td>
             <td style="font-weight: 600; font-size: 13px; color: var(--text-dark);">${escapeHtml(s.studentClass || '')}</td>
             <td>${badgeHtml}</td>
             <td>${reasonDisplay}</td>
             <td style="font-size: 12px; color: var(--text-gray); white-space: nowrap;">${timeStr}</td>
             <td style="text-align: right; white-space: nowrap;">
-                <div style="display: inline-flex; gap: 6px; align-items: center;">
+                <div style="display: inline-flex; gap: 4px; align-items: center; justify-content: flex-end;">
                     <button type="button" class="att-action-btn att-action-present" title="Quick Mark Present" onclick="quickMarkAttendance('${escapeHtml(s.code)}', '${escapeHtml(s.studentName || '')}', '${escapeHtml(s.studentClass || '')}', 'present')">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
                         <span>Present</span>
                     </button>
                     <button type="button" class="att-action-btn att-action-absent" title="Quick Mark Absent" onclick="quickMarkAttendance('${escapeHtml(s.code)}', '${escapeHtml(s.studentName || '')}', '${escapeHtml(s.studentClass || '')}', 'absent')">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                         <span>Absent</span>
                     </button>
                     <button type="button" class="att-action-btn att-action-edit" title="Edit / Set Reason" onclick="openAttManualModal('${escapeHtml(s.code)}', '${escapeHtml(s.studentName || '')}', '${escapeHtml(s.studentClass || '')}', '${status}', '${escapeHtml(reason)}')">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                         <span>Note</span>
                     </button>
                 </div>

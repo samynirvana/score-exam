@@ -173,16 +173,18 @@ async function fetchStudentUnifiedData(codeInput) {
 
     if (!codeInput) return;
 
+    const upperCode = codeInput.toString().trim().toUpperCase();
+
     try {
-        const scoreQuery = query(collection(db, "exam_scores"), where("studentCode", "==", codeInput));
-        const pointQuery = query(collection(db, "student_points"), where("studentCode", "==", codeInput));
+        const scoreQuery = query(collection(db, "exam_scores"), where("studentCode", "==", upperCode));
+        const pointQuery = query(collection(db, "student_points"), where("studentCode", "==", upperCode));
 
         const [scoreSnap, pointSnap] = await Promise.all([
             getDocs(scoreQuery),
             getDocs(pointQuery)
         ]);
 
-        renderUnifiedProfile(scoreSnap, pointSnap, codeInput);
+        renderUnifiedProfile(scoreSnap, pointSnap, upperCode);
 
     } catch (error) {
         console.error("Profile lookup error:", error);
