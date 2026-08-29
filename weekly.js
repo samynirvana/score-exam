@@ -262,19 +262,133 @@ function updateClassEditButtonState() {
   }
 }
 
+// System Tab Registry for Access Control
+const SYSTEM_WEEKLY_TABS = [
+  { id: 'classView', btnId: 'btnClassView', name: 'Class View', description: 'Interactive weekly timetable for students & classes' },
+  { id: 'teacherView', btnId: 'btnTeacherView', name: 'Teacher Entry', description: 'Teacher weekly schedule & period materials entry' },
+  { id: 'rewardView', btnId: 'btnRewardView', name: 'Character & Skill Reward', description: 'Character & skill rewards nomination and master ledger' },
+  { id: 'meetingView', btnId: 'btnMeetingView', name: 'Meeting & Coordination', description: 'Meeting summary, staff attendance & teacher reports' },
+  { id: 'adminView', btnId: 'btnAdminView', name: 'Admin Dashboard', description: 'Full system administration & resource management', adminOnly: true }
+];
+
+let weeklyTabPermissions = {
+  classView: true,
+  teacherView: true,
+  rewardView: true,
+  meetingView: true,
+  adminView: false
+};
+
+function applyTabPermissions() {
+  const isSuperAdmin = isAdminUser();
+  const visibleTabIds = [];
+
+  SYSTEM_WEEKLY_TABS.forEach(tab => {
+    const btn = document.getElementById(tab.btnId);
+    if (!btn) return;
+
+    if (isSuperAdmin) {
+      btn.style.display = '';
+      visibleTabIds.push(tab.id);
+    } else {
+      if (tab.adminOnly || weeklyTabPermissions[tab.id] === false) {
+        btn.style.display = 'none';
+      } else {
+        btn.style.display = '';
+        visibleTabIds.push(tab.id);
+      }
+    }
+  });
+
+  // If currently active tab is hidden, switch to first visible tab
+  const activeBtn = document.querySelector('.nav-tabs .tab-btn.active');
+  if (activeBtn && activeBtn.style.display === 'none') {
+    const firstVisible = SYSTEM_WEEKLY_TABS.find(t => visibleTabIds.includes(t.id));
+    if (firstVisible) {
+      document.getElementById(firstVisible.btnId)?.click();
+    }
+  }
+}
+
+function renderActiveTabsControlTable() {
+  const tbody = document.getElementById('tableActiveTabsControl');
+  if (!tbody) return;
+
+  let html = '';
+  SYSTEM_WEEKLY_TABS.forEach((tab, index) => {
+    const isAllowed = tab.adminOnly ? false : (weeklyTabPermissions[tab.id] !== false);
+    const isDisabled = tab.adminOnly ? 'disabled' : '';
+    const statusBadge = tab.adminOnly
+      ? `<span style="font-size: 11px; font-weight: 700; color: #dc2626; background: #fef2f2; padding: 3px 8px; border-radius: 12px; border: 1px solid #fca5a5;">Admin Only</span>`
+      : (isAllowed
+        ? `<span style="font-size: 11px; font-weight: 700; color: #15803d; background: #f0fdf4; padding: 3px 8px; border-radius: 12px; border: 1px solid #bbf7d0;">Active (Visible)</span>`
+        : `<span style="font-size: 11px; font-weight: 700; color: #64748b; background: #f8fafc; padding: 3px 8px; border-radius: 12px; border: 1px solid #e2e8f0;">Disabled (Hidden)</span>`);
+
+    html += `
+      <tr>
+        <td style="text-align: center; font-weight: bold;">${index + 1}</td>
+        <td>
+          <strong style="font-size: 13.5px; color: #0f172a;">${escapeHtml(tab.name)}</strong>
+        </td>
+        <td style="font-size: 12px; color: #64748b;">${escapeHtml(tab.description)}</td>
+        <td style="text-align: center;">
+          <label class="toggle-switch">
+            <input type="checkbox" data-tab-id="${tab.id}" ${isAllowed ? 'checked' : ''} ${isDisabled} onchange="window.handleTabPermissionToggle('${tab.id}', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </td>
+        <td style="text-align: center;">
+          ${statusBadge}
+        </td>
+      </tr>
+    `;
+  });
+
+  tbody.innerHTML = html;
+}
+
+window.handleTabPermissionToggle = async function(tabId, isChecked) {
+  if (!isAdminUser()) {
+    alert("Only administrators can configure tab visibility.");
+    return;
+  }
+  weeklyTabPermissions[tabId] = isChecked;
+  applyTabPermissions();
+  renderActiveTabsControlTable();
+
+  try {
+    await setDoc(doc(db, "schedules", "tabPermissions"), { [tabId]: isChecked }, { merge: true });
+  } catch (err) {
+    console.error("Error saving tab permissions:", err);
+    alert("Could not update tab permission: " + err.message);
+  }
+};
+
+// Listen in real-time to Tab Visibility Settings
+try {
+  onSnapshot(doc(db, "schedules", "tabPermissions"), (docSnap) => {
+    if (docSnap.exists()) {
+      weeklyTabPermissions = { ...weeklyTabPermissions, ...docSnap.data() };
+    }
+    applyTabPermissions();
+    renderActiveTabsControlTable();
+  }, (err) => {
+    console.warn("Could not listen to tabPermissions:", err);
+  });
+} catch (e) {
+  console.warn("tabPermissions snapshot setup skipped:", e);
+}
+
 function checkUserRoleAccess() {
   const user = auth.currentUser;
-  const btnAdminView = document.getElementById('btnAdminView');
   const teacherSelectContainer = document.getElementById('teacherSelectContainer');
 
   if (!user) return;
 
   updateClassEditButtonState();
+  applyTabPermissions();
 
   if (isTeacherUser()) {
-    // Hide Admin Dashboard button for Teachers
-    if (btnAdminView) btnAdminView.style.display = 'none';
-
     // Hide Teacher Select dropdown container for Teachers so they cannot view or switch to other teachers
     if (teacherSelectContainer) teacherSelectContainer.style.display = 'none';
 
@@ -293,11 +407,9 @@ function checkUserRoleAccess() {
       switchTab('classView', document.getElementById('btnClassView'));
     }
   } else if (isAdminUser()) {
-    // Admin User: Show Admin tab and Teacher dropdown
-    if (btnAdminView) btnAdminView.style.display = 'inline-flex';
     if (teacherSelectContainer) teacherSelectContainer.style.display = 'flex';
+    renderActiveTabsControlTable();
   } else {
-    if (btnAdminView) btnAdminView.style.display = 'none';
     if (teacherSelectContainer) teacherSelectContainer.style.display = 'none';
   }
 }
@@ -570,6 +682,10 @@ function switchTab(tabId, targetBtn) {
     alert("Access Denied: Only administrators can access the Admin Dashboard.");
     return;
   }
+  if (!isAdminUser() && weeklyTabPermissions[tabId] === false) {
+    alert("Access Restricted: This section is currently disabled by administrator.");
+    return;
+  }
 
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -590,6 +706,7 @@ function switchTab(tabId, targetBtn) {
     renderEntityTables();
     renderManageScheduleTable();
     renderManageThemesTable();
+    renderActiveTabsControlTable();
     loadDriveFolderSettings();
   }
 
@@ -628,6 +745,10 @@ function getSlotAssignments(className, day, slotId, viewCalPrefix = null) {
 document.getElementById('btnSubAdd')?.addEventListener('click', (e) => switchAdminSubTab('subTabAdd', e.target));
 document.getElementById('btnSubManage')?.addEventListener('click', (e) => switchAdminSubTab('subTabManage', e.target));
 document.getElementById('btnSubCalendar')?.addEventListener('click', (e) => switchAdminSubTab('subTabCalendar', e.target));
+document.getElementById('btnSubTabs')?.addEventListener('click', (e) => {
+  switchAdminSubTab('subTabTabs', e.target);
+  renderActiveTabsControlTable();
+});
 document.getElementById('btnSubDrive')?.addEventListener('click', (e) => {
   switchAdminSubTab('subTabDrive', e.target);
   loadDriveFolderSettings();
@@ -3845,7 +3966,7 @@ function renderRewardView() {
   // Update Section Title & Badges
   const sectionTitle = document.getElementById('rewardSectionTitle');
   if (sectionTitle) {
-    sectionTitle.textContent = `Assembly Character & Skill Rewards — ${className} (${theme})`;
+    sectionTitle.textContent = `Character and Skill - ${className} (${theme})`;
   }
   const badgeText = document.getElementById('rewardClassBadgeText');
   if (badgeText) {
@@ -3895,7 +4016,7 @@ function renderRewardPrintSheet(year, theme, className, record) {
   const teacherNameEl = document.getElementById('printRewardTeacherName');
 
   if (printSubtitle) {
-    printSubtitle.textContent = `ASSEMBLY CHARACTER & SKILL AWARDS — ${className.toUpperCase()} — ${theme.toUpperCase()} ${year}`;
+    printSubtitle.textContent = `CHARACTER AND SKILL AWARDS — ${className.toUpperCase()} — ${theme.toUpperCase()} ${year}`;
   }
 
   // Teacher signature name
@@ -3979,7 +4100,7 @@ function renderRewardMasterLedger(year, theme) {
   const btnToggleText = document.getElementById('btnToggleLedgerEditText');
 
   if (masterTitle) {
-    masterTitle.textContent = `Assembly Awards Master Ledger — ${theme} (${year})`;
+    masterTitle.textContent = `Character and Skill Reward All Classes (${theme})`;
   }
 
   if (btnToggleText) {
@@ -4513,18 +4634,22 @@ function updateAttendeesUI() {
 }
 
 // ------------------------------------------------------
-// GOOGLE DRIVE IMAGE UPLOAD HANDLER
+// GOOGLE DRIVE MULTI-PHOTO UPLOAD HANDLER
 // ------------------------------------------------------
+let currentReportImages = [];
+
 function initReportImageUpload() {
   const fileInput = document.getElementById('reportImageFileInput');
   const dropZone = document.getElementById('reportImageDropZone');
-  const removeBtn = document.getElementById('btnRemoveReportImage');
 
   loadDriveFolderSettings();
 
   fileInput?.addEventListener('change', async (e) => {
-    const file = e.target.files?.[0];
-    if (file) handleReportImageFile(file);
+    const files = Array.from(e.target.files || []);
+    for (const file of files) {
+      await handleReportImageFile(file);
+    }
+    fileInput.value = '';
   });
 
   if (dropZone) {
@@ -4538,53 +4663,34 @@ function initReportImageUpload() {
       dropZone.style.borderColor = '';
       dropZone.style.background = '';
     });
-    dropZone.addEventListener('drop', (e) => {
+    dropZone.addEventListener('drop', async (e) => {
       e.preventDefault();
       dropZone.style.borderColor = '';
       dropZone.style.background = '';
-      const file = e.dataTransfer?.files?.[0];
-      if (file && file.type.startsWith('image/')) {
-        handleReportImageFile(file);
+      const files = Array.from(e.dataTransfer?.files || []).filter(f => f.type.startsWith('image/'));
+      for (const file of files) {
+        await handleReportImageFile(file);
       }
     });
   }
-
-  removeBtn?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    clearReportImage();
-  });
 }
 
 async function handleReportImageFile(file) {
-  const promptContent = document.getElementById('reportImagePromptContent');
-  const previewContainer = document.getElementById('reportImagePreviewContainer');
-  const previewImg = document.getElementById('reportImagePreviewImg');
-  const fileNameEl = document.getElementById('reportImageFileName');
-  const badgeEl = document.getElementById('reportImageUploadBadge');
-
-  if (fileNameEl) fileNameEl.textContent = file.name;
-  if (badgeEl) {
-    badgeEl.textContent = '⏳ Uploading to Google Drive...';
-    badgeEl.style.color = '#d97706';
-    badgeEl.style.background = '#fef3c7';
-    badgeEl.style.borderColor = '#fde68a';
-  }
-
   const reader = new FileReader();
   reader.onload = async (event) => {
     const dataUrl = event.target.result;
-    if (previewImg) previewImg.src = dataUrl;
-    if (promptContent) promptContent.style.display = 'none';
-    if (previewContainer) previewContainer.style.display = 'flex';
-
-    currentReportImageData = {
+    const imgItem = {
+      id: String(Date.now() + Math.random()),
       file: file,
       dataUrl: dataUrl,
       finalUrl: dataUrl,
-      fileName: file.name
+      fileName: file.name,
+      status: 'uploading'
     };
 
-    // Attempt Google Drive Web App upload if dedicated or general scriptUrl is available
+    currentReportImages.push(imgItem);
+    renderReportImagesGallery();
+
     const scriptUrl = localStorage.getItem('meetingDriveScriptUrl') || localStorage.getItem('googleDriveScriptUrl') || '';
     const folderId = localStorage.getItem('meetingDriveFolderId') || '';
 
@@ -4610,58 +4716,85 @@ async function handleReportImageFile(file) {
         try {
           resJson = JSON.parse(resText);
         } catch (parseErr) {
-          if (resText.includes("Anda memerlukan akses") || resText.includes("need permission") || resText.includes("accounts.google.com")) {
-            throw new Error("Permission Denied: Web App must be deployed with 'Who has access: Anyone' (Siapa saja).");
-          } else {
-            throw new Error("Invalid response from Apps Script: " + resText.substring(0, 100));
-          }
+          throw new Error("Invalid response from Drive Web App: " + resText.substring(0, 100));
         }
 
         if (resJson && resJson.status === 'success' && resJson.photoUrl) {
-          currentReportImageData.finalUrl = resJson.photoUrl;
-          if (badgeEl) {
-            badgeEl.textContent = '✅ Uploaded to Google Drive';
-            badgeEl.style.color = '#15803d';
-            badgeEl.style.background = '#f0fdf4';
-            badgeEl.style.borderColor = '#bbf7d0';
-          }
-          return;
+          imgItem.finalUrl = resJson.photoUrl;
+          imgItem.status = 'uploaded';
         } else {
-          throw new Error(resJson?.message || "Google Drive upload failed.");
+          imgItem.status = 'local';
         }
       } catch (err) {
-        console.warn("Google Drive upload bridge error:", err);
-        if (badgeEl) {
-          badgeEl.textContent = '⚠️ ' + err.message;
-          badgeEl.style.color = '#b91c1c';
-          badgeEl.style.background = '#fef2f2';
-          badgeEl.style.borderColor = '#fca5a5';
-        }
-        alert("Google Drive Upload Issue:\n\n" + err.message + "\n\nPlease ensure your Apps Script is deployed with:\n1. Execute as: Me\n2. Who has access: Anyone (Siapa saja)");
+        console.warn("Drive upload error for", file.name, err);
+        imgItem.status = 'local';
       }
     } else {
-      if (badgeEl) {
-        badgeEl.textContent = 'Attached (Local Preview - Set Drive URL to upload)';
-        badgeEl.style.color = '#2563eb';
-        badgeEl.style.background = '#eff6ff';
-        badgeEl.style.borderColor = '#bfdbfe';
-      }
+      imgItem.status = 'local';
     }
+    renderReportImagesGallery();
   };
   reader.readAsDataURL(file);
 }
 
-function clearReportImage() {
-  currentReportImageData = { file: null, dataUrl: '', finalUrl: '', fileName: '' };
+function renderReportImagesGallery() {
   const promptContent = document.getElementById('reportImagePromptContent');
-  const previewContainer = document.getElementById('reportImagePreviewContainer');
-  const fileInput = document.getElementById('reportImageFileInput');
-  const previewImg = document.getElementById('reportImagePreviewImg');
+  const gallery = document.getElementById('reportImagesGallery');
+  if (!gallery) return;
 
+  if (currentReportImages.length === 0) {
+    if (promptContent) promptContent.style.display = 'flex';
+    gallery.style.display = 'none';
+    gallery.innerHTML = '';
+    return;
+  }
+
+  if (promptContent) promptContent.style.display = 'none';
+  gallery.style.display = 'grid';
+
+  let html = '';
+  currentReportImages.forEach((img, idx) => {
+    const badgeInfo = img.status === 'uploaded'
+      ? `<span class="report-image-chip-badge" style="color:#15803d;background:#f0fdf4;border:1px solid #bbf7d0;">✅ Drive</span>`
+      : (img.status === 'uploading'
+        ? `<span class="report-image-chip-badge" style="color:#d97706;background:#fef3c7;border:1px solid #fde68a;">⏳ Uploading</span>`
+        : `<span class="report-image-chip-badge" style="color:#2563eb;background:#eff6ff;border:1px solid #bfdbfe;">Attached</span>`);
+
+    html += `
+      <div class="report-image-chip">
+        <img src="${escapeHtml(img.finalUrl || img.dataUrl)}" alt="${escapeHtml(img.fileName)}" class="report-image-chip-thumb" onclick="window.open('${escapeHtml(img.finalUrl || img.dataUrl)}', '_blank')">
+        <div class="report-image-chip-meta">
+          <span class="report-image-chip-name" title="${escapeHtml(img.fileName)}">${escapeHtml(img.fileName)}</span>
+          ${badgeInfo}
+        </div>
+        <button type="button" class="report-image-chip-remove" onclick="event.stopPropagation(); window.removeReportImageByIndex(${idx})" title="Remove photo">✕</button>
+      </div>
+    `;
+  });
+
+  html += `
+    <div class="report-gallery-add-more" onclick="document.getElementById('reportImageFileInput').click()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      <span>+ Add Photo</span>
+    </div>
+  `;
+
+  gallery.innerHTML = html;
+}
+
+window.removeReportImageByIndex = function(idx) {
+  currentReportImages.splice(idx, 1);
+  renderReportImagesGallery();
+};
+
+function clearReportImage() {
+  currentReportImages = [];
+  const fileInput = document.getElementById('reportImageFileInput');
   if (fileInput) fileInput.value = '';
-  if (previewImg) previewImg.src = '';
-  if (promptContent) promptContent.style.display = 'flex';
-  if (previewContainer) previewContainer.style.display = 'none';
+  renderReportImagesGallery();
 }
 
 function renderMeetingView() {
@@ -4754,7 +4887,9 @@ function renderTeacherReportsCompilation(reportsList, year, theme, week) {
   reportsList.forEach((rep, index) => {
     const canEdit = isSuperAdmin || (loggedTeacherName && loggedTeacherName.toLowerCase() === (rep.teacher || '').toLowerCase());
     const formattedDate = rep.updatedAt ? new Date(rep.updatedAt).toLocaleDateString() : '';
-    const imgUrl = rep.imageUrl || rep.finalUrl || rep.photoUrl || '';
+    const allUrls = (Array.isArray(rep.imageUrls) && rep.imageUrls.length > 0)
+      ? rep.imageUrls
+      : (rep.imageUrl || rep.finalUrl || rep.photoUrl ? [rep.imageUrl || rep.finalUrl || rep.photoUrl] : []);
 
     html += `
       <div class="teacher-report-item" data-id="${escapeHtml(rep.id || String(index))}">
@@ -4773,7 +4908,7 @@ function renderTeacherReportsCompilation(reportsList, year, theme, week) {
           </div>
         </div>
 
-        <div class="report-body-wrapper ${imgUrl ? 'has-image' : ''}">
+        <div class="report-body-wrapper ${allUrls.length > 0 ? 'has-image' : ''}">
           <div class="report-text-columns">
             <div class="report-content-block">
               <div class="report-block-title progress-title">1. Weekly Progress & Material</div>
@@ -4784,12 +4919,16 @@ function renderTeacherReportsCompilation(reportsList, year, theme, week) {
               <div class="report-block-text">${escapeHtml(rep.challenges || '-')}</div>
             </div>
           </div>
-          ${imgUrl ? `
+          ${allUrls.length > 0 ? `
             <div class="report-image-side-block">
-              <div class="report-image-side-label">📸 Photo</div>
-              <a href="${escapeHtml(imgUrl)}" target="_blank" class="report-image-side-thumb" title="Click to view full image">
-                <img src="${escapeHtml(imgUrl)}" alt="Report Photo">
-              </a>
+              <div class="report-image-side-label">📸 Photo Documentation (${allUrls.length})</div>
+              <div class="report-photos-grid">
+                ${allUrls.map((u, i) => `
+                  <a href="${escapeHtml(u)}" target="_blank" class="report-photo-thumb-link" title="Click to view photo #${i + 1}">
+                    <img src="${escapeHtml(u)}" alt="Report Photo" class="report-photo-item">
+                  </a>
+                `).join('')}
+              </div>
             </div>
           ` : ''}
         </div>
@@ -4809,18 +4948,15 @@ function renderPrintableMeetingSheet(year, theme, week, meetingRecord, reportsLi
   // Meeting Details Print
   const printDate = document.getElementById('printMeetingDate');
   const printAgenda = document.getElementById('printMeetingAgenda');
-  const printAttendees = document.getElementById('printMeetingAttendees');
   const printSummary = document.getElementById('printMeetingSummary');
 
   const attendeesList = Array.isArray(meetingRecord.attendeesList)
     ? meetingRecord.attendeesList
     : (meetingRecord.attendees ? meetingRecord.attendees.split(',').map(s => s.trim()).filter(Boolean) : []);
   const attendeesSet = new Set(attendeesList.map(n => n.trim().toLowerCase()));
-  const attendeesText = attendeesList.join(', ') || '-';
 
   if (printDate) printDate.textContent = meetingRecord.date || '-';
   if (printAgenda) printAgenda.textContent = meetingRecord.agenda || '-';
-  if (printAttendees) printAttendees.textContent = attendeesText;
   if (printSummary) printSummary.textContent = meetingRecord.summary || '-';
 
   // Populate Attendees Presence table
@@ -4862,8 +4998,17 @@ function renderPrintableMeetingSheet(year, theme, week, meetingRecord, reportsLi
 
   let rowsHtml = '';
   reportsList.forEach((rep, index) => {
-    const imgUrl = rep.imageUrl || rep.finalUrl || rep.photoUrl || '';
+    const allUrls = (Array.isArray(rep.imageUrls) && rep.imageUrls.length > 0)
+      ? rep.imageUrls
+      : (rep.imageUrl || rep.finalUrl || rep.photoUrl ? [rep.imageUrl || rep.finalUrl || rep.photoUrl] : []);
     const subjectInfo = rep.subject ? `<div style="font-size: 8.5pt; color: #2563eb; font-weight: 600;">${escapeHtml(rep.subject)}</div>` : '';
+
+    const photosHtml = allUrls.length > 0 ? `
+      <div style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px;">
+        ${allUrls.map(u => `<a href="${escapeHtml(u)}" target="_blank"><img src="${escapeHtml(u)}" style="max-width: 70px; max-height: 50px; border-radius: 3px; border: 1px solid #cbd5e1; object-fit: cover;"></a>`).join('')}
+      </div>
+    ` : '';
+
     rowsHtml += `
       <tr>
         <td style="text-align: center; font-weight: bold;">${index + 1}</td>
@@ -4872,10 +5017,10 @@ function renderPrintableMeetingSheet(year, theme, week, meetingRecord, reportsLi
           ${subjectInfo}
         </td>
         <td style="font-weight: 600;">${escapeHtml(rep.className || '-')}</td>
-        <td style="white-space: pre-wrap;">${escapeHtml(rep.progress || '-')}</td>
-        <td style="white-space: pre-wrap;">
+        <td style="white-space: pre-wrap; word-break: break-word;">${escapeHtml(rep.progress || '-')}</td>
+        <td style="white-space: pre-wrap; word-break: break-word;">
           <div>${escapeHtml(rep.challenges || '-')}</div>
-          ${imgUrl ? `<div style="margin-top: 4px;"><img src="${escapeHtml(imgUrl)}" style="max-width: 90px; max-height: 60px; border-radius: 4px; border: 1px solid #cbd5e1;"></div>` : ''}
+          ${photosHtml}
         </td>
       </tr>
     `;
@@ -4948,10 +5093,10 @@ async function submitTeacherReport() {
   const teacher = document.getElementById('reportTeacherSelect')?.value || '';
   const progress = document.getElementById('reportProgressInput')?.value.trim() || '';
   const challenges = document.getElementById('reportChallengesInput')?.value.trim() || '';
-  const imageUrl = currentReportImageData.finalUrl || currentReportImageData.dataUrl || '';
+  const imageUrls = currentReportImages.map(img => img.finalUrl || img.dataUrl).filter(Boolean);
 
-  if (!progress && !challenges && !imageUrl) {
-    alert("Please enter at least some details in the Weekly Progress, Observations, or attach a photo before submitting.");
+  if (!progress && !challenges && imageUrls.length === 0) {
+    alert("Please enter at least some details in the Weekly Progress, Observations, or attach photo(s) before submitting.");
     return;
   }
 
@@ -4971,7 +5116,8 @@ async function submitTeacherReport() {
         teacher,
         progress,
         challenges,
-        imageUrl: imageUrl || existingReports[targetIdx].imageUrl || '',
+        imageUrl: imageUrls[0] || existingReports[targetIdx].imageUrl || '',
+        imageUrls: imageUrls.length > 0 ? imageUrls : (existingReports[targetIdx].imageUrls || []),
         updatedAt: now,
         updatedBy: updatedBy
       };
@@ -4988,7 +5134,8 @@ async function submitTeacherReport() {
           teacher,
           progress,
           challenges,
-          imageUrl: imageUrl || existingReports[duplicateIdx].imageUrl || '',
+          imageUrl: imageUrls[0] || existingReports[duplicateIdx].imageUrl || '',
+          imageUrls: imageUrls.length > 0 ? imageUrls : (existingReports[duplicateIdx].imageUrls || []),
           updatedAt: now,
           updatedBy: updatedBy
         };
@@ -5001,7 +5148,8 @@ async function submitTeacherReport() {
         teacher,
         progress,
         challenges,
-        imageUrl: imageUrl,
+        imageUrl: imageUrls[0] || '',
+        imageUrls: imageUrls,
         updatedAt: now,
         updatedBy: updatedBy
       });
@@ -5067,25 +5215,20 @@ window.editTeacherReportByIndex = function (index) {
   if (progEl) { progEl.value = rep.progress || ''; autoResizeTextarea(progEl); }
   if (chalEl) { chalEl.value = rep.challenges || ''; autoResizeTextarea(chalEl); }
 
-  if (rep.imageUrl || rep.finalUrl) {
-    const url = rep.imageUrl || rep.finalUrl;
-    currentReportImageData = { file: null, dataUrl: url, finalUrl: url, fileName: 'Attached Photo' };
-    const promptContent = document.getElementById('reportImagePromptContent');
-    const previewContainer = document.getElementById('reportImagePreviewContainer');
-    const previewImg = document.getElementById('reportImagePreviewImg');
-    const fileNameEl = document.getElementById('reportImageFileName');
-    const badgeEl = document.getElementById('reportImageUploadBadge');
+  const allUrls = (Array.isArray(rep.imageUrls) && rep.imageUrls.length > 0)
+    ? rep.imageUrls
+    : (rep.imageUrl || rep.finalUrl || rep.photoUrl ? [rep.imageUrl || rep.finalUrl || rep.photoUrl] : []);
 
-    if (previewImg) previewImg.src = url;
-    if (fileNameEl) fileNameEl.textContent = 'Attached Documentation';
-    if (badgeEl) {
-      badgeEl.textContent = 'Existing Photo';
-      badgeEl.style.color = '#2563eb';
-      badgeEl.style.background = '#eff6ff';
-      badgeEl.style.borderColor = '#bfdbfe';
-    }
-    if (promptContent) promptContent.style.display = 'none';
-    if (previewContainer) previewContainer.style.display = 'flex';
+  if (allUrls.length > 0) {
+    currentReportImages = allUrls.map((url, i) => ({
+      id: String(i) + '-' + Date.now(),
+      file: null,
+      dataUrl: url,
+      finalUrl: url,
+      fileName: `Attached Photo #${i + 1}`,
+      status: 'uploaded'
+    }));
+    renderReportImagesGallery();
   } else {
     clearReportImage();
   }
@@ -5135,7 +5278,23 @@ function printMeetingReportsSheet() {
   const reportsList = meetingCoordinationData[`${prefix}_reports`] || [];
 
   renderPrintableMeetingSheet(year, theme, week, meetingRecord, reportsList);
+
+  // Set portrait orientation dynamically for printing meeting report
+  let portraitStyle = document.getElementById('dynamicPrintPortraitStyle');
+  if (!portraitStyle) {
+    portraitStyle = document.createElement('style');
+    portraitStyle.id = 'dynamicPrintPortraitStyle';
+    document.head.appendChild(portraitStyle);
+  }
+  portraitStyle.innerHTML = '@media print { @page { size: portrait !important; margin: 8mm !important; } }';
+  document.body.classList.add('printing-meeting');
+
   window.print();
+
+  setTimeout(() => {
+    document.body.classList.remove('printing-meeting');
+    if (portraitStyle) portraitStyle.innerHTML = '';
+  }, 1500);
 }
 
 function exportMeetingReportsToExcel() {

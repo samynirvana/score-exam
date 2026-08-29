@@ -576,8 +576,7 @@
       <div class="reward-main-container">
         <div class="reward-panel-header">
           <div>
-            <h3 class="reward-panel-title" id="rewardSectionTitle">Assembly Character & Skill Rewards — Theme 1</h3>
-            <p class="reward-panel-subtitle">Teachers and administrators can nominate students who will receive assembly recognition awards for this theme.</p>
+            <h3 class="reward-panel-title" id="rewardSectionTitle">Character and Skill - Grade 7B (Theme 1)</h3>
           </div>
           <div id="rewardSaveStatus" class="reward-save-status">
             <span class="status-dot"></span>
@@ -598,7 +597,6 @@
                 <h4 class="reward-category-name">1. Independence</h4>
               </div>
             </div>
-            <p class="reward-category-desc">Self-reliance, proactive initiative, intrinsic motivation, and taking personal ownership of learning.</p>
             <div class="reward-form-group">
               <label for="rewardStudent_independence">Awardee Student Name</label>
               <input type="text" id="rewardStudent_independence" class="reward-input-field" list="classStudentsDatalist" autocomplete="off" placeholder="Type or select student name...">
@@ -617,7 +615,6 @@
                 <h4 class="reward-category-name">2. Respect</h4>
               </div>
             </div>
-            <p class="reward-category-desc">Empathy, courteous communication, listening attentively, valuing diversity, and honoring teachers & peers.</p>
             <div class="reward-form-group">
               <label for="rewardStudent_respect">Awardee Student Name</label>
               <input type="text" id="rewardStudent_respect" class="reward-input-field" list="classStudentsDatalist" autocomplete="off" placeholder="Type or select student name...">
@@ -637,7 +634,6 @@
                 <h4 class="reward-category-name">3. Responsibility</h4>
               </div>
             </div>
-            <p class="reward-category-desc">Reliability, punctual assignment completion, accountability for choices, and trustworthy conduct.</p>
             <div class="reward-form-group">
               <label for="rewardStudent_responsibility">Awardee Student Name</label>
               <input type="text" id="rewardStudent_responsibility" class="reward-input-field" list="classStudentsDatalist" autocomplete="off" placeholder="Type or select student name...">
@@ -658,7 +654,6 @@
                 <h4 class="reward-category-name">4. Thinking Skill</h4>
               </div>
             </div>
-            <p class="reward-category-desc">Critical inquiry, creative problem solving, insightful questioning, and analytical reasoning in coursework.</p>
             <div class="reward-form-group">
               <label for="rewardStudent_thinking_skill">Awardee Student Name</label>
               <input type="text" id="rewardStudent_thinking_skill" class="reward-input-field" list="classStudentsDatalist" autocomplete="off" placeholder="Type or select student name...">
@@ -678,7 +673,6 @@
                 <h4 class="reward-category-name">5. Self Management</h4>
               </div>
             </div>
-            <p class="reward-category-desc">Organized focus, emotional regulation, optimal time discipline, preparedness, and perseverance.</p>
             <div class="reward-form-group">
               <label for="rewardStudent_self_management">Awardee Student Name</label>
               <input type="text" id="rewardStudent_self_management" class="reward-input-field" list="classStudentsDatalist" autocomplete="off" placeholder="Type or select student name...">
@@ -701,7 +695,6 @@
                 <h4 class="reward-category-name">6. Fun Literacy</h4>
               </div>
             </div>
-            <p class="reward-category-desc">Enthusiastic reading passion, rich vocabulary expression, creative writing, and book exploration.</p>
             
             <div id="funLiteracyEntries" class="fun-literacy-entries-container">
               <!-- Dynamic multiple student recipient rows -->
@@ -777,8 +770,7 @@
               </svg>
             </div>
             <div>
-              <h3 class="ledger-title" id="rewardMasterTitle">Assembly Awards Master Ledger</h3>
-              <p class="ledger-subtitle">Complete overview of all classes and award recipients for the selected theme. Edit directly in table or click to edit.</p>
+              <h3 class="ledger-title" id="rewardMasterTitle">Character and Skill Reward All Classes (Theme 1)</h3>
             </div>
           </div>
           <div class="ledger-actions-group" style="display: flex; align-items: center; gap: 8px;">
@@ -914,8 +906,7 @@
               </svg>
             </div>
             <div>
-              <h3 class="meeting-card-title">Weekly Teacher Meeting Minutes</h3>
-              <p class="meeting-card-subtitle">Document meeting date, agenda, decisions, and administrative coordination for this week.</p>
+              <h3 class="meeting-card-title">Meeting Summary</h3>
             </div>
             <div id="meetingSaveStatus" class="reward-save-status" style="margin-left: auto;">
               <span class="status-dot"></span>
@@ -994,8 +985,7 @@
               </svg>
             </div>
             <div>
-              <h3 class="meeting-card-title">Teacher Weekly Teaching Report</h3>
-              <p class="meeting-card-subtitle">Submit a whole-week summary of your teaching, student observations, and progress for your subject & class.</p>
+              <h3 class="meeting-card-title">Teacher Report</h3>
             </div>
           </div>
 
@@ -1018,13 +1008,14 @@
               placeholder="Any notable student behaviors, learning difficulties, attendance concerns, or incidents during the week?"></textarea>
           </div>
 
-          <!-- Documentation / Photo Upload to Google Drive -->
+          <!-- Documentation / Multi-Photo Upload to Google Drive -->
           <div class="form-group" style="margin-top: 10px;">
-            <div style="margin-bottom: 6px;">
+            <div style="margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
               <label style="margin: 0; font-weight: 700;">📸 Attach Photo Documentation</label>
+              <span style="font-size: 11.5px; color: #64748b;">(Multiple photos supported)</span>
             </div>
             <div class="report-image-upload-box" id="reportImageDropZone">
-              <input type="file" id="reportImageFileInput" accept="image/*" style="display: none;">
+              <input type="file" id="reportImageFileInput" accept="image/*" multiple style="display: none;">
               <div id="reportImagePromptContent" class="upload-prompt-content" onclick="document.getElementById('reportImageFileInput').click()">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -1032,16 +1023,11 @@
                   <line x1="12" y1="3" x2="12" y2="15" />
                 </svg>
                 <div style="font-size: 12px; color: #334155;">
-                  <strong style="color: #2563eb;">Click to choose image</strong> or drag & drop photo here
+                  <strong style="color: #2563eb;">Click to choose photo(s)</strong> or drag & drop photos here
                 </div>
               </div>
-              <div id="reportImagePreviewContainer" class="report-image-preview-container" style="display: none;">
-                <img id="reportImagePreviewImg" src="" alt="Uploaded photo" class="preview-thumbnail">
-                <div class="preview-meta">
-                  <span id="reportImageFileName" class="preview-filename">photo.jpg</span>
-                  <span id="reportImageUploadBadge" class="preview-badge">Uploaded</span>
-                </div>
-                <button type="button" id="btnRemoveReportImage" class="btn-remove-photo" title="Remove photo">✕</button>
+              <div id="reportImagesGallery" class="report-images-gallery" style="display: none;">
+                <!-- Multiple photo preview cards rendered dynamically -->
               </div>
             </div>
           </div>
@@ -1075,8 +1061,7 @@
             </svg>
           </div>
           <div>
-            <h3 class="meeting-card-title" id="teacherReportsTitle">Teacher Weekly Reports Compilation</h3>
-            <p class="meeting-card-subtitle">All submitted reports from teachers for this week.</p>
+            <h3 class="meeting-card-title" id="teacherReportsTitle">Teacher Reports Compilation</h3>
           </div>
           <div id="teacherReportsCountBadge" class="modern-date-badge" style="margin-left: auto;">0 Reports Submitted</div>
         </div>
@@ -1090,7 +1075,7 @@
       <div id="printableMeetingArea" class="meeting-printable-sheet">
         <!-- Meeting Section Print -->
         <div class="print-meeting-block">
-          <h3 style="font-size: 13pt; margin-bottom: 8px; border-bottom: 1.5px solid #0f172a; padding-bottom: 4px;">I. WEEKLY TEACHER MEETING MINUTES</h3>
+          <h3 style="font-size: 13pt; margin-bottom: 8px; border-bottom: 1.5px solid #0f172a; padding-bottom: 4px;">I. MEETING SUMMARY</h3>
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
             <tr>
               <td style="width: 20%; font-weight: bold; border: 1px solid #cbd5e1; padding: 6px 10px; background: #f8fafc;">Meeting Date</td>
@@ -1099,12 +1084,8 @@
               <td style="width: 30%; border: 1px solid #cbd5e1; padding: 6px 10px;" id="printMeetingAgenda">-</td>
             </tr>
             <tr>
-              <td style="font-weight: bold; border: 1px solid #cbd5e1; padding: 6px 10px; background: #f8fafc;">Attendees</td>
-              <td colspan="3" style="border: 1px solid #cbd5e1; padding: 6px 10px;" id="printMeetingAttendees">-</td>
-            </tr>
-            <tr>
               <td style="font-weight: bold; border: 1px solid #cbd5e1; padding: 6px 10px; background: #f8fafc; vertical-align: top;">Summary & Decisions</td>
-              <td colspan="3" style="border: 1px solid #cbd5e1; padding: 8px 10px; min-height: 80px;" id="printMeetingSummary">-</td>
+              <td colspan="3" style="border: 1px solid #cbd5e1; padding: 8px 10px; min-height: 80px; white-space: pre-wrap; font-family: inherit; font-size: 9.5pt; line-height: 1.6; word-break: break-word;" id="printMeetingSummary">-</td>
             </tr>
           </table>
 
@@ -1169,6 +1150,7 @@
             <button class="subtab-btn active" id="btnSubAdd">Add Resource</button>
             <button class="subtab-btn" id="btnSubManage">Manage Entities</button>
             <button class="subtab-btn" id="btnSubCalendar">Academic Calendar</button>
+            <button class="subtab-btn" id="btnSubTabs">Active Tabs Control</button>
           </div>
 
           <!-- Sub-Tab 1: Add Form -->
@@ -1430,6 +1412,33 @@
                   </thead>
                   <tbody id="manageScheduleTableBody">
                     <!-- Dynamic list of assigned slots will render here -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-Tab 4: Active Tabs & Teacher Access Control -->
+          <div id="subTabTabs" class="subtab-content">
+            <div class="admin-card">
+              <div class="admin-card-header">
+                <h3 class="admin-card-title">Active Tabs & Teacher Access Control</h3>
+                <p class="admin-card-subtitle">Configure which navigation tabs are visible to teachers. Toggle ON/OFF to grant or restrict access. Administrators can always see all tabs.</p>
+              </div>
+
+              <div class="entity-table-wrapper">
+                <table class="admin-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 45px; text-align: center;">No</th>
+                      <th style="width: 220px;">Tab Name</th>
+                      <th>Description</th>
+                      <th style="width: 140px; text-align: center;">Teacher Access</th>
+                      <th style="width: 110px; text-align: center;">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tableActiveTabsControl">
+                    <!-- Populated dynamically via JS -->
                   </tbody>
                 </table>
               </div>
