@@ -2557,7 +2557,7 @@ select:focus {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px;
-  margin-top: 16px;
+  margin-top: 18px;
 }
 
 @media (max-width: 1024px) {
@@ -3082,17 +3082,673 @@ select:focus {
   text-align: left;
 }
 
+/* Combined Report Details in Printable Table */
+.print-report-details {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.print-section-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.print-section-item.has-top-divider {
+  padding-top: 6px;
+  border-top: 1px dashed #cbd5e1;
+}
+
+.print-section-label {
+  font-size: 8.5pt;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.print-label-progress {
+  color: #1e40af;
+}
+
+.print-label-challenges {
+  color: #b45309;
+}
+
+.print-section-text {
+  font-size: 9pt;
+  line-height: 1.45;
+  color: #1e293b;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Photos/Documentation Column in Printable Table */
+.print-photos-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
+}
+
+.print-photo-thumb-link {
+  display: inline-block;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  line-height: 0;
+}
+
+.print-photo-item {
+  max-width: 85px;
+  max-height: 60px;
+  width: auto;
+  height: auto;
+  object-fit: cover;
+  display: block;
+}
+
 @media print {
   #printableRewardArea,
-  #printableMeetingArea {
+  #printableMeetingArea,
+  #printableTeacherScheduleArea {
     display: block !important;
   }
   .reward-main-container,
   .reward-master-ledger-card,
   .meeting-layout-grid,
-  #meetingView .meeting-card {
+  #meetingView .meeting-card,
+  #teacherSchedulesView .teacher-schedule-card,
+  #teacherSchedulesView .schedule-tables-selector-bar,
+  #teacherSchedulesView .teacher-schedule-admin-toolbar,
+  .floating-richtext-toolbar {
     display: none !important;
   }
+}
+
+#teacherSchedulesView,
+#meetingView {
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+}
+
+/* ==========================================================================
+   FLOATING RICH-TEXT TOOLBAR (HIDDEN BY DEFAULT - ONLY SHOWS WHEN EDITING)
+   ========================================================================== */
+.floating-richtext-toolbar {
+  position: fixed !important;
+  z-index: 999999 !important;
+  display: none; /* Hidden by default! Only shows when editing text */
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  background: #ffffff;
+  border: 1.5px solid #2563eb;
+  border-radius: 12px;
+  box-shadow: 0 14px 35px -5px rgba(15, 23, 42, 0.25), 0 8px 16px -6px rgba(15, 23, 42, 0.15);
+  backdrop-filter: blur(8px);
+  animation: rtFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  max-width: 95vw;
+  flex-wrap: wrap;
+  pointer-events: auto;
+}
+
+@keyframes rtFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.rt-group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.rt-divider {
+  width: 1px;
+  height: 20px;
+  background: #e2e8f0;
+  margin: 0 3px;
+}
+
+.rt-select {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 11.5px;
+  font-family: inherit;
+  color: #334155;
+  background: #f8fafc;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.15s;
+}
+
+.rt-select:hover, .rt-select:focus {
+  border-color: #2563eb;
+  background: #ffffff;
+}
+
+.rt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #334155;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.rt-btn:hover {
+  background: #eff6ff;
+  color: #2563eb;
+  border-color: #bfdbfe;
+}
+
+.rt-btn.active {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.rt-color-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #f8fafc;
+  cursor: pointer;
+  position: relative;
+  font-size: 12px;
+}
+
+.rt-color-btn input[type="color"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.rt-swatches-group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 2px;
+}
+
+.rt-color-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s;
+}
+
+.rt-color-swatch:hover {
+  transform: scale(1.18);
+}
+
+/* Rich-text contenteditable editor styling */
+.rich-text-editor {
+  outline: none;
+  overflow-y: auto;
+  word-break: break-word;
+  white-space: pre-wrap;
+  cursor: text;
+  line-height: 1.55;
+  font-size: 13.5px;
+}
+
+.rich-text-editor:empty::before {
+  content: attr(data-placeholder);
+  color: #94a3b8;
+  pointer-events: none;
+  display: block;
+}
+
+.rich-text-editor:focus {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+}
+
+/* ==========================================================================
+   TEACHER SCHEDULES TAB STYLING (CENTERED & DRAGGABLE PILLS)
+   ========================================================================== */
+.schedule-tables-selector-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 0 auto 20px auto;
+  max-width: 100%;
+  flex-wrap: nowrap;
+}
+
+.schedule-table-pill-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+  padding: 4px 6px;
+  cursor: grab;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  max-width: 850px;
+  flex-shrink: 1;
+}
+
+.schedule-table-pill-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.schedule-table-pill-tabs.dragging {
+  cursor: grabbing;
+  user-select: none;
+  scroll-behavior: auto;
+}
+
+.schedule-table-tab-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.schedule-table-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.schedule-table-pill:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #0f172a;
+  transform: translateY(-1px);
+}
+
+.schedule-table-pill.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.add-table-btn {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1.5px dashed #bfdbfe;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.add-table-btn:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.teacher-schedule-card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  padding: 24px;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.ts-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1.5px solid #f1f5f9;
+}
+
+.ts-card-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 4px 0;
+  letter-spacing: -0.01em;
+  outline: none;
+}
+
+.ts-card-title[contenteditable="true"]:focus {
+  background: #f8fafc;
+  padding: 2px 6px;
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px #2563eb;
+}
+
+.ts-card-description {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+  outline: none;
+}
+
+.ts-card-description[contenteditable="true"]:focus {
+  background: #f8fafc;
+  padding: 2px 6px;
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px #2563eb;
+}
+
+.ts-table-wrapper {
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.ts-data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ts-data-table th,
+.ts-data-table td {
+  border: 1px solid #e2e8f0;
+  padding: 10px 12px;
+  font-size: 13px;
+  vertical-align: top;
+}
+
+.ts-data-table th {
+  background: #f8fafc;
+  color: #1e293b;
+  font-weight: 700;
+  text-align: left;
+}
+
+.ts-col-header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ts-col-title {
+  font-weight: 700;
+  outline: none;
+  cursor: text;
+  flex: 1;
+}
+
+.ts-col-title:hover {
+  background: rgba(37, 99, 235, 0.06);
+  border-radius: 4px;
+}
+
+.ts-col-title:focus {
+  background: #ffffff;
+  padding: 2px 4px;
+  border-radius: 4px;
+  box-shadow: 0 0 0 2px #2563eb;
+}
+
+/* Delete Column & Row Buttons - ONLY visible when Edit Table mode is ON */
+.ts-col-del-btn,
+.ts-row-del-btn,
+.ts-col-add-btn-cell {
+  display: none !important;
+}
+
+.ts-editing-mode .ts-col-del-btn,
+.ts-editing-mode .ts-row-del-btn {
+  display: inline-flex !important;
+}
+
+.ts-editing-mode .ts-col-add-btn-cell {
+  display: table-cell !important;
+}
+
+.ts-col-del-btn {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid #fca5a5;
+  background: #fef2f2;
+  color: #ef4444;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 0;
+  line-height: 1;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.ts-col-del-btn:hover {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
+}
+
+.ts-row-handle-cell {
+  width: 50px;
+  text-align: center;
+  background: #fafafa;
+  color: #64748b;
+  font-weight: 700;
+  user-select: none;
+  vertical-align: middle;
+}
+
+.ts-row-handle-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.ts-row-del-btn {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid #fca5a5;
+  background: #fef2f2;
+  color: #ef4444;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 0;
+  line-height: 1;
+  transition: all 0.15s;
+}
+
+.ts-row-del-btn:hover {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
+}
+
+.ts-cell-content {
+  min-height: 28px;
+  outline: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.5;
+  cursor: text;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+.ts-cell-content:focus {
+  background: #f8fafc;
+  box-shadow: inset 0 0 0 1.5px #2563eb;
+}
+
+.ts-data-table td.ts-cell-selected {
+  background: #eff6ff !important;
+  outline: 2px solid #3b82f6 !important;
+  outline-offset: -2px;
+}
+
+.ts-table-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+.ts-btn-secondary {
+  background: #ffffff;
+  color: #1e293b;
+  border: 1.5px solid #cbd5e1;
+  padding: 8px 15px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.18s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.ts-btn-secondary:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+  transform: translateY(-1px);
+}
+
+.ts-btn-edit-toggle {
+  background: #ffffff;
+  color: #334155;
+  border: 1.5px solid #cbd5e1;
+  padding: 8px 15px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.18s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.ts-btn-edit-toggle:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.ts-btn-edit-toggle.active {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 2.5px rgba(29, 78, 216, 0.18);
+  font-weight: 800;
+}
+
+.ts-btn-delete {
+  background: #fff1f2;
+  color: #e11d48;
+  border: 1.5px solid #fecdd3;
+  padding: 8px 15px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.ts-btn-delete:hover {
+  background: #fee2e2;
+  border-color: #f87171;
+  color: #be123c;
+  transform: translateY(-1px);
+}
+
+.ts-btn-save {
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+  color: #ffffff;
+  border: 1.5px solid #1d4ed8;
+  padding: 8px 18px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  transition: all 0.18s;
+  box-shadow: 0 3px 10px rgba(29, 78, 216, 0.3);
+}
+
+.ts-btn-save:hover {
+  background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%);
+  box-shadow: 0 5px 14px rgba(29, 78, 216, 0.4);
+}
+
+.teacher-schedule-printable-sheet {
+  display: none;
+  background: #ffffff;
+  margin-top: 24px;
 }
 
 /* ==========================================================================

@@ -191,16 +191,10 @@ function isAdminUser() {
 function isTeacherUser() {
   const user = auth.currentUser;
   if (!user || !user.email) return false;
-  const emailLower = user.email.toLowerCase();
   if (isAdminUser()) return false;
+  if (currentUserRole === 'teacher') return true;
 
-  if (appEntities && appEntities.teacherEmails) {
-    const teacherName = Object.keys(appEntities.teacherEmails).find(
-      name => (appEntities.teacherEmails[name] || '').toLowerCase() === emailLower
-    );
-    if (teacherName) return true;
-  }
-  return false;
+  return !!getLoggedInTeacherName();
 }
 
 function getLoggedInTeacherName() {
@@ -208,11 +202,41 @@ function getLoggedInTeacherName() {
   if (!user || !user.email) return null;
   const emailLower = user.email.toLowerCase();
 
+  // 1. Direct match in appEntities.teacherEmails
   if (appEntities && appEntities.teacherEmails) {
-    return Object.keys(appEntities.teacherEmails).find(
+    const directMatch = Object.keys(appEntities.teacherEmails).find(
       name => (appEntities.teacherEmails[name] || '').toLowerCase() === emailLower
-    ) || null;
+    );
+    if (directMatch) return directMatch;
   }
+
+  // 2. Fuzzy match against all teachers in appEntities.teachers
+  const username = emailLower.split('@')[0].replace(/[^a-z0-9]/g, '');
+  if (appEntities && Array.isArray(appEntities.teachers) && appEntities.teachers.length > 0) {
+    // Exact stripped match: e.g. "syam" vs "Mr. Syam" -> "syam" === "syam"
+    const exactTeacher = appEntities.teachers.find(name => {
+      const clean = name.toLowerCase().replace(/^(mr|ms|mrs|miss|dr|ustadz|ustadzah)\.?\s*/i, '').replace(/[^a-z0-9]/g, '');
+      return clean === username;
+    });
+    if (exactTeacher) return exactTeacher;
+
+    // Substring match: e.g. "syam" within "Mr. Syam"
+    const subTeacher = appEntities.teachers.find(name => {
+      const clean = name.toLowerCase().replace(/^(mr|ms|mrs|miss|dr|ustadz|ustadzah)\.?\s*/i, '').replace(/[^a-z0-9]/g, '');
+      return (username.length >= 3 && clean.includes(username)) || (clean.length >= 3 && username.includes(clean));
+    });
+    if (subTeacher) return subTeacher;
+  }
+
+  // 3. Fallback for non-admin user
+  if (!isAdminUser() && appEntities && Array.isArray(appEntities.teachers) && appEntities.teachers.length > 0) {
+    const fallback = appEntities.teachers.find(name => {
+      const clean = name.toLowerCase().replace(/^(mr|ms|mrs|miss|dr|ustadz|ustadzah)\.?\s*/i, '').replace(/[^a-z0-9]/g, '');
+      return emailLower.includes(clean) || (username.length >= 3 && clean.includes(username));
+    });
+    if (fallback) return fallback;
+  }
+
   return null;
 }
 
@@ -266,6 +290,7 @@ function updateClassEditButtonState() {
 const SYSTEM_WEEKLY_TABS = [
   { id: 'classView', btnId: 'btnClassView', name: 'Class View', description: 'Interactive weekly timetable for students & classes' },
   { id: 'teacherView', btnId: 'btnTeacherView', name: 'Teacher Entry', description: 'Teacher weekly schedule & period materials entry' },
+  { id: 'teacherSchedulesView', btnId: 'btnTeacherSchedulesView', name: 'Teacher Schedules', description: 'All-in-one duty, prayer, and administrative teacher schedules' },
   { id: 'rewardView', btnId: 'btnRewardView', name: 'Character & Skill Reward', description: 'Character & skill rewards nomination and master ledger' },
   { id: 'meetingView', btnId: 'btnMeetingView', name: 'Meeting & Coordination', description: 'Meeting summary, staff attendance & teacher reports' },
   { id: 'adminView', btnId: 'btnAdminView', name: 'Admin Dashboard', description: 'Full system administration & resource management', adminOnly: true }
@@ -274,6 +299,7 @@ const SYSTEM_WEEKLY_TABS = [
 let weeklyTabPermissions = {
   classView: true,
   teacherView: true,
+  teacherSchedulesView: true,
   rewardView: true,
   meetingView: true,
   adminView: false
@@ -401,6 +427,16 @@ function checkUserRoleAccess() {
     }
     renderTeacherView();
 
+    // Lock Teacher Report select strictly to logged-in teacher's name
+    const reportTeacherSel = document.getElementById('reportTeacherSelect');
+    if (reportTeacherSel && tName) {
+      reportTeacherSel.innerHTML = `<option value="${tName}">${tName}</option>`;
+      reportTeacherSel.value = tName;
+      reportTeacherSel.disabled = true;
+      reportTeacherSel.style.backgroundColor = '#f1f5f9';
+      reportTeacherSel.style.cursor = 'not-allowed';
+    }
+
     // Switch away if currently on Admin View tab
     const adminTab = document.getElementById('adminView');
     if (adminTab && adminTab.classList.contains('active')) {
@@ -408,6 +444,12 @@ function checkUserRoleAccess() {
     }
   } else if (isAdminUser()) {
     if (teacherSelectContainer) teacherSelectContainer.style.display = 'flex';
+    const reportTeacherSel = document.getElementById('reportTeacherSelect');
+    if (reportTeacherSel) {
+      reportTeacherSel.disabled = false;
+      reportTeacherSel.style.backgroundColor = '#ffffff';
+      reportTeacherSel.style.cursor = 'pointer';
+    }
     renderActiveTabsControlTable();
   } else {
     if (teacherSelectContainer) teacherSelectContainer.style.display = 'none';
@@ -571,6 +613,7 @@ document.getElementById('btnLogout')?.addEventListener('click', () => {
 // Main Navigation Event Listeners
 document.getElementById('btnClassView')?.addEventListener('click', (e) => switchTab('classView', e.currentTarget));
 document.getElementById('btnTeacherView')?.addEventListener('click', (e) => switchTab('teacherView', e.currentTarget));
+document.getElementById('btnTeacherSchedulesView')?.addEventListener('click', (e) => switchTab('teacherSchedulesView', e.currentTarget));
 document.getElementById('btnRewardView')?.addEventListener('click', (e) => switchTab('rewardView', e.currentTarget));
 document.getElementById('btnMeetingView')?.addEventListener('click', (e) => switchTab('meetingView', e.currentTarget));
 document.getElementById('btnAdminView')?.addEventListener('click', (e) => switchTab('adminView', e.currentTarget));
@@ -698,6 +741,8 @@ function switchTab(tabId, targetBtn) {
     updateClassEditButtonState();
   } else if (tabId === 'teacherView') {
     renderTeacherView();
+  } else if (tabId === 'teacherSchedulesView') {
+    initTeacherSchedulesView();
   } else if (tabId === 'rewardView') {
     initRewardView();
   } else if (tabId === 'meetingView') {
@@ -826,7 +871,7 @@ function formatModernDateRange(startDateStr, endDateStr) {
 // Populate Calendar Select Boxes
 function populateCalendarSelects() {
   const years = Object.keys(academicCalendar);
-  const views = ['class', 'teacher', 'meeting'];
+  const views = ['class', 'teacher', 'meeting', 'teacherSchedule'];
 
   views.forEach(prefix => {
     const yearSel = document.getElementById(`${prefix}YearSelect`);
@@ -3572,8 +3617,10 @@ onSnapshot(doc(db, "config", "appEntities"), (docSnap) => {
     setDoc(doc(db, "config", "appEntities"), appEntities, { merge: true }).catch(console.warn);
   }
   populateAdminSelects();
+  populateMeetingReportSelects();
   renderClassSchedule();
   renderTeacherView();
+  checkUserRoleAccess();
 });
 
 onSnapshot(doc(db, "schedules", "masterSchedules"), async (docSnap) => {
@@ -3591,10 +3638,12 @@ onSnapshot(doc(db, "schedules", "masterSchedules"), async (docSnap) => {
     }
   }
   populateAdminSelects();
+  populateMeetingReportSelects();
   renderClassSchedule();
   renderTeacherView();
   renderManageScheduleTable();
   renderEntityTables();
+  checkUserRoleAccess();
 });
 
 onSnapshot(doc(db, "schedules", "weeklyOverrides"), (docSnap) => {
@@ -4510,15 +4559,24 @@ function populateMeetingReportSelects() {
   const teachers = appEntities.teachers || [];
 
   if (teacherSel) {
-    const currentVal = teacherSel.value;
-    teacherSel.innerHTML = teachers.map(t => `<option value="${t}">${t}</option>`).join('');
-
     if (isTeacherUser()) {
       const loggedTeacher = getLoggedInTeacherName();
-      if (loggedTeacher && teachers.includes(loggedTeacher)) {
+      if (loggedTeacher) {
+        teacherSel.innerHTML = `<option value="${loggedTeacher}">${loggedTeacher}</option>`;
         teacherSel.value = loggedTeacher;
+        teacherSel.disabled = true;
+        teacherSel.style.backgroundColor = '#f1f5f9';
+        teacherSel.style.cursor = 'not-allowed';
+        return;
       }
-    } else if (currentVal && teachers.includes(currentVal)) {
+    }
+
+    teacherSel.disabled = false;
+    teacherSel.style.backgroundColor = '#ffffff';
+    teacherSel.style.cursor = 'pointer';
+    const currentVal = teacherSel.value;
+    teacherSel.innerHTML = teachers.map(t => `<option value="${t}">${t}</option>`).join('');
+    if (currentVal && teachers.includes(currentVal)) {
       teacherSel.value = currentVal;
     }
   }
@@ -4797,10 +4855,58 @@ function clearReportImage() {
   renderReportImagesGallery();
 }
 
+function sanitizeRichHtml(html) {
+  if (!html) return '';
+  const temp = document.createElement('div');
+  temp.innerHTML = html;
+  temp.querySelectorAll('script, iframe, object, embed, form, input, button').forEach(el => el.remove());
+  const allElements = temp.querySelectorAll('*');
+  allElements.forEach(el => {
+    Array.from(el.attributes).forEach(attr => {
+      if (attr.name.startsWith('on') || attr.value.toLowerCase().includes('javascript:')) {
+        el.removeAttribute(attr.name);
+      }
+    });
+  });
+  return temp.innerHTML;
+}
+
+function formatRichTextForDisplay(content, fallback = '-') {
+  if (!content || !content.trim()) return fallback;
+  const str = content.trim();
+  if (/<[a-z][\s\S]*>/i.test(str)) {
+    return sanitizeRichHtml(str);
+  }
+  return escapeHtml(str);
+}
+
+function getRichEditorHtml(elOrId) {
+  const el = typeof elOrId === 'string' ? document.getElementById(elOrId) : elOrId;
+  if (!el) return '';
+  if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
+    return el.value.trim();
+  }
+  const html = el.innerHTML.trim();
+  if (html === '<br>' || html === '<p><br></p>' || html === '<div><br></div>') return '';
+  return html;
+}
+
+function setRichEditorHtml(elOrId, content) {
+  const el = typeof elOrId === 'string' ? document.getElementById(elOrId) : elOrId;
+  if (!el) return;
+  if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
+    el.value = content || '';
+  } else {
+    el.innerHTML = content || '';
+  }
+}
+
 function renderMeetingView() {
   const year = document.getElementById('meetingYearSelect')?.value || '2026/2027';
   const theme = document.getElementById('meetingThemeSelect')?.value || 'Theme 1';
   const week = document.getElementById('meetingWeekSelect')?.value || 'Week 1';
+
+  populateMeetingReportSelects();
 
   const prefix = getMeetingStoragePrefix(year, theme, week);
 
@@ -4808,7 +4914,6 @@ function renderMeetingView() {
   const meetingRecord = meetingCoordinationData[`${prefix}_meeting`] || {};
   const dateInput = document.getElementById('meetingDateInput');
   const agendaInput = document.getElementById('meetingAgendaInput');
-  const summaryInput = document.getElementById('meetingSummaryInput');
 
   if (dateInput) {
     dateInput.value = meetingRecord.date || new Date().toISOString().split('T')[0];
@@ -4816,10 +4921,7 @@ function renderMeetingView() {
   if (agendaInput) {
     agendaInput.value = meetingRecord.agenda || '';
   }
-  if (summaryInput) {
-    summaryInput.value = meetingRecord.summary || '';
-    autoResizeTextarea(summaryInput);
-  }
+  setRichEditorHtml('meetingSummaryInput', meetingRecord.summary || '');
 
   // Parse attendees
   selectedAttendeesSet.clear();
@@ -4895,15 +4997,49 @@ function renderTeacherReportsCompilation(reportsList, year, theme, week) {
       <div class="teacher-report-item" data-id="${escapeHtml(rep.id || String(index))}">
         <div class="report-item-header">
           <div class="report-item-pills">
-            <span class="report-pill-teacher">👨‍🏫 ${escapeHtml(rep.teacher || 'Teacher')}</span>
-            ${rep.subject ? `<span class="report-pill-subject">📚 ${escapeHtml(rep.subject)}</span>` : ''}
-            ${rep.className ? `<span class="report-pill-class">🏫 ${escapeHtml(rep.className)}</span>` : ''}
+            <span class="report-pill-teacher" style="display: inline-flex; align-items: center; gap: 4px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              <span>${escapeHtml(rep.teacher || 'Teacher')}</span>
+            </span>
+            ${rep.subject ? `
+              <span class="report-pill-subject" style="display: inline-flex; align-items: center; gap: 4px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                </svg>
+                <span>${escapeHtml(rep.subject)}</span>
+              </span>
+            ` : ''}
+            ${rep.className ? `
+              <span class="report-pill-class" style="display: inline-flex; align-items: center; gap: 4px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 21h18M3 7v14M21 7v14M6 3h12l3 4H3zM9 11h2v3H9zm4 0h2v3h-2z"/>
+                </svg>
+                <span>${escapeHtml(rep.className)}</span>
+              </span>
+            ` : ''}
           </div>
           <div style="display: flex; align-items: center; gap: 8px;">
             ${formattedDate ? `<span class="report-item-time">${formattedDate}</span>` : ''}
             ${canEdit ? `
-              <button type="button" class="btn-cell-action" onclick="editTeacherReportByIndex(${index})" title="Edit this report" style="padding: 3px 8px; font-size: 11px; background:#eff6ff; color:#2563eb; border-color:#bfdbfe;">✏️ Edit</button>
-              <button type="button" class="btn-cell-action" onclick="deleteTeacherReportByIndex(${index})" title="Delete report" style="padding: 3px 8px; font-size: 11px; background:#fef2f2; color:#ef4444; border-color:#fca5a5;">🗑️</button>
+              <button type="button" class="btn-cell-action" onclick="editTeacherReportByIndex(${index})" title="Edit this report" style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; font-size: 11px; background:#eff6ff; color:#2563eb; border-color:#bfdbfe;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                <span>Edit</span>
+              </button>
+              <button type="button" class="btn-cell-action" onclick="deleteTeacherReportByIndex(${index})" title="Delete report" style="display: inline-flex; align-items: center; justify-content: center; padding: 3px 8px; font-size: 11px; background:#fef2f2; color:#ef4444; border-color:#fca5a5;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                  <line x1="10" y1="11" x2="10" y2="17"/>
+                  <line x1="14" y1="11" x2="14" y2="17"/>
+                </svg>
+              </button>
             ` : ''}
           </div>
         </div>
@@ -4912,16 +5048,22 @@ function renderTeacherReportsCompilation(reportsList, year, theme, week) {
           <div class="report-text-columns">
             <div class="report-content-block">
               <div class="report-block-title progress-title">1. Weekly Progress & Material</div>
-              <div class="report-block-text">${escapeHtml(rep.progress || '-')}</div>
+              <div class="report-block-text">${formatRichTextForDisplay(rep.progress, '-')}</div>
             </div>
             <div class="report-content-block">
               <div class="report-block-title challenges-title">2. Observations & Challenges</div>
-              <div class="report-block-text">${escapeHtml(rep.challenges || '-')}</div>
+              <div class="report-block-text">${formatRichTextForDisplay(rep.challenges, '-')}</div>
             </div>
           </div>
           ${allUrls.length > 0 ? `
             <div class="report-image-side-block">
-              <div class="report-image-side-label">📸 Photo Documentation (${allUrls.length})</div>
+              <div class="report-image-side-label" style="display: flex; align-items: center; gap: 5px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
+                </svg>
+                <span>Photo Documentation (${allUrls.length})</span>
+              </div>
               <div class="report-photos-grid">
                 ${allUrls.map((u, i) => `
                   <a href="${escapeHtml(u)}" target="_blank" class="report-photo-thumb-link" title="Click to view photo #${i + 1}">
@@ -4957,7 +5099,7 @@ function renderPrintableMeetingSheet(year, theme, week, meetingRecord, reportsLi
 
   if (printDate) printDate.textContent = meetingRecord.date || '-';
   if (printAgenda) printAgenda.textContent = meetingRecord.agenda || '-';
-  if (printSummary) printSummary.textContent = meetingRecord.summary || '-';
+  if (printSummary) printSummary.innerHTML = formatRichTextForDisplay(meetingRecord.summary, '-');
 
   // Populate Attendees Presence table
   const presenceTbody = document.getElementById('printAttendeesPresenceBody');
@@ -4992,7 +5134,7 @@ function renderPrintableMeetingSheet(year, theme, week, meetingRecord, reportsLi
   if (!tbody) return;
 
   if (!reportsList || reportsList.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 14px; color: #94a3b8; font-style: italic;">No teacher weekly reports logged for this week.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 14px; color: #94a3b8; font-style: italic;">No teacher weekly reports logged for this week.</td></tr>`;
     return;
   }
 
@@ -5001,25 +5143,66 @@ function renderPrintableMeetingSheet(year, theme, week, meetingRecord, reportsLi
     const allUrls = (Array.isArray(rep.imageUrls) && rep.imageUrls.length > 0)
       ? rep.imageUrls
       : (rep.imageUrl || rep.finalUrl || rep.photoUrl ? [rep.imageUrl || rep.finalUrl || rep.photoUrl] : []);
-    const subjectInfo = rep.subject ? `<div style="font-size: 8.5pt; color: #2563eb; font-weight: 600;">${escapeHtml(rep.subject)}</div>` : '';
+    const subjectInfo = rep.subject ? `<div style="font-size: 8.5pt; color: #2563eb; font-weight: 600; margin-top: 2px;">${escapeHtml(rep.subject)}</div>` : '';
 
     const photosHtml = allUrls.length > 0 ? `
-      <div style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px;">
-        ${allUrls.map(u => `<a href="${escapeHtml(u)}" target="_blank"><img src="${escapeHtml(u)}" style="max-width: 70px; max-height: 50px; border-radius: 3px; border: 1px solid #cbd5e1; object-fit: cover;"></a>`).join('')}
+      <div class="print-photos-gallery">
+        ${allUrls.map(u => `
+          <a href="${escapeHtml(u)}" target="_blank" class="print-photo-thumb-link">
+            <img src="${escapeHtml(u)}" alt="Report Photo" class="print-photo-item">
+          </a>
+        `).join('')}
       </div>
-    ` : '';
+    ` : `<span style="color: #94a3b8; font-style: italic; font-size: 8.5pt;">-</span>`;
+
+    const hasProgress = Boolean(rep.progress && rep.progress.trim());
+    const hasChallenges = Boolean(rep.challenges && rep.challenges.trim());
+
+    let detailsHtml = '';
+    if (!hasProgress && !hasChallenges) {
+      detailsHtml = `<span style="color: #94a3b8; font-style: italic;">-</span>`;
+    } else {
+      detailsHtml = `
+        <div class="print-report-details">
+          ${hasProgress ? `
+            <div class="print-section-item">
+              <div class="print-section-label print-label-progress">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: -1px; margin-right: 4px; flex-shrink: 0;">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                </svg>
+                <span>Progress & Material:</span>
+              </div>
+              <div class="print-section-text">${formatRichTextForDisplay(rep.progress)}</div>
+            </div>
+          ` : ''}
+          ${hasChallenges ? `
+            <div class="print-section-item ${hasProgress ? 'has-top-divider' : ''}">
+              <div class="print-section-label print-label-challenges">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: inline-block; vertical-align: -1px; margin-right: 4px; flex-shrink: 0;">
+                  <circle cx="11" cy="11" r="8"/>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <span>Challenges / Observations:</span>
+              </div>
+              <div class="print-section-text">${formatRichTextForDisplay(rep.challenges)}</div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
 
     rowsHtml += `
       <tr>
-        <td style="text-align: center; font-weight: bold;">${index + 1}</td>
-        <td>
-          <strong>${escapeHtml(rep.teacher || '-')}</strong>
+        <td style="text-align: center; font-weight: bold; vertical-align: top;">${index + 1}</td>
+        <td style="vertical-align: top;">
+          <strong style="color: #0f172a; font-size: 9.5pt;">${escapeHtml(rep.teacher || '-')}</strong>
           ${subjectInfo}
         </td>
-        <td style="font-weight: 600;">${escapeHtml(rep.className || '-')}</td>
-        <td style="white-space: pre-wrap; word-break: break-word;">${escapeHtml(rep.progress || '-')}</td>
-        <td style="white-space: pre-wrap; word-break: break-word;">
-          <div>${escapeHtml(rep.challenges || '-')}</div>
+        <td style="vertical-align: top;">
+          ${detailsHtml}
+        </td>
+        <td style="text-align: center; vertical-align: top;">
           ${photosHtml}
         </td>
       </tr>
@@ -5037,7 +5220,7 @@ async function saveMeetingNotes() {
 
   const dateVal = document.getElementById('meetingDateInput')?.value || '';
   const agendaVal = document.getElementById('meetingAgendaInput')?.value.trim() || '';
-  const summaryVal = document.getElementById('meetingSummaryInput')?.value.trim() || '';
+  const summaryVal = getRichEditorHtml('meetingSummaryInput');
   const attendeesList = Array.from(selectedAttendeesSet);
 
   const prefix = getMeetingStoragePrefix(year, theme, week);
@@ -5090,9 +5273,21 @@ async function submitTeacherReport() {
   const theme = document.getElementById('meetingThemeSelect')?.value || 'Theme 1';
   const week = document.getElementById('meetingWeekSelect')?.value || 'Week 1';
 
-  const teacher = document.getElementById('reportTeacherSelect')?.value || '';
-  const progress = document.getElementById('reportProgressInput')?.value.trim() || '';
-  const challenges = document.getElementById('reportChallengesInput')?.value.trim() || '';
+  let teacher = document.getElementById('reportTeacherSelect')?.value || '';
+  if (isTeacherUser()) {
+    const loggedTeacher = getLoggedInTeacherName();
+    if (loggedTeacher) {
+      teacher = loggedTeacher;
+    }
+  }
+
+  if (!teacher) {
+    alert("Teacher name is required to submit a report.");
+    return;
+  }
+
+  const progress = getRichEditorHtml('reportProgressInput');
+  const challenges = getRichEditorHtml('reportChallengesInput');
   const imageUrls = currentReportImages.map(img => img.finalUrl || img.dataUrl).filter(Boolean);
 
   if (!progress && !challenges && imageUrls.length === 0) {
@@ -5111,6 +5306,13 @@ async function submitTeacherReport() {
     // Updating existing report
     const targetIdx = existingReports.findIndex(r => r.id === editingReportId);
     if (targetIdx !== -1) {
+      if (isTeacherUser()) {
+        const loggedTeacher = getLoggedInTeacherName();
+        if (loggedTeacher && existingReports[targetIdx].teacher && existingReports[targetIdx].teacher.toLowerCase() !== loggedTeacher.toLowerCase()) {
+          alert("You can only fill and edit your own weekly report.");
+          return;
+        }
+      }
       existingReports[targetIdx] = {
         ...existingReports[targetIdx],
         teacher,
@@ -5168,11 +5370,10 @@ async function submitTeacherReport() {
     await setDoc(doc(db, "schedules", "meetingCoordination"), meetingCoordinationData, { merge: true });
 
     // Reset report input fields
-    const progEl = document.getElementById('reportProgressInput');
-    const chalEl = document.getElementById('reportChallengesInput');
-    if (progEl) { progEl.value = ''; autoResizeTextarea(progEl); }
-    if (chalEl) { chalEl.value = ''; autoResizeTextarea(chalEl); }
+    setRichEditorHtml('reportProgressInput', '');
+    setRichEditorHtml('reportChallengesInput', '');
     clearReportImage();
+    populateMeetingReportSelects();
 
     renderMeetingView();
     alert(`Weekly Teaching Report successfully saved for ${teacher}!`);
@@ -5205,15 +5406,25 @@ window.editTeacherReportByIndex = function (index) {
 
   if (!rep) return;
 
+  if (isTeacherUser()) {
+    const loggedTeacher = getLoggedInTeacherName();
+    if (loggedTeacher && rep.teacher && rep.teacher.toLowerCase() !== loggedTeacher.toLowerCase()) {
+      alert("You can only fill and edit your own weekly report.");
+      return;
+    }
+  }
+
   editingReportId = rep.id || String(index);
 
   const teacherSel = document.getElementById('reportTeacherSelect');
-  if (teacherSel && rep.teacher) teacherSel.value = rep.teacher;
+  if (teacherSel && rep.teacher) {
+    if (!isTeacherUser()) {
+      teacherSel.value = rep.teacher;
+    }
+  }
 
-  const progEl = document.getElementById('reportProgressInput');
-  const chalEl = document.getElementById('reportChallengesInput');
-  if (progEl) { progEl.value = rep.progress || ''; autoResizeTextarea(progEl); }
-  if (chalEl) { chalEl.value = rep.challenges || ''; autoResizeTextarea(chalEl); }
+  setRichEditorHtml('reportProgressInput', rep.progress || '');
+  setRichEditorHtml('reportChallengesInput', rep.challenges || '');
 
   const allUrls = (Array.isArray(rep.imageUrls) && rep.imageUrls.length > 0)
     ? rep.imageUrls
@@ -5233,19 +5444,31 @@ window.editTeacherReportByIndex = function (index) {
     clearReportImage();
   }
 
+  const progEl = document.getElementById('reportProgressInput');
   progEl?.focus();
   document.querySelector('.meeting-layout-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
 window.deleteTeacherReportByIndex = async function (index) {
-  if (!confirm("Are you sure you want to delete this teaching report?")) return;
-
   const year = document.getElementById('meetingYearSelect')?.value || '2026/2027';
   const theme = document.getElementById('meetingThemeSelect')?.value || 'Theme 1';
   const week = document.getElementById('meetingWeekSelect')?.value || 'Week 1';
 
   const prefix = getMeetingStoragePrefix(year, theme, week);
   const reports = meetingCoordinationData[`${prefix}_reports`] || [];
+  const rep = reports[index];
+
+  if (!rep) return;
+
+  if (isTeacherUser()) {
+    const loggedTeacher = getLoggedInTeacherName();
+    if (loggedTeacher && rep.teacher && rep.teacher.toLowerCase() !== loggedTeacher.toLowerCase()) {
+      alert("You can only delete your own weekly report.");
+      return;
+    }
+  }
+
+  if (!confirm("Are you sure you want to delete this teaching report?")) return;
 
   reports.splice(index, 1);
   meetingCoordinationData[`${prefix}_reports`] = reports;
@@ -5261,10 +5484,9 @@ window.deleteTeacherReportByIndex = async function (index) {
 
 document.getElementById('btnResetReportForm')?.addEventListener('click', () => {
   editingReportId = null;
-  const progEl = document.getElementById('reportProgressInput');
-  const chalEl = document.getElementById('reportChallengesInput');
-  if (progEl) { progEl.value = ''; autoResizeTextarea(progEl); }
-  if (chalEl) { chalEl.value = ''; autoResizeTextarea(chalEl); }
+  populateMeetingReportSelects();
+  setRichEditorHtml('reportProgressInput', '');
+  setRichEditorHtml('reportChallengesInput', '');
   clearReportImage();
 });
 
@@ -5326,21 +5548,22 @@ function exportMeetingReportsToExcel() {
     ["Summary & Action Items", meetingRecord.summary || "-"],
     [],
     ["II. TEACHER WEEKLY TEACHING REPORTS"],
-    ["No", "Teacher", "Subject", "Class", "Learning Progress & Material", "Observations & Challenges", "Photo Documentation", "Updated At"]
+    ["No", "Teacher", "Learning Progress & Material", "Observations & Challenges", "Photo Documentation", "Updated At"]
   ];
 
   if (reportsList.length === 0) {
-    rows.push(["-", "No teacher reports submitted", "-", "-", "-", "-", "-", "-"]);
+    rows.push(["-", "No teacher reports submitted", "-", "-", "-", "-"]);
   } else {
     reportsList.forEach((rep, idx) => {
+      const allUrls = (Array.isArray(rep.imageUrls) && rep.imageUrls.length > 0)
+        ? rep.imageUrls
+        : (rep.imageUrl || rep.finalUrl || rep.photoUrl ? [rep.imageUrl || rep.finalUrl || rep.photoUrl] : []);
       rows.push([
         idx + 1,
         rep.teacher || "-",
-        rep.subject || "-",
-        rep.className || "-",
         rep.progress || "-",
         rep.challenges || "-",
-        rep.imageUrl || "-",
+        (allUrls.length > 0 ? allUrls.join(', ') : (rep.imageUrl || "-")),
         rep.updatedAt || "-"
       ]);
     });
@@ -5373,3 +5596,1168 @@ document.getElementById('btnSaveMeetingNotes')?.addEventListener('click', saveMe
 document.getElementById('btnSubmitTeacherReport')?.addEventListener('click', submitTeacherReport);
 document.getElementById('btnPrintMeetingReport')?.addEventListener('click', printMeetingReportsSheet);
 document.getElementById('btnExportMeetingExcel')?.addEventListener('click', exportMeetingReportsToExcel);
+
+// ==========================================================================
+// FLOATING RICH-TEXT TOOLBAR ENGINE (ONLY SHOWS WHEN EDITING TEXT)
+// ==========================================================================
+let currentRichEditorTarget = null;
+
+function initFloatingRichTextToolbar() {
+  const floatingToolbar = document.getElementById('floatingRichTextToolbar');
+  if (!floatingToolbar) return;
+
+  // Prevent toolbar buttons/inputs from stealing focus or losing selection
+  floatingToolbar.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+  });
+
+  // Handle all command buttons on floating toolbar
+  floatingToolbar.querySelectorAll('[data-command]').forEach(btn => {
+    if (btn._rtAttached) return;
+    btn._rtAttached = true;
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const cmd = btn.getAttribute('data-command');
+      const val = btn.getAttribute('data-value') || null;
+
+      if (currentRichEditorTarget) {
+        currentRichEditorTarget.focus();
+      }
+
+      document.execCommand(cmd, false, val);
+      updateToolbarState();
+    });
+  });
+
+  // Color input
+  const colorInput = document.getElementById('rtTextColorInput');
+  if (colorInput && !colorInput._rtAttached) {
+    colorInput._rtAttached = true;
+    colorInput.addEventListener('input', (e) => {
+      if (currentRichEditorTarget) currentRichEditorTarget.focus();
+      document.execCommand('foreColor', false, e.target.value);
+      updateToolbarState();
+    });
+  }
+
+  // Font family dropdown
+  const fontFamilySel = document.getElementById('rtFontFamily');
+  if (fontFamilySel && !fontFamilySel._rtAttached) {
+    fontFamilySel._rtAttached = true;
+    fontFamilySel.addEventListener('change', (e) => {
+      if (e.target.value) {
+        if (currentRichEditorTarget) currentRichEditorTarget.focus();
+        document.execCommand('fontName', false, e.target.value);
+        fontFamilySel.value = '';
+      }
+    });
+  }
+
+  // Font size dropdown
+  const fontSizeSel = document.getElementById('rtFontSize');
+  if (fontSizeSel && !fontSizeSel._rtAttached) {
+    fontSizeSel._rtAttached = true;
+    fontSizeSel.addEventListener('change', (e) => {
+      if (e.target.value) {
+        if (currentRichEditorTarget) currentRichEditorTarget.focus();
+        document.execCommand('fontSize', false, e.target.value);
+        fontSizeSel.value = '';
+      }
+    });
+  }
+
+  function updateToolbarState() {
+    floatingToolbar.querySelectorAll('[data-command]').forEach(btn => {
+      const cmd = btn.getAttribute('data-command');
+      try {
+        if (['bold', 'italic', 'underline', 'strikeThrough', 'insertUnorderedList', 'insertOrderedList'].includes(cmd)) {
+          if (document.queryCommandState(cmd)) {
+            btn.classList.add('active');
+          } else {
+            btn.classList.remove('active');
+          }
+        }
+      } catch (err) {}
+    });
+  }
+
+  function positionFloatingToolbar(targetEl) {
+    if (!floatingToolbar || !targetEl) {
+      if (floatingToolbar) floatingToolbar.style.display = 'none';
+      return;
+    }
+
+    const selection = window.getSelection();
+    let rect = null;
+
+    if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
+      const range = selection.getRangeAt(0);
+      rect = range.getBoundingClientRect();
+    }
+
+    if (!rect || rect.width === 0 || rect.height === 0) {
+      rect = targetEl.getBoundingClientRect();
+    }
+
+    if (!rect || (rect.top === 0 && rect.bottom === 0 && rect.width === 0)) {
+      floatingToolbar.style.display = 'none';
+      return;
+    }
+
+    floatingToolbar.style.display = 'flex';
+    updateToolbarState();
+
+    const toolbarWidth = floatingToolbar.offsetWidth || 340;
+    const toolbarHeight = floatingToolbar.offsetHeight || 42;
+
+    let top = rect.top - toolbarHeight - 8;
+    let left = rect.left + (rect.width / 2) - (toolbarWidth / 2);
+
+    if (top < 10) {
+      top = rect.bottom + 8;
+    }
+
+    const maxLeft = window.innerWidth - toolbarWidth - 12;
+    if (left < 12) left = 12;
+    if (left > maxLeft) left = maxLeft;
+
+    floatingToolbar.style.top = `${Math.max(10, top)}px`;
+    floatingToolbar.style.left = `${left}px`;
+  }
+
+  // Detect selection or focus in rich-text areas
+  document.addEventListener('selectionchange', () => {
+    const activeEl = document.activeElement;
+    if (activeEl && (activeEl.classList.contains('rich-text-editor') || activeEl.classList.contains('ts-cell-content') || activeEl.isContentEditable)) {
+      currentRichEditorTarget = activeEl;
+      positionFloatingToolbar(activeEl);
+    } else if (floatingToolbar && !floatingToolbar.contains(document.activeElement)) {
+      floatingToolbar.style.display = 'none';
+    }
+  });
+
+  document.addEventListener('focusin', (e) => {
+    const target = e.target;
+    if (target && (target.classList.contains('rich-text-editor') || target.classList.contains('ts-cell-content') || target.isContentEditable)) {
+      currentRichEditorTarget = target;
+      positionFloatingToolbar(target);
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    const target = e.target;
+    if (target && (target.classList.contains('rich-text-editor') || target.classList.contains('ts-cell-content') || target.isContentEditable)) {
+      currentRichEditorTarget = target;
+      positionFloatingToolbar(target);
+    } else if (floatingToolbar && !floatingToolbar.contains(e.target)) {
+      floatingToolbar.style.display = 'none';
+    }
+  });
+}
+
+// Enable horizontal drag-to-scroll on the pill tabs bar
+function enablePillsDragScroll() {
+  const slider = document.getElementById('teacherScheduleTabsList') || document.getElementById('scheduleTablePillTabs');
+  if (!slider || slider._dragAttached) return;
+  slider._dragAttached = true;
+
+  let isDown = false;
+  let startX;
+  let scrollLeft;
+
+  slider.addEventListener('mousedown', (e) => {
+    isDown = true;
+    slider.classList.add('dragging');
+    startX = e.pageX - slider.offsetLeft;
+    scrollLeft = slider.scrollLeft;
+  });
+
+  slider.addEventListener('mouseleave', () => {
+    isDown = false;
+    slider.classList.remove('dragging');
+  });
+
+  slider.addEventListener('mouseup', () => {
+    isDown = false;
+    slider.classList.remove('dragging');
+  });
+
+  slider.addEventListener('mousemove', (e) => {
+    if (!isDown) return;
+    const x = e.pageX - slider.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    if (Math.abs(walk) > 4) {
+      e.preventDefault();
+      slider.scrollLeft = scrollLeft - walk;
+    }
+  });
+
+  slider.addEventListener('wheel', (e) => {
+    if (e.deltaY !== 0) {
+      e.preventDefault();
+      slider.scrollLeft += e.deltaY;
+    }
+  }, { passive: false });
+}
+
+// ==========================================================================
+// ALL-IN-ONE TEACHER SCHEDULES MANAGEMENT (MASTER SCHEDULES HUB)
+// ==========================================================================
+let customTeacherSchedulesData = {};
+let activeScheduleTableId = 'table_prayer';
+let activeScheduleCell = null; // { rowIdx, colIdx, colId, td }
+let selectedScheduleRange = null; // { startRow, endRow, startCol, endCol }
+let isTeacherScheduleEditMode = false; // Controls visibility of column & row delete buttons
+
+const DEFAULT_SCHEDULE_TEMPLATES = [
+  {
+    id: "table_prayer",
+    title: "Daily Prayer Leader & Morning Motivation",
+    description: "Weekly rotation for staff morning prayer leading and motivational speech",
+    columns: [
+      { id: "col_day", name: "Day & Date" },
+      { id: "col_prayer", name: "Prayer Leader" },
+      { id: "col_motivation", name: "Morning Motivation Speaker" },
+      { id: "col_notes", name: "Venue / Remarks" }
+    ],
+    rows: [
+      { id: "r1", col_day: "Monday", col_prayer: "Mr. Syam", col_motivation: "Ms. Sarah", col_notes: "School Hall (07:15 - 07:30)" },
+      { id: "r2", col_day: "Tuesday", col_prayer: "Mr. Budi", col_motivation: "Ms. Maria", col_notes: "School Hall (07:15 - 07:30)" },
+      { id: "r3", col_day: "Wednesday", col_prayer: "Ms. Linda", col_motivation: "Mr. Anton", col_notes: "School Hall (07:15 - 07:30)" },
+      { id: "r4", col_day: "Thursday", col_prayer: "Mr. David", col_motivation: "Ms. Anita", col_notes: "School Hall (07:15 - 07:30)" },
+      { id: "r5", col_day: "Friday", col_prayer: "Ms. Cindy", col_motivation: "Mr. Hendra", col_notes: "School Hall (07:15 - 07:30)" }
+    ]
+  },
+  {
+    id: "table_duty",
+    title: "Teacher Duty Schedule (Jadwal Piket Guru)",
+    description: "Daily gate duty, student morning greeting, recess monitoring & dismissal coordination",
+    columns: [
+      { id: "col_day", name: "Day" },
+      { id: "col_gate", name: "Morning Gate / Lobby Duty (06:45 - 07:30)" },
+      { id: "col_recess", name: "Break & Cafeteria Supervision (09:40 - 10:00)" },
+      { id: "col_dismissal", name: "Dismissal Coordination (14:30 - 15:00)" }
+    ],
+    rows: [
+      { id: "r1", col_day: "Monday", col_gate: "Mr. Syam, Ms. Sarah", col_recess: "Mr. Budi, Ms. Linda", col_dismissal: "Mr. Anton" },
+      { id: "r2", col_day: "Tuesday", col_gate: "Mr. Anton, Ms. Maria", col_recess: "Mr. David, Ms. Cindy", col_dismissal: "Mr. Budi" },
+      { id: "r3", col_day: "Wednesday", col_gate: "Mr. David, Ms. Anita", col_recess: "Mr. Hendra, Ms. Sarah", col_dismissal: "Mr. Syam" },
+      { id: "r4", col_day: "Thursday", col_gate: "Mr. Hendra, Ms. Cindy", col_recess: "Mr. Syam, Ms. Anita", col_dismissal: "Mr. David" },
+      { id: "r5", col_day: "Friday", col_gate: "Mr. Budi, Ms. Linda", col_recess: "Mr. Anton, Ms. Maria", col_dismissal: "Mr. Hendra" }
+    ]
+  },
+  {
+    id: "table_admin",
+    title: "Teacher Administration & Meeting Schedule",
+    description: "Lesson plan submissions, module preparation, and department coordination meetings",
+    columns: [
+      { id: "col_day", name: "Day / Period" },
+      { id: "col_agenda", name: "Administrative Agenda / Task" },
+      { id: "col_department", name: "Department / Target Staff" },
+      { id: "col_deadline", name: "Deadline / Venue" }
+    ],
+    rows: [
+      { id: "r1", col_day: "Every Monday 15:00", col_agenda: "Weekly Evaluation & Subject Coordination Meeting", col_department: "All Teachers & Staff", col_deadline: "Conference Room" },
+      { id: "r2", col_day: "Every Wednesday 14:00", col_agenda: "Lesson Plan (RPP) & Assessment Material Submission", col_department: "Subject Teachers", col_deadline: "Curriculum Portal" },
+      { id: "r3", col_day: "Every Friday 13:00", col_agenda: "Homeroom Student Mentoring & Reward Nominations", col_department: "Homeroom Teachers", col_deadline: "Homeroom Panel" }
+    ]
+  }
+];
+
+function getTeacherScheduleTables() {
+  if (Array.isArray(customTeacherSchedulesData.tables) && customTeacherSchedulesData.tables.length > 0) {
+    return customTeacherSchedulesData.tables;
+  }
+  // Backward compatibility check for older data structures
+  const keys = Object.keys(customTeacherSchedulesData);
+  for (const k of keys) {
+    if (Array.isArray(customTeacherSchedulesData[k]) && customTeacherSchedulesData[k].length > 0) {
+      return customTeacherSchedulesData[k];
+    }
+  }
+  return DEFAULT_SCHEDULE_TEMPLATES;
+}
+
+// Initialize Firestore Listener for Custom Teacher Schedules
+function initTeacherSchedulesFirestoreListener() {
+  onSnapshot(doc(db, "schedules", "customTeacherSchedules"), (snapshot) => {
+    if (snapshot.exists()) {
+      customTeacherSchedulesData = snapshot.data() || {};
+    } else {
+      customTeacherSchedulesData = {};
+    }
+    const currentTab = document.querySelector('.tab-content.active')?.id;
+    if (currentTab === 'teacherSchedulesView') {
+      renderTeacherSchedulesView();
+    }
+  }, (err) => {
+    console.error("Error listening to customTeacherSchedules:", err);
+  });
+}
+
+function initTeacherSchedulesView() {
+  renderTeacherSchedulesView();
+}
+
+function renderTeacherSchedulesView() {
+  const tables = getTeacherScheduleTables();
+  const isSuperAdmin = isAdminUser();
+
+  const adminTabActions = document.getElementById('teacherScheduleAdminTabActions');
+  const tableFooterActions = document.getElementById('tsTableFooterActions');
+
+  if (adminTabActions) adminTabActions.style.display = isSuperAdmin ? 'flex' : 'none';
+  if (tableFooterActions) tableFooterActions.style.display = isSuperAdmin ? 'flex' : 'none';
+
+  // Ensure valid activeScheduleTableId
+  if (!tables.some(t => t.id === activeScheduleTableId)) {
+    activeScheduleTableId = tables[0]?.id || 'table_prayer';
+  }
+
+  // 1. Render Table Selector Pills
+  renderTeacherScheduleTabs(tables);
+
+  // 2. Render Active Table Content
+  const activeTable = tables.find(t => t.id === activeScheduleTableId) || tables[0];
+  if (activeTable) {
+    renderTeacherScheduleTable(activeTable, isSuperAdmin);
+  }
+}
+
+function renderTeacherScheduleTabs(tables) {
+  const container = document.getElementById('teacherScheduleTabsList') || document.getElementById('scheduleTablePillTabs');
+  if (!container) return;
+
+  let html = '';
+  tables.forEach(table => {
+    const isActive = table.id === activeScheduleTableId;
+    html += `
+      <button type="button" class="schedule-table-pill ${isActive ? 'active' : ''}" onclick="selectTeacherScheduleTable('${table.id}')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+          <line x1="3" y1="9" x2="21" y2="9"/>
+          <line x1="9" y1="21" x2="9" y2="9"/>
+        </svg>
+        <span>${escapeHtml(table.title || 'Schedule Table')}</span>
+      </button>
+    `;
+  });
+
+  container.innerHTML = html;
+  enablePillsDragScroll();
+}
+
+window.selectTeacherScheduleTable = function (tableId) {
+  activeScheduleTableId = tableId;
+  const tables = getTeacherScheduleTables();
+  renderTeacherScheduleTabs(tables);
+  const activeTable = tables.find(t => t.id === tableId);
+  if (activeTable) {
+    renderTeacherScheduleTable(activeTable, isAdminUser());
+  }
+};
+
+// Toggle Table Edit Mode (Shows/Hides delete buttons on columns & rows)
+window.toggleTeacherScheduleEditMode = function () {
+  isTeacherScheduleEditMode = !isTeacherScheduleEditMode;
+  updateScheduleEditModeUI();
+};
+
+function updateScheduleEditModeUI() {
+  const tableEl = document.getElementById('teacherScheduleDataTable');
+  const btn = document.getElementById('btnToggleEditScheduleTable');
+  const btnText = document.getElementById('btnToggleEditScheduleTableText');
+
+  if (tableEl) {
+    if (isTeacherScheduleEditMode) {
+      tableEl.classList.add('ts-editing-mode');
+    } else {
+      tableEl.classList.remove('ts-editing-mode');
+    }
+  }
+
+  if (btn) {
+    if (isTeacherScheduleEditMode) {
+      btn.classList.add('active');
+      if (btnText) btnText.textContent = 'Done Editing';
+    } else {
+      btn.classList.remove('active');
+      if (btnText) btnText.textContent = 'Edit Table';
+    }
+  }
+}
+
+function renderTeacherScheduleTable(table, isSuperAdmin) {
+  const titleEl = document.getElementById('tsActiveTableTitle');
+  const descEl = document.getElementById('tsActiveTableDescription');
+  const tableEl = document.getElementById('teacherScheduleDataTable');
+
+  if (titleEl) {
+    titleEl.textContent = table.title || 'Teacher Schedule';
+    titleEl.contentEditable = isSuperAdmin ? "true" : "false";
+  }
+  if (descEl) {
+    descEl.textContent = table.description || '';
+    descEl.contentEditable = isSuperAdmin ? "true" : "false";
+  }
+
+  if (!tableEl) return;
+
+  const cols = table.columns || [];
+  const rows = table.rows || [];
+
+  // Render THEAD
+  let theadHtml = `<tr><th style="width: 54px; text-align: center;">#</th>`;
+  cols.forEach((col, cIdx) => {
+    theadHtml += `
+      <th>
+        <div class="ts-col-header-content">
+          <span class="ts-col-title" ${isSuperAdmin ? 'contenteditable="true"' : ''} data-col-idx="${cIdx}" title="${isSuperAdmin ? 'Click to edit column header name' : ''}">${escapeHtml(col.name || 'Column')}</span>
+          ${isSuperAdmin ? `
+            <button type="button" class="ts-col-del-btn" onclick="deleteScheduleColumn(${cIdx})" title="Delete column '${escapeHtml(col.name)}'">✕</button>
+          ` : ''}
+        </div>
+      </th>
+    `;
+  });
+  if (isSuperAdmin) {
+    theadHtml += `
+      <th class="ts-col-add-btn-cell" style="width: 38px; text-align: center; background: #f1f5f9;">
+        <button type="button" class="action-btn ts-btn-secondary" onclick="addScheduleColumn()" title="Add Column" style="padding: 2px 6px; font-size: 11px; min-width: 24px; border: 1px dashed #cbd5e1;">+</button>
+      </th>
+    `;
+  }
+  theadHtml += `</tr>`;
+
+  // Render TBODY (supporting cell merge / colspan / rowspan)
+  let tbodyHtml = '';
+  if (rows.length === 0) {
+    const colSpan = cols.length + (isSuperAdmin ? 2 : 1);
+    tbodyHtml = `<tr><td colspan="${colSpan}" style="text-align: center; padding: 24px; color: #94a3b8; font-style: italic;">No rows added yet. ${isSuperAdmin ? 'Click "+ Add Row" to start adding schedule entries.' : ''}</td></tr>`;
+  } else {
+    rows.forEach((row, rIdx) => {
+      tbodyHtml += `<tr data-row-idx="${rIdx}" data-row-id="${escapeHtml(row.id || String(rIdx))}">`;
+      tbodyHtml += `
+        <td class="ts-row-handle-cell">
+          <div class="ts-row-handle-content">
+            <span>${rIdx + 1}</span>
+            ${isSuperAdmin ? `
+              <button type="button" class="ts-row-del-btn" onclick="deleteScheduleRow(${rIdx})" title="Delete row #${rIdx + 1}">✕</button>
+            ` : ''}
+          </div>
+        </td>
+      `;
+
+      cols.forEach((col, cIdx) => {
+        const cellProps = row._cellProps?.[col.id] || {};
+        if (cellProps.hidden) {
+          return; // Skip rendering hidden cell because it is subsumed by a merged cell
+        }
+
+        const colspan = cellProps.colspan || 1;
+        const rowspan = cellProps.rowspan || 1;
+        const isMerged = colspan > 1 || rowspan > 1;
+        const cellVal = row[col.id] || '';
+
+        tbodyHtml += `
+          <td class="ts-cell-td ${isMerged ? 'ts-merged-cell' : ''}" data-row-idx="${rIdx}" data-col-idx="${cIdx}" data-col-id="${escapeHtml(col.id)}" colspan="${colspan}" rowspan="${rowspan}">
+            <div class="ts-cell-content rich-text-editor" contenteditable="true" data-col-id="${escapeHtml(col.id)}" data-placeholder="Enter details...">${cellVal}</div>
+          </td>
+        `;
+      });
+
+      if (isSuperAdmin) {
+        tbodyHtml += `<td class="ts-col-add-btn-cell" style="text-align: center; background: #fafafa;"></td>`;
+      }
+      tbodyHtml += `</tr>`;
+    });
+  }
+
+  tableEl.innerHTML = `<thead>${theadHtml}</thead><tbody>${tbodyHtml}</tbody>`;
+
+  // Attach selection, merge listeners, and edit mode state
+  setupScheduleCellInteractions();
+  initFloatingRichTextToolbar();
+  updateScheduleEditModeUI();
+}
+
+// Setup cell selection for click & drag merge
+function setupScheduleCellInteractions() {
+  const tableEl = document.getElementById('teacherScheduleDataTable');
+  if (!tableEl) return;
+
+  let isMouseDown = false;
+  let anchorCell = null;
+
+  tableEl.querySelectorAll('tbody td.ts-cell-td').forEach(td => {
+    td.addEventListener('mousedown', (e) => {
+      if (e.target.classList.contains('ts-row-del-btn')) return;
+      isMouseDown = true;
+      const rIdx = parseInt(td.getAttribute('data-row-idx'), 10);
+      const cIdx = parseInt(td.getAttribute('data-col-idx'), 10);
+      const colId = td.getAttribute('data-col-id');
+      anchorCell = { rIdx, cIdx, colId, td };
+      activeScheduleCell = anchorCell;
+      selectedScheduleRange = { startRow: rIdx, endRow: rIdx, startCol: cIdx, endCol: cIdx };
+      updateCellSelectionHighlight();
+    });
+
+    td.addEventListener('mouseenter', () => {
+      if (!isMouseDown || !anchorCell) return;
+      const rIdx = parseInt(td.getAttribute('data-row-idx'), 10);
+      const cIdx = parseInt(td.getAttribute('data-col-idx'), 10);
+      selectedScheduleRange = {
+        startRow: Math.min(anchorCell.rIdx, rIdx),
+        endRow: Math.max(anchorCell.rIdx, rIdx),
+        startCol: Math.min(anchorCell.cIdx, cIdx),
+        endCol: Math.max(anchorCell.cIdx, cIdx)
+      };
+      updateCellSelectionHighlight();
+    });
+
+    td.addEventListener('focusin', () => {
+      const rIdx = parseInt(td.getAttribute('data-row-idx'), 10);
+      const cIdx = parseInt(td.getAttribute('data-col-idx'), 10);
+      const colId = td.getAttribute('data-col-id');
+      activeScheduleCell = { rIdx, cIdx, colId, td };
+    });
+  });
+
+  document.addEventListener('mouseup', () => {
+    isMouseDown = false;
+  });
+}
+
+function updateCellSelectionHighlight() {
+  document.querySelectorAll('#teacherScheduleDataTable tbody td.ts-cell-td').forEach(td => {
+    const rIdx = parseInt(td.getAttribute('data-row-idx'), 10);
+    const cIdx = parseInt(td.getAttribute('data-col-idx'), 10);
+    if (selectedScheduleRange &&
+        rIdx >= selectedScheduleRange.startRow && rIdx <= selectedScheduleRange.endRow &&
+        cIdx >= selectedScheduleRange.startCol && cIdx <= selectedScheduleRange.endCol &&
+        (selectedScheduleRange.startRow !== selectedScheduleRange.endRow || selectedScheduleRange.startCol !== selectedScheduleRange.endCol)) {
+      td.classList.add('ts-cell-selected');
+    } else {
+      td.classList.remove('ts-cell-selected');
+    }
+  });
+}
+
+// Merge Cells Functionality
+window.mergeSelectedCells = async function () {
+  const tables = JSON.parse(JSON.stringify(getTeacherScheduleTables()));
+  const table = tables.find(t => t.id === activeScheduleTableId);
+  if (!table) return;
+
+  const cols = table.columns || [];
+  const rows = table.rows || [];
+
+  let r1, r2, c1, c2;
+  if (selectedScheduleRange && (selectedScheduleRange.startRow !== selectedScheduleRange.endRow || selectedScheduleRange.startCol !== selectedScheduleRange.endCol)) {
+    r1 = selectedScheduleRange.startRow;
+    r2 = selectedScheduleRange.endRow;
+    c1 = selectedScheduleRange.startCol;
+    c2 = selectedScheduleRange.endCol;
+  } else if (activeScheduleCell) {
+    r1 = activeScheduleCell.rIdx;
+    c1 = activeScheduleCell.cIdx;
+    const direction = prompt("Merge options:\n1. Merge with cell to the Right (type 'right' or '1')\n2. Merge with cell Below (type 'down' or '2')", "1");
+    if (!direction) return;
+    if (direction.trim() === '2' || direction.toLowerCase().includes('down')) {
+      if (r1 + 1 >= rows.length) {
+        alert("No cell below to merge with.");
+        return;
+      }
+      r2 = r1 + 1;
+      c2 = c1;
+    } else {
+      if (c1 + 1 >= cols.length) {
+        alert("No cell to the right to merge with.");
+        return;
+      }
+      r2 = r1;
+      c2 = c1 + 1;
+    }
+  } else {
+    alert("Please click or drag to select cells to merge.");
+    return;
+  }
+
+  const masterCol = cols[c1];
+  if (!masterCol) return;
+
+  // Collect text contents from all cells in rectangle
+  const mergedTextParts = [];
+  for (let r = r1; r <= r2; r++) {
+    const row = rows[r];
+    if (!row) continue;
+    if (!row._cellProps) row._cellProps = {};
+    for (let c = c1; c <= c2; c++) {
+      const col = cols[c];
+      if (!col) continue;
+      if (r === r1 && c === c1) {
+        if (row[col.id] && row[col.id].trim()) mergedTextParts.push(row[col.id].trim());
+      } else {
+        if (row[col.id] && row[col.id].trim()) mergedTextParts.push(row[col.id].trim());
+        row._cellProps[col.id] = { hidden: true, masterRow: r1, masterCol: c1 };
+      }
+    }
+  }
+
+  const masterRow = rows[r1];
+  masterRow._cellProps[masterCol.id] = {
+    colspan: c2 - c1 + 1,
+    rowspan: r2 - r1 + 1
+  };
+  masterRow[masterCol.id] = mergedTextParts.join('<br>');
+
+  selectedScheduleRange = null;
+  await saveTeacherScheduleTables(tables);
+};
+
+// Unmerge Active Cell Functionality
+window.unmergeActiveCell = async function () {
+  const tables = JSON.parse(JSON.stringify(getTeacherScheduleTables()));
+  const table = tables.find(t => t.id === activeScheduleTableId);
+  if (!table) return;
+
+  const cols = table.columns || [];
+  const rows = table.rows || [];
+
+  let targetRowIdx = activeScheduleCell?.rIdx;
+  let targetColId = activeScheduleCell?.colId;
+
+  if (targetRowIdx === undefined || !targetColId) {
+    alert("Please click on a merged cell to unmerge it.");
+    return;
+  }
+
+  const row = rows[targetRowIdx];
+  if (!row || !row._cellProps) {
+    alert("Selected cell is not merged.");
+    return;
+  }
+
+  let cellProp = row._cellProps[targetColId];
+  let masterRowIdx = targetRowIdx;
+  let masterColId = targetColId;
+
+  // If clicked on a hidden cell referencing master
+  if (cellProp?.hidden && cellProp.masterRow !== undefined) {
+    masterRowIdx = cellProp.masterRow;
+    masterColId = cols[cellProp.masterCol]?.id || targetColId;
+    cellProp = rows[masterRowIdx]?._cellProps?.[masterColId];
+  }
+
+  if (!cellProp || (!cellProp.colspan && !cellProp.rowspan && cellProp.colspan <= 1 && cellProp.rowspan <= 1)) {
+    alert("Selected cell is not merged.");
+    return;
+  }
+
+  const colspan = cellProp.colspan || 1;
+  const rowspan = cellProp.rowspan || 1;
+  const masterColIdx = cols.findIndex(c => c.id === masterColId);
+
+  // Clear merge properties on master and all subsumed cells
+  for (let r = masterRowIdx; r < masterRowIdx + rowspan && r < rows.length; r++) {
+    const rObj = rows[r];
+    if (!rObj || !rObj._cellProps) continue;
+    for (let c = masterColIdx; c < masterColIdx + colspan && c < cols.length; c++) {
+      const cObj = cols[c];
+      if (!cObj) continue;
+      delete rObj._cellProps[cObj.id];
+    }
+  }
+
+  selectedScheduleRange = null;
+  await saveTeacherScheduleTables(tables);
+};
+
+// Add New Column
+window.addScheduleColumn = function () {
+  if (!isAdminUser()) return;
+  const colName = prompt("Enter new column header name:", "Remarks / Notes");
+  if (!colName || !colName.trim()) return;
+
+  const tables = JSON.parse(JSON.stringify(getTeacherScheduleTables()));
+  const table = tables.find(t => t.id === activeScheduleTableId);
+  if (!table) return;
+
+  const newColId = 'col_' + Date.now();
+  if (!Array.isArray(table.columns)) table.columns = [];
+  table.columns.push({ id: newColId, name: colName.trim() });
+
+  saveTeacherScheduleTables(tables);
+};
+
+// Delete Column
+window.deleteScheduleColumn = function (colIndex) {
+  if (!isAdminUser()) return;
+
+  const tables = JSON.parse(JSON.stringify(getTeacherScheduleTables()));
+  const table = tables.find(t => t.id === activeScheduleTableId);
+  if (!table || !Array.isArray(table.columns) || !table.columns[colIndex]) return;
+
+  const colName = table.columns[colIndex].name || `Column ${colIndex + 1}`;
+  if (!confirm(`Are you sure you want to delete column "${colName}"? Any data in this column will be removed.`)) return;
+
+  const colId = table.columns[colIndex].id;
+  table.columns.splice(colIndex, 1);
+
+  // Clean cell data from rows
+  if (Array.isArray(table.rows)) {
+    table.rows.forEach(r => {
+      delete r[colId];
+      if (r._cellProps) delete r._cellProps[colId];
+    });
+  }
+
+  saveTeacherScheduleTables(tables);
+};
+
+// Add New Row
+window.addScheduleRow = function () {
+  const tables = JSON.parse(JSON.stringify(getTeacherScheduleTables()));
+  const table = tables.find(t => t.id === activeScheduleTableId);
+  if (!table) return;
+
+  if (!Array.isArray(table.rows)) table.rows = [];
+  const newRow = { id: 'r_' + Date.now() };
+  if (Array.isArray(table.columns)) {
+    table.columns.forEach(c => {
+      newRow[c.id] = '';
+    });
+  }
+  table.rows.push(newRow);
+
+  saveTeacherScheduleTables(tables);
+};
+
+// Delete Row
+window.deleteScheduleRow = function (rowIndex) {
+  const tables = JSON.parse(JSON.stringify(getTeacherScheduleTables()));
+  const table = tables.find(t => t.id === activeScheduleTableId);
+  if (!table || !Array.isArray(table.rows) || !table.rows[rowIndex]) return;
+
+  if (!confirm(`Are you sure you want to delete Row #${rowIndex + 1}?`)) return;
+
+  table.rows.splice(rowIndex, 1);
+  saveTeacherScheduleTables(tables);
+};
+
+// Delete Entire Schedule Table
+window.deleteScheduleTable = function () {
+  if (!isAdminUser()) return;
+
+  const tables = JSON.parse(JSON.stringify(getTeacherScheduleTables()));
+  const targetIdx = tables.findIndex(t => t.id === activeScheduleTableId);
+  if (targetIdx === -1) return;
+
+  const tableTitle = tables[targetIdx].title || 'this table';
+  if (!confirm(`Are you sure you want to delete the schedule table "${tableTitle}"? This cannot be undone.`)) return;
+
+  tables.splice(targetIdx, 1);
+  activeScheduleTableId = tables[0]?.id || 'table_prayer';
+
+  saveTeacherScheduleTables(tables);
+};
+
+// Harvest Current Table DOM Data & Save to Firestore
+async function saveActiveScheduleTable() {
+  const tables = JSON.parse(JSON.stringify(getTeacherScheduleTables()));
+  const table = tables.find(t => t.id === activeScheduleTableId);
+  if (!table) return;
+
+  // Title and Description
+  const titleEl = document.getElementById('tsActiveTableTitle');
+  const descEl = document.getElementById('tsActiveTableDescription');
+  if (titleEl && titleEl.textContent) table.title = titleEl.textContent.trim();
+  if (descEl && descEl.textContent) table.description = descEl.textContent.trim();
+
+  // Column titles
+  document.querySelectorAll('#teacherScheduleDataTable th .ts-col-title').forEach(colEl => {
+    const idx = parseInt(colEl.getAttribute('data-col-idx'), 10);
+    if (!isNaN(idx) && table.columns && table.columns[idx]) {
+      table.columns[idx].name = colEl.textContent.trim();
+    }
+  });
+
+  // Row cell contents and preserved _cellProps
+  const rows = [];
+  document.querySelectorAll('#teacherScheduleDataTable tbody tr').forEach((tr, rIdx) => {
+    const rowId = tr.getAttribute('data-row-id') || `r_${rIdx + 1}`;
+    const origRow = table.rows?.[rIdx] || {};
+    const rowData = { id: rowId, _cellProps: origRow._cellProps || {} };
+
+    tr.querySelectorAll('.ts-cell-td').forEach(td => {
+      const colId = td.getAttribute('data-col-id');
+      const cellContent = td.querySelector('.ts-cell-content');
+      if (colId && cellContent) {
+        rowData[colId] = cellContent.innerHTML.trim();
+      }
+    });
+
+    // Preserve any hidden cells in origRow that were not directly rendered as separate cells
+    if (table.columns) {
+      table.columns.forEach(col => {
+        if (rowData[col.id] === undefined && origRow[col.id] !== undefined) {
+          rowData[col.id] = origRow[col.id];
+        }
+      });
+    }
+
+    rows.push(rowData);
+  });
+  table.rows = rows;
+
+  const btnSave = document.getElementById('btnSaveActiveScheduleTable');
+  try {
+    if (btnSave) {
+      btnSave.disabled = true;
+      btnSave.innerHTML = `<span>Saving Schedule...</span>`;
+    }
+
+    await saveTeacherScheduleTables(tables);
+    alert("Teacher Schedule successfully saved!");
+  } catch (err) {
+    console.error("Error saving schedule table:", err);
+    alert("Failed to save schedule table: " + err.message);
+  } finally {
+    if (btnSave) {
+      btnSave.disabled = false;
+      btnSave.innerHTML = `
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+          <polyline points="17 21 17 13 7 13 7 21" />
+          <polyline points="7 3 7 8 15 8" />
+        </svg>
+        <span>Save Changes</span>
+      `;
+    }
+  }
+}
+
+async function saveTeacherScheduleTables(tables) {
+  customTeacherSchedulesData.tables = tables;
+  await setDoc(doc(db, "schedules", "customTeacherSchedules"), { tables: tables }, { merge: true });
+  renderTeacherSchedulesView();
+}
+
+// Excel Import Handler
+function initScheduleExcelImport() {
+  const fileInput = document.getElementById('scheduleExcelFileInput');
+  const importBtn = document.getElementById('btnImportScheduleExcel');
+
+  if (importBtn && fileInput && !importBtn._importAttached) {
+    importBtn._importAttached = true;
+    importBtn.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      try {
+        const data = new Uint8Array(await file.arrayBuffer());
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const rowsAoA = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+
+        if (!rowsAoA || rowsAoA.length === 0) {
+          alert("The uploaded Excel file contains no data.");
+          return;
+        }
+
+        // Find first non-empty row as header
+        let headerIdx = 0;
+        while (headerIdx < rowsAoA.length && (!rowsAoA[headerIdx] || rowsAoA[headerIdx].filter(x => String(x).trim()).length === 0)) {
+          headerIdx++;
+        }
+        if (headerIdx >= rowsAoA.length) {
+          alert("No valid rows found in Excel sheet.");
+          return;
+        }
+
+        const headerRow = rowsAoA[headerIdx];
+        const columns = [];
+        headerRow.forEach((colVal, colI) => {
+          const name = String(colVal).trim() || `Column ${colI + 1}`;
+          columns.push({
+            id: `col_${colI + 1}`,
+            name: name
+          });
+        });
+
+        if (columns.length === 0) {
+          alert("No columns detected in the Excel sheet.");
+          return;
+        }
+
+        const rows = [];
+        for (let i = headerIdx + 1; i < rowsAoA.length; i++) {
+          const rowData = rowsAoA[i];
+          if (!rowData || rowData.every(cell => String(cell).trim() === '')) continue;
+          const newRow = { id: `r_${i}` };
+          columns.forEach((col, cIdx) => {
+            newRow[col.id] = String(rowData[cIdx] || '').replace(/\r\n|\n/g, '<br>');
+          });
+          rows.push(newRow);
+        }
+
+        if (rows.length === 0) {
+          rows.push({ id: 'r1' }, { id: 'r2' }, { id: 'r3' });
+        }
+
+        const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+        const replaceCurrent = confirm(`Import "${fileNameWithoutExt}" (${columns.length} columns, ${rows.length} rows)?\n\n- Click OK to replace the CURRENT schedule table\n- Click Cancel to create as a NEW schedule table`);
+
+        const tables = JSON.parse(JSON.stringify(getTeacherScheduleTables()));
+
+        if (replaceCurrent) {
+          const activeTable = tables.find(t => t.id === activeScheduleTableId);
+          if (activeTable) {
+            activeTable.columns = columns;
+            activeTable.rows = rows;
+          } else {
+            tables.push({
+              id: 'table_' + Date.now(),
+              title: fileNameWithoutExt,
+              description: 'Imported from Excel',
+              columns,
+              rows
+            });
+          }
+        } else {
+          const newId = 'table_' + Date.now();
+          tables.push({
+            id: newId,
+            title: fileNameWithoutExt,
+            description: 'Imported from Excel',
+            columns,
+            rows
+          });
+          activeScheduleTableId = newId;
+        }
+
+        await saveTeacherScheduleTables(tables);
+        alert(`Excel schedule "${fileNameWithoutExt}" successfully imported!`);
+      } catch (err) {
+        console.error("Error importing Excel:", err);
+        alert("Failed to import Excel: " + err.message);
+      } finally {
+        fileInput.value = '';
+      }
+    });
+  }
+}
+
+// Create New Schedule Table Modal Handlers
+function openCreateScheduleTableModal() {
+  const modal = document.getElementById('createScheduleTableModal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeCreateScheduleTableModal() {
+  const modal = document.getElementById('createScheduleTableModal');
+  if (modal) modal.style.display = 'none';
+}
+
+document.getElementById('btnAddNewCustomScheduleTable')?.addEventListener('click', openCreateScheduleTableModal);
+document.getElementById('btnCancelCreateScheduleTable')?.addEventListener('click', closeCreateScheduleTableModal);
+
+document.getElementById('createScheduleTableForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const title = document.getElementById('newScheduleTitleInput')?.value.trim() || '';
+  const desc = document.getElementById('newScheduleDescInput')?.value.trim() || '';
+  const colsInput = document.getElementById('newScheduleColumnsInput')?.value.trim() || '';
+
+  if (!title) {
+    alert("Please enter a schedule table title.");
+    return;
+  }
+
+  const cols = colsInput.split(',').map((c, i) => ({
+    id: 'col_' + (i + 1),
+    name: c.trim()
+  })).filter(c => c.name);
+
+  if (cols.length === 0) {
+    alert("Please enter at least one column header.");
+    return;
+  }
+
+  const newTableId = 'table_' + Date.now();
+  const newTable = {
+    id: newTableId,
+    title,
+    description: desc,
+    columns: cols,
+    rows: [
+      { id: 'r1' },
+      { id: 'r2' },
+      { id: 'r3' },
+      { id: 'r4' },
+      { id: 'r5' }
+    ]
+  };
+
+  const tables = JSON.parse(JSON.stringify(getTeacherScheduleTables()));
+  tables.push(newTable);
+  activeScheduleTableId = newTableId;
+
+  try {
+    await saveTeacherScheduleTables(tables);
+    closeCreateScheduleTableModal();
+    document.getElementById('createScheduleTableForm').reset();
+    alert(`New Schedule Table "${title}" created successfully!`);
+  } catch (err) {
+    console.error("Error creating schedule table:", err);
+    alert("Failed to create table: " + err.message);
+  }
+});
+
+// Printable Teacher Schedule Sheet (with merge support)
+function printTeacherScheduleSheet() {
+  const tables = getTeacherScheduleTables();
+  const activeTable = tables.find(t => t.id === activeScheduleTableId) || tables[0];
+
+  if (!activeTable) {
+    alert("No active schedule table to print.");
+    return;
+  }
+
+  const container = document.getElementById('printableTeacherScheduleArea');
+  if (!container) return;
+
+  const cols = activeTable.columns || [];
+  const rows = activeTable.rows || [];
+
+  let thHtml = `<tr><th style="width: 44px; text-align: center; border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; font-size: 9.5pt;">#</th>`;
+  cols.forEach(col => {
+    thHtml += `<th style="border: 1px solid #cbd5e1; padding: 6px 8px; background: #f1f5f9; text-align: left; font-size: 9.5pt;">${escapeHtml(col.name)}</th>`;
+  });
+  thHtml += `</tr>`;
+
+  let tbHtml = '';
+  if (rows.length === 0) {
+    tbHtml = `<tr><td colspan="${cols.length + 1}" style="text-align: center; padding: 12px; color: #94a3b8; font-style: italic;">No entries recorded.</td></tr>`;
+  } else {
+    rows.forEach((row, idx) => {
+      tbHtml += `<tr>`;
+      tbHtml += `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 9pt; font-weight: bold;">${idx + 1}</td>`;
+      cols.forEach(col => {
+        const cellProps = row._cellProps?.[col.id] || {};
+        if (cellProps.hidden) return; // Skip merged cell
+        const colspan = cellProps.colspan || 1;
+        const rowspan = cellProps.rowspan || 1;
+        tbHtml += `<td colspan="${colspan}" rowspan="${rowspan}" style="border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 9pt; vertical-align: top;">${row[col.id] || '-'}</td>`;
+      });
+      tbHtml += `</tr>`;
+    });
+  }
+
+  container.innerHTML = `
+    <div style="padding: 10px; font-family: 'Plus Jakarta Sans', Arial, sans-serif; color: #0f172a;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 14px;">
+        <div>
+          <h1 style="font-size: 16pt; font-weight: 800; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.02em;">${escapeHtml(activeTable.title || 'TEACHER SCHEDULE')}</h1>
+          <p style="font-size: 9.5pt; color: #475569; margin: 0;">${escapeHtml(activeTable.description || '')}</p>
+        </div>
+        <div style="text-align: right; font-size: 9pt; color: #334155; line-height: 1.4;">
+          <div style="font-size: 8.5pt; color: #64748b;">Printed on: ${new Date().toLocaleDateString()}</div>
+        </div>
+      </div>
+
+      <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+        <thead>${thHtml}</thead>
+        <tbody>${tbHtml}</tbody>
+      </table>
+
+      <div style="display: flex; justify-content: space-between; margin-top: 36px; padding: 0 20px; font-size: 9pt;">
+        <div style="text-align: center;">
+          <div>Prepared by,</div>
+          <div style="margin-top: 50px; border-bottom: 1px solid #0f172a; width: 160px;"></div>
+          <div style="margin-top: 4px; font-weight: bold;">Teacher Coordinator</div>
+        </div>
+        <div style="text-align: center;">
+          <div>Acknowledged by,</div>
+          <div style="margin-top: 50px; border-bottom: 1px solid #0f172a; width: 160px;"></div>
+          <div style="margin-top: 4px; font-weight: bold;">School Principal</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Set landscape orientation dynamically for printing schedule
+  let styleEl = document.getElementById('dynamicPrintPageStyle');
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = 'dynamicPrintPageStyle';
+    document.head.appendChild(styleEl);
+  }
+  styleEl.innerHTML = `@page { size: landscape; margin: 12mm; }`;
+
+  window.print();
+}
+
+// Export Teacher Schedule to Excel
+function exportTeacherScheduleToExcel() {
+  const tables = getTeacherScheduleTables();
+  const activeTable = tables.find(t => t.id === activeScheduleTableId) || tables[0];
+
+  if (!activeTable) {
+    alert("No schedule table to export.");
+    return;
+  }
+
+  const cols = activeTable.columns || [];
+  const rows = activeTable.rows || [];
+
+  const aoa = [
+    [activeTable.title ? activeTable.title.toUpperCase() : "TEACHER SCHEDULE"],
+    [activeTable.description || ""],
+    [],
+    ["No", ...cols.map(c => c.name || "Column")]
+  ];
+
+  if (rows.length === 0) {
+    aoa.push(["-", ...cols.map(() => "No entries")]);
+  } else {
+    rows.forEach((r, idx) => {
+      const rowValues = cols.map(c => {
+        const val = r[c.id] || "";
+        const tmp = document.createElement("div");
+        tmp.innerHTML = val;
+        return tmp.textContent || tmp.innerText || "";
+      });
+      aoa.push([idx + 1, ...rowValues]);
+    });
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = XLSX.utils.book_new();
+  const safeSheetName = (activeTable.title || "Schedule").substring(0, 30);
+  XLSX.utils.book_append_sheet(wb, ws, safeSheetName);
+
+  const safeTitle = (activeTable.title || "Schedule").replace(/\s+/g, '_').substring(0, 25);
+  XLSX.writeFile(wb, `${safeTitle}.xlsx`);
+}
+
+// Teacher Schedules Event Listeners
+document.getElementById('btnQuickAddScheduleColumn')?.addEventListener('click', addScheduleColumn);
+document.getElementById('btnQuickAddScheduleRow')?.addEventListener('click', addScheduleRow);
+document.getElementById('btnMergeCells')?.addEventListener('click', mergeSelectedCells);
+document.getElementById('btnUnmergeCells')?.addEventListener('click', unmergeActiveCell);
+document.getElementById('btnToggleEditScheduleTable')?.addEventListener('click', toggleTeacherScheduleEditMode);
+document.getElementById('btnDeleteActiveScheduleTable')?.addEventListener('click', deleteScheduleTable);
+document.getElementById('btnSaveActiveScheduleTable')?.addEventListener('click', saveActiveScheduleTable);
+document.getElementById('btnPrintTeacherSchedule')?.addEventListener('click', printTeacherScheduleSheet);
+document.getElementById('btnExportTeacherScheduleExcel')?.addEventListener('click', exportTeacherScheduleToExcel);
+
+// Initialize Components on Load
+initFloatingRichTextToolbar();
+initTeacherSchedulesFirestoreListener();
+initScheduleExcelImport();
+

@@ -5265,11 +5265,25 @@ async function syncScoresToExamScores(specificQuiz = null, specificSubject = nul
 }
 window.syncScoresToExamScores = syncScoresToExamScores;
 
+let currentLedgerResults = [];
+let currentLedgerMeta = { subject: '', studentClass: '', quiz: '', sortOption: '' };
+
 function renderLedgerRows(tbody, ledgerResults, sortOption, selectedQuiz) {
+    const selectedSubject = document.getElementById('ledgerSubjectSelect')?.value || '';
+    const selectedClass = document.getElementById('ledgerClassSelect')?.value || '';
+    
+    currentLedgerResults = ledgerResults ? [...ledgerResults] : [];
+    currentLedgerMeta = {
+        subject: selectedSubject,
+        studentClass: selectedClass,
+        quiz: selectedQuiz,
+        sortOption: sortOption
+    };
+
     tbody.innerHTML = "";
     ledgerResults.sort((a, b) => {
-        if (sortOption === 'score_desc') return (b.score || 0) - (a.score || 0);
-        if (sortOption === 'score_asc') return (a.score || 0) - (b.score || 0);
+        if (sortOption === 'score_desc') return (Number(b.score) || 0) - (Number(a.score) || 0);
+        if (sortOption === 'score_asc') return (Number(a.score) || 0) - (Number(b.score) || 0);
         return (a.studentName || '').localeCompare(b.studentName || '');
     });
 
@@ -5289,6 +5303,190 @@ function renderLedgerRows(tbody, ledgerResults, sortOption, selectedQuiz) {
         `;
     });
 }
+
+let isScoreExporting = false;
+
+async function exportChosenScoreToExcel() {
+    if (isScoreExporting) return;
+    isScoreExporting = true;
+
+    const selectedSubject = document.getElementById('ledgerSubjectSelect')?.value || '';
+    const selectedClass = document.getElementById('ledgerClassSelect')?.value || '';
+    const selectedQuiz = document.getElementById('ledgerQuizSelect')?.value || '';
+    const sortOption = document.getElementById('ledgerSortSelect')?.value || 'name_asc';
+
+    const defaultBtnHtml = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        <span>Download Excel</span>
+    `;
+
+    const exportBtn1 = document.getElementById('exportScoreExcelBtn');
+    const exportBtn2 = document.getElementById('exportScoreTableExcelBtn');
+
+    if (!selectedSubject || !selectedClass || !selectedQuiz) {
+        alert("Please choose Subject, Class, and Quiz / Review first to download scores as Excel.");
+        isScoreExporting = false;
+        return;
+    }
+
+    if (typeof XLSX === 'undefined') {
+        alert("Excel export library (SheetJS) is not loaded. Please refresh the page and try again.");
+        isScoreExporting = false;
+        return;
+    }
+
+    try {
+        if (exportBtn1) {
+            exportBtn1.disabled = true;
+            exportBtn1.innerHTML = `<span>Exporting...</span>`;
+        }
+        if (exportBtn2) {
+            exportBtn2.disabled = true;
+            exportBtn2.innerHTML = `<span>Exporting...</span>`;
+        }
+
+        let records = [];
+
+        // Check if data is already loaded in memory for the same filters
+        if (currentLedgerResults && currentLedgerResults.length > 0 &&
+            currentLedgerMeta.subject === selectedSubject &&
+            currentLedgerMeta.studentClass === selectedClass &&
+            currentLedgerMeta.quiz === selectedQuiz) {
+            records = [...currentLedgerResults];
+        } else {
+            // Query Firestore directly
+            let q = query(collection(db, "exam_scores"),
+                where("subject", "==", selectedSubject),
+                where("studentClass", "==", selectedClass),
+                where("examName", "==", selectedQuiz)
+            );
+            let snap = await getDocs(q);
+
+            if (snap.empty) {
+                await syncScoresToExamScores(selectedQuiz, selectedSubject, selectedClass);
+                snap = await getDocs(q);
+            }
+
+            if (snap.empty) {
+                const fallbackQ = query(collection(db, "exam_scores"),
+                    where("subject", "==", selectedSubject),
+                    where("studentClass", "==", selectedClass),
+                    where("quizName", "==", selectedQuiz)
+                );
+                snap = await getDocs(fallbackQ);
+            }
+
+            if (snap.empty) {
+                const broadQ = query(collection(db, "exam_scores"), where("examName", "==", selectedQuiz));
+                const broadSnap = await getDocs(broadQ);
+                broadSnap.forEach(docSnap => {
+                    const d = docSnap.data();
+                    const normSubj = (d.subject || '').trim().toLowerCase();
+                    const normClass = (d.studentClass || '').trim().toLowerCase();
+                    if ((normSubj === selectedSubject.toLowerCase() || !selectedSubject) &&
+                        (normClass === selectedClass.toLowerCase() || !selectedClass)) {
+                        records.push({ id: docSnap.id, ...d });
+                    }
+                });
+            } else {
+                snap.forEach(docSnap => {
+                    records.push({ id: docSnap.id, ...docSnap.data() });
+                });
+            }
+        }
+
+        if (!records || records.length === 0) {
+            alert("No score records found for this Subject, Class, and Quiz combination.");
+            return;
+        }
+
+        // Sort records
+        records.sort((a, b) => {
+            if (sortOption === 'score_desc') return (Number(b.score) || 0) - (Number(a.score) || 0);
+            if (sortOption === 'score_asc') return (Number(a.score) || 0) - (Number(b.score) || 0);
+            return (a.studentName || '').localeCompare(b.studentName || '');
+        });
+
+        // Compute summary statistics
+        const totalStudents = records.length;
+        const scores = records.map(r => Number(r.score) || 0);
+        const sumScores = scores.reduce((sum, s) => sum + s, 0);
+        const avgScore = totalStudents > 0 ? (sumScores / totalStudents).toFixed(1) : '0';
+        const maxScore = totalStudents > 0 ? Math.max(...scores) : 0;
+        const minScore = totalStudents > 0 ? Math.min(...scores) : 0;
+
+        // Build Excel Sheet Rows (Array of Arrays)
+        const rows = [
+            ["MITRA KASIH SCHOOL - SCORE REPORT"],
+            [`Exam / Quiz: ${selectedQuiz}`, "", `Subject: ${selectedSubject}`, "", `Class: ${selectedClass}`],
+            [`Export Date: ${new Date().toLocaleDateString('en-GB')}`, "", `Total Students: ${totalStudents}`, "", `Average: ${avgScore}`, `Highest: ${maxScore}`, `Lowest: ${minScore}`],
+            [],
+            ["NO", "STUDENT NAME", "STUDENT CODE", "CLASS", "SUBJECT", "EXAM / QUIZ", "SCORE"]
+        ];
+
+        records.forEach((r, idx) => {
+            rows.push([
+                idx + 1,
+                r.studentName || '',
+                r.studentCode || '',
+                r.studentClass || selectedClass,
+                r.subject || selectedSubject,
+                r.examName || r.quizName || selectedQuiz,
+                Number(r.score) || 0
+            ]);
+        });
+
+        rows.push([]);
+        rows.push(["STATISTICS SUMMARY", "", "", "", "", "", ""]);
+        rows.push(["Total Students", totalStudents]);
+        rows.push(["Average Score", Number(avgScore)]);
+        rows.push(["Highest Score", maxScore]);
+        rows.push(["Lowest Score", minScore]);
+
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+
+        // Column widths formatting
+        ws['!cols'] = [
+            { wch: 6 },  // NO
+            { wch: 28 }, // STUDENT NAME
+            { wch: 16 }, // STUDENT CODE
+            { wch: 14 }, // CLASS
+            { wch: 18 }, // SUBJECT
+            { wch: 30 }, // EXAM / QUIZ
+            { wch: 12 }  // SCORE
+        ];
+
+        const wb = XLSX.utils.book_new();
+        const safeSheetName = (selectedQuiz || 'Score_Report').substring(0, 31).replace(/[:\\/?*\[\]]/g, '_');
+        XLSX.utils.book_append_sheet(wb, ws, safeSheetName);
+
+        const safeSubject = selectedSubject.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const safeClass = selectedClass.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const safeQuiz = selectedQuiz.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const fileName = `Score_${safeSubject}_${safeClass}_${safeQuiz}.xlsx`;
+
+        XLSX.writeFile(wb, fileName);
+
+    } catch (err) {
+        console.error("Error downloading score Excel:", err);
+        alert("Failed to export Excel file: " + err.message);
+    } finally {
+        isScoreExporting = false;
+        if (exportBtn1) {
+            exportBtn1.disabled = false;
+            exportBtn1.innerHTML = defaultBtnHtml;
+        }
+        if (exportBtn2) {
+            exportBtn2.disabled = false;
+            exportBtn2.innerHTML = defaultBtnHtml;
+        }
+    }
+}
+window.exportChosenScoreToExcel = exportChosenScoreToExcel;
 
 async function viewScoreLedger() {
     const selectedSubject = document.getElementById('ledgerSubjectSelect')?.value;
@@ -6534,8 +6732,8 @@ window.deleteQuiz = deleteQuiz;
 document.getElementById('saveQuizBtn')?.addEventListener('click', saveQuiz);
 document.getElementById('loadDirectStudentsBtn')?.addEventListener('click', loadClassRoster);
 document.getElementById('saveDirectScoresBtn')?.addEventListener('click', saveDirectScores);
-document.getElementById('viewLedgerBtn')?.addEventListener('click', viewScoreLedger);
 window.viewScoreLedger = viewScoreLedger;
+window.exportChosenScoreToExcel = exportChosenScoreToExcel;
 
 // Bind the new function to the window so the HTML buttons can trigger it
 window.inlineAdjustPoint = inlineAdjustPoint;

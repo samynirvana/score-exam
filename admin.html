@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="admin.css?v=347">
+    <link rel="stylesheet" href="admin.css?v=353">
 </head>
 
 <body>
@@ -772,15 +772,38 @@
                             </select>
                         </div>
 
-                        <div style="flex: 0 0 auto;">
-                            <button id="viewLedgerBtn" onclick="viewScoreLedger()">View Table</button>
+                        <div style="flex: 0 0 auto; display: flex; flex-direction: column; gap: 8px; justify-content: flex-end;">
+                            <button type="button" id="viewLedgerBtn" onclick="viewScoreLedger()" style="width: 100%; min-width: 140px; padding: 7px 14px; border-radius: 8px; font-weight: 600; font-size: 12.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                                <span>View Table</span>
+                            </button>
+                            <button type="button" id="exportScoreExcelBtn" onclick="exportChosenScoreToExcel()" title="Download chosen score records as Excel (.xlsx)" style="width: 100%; min-width: 140px; background: #10b981; color: #ffffff; border: none; padding: 7px 14px; border-radius: 8px; font-weight: 600; font-size: 12.5px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2); transition: all 0.2s;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                                <span>Download Excel</span>
+                            </button>
                         </div>
                     </div>
 
                     <div id="scoreLedgerContainer" style="display: none;">
                         <hr style="border: 0; border-top: 1px solid var(--border-color); margin-bottom: 15px;">
-                        <h4 id="activeLedgerTitle" style="margin-bottom: 15px; color: var(--primary-blue);">Ledger
-                            Results</h4>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                            <h4 id="activeLedgerTitle" style="margin: 0; color: var(--primary-blue);">Ledger Results</h4>
+                            <button type="button" id="exportScoreTableExcelBtn" onclick="exportChosenScoreToExcel()" title="Export this table to Excel" style="width: auto; background: #10b981; color: #ffffff; border: none; padding: 7px 14px; border-radius: 7px; font-size: 12.5px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                                <span>Download Excel</span>
+                            </button>
+                        </div>
 
                         <div class="table-responsive">
                             <table id="manageScoreTable">
@@ -2290,8 +2313,8 @@
 
 
     <!-- Navigation & Core Scripts -->
-    <script src="studentNav.js?v=351"></script>
-    <script type="module" src="admin.js?v=351"></script>
+    <script src="studentNav.js?v=353"></script>
+    <script type="module" src="admin.js?v=353"></script>
 </body>
 
 </html>
