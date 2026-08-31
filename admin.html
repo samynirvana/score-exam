@@ -975,6 +975,11 @@
                                             style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Date of Birth</label>
                                         <input type="date" id="newStudentBirthDate">
                                     </div>
+                                    <div>
+                                        <label
+                                            style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; display: block;">Google Classroom / Student Email</label>
+                                        <input type="email" id="newStudentEmail" placeholder="student@school.sch.id or Gmail">
+                                    </div>
                                 </div>
                                 <button id="registerStudentBtn"
                                     style="background: var(--primary-blue); width: auto; padding: 10px 24px;">Generate
@@ -1091,6 +1096,7 @@
                                             <th>Student Name</th>
                                             <th>Class</th>
                                             <th>Birth Date</th>
+                                            <th>Google Email</th>
                                             <th style="width: 80px; text-align: center;">Actions</th>
                                         </tr>
                                     </thead>
@@ -2240,6 +2246,10 @@
                     <input type="date" id="editStudentBirthDateInput" style="width: 100%; margin: 0;">
                 </div>
                 <div>
+                    <label style="font-size: 12.5px; font-weight: 700; color: var(--text-dark); display: block; margin-bottom: 4px;">Google Classroom / Student Email</label>
+                    <input type="email" id="editStudentEmailInput" placeholder="e.g. student@school.sch.id or Gmail" style="width: 100%; margin: 0;">
+                </div>
+                <div>
                     <label style="font-size: 12.5px; font-weight: 700; color: var(--text-dark); display: block; margin-bottom: 4px;">Photo URL (or Google Drive Link)</label>
                     <input type="text" id="editStudentPhotoUrlInput" placeholder="https://lh3.googleusercontent.com/d/... or Drive URL" oninput="onEditPhotoUrlChange()" style="width: 100%; margin: 0;">
                 </div>
@@ -2248,6 +2258,10 @@
                     <input type="file" id="editStudentPhotoFileInput" accept="image/*" onchange="onEditPhotoFileChange(event)" style="width: 100%; margin: 0; font-size: 12px;">
                 </div>
             </div>
+
+            <button onclick="saveEditStudentProfile()" style="background: var(--primary-blue); color: white; width: 100%; padding: 12px; font-weight: 700; border-radius: 8px; border: none; cursor: pointer; font-size: 14px;">Save Changes</button>
+        </div>
+    </div>
 
     <!-- EDIT OFFLINE EXAM / QUIZ MODAL -->
     <div id="editOfflineQuizModal" class="hidden"
@@ -2313,8 +2327,8 @@
 
 
     <!-- Navigation & Core Scripts -->
-    <script src="studentNav.js?v=353"></script>
-    <script type="module" src="admin.js?v=353"></script>
+    <script src="studentNav.js?v=354"></script>
+    <script type="module" src="admin.js?v=354"></script>
 </body>
 
 </html>

@@ -534,20 +534,20 @@ function listenActiveStudentAttendance() {
 
                     let statusLabel = 'Present';
                     let statusColor = '#10b981';
-                    let iconChar = '✓';
+                    let iconSvg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><polyline points="16 11 18 13 22 9"></polyline></svg>';
 
                     if (rec.status === 'present') {
                         statusLabel = 'Present (Hadir)';
                         statusColor = '#10b981';
-                        iconChar = '✓';
+                        iconSvg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><polyline points="16 11 18 13 22 9"></polyline></svg>';
                     } else if (rec.status === 'absent') {
                         statusLabel = 'Absent (Tidak Hadir)';
                         statusColor = '#ef4444';
-                        iconChar = '✕';
+                        iconSvg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="17" y1="8" x2="22" y2="13"></line><line x1="22" y1="8" x2="17" y2="13"></line></svg>';
                     } else if (rec.status === 'others') {
                         statusLabel = `Others: ${rec.reason || 'Reason Provided'}`;
                         statusColor = '#f59e0b';
-                        iconChar = 'ℹ';
+                        iconSvg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>';
                     }
 
                     if (statusText) statusText.innerText = `Status: ${statusLabel}`;
@@ -556,7 +556,7 @@ function listenActiveStudentAttendance() {
                         timeText.innerText = `Recorded at ${t} (${rec.markedBy === 'teacher' ? 'Marked by Teacher' : 'Self-Marked'})`;
                     }
                     if (iconEl) {
-                        iconEl.innerText = iconChar;
+                        iconEl.innerHTML = iconSvg;
                         iconEl.style.color = statusColor;
                     }
                 } else {

@@ -372,6 +372,8 @@ window.renderDbStudentsTable = function () {
         const matchesSearch = !searchTerm ||
             (s.studentName && s.studentName.toLowerCase().includes(searchTerm)) ||
             (s.studentClass && s.studentClass.toLowerCase().includes(searchTerm)) ||
+            (s.studentEmail && s.studentEmail.toLowerCase().includes(searchTerm)) ||
+            (s.email && s.email.toLowerCase().includes(searchTerm)) ||
             (s.id && s.id.toLowerCase().includes(searchTerm));
 
         const matchesClass = (selectedClass === 'all') || (s.studentClass === selectedClass);
@@ -386,7 +388,7 @@ window.renderDbStudentsTable = function () {
     if (countBadge) countBadge.innerText = filtered.length;
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding: 30px; color: var(--text-gray);">No matching students found.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 30px; color: var(--text-gray);">No matching students found.</td></tr>`;
         if (pageInfo) pageInfo.innerText = 'Showing 0 to 0 of 0 students';
         if (pageButtons) pageButtons.innerHTML = '';
         return;
@@ -407,23 +409,32 @@ window.renderDbStudentsTable = function () {
     const endIndex = Math.min(filtered.length, startIndex + perPage);
     const paginatedStudents = filtered.slice(startIndex, endIndex);
 
-    // 4. Render Table Rows with Photo & Birth Date
+    // 4. Render Table Rows with Photo, Birth Date & Email
     const rowsHtml = paginatedStudents.map(student => {
         const safeName = (student.studentName || 'Student').replace(/'/g, "\\'");
         const safeClass = (student.studentClass || '').replace(/'/g, "\\'");
         const photoUrl = resolvePhotoUrl(student.photoUrl || student.photo || '');
         const birthDate = student.birthDate || student.dateOfBirth || '-';
+        const email = student.studentEmail || student.email || '';
 
         const photoHtml = photoUrl ?
             `<img src="${photoUrl}" alt="Photo" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid #cbd5e1; display: block; margin: 0 auto;" onerror="this.outerHTML='<div style=\\'width: 32px; height: 32px; border-radius: 50%; background: #f1f5f9; color: #94a3b8; display: flex; align-items: center; justify-content: center; margin: 0 auto; font-size: 14px;\\'>👤</div>'">` :
             `<div style="width: 32px; height: 32px; border-radius: 50%; background: #f1f5f9; color: #94a3b8; display: flex; align-items: center; justify-content: center; margin: 0 auto; font-size: 14px;">👤</div>`;
 
+        const emailHtml = email ?
+            `<span style="font-size: 12px; color: var(--text-dark); display: inline-flex; align-items: center; gap: 4px; font-weight: 500;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1e5eff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                ${escapeHtml(email)}
+            </span>` :
+            `<span style="color: #94a3b8; font-size: 11.5px; font-style: italic;">No email</span>`;
+
         return `
         <tr>
             <td style="text-align: center;">${photoHtml}</td>
-            <td><strong style="font-weight: 600; color: var(--text-dark);">${student.studentName || 'N/A'}</strong></td>
-            <td><span style="color: var(--primary-blue); font-weight: 600;">${student.studentClass || 'N/A'}</span></td>
-            <td><span style="color: var(--text-gray); font-size: 13px;">${birthDate}</span></td>
+            <td><strong style="font-weight: 600; color: var(--text-dark);">${escapeHtml(student.studentName || 'N/A')}</strong></td>
+            <td><span style="color: var(--primary-blue); font-weight: 600;">${escapeHtml(student.studentClass || 'N/A')}</span></td>
+            <td><span style="color: var(--text-gray); font-size: 13px;">${escapeHtml(birthDate)}</span></td>
+            <td>${emailHtml}</td>
             <td style="text-align: center;">
                 <div class="kebab-menu">
                     <button class="kebab-btn" onclick="toggleMenu(event, 'dbstudent-${student.id}')">⋮</button>
@@ -529,6 +540,7 @@ async function registerStudent() {
     const name = document.getElementById('newStudentName').value.trim();
     const studentClass = document.getElementById('newStudentClass').value.trim();
     const birthDate = document.getElementById('newStudentBirthDate')?.value || '';
+    const studentEmail = document.getElementById('newStudentEmail')?.value.trim().toLowerCase() || '';
 
     if (!name || !studentClass) {
         alert("Please provide both Student Name and Class assignment.");
@@ -549,13 +561,15 @@ async function registerStudent() {
             studentName: name,
             studentClass: studentClass,
             birthDate: birthDate,
+            studentEmail: studentEmail,
             photoUrl: ""
         });
 
-        alert(`Profile Confirmed!\nName: ${name}\nClass: ${studentClass}\nCode: ${uniqueCode}`);
+        alert(`Profile Confirmed!\nName: ${name}\nClass: ${studentClass}\nCode: ${uniqueCode}${studentEmail ? `\nEmail: ${studentEmail}` : ''}`);
         document.getElementById('newStudentName').value = "";
         document.getElementById('newStudentClass').value = "";
         if (document.getElementById('newStudentBirthDate')) document.getElementById('newStudentBirthDate').value = "";
+        if (document.getElementById('newStudentEmail')) document.getElementById('newStudentEmail').value = "";
         loadStudentsDirectory();
         loadPointsTable(); // Refresh points table to include new student
     } catch (e) {
@@ -1041,6 +1055,9 @@ window.openEditStudentModal = async function (studentId) {
         document.getElementById('editStudentNameInput').value = data.studentName || '';
         document.getElementById('editStudentClassInput').value = data.studentClass || data.Class || data.class || '';
         document.getElementById('editStudentBirthDateInput').value = data.birthDate || data.dateOfBirth || '';
+        if (document.getElementById('editStudentEmailInput')) {
+            document.getElementById('editStudentEmailInput').value = data.studentEmail || data.email || '';
+        }
         document.getElementById('editStudentPhotoUrlInput').value = data.photoUrl || data.photo || '';
 
         const preview = document.getElementById('editStudentPhotoPreview');
@@ -1101,6 +1118,7 @@ window.saveEditStudentProfile = async function () {
     const name = document.getElementById('editStudentNameInput').value.trim();
     const sClass = document.getElementById('editStudentClassInput').value.trim();
     const birthDate = document.getElementById('editStudentBirthDateInput').value;
+    const email = document.getElementById('editStudentEmailInput')?.value.trim().toLowerCase() || '';
     const photoUrl = document.getElementById('editStudentPhotoUrlInput').value.trim();
 
     if (!name || !sClass) {
@@ -1112,6 +1130,7 @@ window.saveEditStudentProfile = async function () {
             studentName: name,
             studentClass: sClass,
             birthDate: birthDate,
+            studentEmail: email,
             photoUrl: photoUrl
         });
 
@@ -4359,7 +4378,8 @@ window.downloadStudentsTemplate = async function () {
                 code: docSnap.id,
                 name: data.studentName || "",
                 studentClass: data.studentClass || data.class || data.Class || "",
-                birthDate: data.birthDate || data.dateOfBirth || ""
+                birthDate: data.birthDate || data.dateOfBirth || "",
+                email: data.studentEmail || data.email || ""
             });
         });
 
@@ -4371,7 +4391,7 @@ window.downloadStudentsTemplate = async function () {
         });
 
         const wsData = [
-            ["No", "Student Code", "Student Name", "Class", "Birth Date (YYYY-MM-DD)"]
+            ["No", "Student Code", "Student Name", "Class", "Birth Date (YYYY-MM-DD)", "Google Classroom Email"]
         ];
 
         studentsList.forEach((st, idx) => {
@@ -4380,7 +4400,8 @@ window.downloadStudentsTemplate = async function () {
                 st.code,
                 st.name,
                 st.studentClass,
-                st.birthDate
+                st.birthDate,
+                st.email
             ]);
         });
 
@@ -4393,7 +4414,8 @@ window.downloadStudentsTemplate = async function () {
             { wch: 16 }, // Student Code
             { wch: 32 }, // Student Name
             { wch: 16 }, // Class
-            { wch: 22 }  // Birth Date
+            { wch: 22 }, // Birth Date
+            { wch: 36 }  // Google Classroom Email
         ];
 
         XLSX.writeFile(workbook, "Students_Database_Template.xlsx");
@@ -4460,6 +4482,7 @@ async function processBulkStudents() {
             const sClass = String(row["Class"] || row["Class Room"] || row["studentClass"] || row["class"] || "").trim();
             const rawBirthDate = row["Birth Date"] || row["Birth Date (YYYY-MM-DD)"] || row["BirthDate"] || row["DOB"] || row["Date of Birth"] || row["birthDate"] || "";
             const birthDate = formatExcelDate(rawBirthDate);
+            const email = String(row["Google Classroom Email"] || row["Email"] || row["Student Email"] || row["studentEmail"] || row["email"] || "").trim().toLowerCase();
 
             if (!name && !rawCode) {
                 skippedCount++;
@@ -4483,6 +4506,7 @@ async function processBulkStudents() {
                 if (name) updatePayload.studentName = name;
                 if (sClass) updatePayload.studentClass = sClass;
                 if (birthDate) updatePayload.birthDate = birthDate;
+                if (email) updatePayload.studentEmail = email;
 
                 await setDoc(doc(db, "students", targetStudent.id), updatePayload, { merge: true });
                 updatedCount++;
@@ -4496,6 +4520,7 @@ async function processBulkStudents() {
                     photoUrl: ""
                 };
                 if (birthDate) newStudentPayload.birthDate = birthDate;
+                if (email) newStudentPayload.studentEmail = email;
 
                 await setDoc(doc(db, "students", uniqueCode), newStudentPayload, { merge: true });
 
