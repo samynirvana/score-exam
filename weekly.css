@@ -1741,7 +1741,6 @@ select:focus {
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-    color-adjust: exact !important;
   }
 
   /* Hide navigation buttons, topbar, filter controls, admin panels, and side materials */
@@ -4188,10 +4187,8 @@ input:disabled + .toggle-slider {
 }
 
 /* Print Portrait Mode for Meeting Reports */
-body.printing-meeting @page {
-  size: portrait !important;
-  margin: 8mm !important;
-}
+/* Note: @page orientation is dynamically injected via weekly.js when printing */
+
 
 @media print {
   body.printing-meeting {

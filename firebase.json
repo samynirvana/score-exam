@@ -8,6 +8,8 @@
       ".firebaserc",
       ".git/**",
       ".vscode/**",
+      ".agent/**",
+      ".firebase/**",
       "**/.git/**",
       "**/.vscode/**",
       "**/node_modules/**",
