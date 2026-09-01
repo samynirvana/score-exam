@@ -215,89 +215,165 @@ function initRealTimeScoresListener(studentCode) {
         }
 
         // Render All Cards Grid
-        const filterDropdown = document.getElementById('examScoreDropdown');
-        renderScoreCards(filterDropdown?.value || "ALL");
+        renderScoreCards();
 
     }, (error) => {
         console.error("Real-time exam scores error:", error);
     });
 }
 
+// --- QUIZ TYPE WEIGHT CONFIGURATION ---
+export const QUIZ_TYPE_WEIGHTS = {
+    "Exercise": 0.075,      // 7.5%
+    "Homework": 0.075,      // 7.5%
+    "Quiz": 0.15,           // 15%
+    "Review": 0.15,         // 15%
+    "Practical Test": 0.15, // 15%
+    "Final Exam": 0.25      // 25%
+};
+
+export function normalizeQuizType(typeStr) {
+    if (!typeStr) return 'Exercise';
+    const t = typeStr.toString().trim();
+    const lower = t.toLowerCase();
+    if (lower === 'skill' || lower === 'project' || lower.includes('practical')) return 'Practical Test';
+    if (lower === 'final test' || lower === 'final' || lower.includes('final exam') || lower === 'exam' || lower === 'midterm') return 'Final Exam';
+    if (lower.includes('review')) return 'Review';
+    if (lower.includes('homework') || lower.includes('hw')) return 'Homework';
+    if (lower.includes('quiz') || lower.includes('test')) return 'Quiz';
+    if (lower.includes('exercise')) return 'Exercise';
+    return 'Exercise';
+}
+
+let activeAverageSubject = 'ALL';
+let availableSubjectsList = [];
+let activeScoreFilterSubject = 'ALL';
+let activeScoreFilterExam = 'ALL';
+
+// --- CALCULATE WEIGHTED AVERAGE ---
+export function calculateWeightedScore(scoresList) {
+    if (!scoresList || scoresList.length === 0) return null;
+
+    const categoryScores = {};
+    scoresList.forEach(item => {
+        const val = parseFloat(item.score);
+        if (!isNaN(val)) {
+            const cat = resolveScoreType(item);
+            if (!categoryScores[cat]) categoryScores[cat] = [];
+            categoryScores[cat].push(val);
+        }
+    });
+
+    let totalWeight = 0;
+    let weightedSum = 0;
+
+    for (const [cat, vals] of Object.entries(categoryScores)) {
+        const weight = QUIZ_TYPE_WEIGHTS[cat] !== undefined ? QUIZ_TYPE_WEIGHTS[cat] : 0.075;
+        const catAvg = vals.reduce((a, b) => a + b, 0) / vals.length;
+        weightedSum += catAvg * weight;
+        totalWeight += weight;
+    }
+
+    if (totalWeight === 0) return null;
+    return (weightedSum / totalWeight);
+}
+
 // --- POPULATE DROPDOWNS ---
 function updateDropdowns(optionsSet, subjectsSet) {
-    const filterDropdown = document.getElementById('examScoreDropdown');
-    const currentFilterVal = filterDropdown?.value || "ALL";
+    availableSubjectsList = Array.from(subjectsSet).sort();
 
-    if (filterDropdown) {
-        filterDropdown.innerHTML = '<option value="ALL">All Subjects / Exams</option>';
-        Array.from(optionsSet).sort().forEach(item => {
-            filterDropdown.innerHTML += `<option value="${item}">${item}</option>`;
+    // 1. Subject Filter in All Scores
+    const subjectFilter = document.getElementById('scoreSubjectFilter');
+    if (subjectFilter) {
+        subjectFilter.innerHTML = '<option value="ALL">All Subjects</option>';
+        availableSubjectsList.forEach(subj => {
+            subjectFilter.innerHTML += `<option value="${subj}">${subj}</option>`;
         });
-        if (Array.from(optionsSet).includes(currentFilterVal)) {
-            filterDropdown.value = currentFilterVal;
+        if (availableSubjectsList.includes(activeScoreFilterSubject) || activeScoreFilterSubject === "ALL") {
+            subjectFilter.value = activeScoreFilterSubject;
         }
     }
 
+    // 2. Exam Filter in All Scores
+    updateExamFilterDropdown();
+
+    // 3. Progress Subject Filter
     const progressFilter = document.getElementById('progressSubjectFilter');
     const currentProgressVal = progressFilter?.value || activeProgressSubject;
 
     if (progressFilter) {
         progressFilter.innerHTML = '<option value="ALL">All Subjects</option>';
-        Array.from(subjectsSet).sort().forEach(subj => {
+        availableSubjectsList.forEach(subj => {
             progressFilter.innerHTML += `<option value="${subj}">${subj}</option>`;
         });
-        if (Array.from(subjectsSet).includes(currentProgressVal) || currentProgressVal === "ALL") {
+        if (availableSubjectsList.includes(currentProgressVal) || currentProgressVal === "ALL") {
             progressFilter.value = currentProgressVal;
             activeProgressSubject = currentProgressVal;
         }
     }
 }
 
+function updateExamFilterDropdown() {
+    const examFilter = document.getElementById('examScoreDropdown');
+    if (!examFilter) return;
+
+    const filteredScores = activeScoreFilterSubject === "ALL"
+        ? cachedExamScores
+        : cachedExamScores.filter(s => resolveSubject(s.subject, s.examName) === activeScoreFilterSubject);
+
+    const distinctExams = Array.from(new Set(filteredScores.map(s => s.examName || s.quizName).filter(Boolean))).sort();
+
+    examFilter.innerHTML = '<option value="ALL">All Assignments</option>';
+    distinctExams.forEach(item => {
+        examFilter.innerHTML += `<option value="${item}">${item}</option>`;
+    });
+
+    if (distinctExams.includes(activeScoreFilterExam) || activeScoreFilterExam === "ALL") {
+        examFilter.value = activeScoreFilterExam;
+    } else {
+        activeScoreFilterExam = "ALL";
+        examFilter.value = "ALL";
+    }
+}
+
 // --- UPDATE SUMMARY STATS ---
 function updateSummaryMetrics() {
     const totalCount = cachedExamScores.length;
-    let totalSum = 0;
+    document.getElementById('statTotalTests').innerText = totalCount;
+
     const subjectMap = {};
-
     cachedExamScores.forEach(item => {
-        const score = parseFloat(item.score) || 0;
-        totalSum += score;
-
         const subject = resolveSubject(item.subject, item.examName);
         if (!subjectMap[subject]) {
-            subjectMap[subject] = { sum: 0, count: 0, highest: 0 };
+            subjectMap[subject] = [];
         }
-        subjectMap[subject].sum += score;
-        subjectMap[subject].count += 1;
-        if (score > subjectMap[subject].highest) {
-            subjectMap[subject].highest = score;
-        }
+        subjectMap[subject].push(item);
     });
 
-    const avg = totalCount > 0 ? (totalSum / totalCount).toFixed(1) : '-';
-    document.getElementById('statTotalTests').innerText = totalCount;
-    document.getElementById('statAverageScore').innerText = avg;
+    // Render active Average Score (Weighted)
+    renderAverageScoreCard(subjectMap);
 
-    // Determine Strongest & Focus Subject
+    // Determine Strongest & Focus Subject based on weighted average
     let bestSubjectName = '-';
     let bestSubjectAvg = -1;
     let worstSubjectName = '-';
     let worstSubjectAvg = 999;
 
-    const subjectKeys = Object.keys(subjectMap);
-    if (subjectKeys.length > 0) {
-        subjectKeys.forEach(subj => {
-            const sAvg = subjectMap[subj].sum / subjectMap[subj].count;
-            if (sAvg > bestSubjectAvg) {
-                bestSubjectAvg = sAvg;
+    availableSubjectsList.forEach(subj => {
+        const sWeighted = calculateWeightedScore(subjectMap[subj]);
+        if (sWeighted !== null) {
+            if (sWeighted > bestSubjectAvg) {
+                bestSubjectAvg = sWeighted;
                 bestSubjectName = subj;
             }
-            if (sAvg < worstSubjectAvg) {
-                worstSubjectAvg = sAvg;
+            if (sWeighted < worstSubjectAvg) {
+                worstSubjectAvg = sWeighted;
                 worstSubjectName = subj;
             }
-        });
+        }
+    });
 
+    if (bestSubjectAvg >= 0) {
         document.getElementById('statBestSubject').innerText = `${bestSubjectName} (${bestSubjectAvg.toFixed(1)})`;
         document.getElementById('statFocusSubject').innerText = `${worstSubjectName} (${worstSubjectAvg.toFixed(1)})`;
     } else {
@@ -305,6 +381,40 @@ function updateSummaryMetrics() {
         document.getElementById('statFocusSubject').innerText = '-';
     }
 }
+
+function renderAverageScoreCard(subjectMap) {
+    const labelEl = document.getElementById('statAverageLabel');
+    const scoreEl = document.getElementById('statAverageScore');
+    if (!labelEl || !scoreEl) return;
+
+    if (activeAverageSubject === 'ALL') {
+        const overallWeighted = calculateWeightedScore(cachedExamScores);
+        labelEl.innerText = "Average (All Subjects)";
+        scoreEl.innerText = overallWeighted !== null ? overallWeighted.toFixed(1) : "-";
+    } else {
+        const list = (subjectMap && subjectMap[activeAverageSubject]) || cachedExamScores.filter(s => resolveSubject(s.subject, s.examName) === activeAverageSubject);
+        const subjWeighted = calculateWeightedScore(list);
+        labelEl.innerText = `Average (${activeAverageSubject})`;
+        scoreEl.innerText = subjWeighted !== null ? subjWeighted.toFixed(1) : "-";
+    }
+}
+
+// Click event to cycle through subjects on Average Card
+document.getElementById('statAverageCard')?.addEventListener('click', () => {
+    if (availableSubjectsList.length === 0) return;
+    const cycle = ['ALL', ...availableSubjectsList];
+    const currIdx = cycle.indexOf(activeAverageSubject);
+    const nextIdx = (currIdx + 1) % cycle.length;
+    activeAverageSubject = cycle[nextIdx];
+
+    const card = document.getElementById('statAverageCard');
+    if (card) {
+        card.style.transform = 'scale(0.96)';
+        setTimeout(() => card.style.transform = 'scale(1)', 120);
+    }
+
+    renderAverageScoreCard();
+});
 
 // --- CHART RENDERING ENGINE (CHART.JS) ---
 function renderCharts() {
@@ -559,60 +669,58 @@ document.getElementById('progressSubjectFilter')?.addEventListener('change', (e)
 
 // --- QUIZ TYPE RESOLVER & BADGE HELPER ---
 function resolveScoreType(data) {
-    if (data.type) return data.type;
     const name = (data.examName || data.quizName || '').trim();
     const lowerName = name.toLowerCase();
 
-    // 1. Direct catalog lookup from quizzes and system_quizzes
+    // 1. Top Priority: Direct catalog lookup from quizzes and system_quizzes
     if (quizTypeCatalog[lowerName]) {
-        return quizTypeCatalog[lowerName];
+        return normalizeQuizType(quizTypeCatalog[lowerName]);
     }
     // 2. Partial match in catalog
     for (const [catTitle, catType] of Object.entries(quizTypeCatalog)) {
-        if (lowerName.includes(catTitle) || catTitle.includes(lowerName)) {
-            return catType;
+        if (lowerName === catTitle || lowerName.includes(catTitle) || catTitle.includes(lowerName)) {
+            return normalizeQuizType(catType);
         }
     }
 
+    // 3. Stored type on document
+    if (data.type) return normalizeQuizType(data.type);
+
+    // 4. Heuristic inference
     if (lowerName.includes('review')) return 'Review';
-    if (lowerName.includes('final') || lowerName.includes('exam') || lowerName.includes('midterm')) return 'Final Test';
+    if (lowerName.includes('final') || lowerName.includes('exam') || lowerName.includes('midterm')) return 'Final Exam';
+    if (lowerName.includes('practical') || lowerName.includes('skill') || lowerName.includes('project')) return 'Practical Test';
     if (lowerName.includes('homework') || lowerName.includes('hw')) return 'Homework';
-    if (lowerName.includes('exercise')) return 'Exercise';
-    if (lowerName.includes('project')) return 'Project';
-    if (lowerName.includes('skill')) return 'Skill';
+    if (lowerName.includes('quiz') || lowerName.includes('test')) return 'Quiz';
     return 'Exercise'; // Default to Exercise
 }
 
 function getTypeBadgeHtml(type) {
-    const t = type || 'Quiz';
-    let bg = 'rgba(37, 99, 235, 0.08)';
-    let color = '#2563eb';
-    let border = 'rgba(37, 99, 235, 0.2)';
+    const t = normalizeQuizType(type);
+    let bg = 'rgba(22, 163, 74, 0.08)';
+    let color = '#16a34a';
+    let border = 'rgba(22, 163, 74, 0.25)';
 
-    if (t === 'Final Test') {
+    if (t === 'Final Exam') {
         bg = 'rgba(220, 38, 38, 0.08)';
         color = '#dc2626';
-        border = 'rgba(220, 38, 38, 0.2)';
+        border = 'rgba(220, 38, 38, 0.25)';
     } else if (t === 'Review') {
         bg = 'rgba(147, 51, 234, 0.08)';
         color = '#9333ea';
-        border = 'rgba(147, 51, 234, 0.2)';
+        border = 'rgba(147, 51, 234, 0.25)';
     } else if (t === 'Homework') {
         bg = 'rgba(234, 88, 12, 0.08)';
         color = '#ea580c';
-        border = 'rgba(234, 88, 12, 0.2)';
-    } else if (t === 'Exercise') {
-        bg = 'rgba(22, 163, 74, 0.08)';
-        color = '#16a34a';
-        border = 'rgba(22, 163, 74, 0.2)';
-    } else if (t === 'Project') {
+        border = 'rgba(234, 88, 12, 0.25)';
+    } else if (t === 'Quiz') {
+        bg = 'rgba(37, 99, 235, 0.08)';
+        color = '#2563eb';
+        border = 'rgba(37, 99, 235, 0.25)';
+    } else if (t === 'Practical Test') {
         bg = 'rgba(13, 148, 136, 0.08)';
         color = '#0d9488';
-        border = 'rgba(13, 148, 136, 0.2)';
-    } else if (t === 'Skill') {
-        bg = 'rgba(79, 70, 229, 0.08)';
-        color = '#4f46e5';
-        border = 'rgba(79, 70, 229, 0.2)';
+        border = 'rgba(13, 148, 136, 0.25)';
     }
 
     return `<span style="background: ${bg}; color: ${color}; border: 1px solid ${border}; font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 6px;">${t}</span>`;
@@ -631,14 +739,22 @@ function spotlightScore(data) {
 }
 
 // --- RENDER SCORE CARDS GRID ---
-function renderScoreCards(filterValue) {
+function renderScoreCards() {
     const gridContainer = document.getElementById('scoreCardsGrid');
     if (!gridContainer) return;
     gridContainer.innerHTML = "";
 
-    const filtered = filterValue === "ALL" || !filterValue
-        ? cachedExamScores
-        : cachedExamScores.filter(s => (s.examName === filterValue || s.quizName === filterValue));
+    let filtered = cachedExamScores;
+
+    // Filter by Subject
+    if (activeScoreFilterSubject !== "ALL") {
+        filtered = filtered.filter(s => resolveSubject(s.subject, s.examName) === activeScoreFilterSubject);
+    }
+
+    // Filter by Exam / Assignment
+    if (activeScoreFilterExam !== "ALL") {
+        filtered = filtered.filter(s => (s.examName === activeScoreFilterExam || s.quizName === activeScoreFilterExam));
+    }
 
     if (filtered.length === 0) {
         gridContainer.innerHTML = `<div style="grid-column: 1/-1; text-align:center; color:var(--text-gray); padding: 40px; background: var(--card-bg); border-radius: 16px; border: 1px dashed var(--border-color);">No score record found for the selected filter.</div>`;
@@ -720,7 +836,15 @@ function renderScoreCards(filterValue) {
     });
 }
 
+// Subject Filter Dropdown Event Listener
+document.getElementById('scoreSubjectFilter')?.addEventListener('change', (e) => {
+    activeScoreFilterSubject = e.target.value;
+    updateExamFilterDropdown();
+    renderScoreCards();
+});
+
 // Exam Filter Dropdown Event Listener
 document.getElementById('examScoreDropdown')?.addEventListener('change', (e) => {
-    renderScoreCards(e.target.value);
+    activeScoreFilterExam = e.target.value;
+    renderScoreCards();
 });

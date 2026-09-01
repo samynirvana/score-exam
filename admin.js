@@ -302,6 +302,12 @@ function initGoogleClassroomSyncUI() {
 
     if (clientIdInput) {
         clientIdInput.value = GClassSync.getGoogleClientId();
+        // Auto-fetch from Firestore database if not yet cached on this browser
+        GClassSync.fetchGoogleClientIdFromFirestore().then(dbClientId => {
+            if (dbClientId && clientIdInput) {
+                clientIdInput.value = dbClientId;
+            }
+        });
     }
 
     if (btnSettingsToggle && settingsPanel) {
@@ -311,17 +317,29 @@ function initGoogleClassroomSyncUI() {
     }
 
     if (btnSaveClientId && clientIdInput) {
-        btnSaveClientId.onclick = () => {
+        btnSaveClientId.onclick = async () => {
             const val = clientIdInput.value.trim();
-            GClassSync.setGoogleClientId(val);
-            alert("Google OAuth Client ID saved successfully!");
-            settingsPanel.classList.add('hidden');
+            btnSaveClientId.disabled = true;
+            btnSaveClientId.innerText = "Saving...";
+            try {
+                await GClassSync.setGoogleClientId(val);
+                alert("Google OAuth Client ID saved successfully to database!");
+                settingsPanel.classList.add('hidden');
+            } catch (err) {
+                alert("Error saving Client ID: " + err.message);
+            } finally {
+                btnSaveClientId.disabled = false;
+                btnSaveClientId.innerText = "Save Client ID";
+            }
         };
     }
 
     if (btnConnect) {
         btnConnect.onclick = async () => {
-            const currentClientId = GClassSync.getGoogleClientId();
+            let currentClientId = GClassSync.getGoogleClientId();
+            if (!currentClientId) {
+                currentClientId = await GClassSync.fetchGoogleClientIdFromFirestore();
+            }
             if (!currentClientId) {
                 if (settingsPanel) settingsPanel.classList.remove('hidden');
                 if (clientIdInput) clientIdInput.focus();
@@ -5176,12 +5194,16 @@ window.loadSystemDatabases = async function () {
 
                 // Helper for Quiz Type Badges
                 const getQuizTypeBadge = (type) => {
-                    const t = type || 'Quiz';
+                    const rawT = type || 'Quiz';
+                    let t = rawT;
+                    if (rawT === 'Skill' || rawT === 'Project') t = 'Practical Test';
+                    if (rawT === 'Final Test') t = 'Final Exam';
+
                     let bg = 'rgba(37, 99, 235, 0.1)';
                     let color = '#2563eb';
                     let border = 'rgba(37, 99, 235, 0.25)';
 
-                    if (t === 'Final Test') {
+                    if (t === 'Final Exam') {
                         bg = 'rgba(220, 38, 38, 0.1)';
                         color = '#dc2626';
                         border = 'rgba(220, 38, 38, 0.25)';
@@ -5197,14 +5219,10 @@ window.loadSystemDatabases = async function () {
                         bg = 'rgba(22, 163, 74, 0.1)';
                         color = '#16a34a';
                         border = 'rgba(22, 163, 74, 0.25)';
-                    } else if (t === 'Project') {
+                    } else if (t === 'Practical Test') {
                         bg = 'rgba(13, 148, 136, 0.1)';
                         color = '#0d9488';
                         border = 'rgba(13, 148, 136, 0.25)';
-                    } else if (t === 'Skill') {
-                        bg = 'rgba(79, 70, 229, 0.1)';
-                        color = '#4f46e5';
-                        border = 'rgba(79, 70, 229, 0.25)';
                     }
 
                     return `<span style="background: ${bg}; color: ${color}; border: 1px solid ${border}; padding: 3px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 700;">${t}</span>`;
@@ -7593,7 +7611,42 @@ window.saveEditOfflineQuiz = async function () {
             updatedAt: new Date().toISOString()
         });
 
-        alert("Offline exam updated successfully!");
+        // Also update any related system_quizzes docs with matching title
+        const safeTitle = name.replace(/[^a-zA-Z0-9_-]/g, "_");
+        const altDocIds = [`offline_${safeTitle}`, `gclass_${safeTitle}`, `offline_${name}`, `gclass_${name}`];
+        altDocIds.forEach(altId => {
+            if (altId !== id) {
+                setDoc(doc(db, "system_quizzes", altId), {
+                    name: name,
+                    type: type,
+                    subject: subject,
+                    targetClass: targetClassStr,
+                    targetClassesList: selectedClasses,
+                    updatedAt: new Date().toISOString()
+                }, { merge: true }).catch(() => {});
+            }
+        });
+
+        // Propagate type & subject update to all student records in exam_scores
+        try {
+            const allScores = await getDocs(collection(db, "exam_scores"));
+            const scoreUpdatePromises = [];
+            allScores.forEach(sDoc => {
+                const sData = sDoc.data();
+                const sTitle = (sData.examName || sData.quizName || "").trim().toLowerCase();
+                if (sTitle === name.toLowerCase()) {
+                    scoreUpdatePromises.push(updateDoc(sDoc.ref, {
+                        type: type,
+                        subject: subject
+                    }));
+                }
+            });
+            await Promise.all(scoreUpdatePromises);
+        } catch (scErr) {
+            console.warn("Could not batch update exam_scores types:", scErr);
+        }
+
+        alert("Assignment updated successfully!");
         closeEditOfflineQuizModal();
 
         if (typeof window.loadSystemDatabases === "function") {

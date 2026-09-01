@@ -10,11 +10,15 @@ import {
     getDocs, 
     addDoc, 
     updateDoc, 
-    doc 
+    doc,
+    getDoc,
+    setDoc
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // Storage key for OAuth Client ID
 const STORAGE_CLIENT_ID_KEY = "gclass_oauth_client_id";
+
+let cachedClientId = localStorage.getItem(STORAGE_CLIENT_ID_KEY) || "";
 
 let accessToken = null;
 let tokenClient = null;
@@ -53,20 +57,49 @@ export function loadGsiScript() {
 }
 
 /**
- * Get configured Google OAuth Client ID
+ * Fetch Google OAuth Client ID from Firestore database
  */
-export function getGoogleClientId() {
-    return localStorage.getItem(STORAGE_CLIENT_ID_KEY) || "";
+export async function fetchGoogleClientIdFromFirestore() {
+    try {
+        const configSnap = await getDoc(doc(db, "config", "google_classroom"));
+        if (configSnap.exists() && configSnap.data().clientId) {
+            cachedClientId = configSnap.data().clientId.trim();
+            localStorage.setItem(STORAGE_CLIENT_ID_KEY, cachedClientId);
+            return cachedClientId;
+        }
+    } catch (err) {
+        console.warn("Could not fetch Google Classroom Client ID from Firestore:", err.message);
+    }
+    return cachedClientId || localStorage.getItem(STORAGE_CLIENT_ID_KEY) || "";
 }
 
 /**
- * Set Google OAuth Client ID
+ * Get configured Google OAuth Client ID
  */
-export function setGoogleClientId(clientId) {
-    if (clientId) {
-        localStorage.setItem(STORAGE_CLIENT_ID_KEY, clientId.trim());
+export function getGoogleClientId() {
+    return cachedClientId || localStorage.getItem(STORAGE_CLIENT_ID_KEY) || "";
+}
+
+/**
+ * Set Google OAuth Client ID in both localStorage and Firestore database
+ */
+export async function setGoogleClientId(clientId) {
+    const trimmed = (clientId || "").trim();
+    cachedClientId = trimmed;
+
+    if (trimmed) {
+        localStorage.setItem(STORAGE_CLIENT_ID_KEY, trimmed);
     } else {
         localStorage.removeItem(STORAGE_CLIENT_ID_KEY);
+    }
+
+    try {
+        await setDoc(doc(db, "config", "google_classroom"), {
+            clientId: trimmed,
+            updatedAt: new Date().toISOString()
+        }, { merge: true });
+    } catch (err) {
+        console.warn("Could not persist Google Classroom Client ID to Firestore:", err.message);
     }
 }
 
@@ -76,7 +109,10 @@ export function setGoogleClientId(clientId) {
 export async function authenticateGoogleClassroom() {
     await loadGsiScript();
 
-    const clientId = getGoogleClientId();
+    let clientId = getGoogleClientId();
+    if (!clientId) {
+        clientId = await fetchGoogleClientIdFromFirestore();
+    }
     if (!clientId) {
         throw new Error("CLIENT_ID_REQUIRED");
     }
@@ -364,10 +400,9 @@ function resolveScoreTypeFromTitle(title = "") {
     const lower = title.toLowerCase();
     if (lower.includes("review")) return "Review";
     if (lower.includes("homework") || lower.includes("hw")) return "Homework";
-    if (lower.includes("quiz") || lower.includes("test") || lower.includes("exam")) return "Quiz";
-    if (lower.includes("project")) return "Project";
-    if (lower.includes("skill")) return "Skill";
-    if (lower.includes("final")) return "Final Test";
+    if (lower.includes("final") || lower.includes("exam") || lower.includes("midterm")) return "Final Exam";
+    if (lower.includes("practical") || lower.includes("skill") || lower.includes("project")) return "Practical Test";
+    if (lower.includes("quiz") || lower.includes("test")) return "Quiz";
     return "Exercise"; // Default for classroom assignments
 }
 
