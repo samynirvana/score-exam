@@ -2,6 +2,7 @@ import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, creat
 import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, where, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { app, db, auth, secondaryAuth } from "./firebase.js";
 import { escapeHtml, formatDate } from "./utils.js";
+import * as GClassSync from "./classroomSync.js";
 
 // --- UTILITY: DEBOUNCE FUNCTION ---
 // Prevents functions from firing repeatedly on every single keystroke
@@ -244,22 +245,484 @@ window.setStudentRegMode = function (mode) {
 window.setScoreInputMode = function (mode) {
     const singleView = document.getElementById('scoreInputSingleView');
     const bulkView = document.getElementById('scoreInputBulkView');
+    const gclassView = document.getElementById('scoreInputGClassView');
     const btnSingle = document.getElementById('btnScoreInputSingle');
     const btnBulk = document.getElementById('btnScoreInputBulk');
+    const btnGclass = document.getElementById('btnScoreInputGClass');
     const titleEl = document.getElementById('scoreInputHeaderTitle');
 
     if (mode === 'bulk') {
         if (singleView) singleView.classList.add('hidden');
+        if (gclassView) gclassView.classList.add('hidden');
         if (bulkView) bulkView.classList.remove('hidden');
         if (btnSingle) btnSingle.classList.remove('active');
+        if (btnGclass) btnGclass.classList.remove('active');
         if (btnBulk) btnBulk.classList.add('active');
         if (titleEl) titleEl.innerText = 'Multiple Input Score';
+    } else if (mode === 'gclass') {
+        if (singleView) singleView.classList.add('hidden');
+        if (bulkView) bulkView.classList.add('hidden');
+        if (gclassView) gclassView.classList.remove('hidden');
+        if (btnSingle) btnSingle.classList.remove('active');
+        if (btnBulk) btnBulk.classList.remove('active');
+        if (btnGclass) btnGclass.classList.add('active');
+        if (titleEl) titleEl.innerText = 'Sync Google Classroom';
+        initGoogleClassroomSyncUI();
     } else {
         if (bulkView) bulkView.classList.add('hidden');
+        if (gclassView) gclassView.classList.add('hidden');
         if (singleView) singleView.classList.remove('hidden');
         if (btnBulk) btnBulk.classList.remove('active');
+        if (btnGclass) btnGclass.classList.remove('active');
         if (btnSingle) btnSingle.classList.add('active');
         if (titleEl) titleEl.innerText = 'Input scores';
+    }
+};
+
+// --- GOOGLE CLASSROOM SYNC CONTROLLER ---
+let gclassCoursesList = [];
+let gclassCurrentCourseWorks = [];
+let gclassPreviewItems = [];
+let gclassFirestoreStudents = [];
+
+function initGoogleClassroomSyncUI() {
+    const btnConnect = document.getElementById('btnConnectGoogleClassroom');
+    const btnSettingsToggle = document.getElementById('btnGclassSettingsToggle');
+    const settingsPanel = document.getElementById('gclassSettingsPanel');
+    const clientIdInput = document.getElementById('gclassClientIdInput');
+    const btnSaveClientId = document.getElementById('btnSaveGclassClientId');
+    const courseSelect = document.getElementById('gclassCourseSelect');
+    const btnFetchWork = document.getElementById('btnFetchCourseWork');
+    const btnSelectAll = document.getElementById('btnSelectAllGclassWork');
+    const btnDeselectAll = document.getElementById('btnDeselectAllGclassWork');
+    const btnPreview = document.getElementById('btnPreviewGclassSync');
+    const btnCommit = document.getElementById('btnCommitGclassSync');
+    const previewSelectAll = document.getElementById('gclassPreviewSelectAll');
+    const previewSearchInput = document.getElementById('gclassPreviewSearchInput');
+
+    if (clientIdInput) {
+        clientIdInput.value = GClassSync.getGoogleClientId();
+    }
+
+    if (btnSettingsToggle && settingsPanel) {
+        btnSettingsToggle.onclick = () => {
+            settingsPanel.classList.toggle('hidden');
+        };
+    }
+
+    if (btnSaveClientId && clientIdInput) {
+        btnSaveClientId.onclick = () => {
+            const val = clientIdInput.value.trim();
+            GClassSync.setGoogleClientId(val);
+            alert("Google OAuth Client ID saved successfully!");
+            settingsPanel.classList.add('hidden');
+        };
+    }
+
+    if (btnConnect) {
+        btnConnect.onclick = async () => {
+            const currentClientId = GClassSync.getGoogleClientId();
+            if (!currentClientId) {
+                if (settingsPanel) settingsPanel.classList.remove('hidden');
+                if (clientIdInput) clientIdInput.focus();
+                alert("Please configure your Google Cloud OAuth Client ID first.");
+                return;
+            }
+
+            btnConnect.disabled = true;
+            btnConnect.innerText = "Connecting...";
+            try {
+                await GClassSync.authenticateGoogleClassroom();
+                
+                const statusText = document.getElementById('gclassStatusText');
+                if (statusText) statusText.innerHTML = `<span style="color: #10b981; font-weight: 700;">● Connected</span> - Ready to sync classroom assignments & scores`;
+                btnConnect.style.background = "#10b981";
+                btnConnect.innerText = "Connected ✓";
+
+                // Load courses
+                await loadGoogleClassroomCourses();
+            } catch (err) {
+                console.error("Google Classroom Connection Error:", err);
+                alert("Connection failed: " + err.message);
+                btnConnect.innerText = "Connect Classroom";
+            } finally {
+                btnConnect.disabled = false;
+            }
+        };
+    }
+
+    if (courseSelect) {
+        courseSelect.onchange = () => {
+            const selectedCourseId = courseSelect.value;
+            const courseObj = gclassCoursesList.find(c => c.id === selectedCourseId);
+            if (!courseObj) return;
+
+            const { detectedSubject, detectedClass } = GClassSync.detectSubjectAndClass(courseObj.name, courseObj.section);
+            
+            const subjectSelect = document.getElementById('gclassTargetSubject');
+            const classSelect = document.getElementById('gclassTargetClass');
+
+            if (subjectSelect) {
+                if (detectedSubject) {
+                    subjectSelect.value = detectedSubject;
+                } else if (teacherSubject && teacherSubject !== "All Subjects" && teacherSubject !== "Unassigned") {
+                    subjectSelect.value = teacherSubject;
+                }
+            }
+
+            if (classSelect) {
+                if (detectedClass) {
+                    classSelect.value = detectedClass;
+                } else {
+                    classSelect.value = "Grade 9A";
+                }
+            }
+
+            // Hide previous coursework and preview sections when course changes
+            const workSection = document.getElementById('gclassWorkSection');
+            const previewSection = document.getElementById('gclassPreviewSection');
+            if (workSection) workSection.classList.add('hidden');
+            if (previewSection) previewSection.classList.add('hidden');
+        };
+    }
+
+    if (btnFetchWork) {
+        btnFetchWork.onclick = async () => {
+            const courseSelect = document.getElementById('gclassCourseSelect');
+            const courseId = courseSelect?.value;
+            if (!courseId) {
+                alert("Please select a Google Classroom course first.");
+                return;
+            }
+
+            btnFetchWork.disabled = true;
+            btnFetchWork.innerHTML = `<span class="spinner-small" style="display: inline-block; width: 14px; height: 14px; border: 2px solid white; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;"></span> Loading...`;
+            
+            try {
+                const workSection = document.getElementById('gclassWorkSection');
+                const workListContainer = document.getElementById('gclassWorkListContainer');
+                const previewSection = document.getElementById('gclassPreviewSection');
+                if (previewSection) previewSection.classList.add('hidden');
+
+                gclassCurrentCourseWorks = await GClassSync.fetchCourseWork(courseId);
+
+                if (!gclassCurrentCourseWorks.length) {
+                    workListContainer.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--text-gray);">No published assignments found in this class.</div>`;
+                } else {
+                    workListContainer.innerHTML = gclassCurrentCourseWorks.map((cw, idx) => {
+                        const dueDateStr = cw.dueDate ? `${cw.dueDate.year}-${String(cw.dueDate.month).padStart(2,'0')}-${String(cw.dueDate.day).padStart(2,'0')}` : 'No due date';
+                        const maxPts = cw.maxPoints !== undefined ? `${cw.maxPoints} pts` : 'Ungraded / 100 pts';
+                        return `
+                            <label style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #ffffff; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--primary-blue)'" onmouseout="this.style.borderColor='var(--border-color)'">
+                                <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+                                    <input type="checkbox" class="gclass-work-checkbox" data-work-id="${escapeHtml(cw.id)}" value="${escapeHtml(cw.id)}" ${idx === 0 ? 'checked' : ''} style="width: 17px; height: 17px; cursor: pointer;">
+                                    <div>
+                                        <div style="font-weight: 600; font-size: 13.5px; color: var(--text-dark);">${escapeHtml(cw.title || 'Untitled Assignment')}</div>
+                                        <div style="font-size: 12px; color: var(--text-gray); margin-top: 2px;">Due: ${escapeHtml(dueDateStr)} • Max: ${escapeHtml(maxPts)}</div>
+                                    </div>
+                                </div>
+                                <span style="font-size: 11px; background: #f1f5f9; color: #475569; font-weight: 700; padding: 3px 8px; border-radius: 12px;">Classwork</span>
+                            </label>
+                        `;
+                    }).join('');
+                }
+
+                if (workSection) workSection.classList.remove('hidden');
+            } catch (err) {
+                alert("Failed to load classwork: " + err.message);
+            } finally {
+                btnFetchWork.disabled = false;
+                btnFetchWork.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Load Classwork`;
+            }
+        };
+    }
+
+    if (btnSelectAll) {
+        btnSelectAll.onclick = () => {
+            document.querySelectorAll('.gclass-work-checkbox').forEach(cb => cb.checked = true);
+        };
+    }
+
+    if (btnDeselectAll) {
+        btnDeselectAll.onclick = () => {
+            document.querySelectorAll('.gclass-work-checkbox').forEach(cb => cb.checked = false);
+        };
+    }
+
+    if (btnPreview) {
+        btnPreview.onclick = async () => {
+            const courseSelect = document.getElementById('gclassCourseSelect');
+            const subjectSelect = document.getElementById('gclassTargetSubject');
+            const classSelect = document.getElementById('gclassTargetClass');
+
+            const courseId = courseSelect?.value;
+            const targetSubject = subjectSelect?.value || 'English';
+            const targetClass = classSelect?.value || 'Grade 9A';
+
+            const selectedWorkIds = Array.from(document.querySelectorAll('.gclass-work-checkbox:checked')).map(cb => cb.value);
+            if (!selectedWorkIds.length) {
+                alert("Please select at least one classwork assignment to sync.");
+                return;
+            }
+
+            const selectedCourseWorks = gclassCurrentCourseWorks.filter(cw => selectedWorkIds.includes(cw.id));
+
+            btnPreview.disabled = true;
+            btnPreview.innerHTML = `Calculating student matches...`;
+
+            try {
+                const previewSection = document.getElementById('gclassPreviewSection');
+                const result = await GClassSync.buildSyncPreview({
+                    courseId,
+                    selectedCourseWorks,
+                    targetSubject,
+                    targetClass
+                });
+
+                gclassPreviewItems = result.previewList;
+                gclassFirestoreStudents = result.allFirestoreStudents;
+
+                renderGclassPreviewTable();
+                if (previewSection) previewSection.classList.remove('hidden');
+            } catch (err) {
+                console.error("Preview Error:", err);
+                alert("Failed to build preview: " + err.message);
+            } finally {
+                btnPreview.disabled = false;
+                btnPreview.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg> Preview Email Matches & Scores`;
+            }
+        };
+    }
+
+    if (previewSelectAll) {
+        previewSelectAll.onchange = () => {
+            const isChecked = previewSelectAll.checked;
+            gclassPreviewItems.forEach(item => {
+                if (item.classroomGrade !== null && item.studentCode) {
+                    item.selected = isChecked;
+                }
+            });
+            renderGclassPreviewTable();
+        };
+    }
+
+    if (previewSearchInput) {
+        previewSearchInput.oninput = debounce(() => {
+            renderGclassPreviewTable();
+        }, 150);
+    }
+
+    if (btnCommit) {
+        btnCommit.onclick = async () => {
+            const itemsToSync = gclassPreviewItems.filter(item => item.selected && item.classroomGrade !== null && item.studentCode);
+            if (!itemsToSync.length) {
+                alert("No items selected for sync. Please ensure students are matched and grades are entered.");
+                return;
+            }
+
+            if (!confirm(`Are you ready to sync ${itemsToSync.length} score(s) to the database?`)) {
+                return;
+            }
+
+            btnCommit.disabled = true;
+            btnCommit.innerHTML = `Writing to database...`;
+
+            try {
+                const result = await GClassSync.commitSyncToFirestore(itemsToSync);
+                alert(`🎉 Successfully synchronized ${result.totalSynced} score(s)!\n• ${result.insertedCount} new scores added\n• ${result.updatedCount} scores updated`);
+                
+                // Refresh admin table and views
+                loadAdminTable();
+                
+                // Re-run preview to show updated status
+                if (btnPreview) btnPreview.click();
+            } catch (err) {
+                alert("Sync failed: " + err.message);
+            } finally {
+                btnCommit.disabled = false;
+                btnCommit.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Confirm & Sync Scores to Database`;
+            }
+        };
+    }
+}
+
+async function loadGoogleClassroomCourses() {
+    const courseSection = document.getElementById('gclassCourseSelectionSection');
+    const courseSelect = document.getElementById('gclassCourseSelect');
+    const subjectSelect = document.getElementById('gclassTargetSubject');
+    const classSelect = document.getElementById('gclassTargetClass');
+
+    if (!courseSelect) return;
+
+    courseSelect.innerHTML = `<option value="">Loading your courses...</option>`;
+
+    try {
+        gclassCoursesList = await GClassSync.fetchCourses();
+        if (!gclassCoursesList.length) {
+            courseSelect.innerHTML = `<option value="">No active courses found</option>`;
+            return;
+        }
+
+        courseSelect.innerHTML = `<option value="">-- Choose a Course (${gclassCoursesList.length} available) --</option>` +
+            gclassCoursesList.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name || 'Untitled')}${c.section ? ` (${escapeHtml(c.section)})` : ''}</option>`).join('');
+
+        // Populate Subjects
+        const standardSubjects = ["English", "ICT", "Science", "Math", "Bahasa Indonesia", "Art", "Music", "Civics", "Social Studies", "Physical Education", "General Assessment"];
+        if (subjectSelect) {
+            subjectSelect.innerHTML = standardSubjects.map(s => `<option value="${s}">${s}</option>`).join('');
+        }
+
+        // Populate Classes
+        const standardClasses = ["Grade 9A", "Grade 9B", "Grade 9C", "Grade 7A", "Grade 7B", "Grade 8A", "Grade 8B", "Grade 10A", "Grade 10B", "Grade 11A", "Grade 12"];
+        if (classSelect) {
+            classSelect.innerHTML = standardClasses.map(cl => `<option value="${cl}">${cl}</option>`).join('');
+        }
+
+        // Auto-select Grade 9A course if present (e.g. English G9A or ICT G9A)
+        const g9aCourse = gclassCoursesList.find(c => (c.name || '').toLowerCase().includes('9a') || (c.section || '').toLowerCase().includes('9a'));
+        if (g9aCourse) {
+            courseSelect.value = g9aCourse.id;
+            courseSelect.dispatchEvent(new Event('change'));
+        }
+
+        if (courseSection) courseSection.classList.remove('hidden');
+    } catch (err) {
+        console.error("Error loading courses:", err);
+        courseSelect.innerHTML = `<option value="">Failed to load courses</option>`;
+        alert("Error loading Google Classroom courses: " + err.message);
+    }
+}
+
+function renderGclassPreviewTable() {
+    const tbody = document.getElementById('gclassPreviewTableBody');
+    const summaryPills = document.getElementById('gclassSyncSummaryPills');
+    const statsText = document.getElementById('gclassPreviewStatsText');
+    const searchFilter = document.getElementById('gclassPreviewSearchInput')?.value.toLowerCase().trim() || '';
+
+    if (!tbody) return;
+
+    let totalReady = 0;
+    let totalUpdated = 0;
+    let totalIdentical = 0;
+    let totalNoGrade = 0;
+    let totalUnmatched = 0;
+
+    gclassPreviewItems.forEach(item => {
+        if (item.syncStatus === 'READY_NEW') totalReady++;
+        else if (item.syncStatus === 'READY_UPDATE') totalUpdated++;
+        else if (item.syncStatus === 'IDENTICAL') totalIdentical++;
+        else if (item.syncStatus === 'NO_GRADE') totalNoGrade++;
+        else if (item.syncStatus === 'UNMATCHED_EMAIL') totalUnmatched++;
+    });
+
+    if (summaryPills) {
+        summaryPills.innerHTML = `
+            <span style="background: #ecfdf5; color: #065f46; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px;">✨ ${totalReady} New</span>
+            <span style="background: #eff6ff; color: #1e40af; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px;">🔄 ${totalUpdated} Updates</span>
+            <span style="background: #f1f5f9; color: #475569; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px;">✓ ${totalIdentical} Up to Date</span>
+            ${totalUnmatched > 0 ? `<span style="background: #fef2f2; color: #991b1b; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px;">⚠️ ${totalUnmatched} Unmatched</span>` : ''}
+            ${totalNoGrade > 0 ? `<span style="background: #fffbeb; color: #92400e; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px;">⏳ ${totalNoGrade} Unscored</span>` : ''}
+        `;
+    }
+
+    if (statsText) {
+        statsText.innerText = `Displaying ${gclassPreviewItems.length} submission(s) across selected classwork.`;
+    }
+
+    const filteredItems = gclassPreviewItems.filter(item => {
+        if (!searchFilter) return true;
+        return (
+            (item.classroomStudentName || '').toLowerCase().includes(searchFilter) ||
+            (item.classroomEmail || '').toLowerCase().includes(searchFilter) ||
+            (item.studentCode || '').toLowerCase().includes(searchFilter) ||
+            (item.courseWorkTitle || '').toLowerCase().includes(searchFilter)
+        );
+    });
+
+    if (!filteredItems.length) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 24px; color: var(--text-gray);">No submissions found matching criteria.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = filteredItems.map((item, idx) => {
+        const itemGlobalIndex = gclassPreviewItems.indexOf(item);
+        
+        let statusBadge = '';
+        if (item.syncStatus === 'READY_NEW') {
+            statusBadge = `<span style="background: #ecfdf5; color: #10b981; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">+ New Score</span>`;
+        } else if (item.syncStatus === 'READY_UPDATE') {
+            statusBadge = `<span style="background: #eff6ff; color: #3b82f6; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">Update (${item.existingScoreVal} → ${item.classroomGrade})</span>`;
+        } else if (item.syncStatus === 'IDENTICAL') {
+            statusBadge = `<span style="background: #f1f5f9; color: #64748b; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">Up to Date</span>`;
+        } else if (item.syncStatus === 'NO_GRADE') {
+            statusBadge = `<span style="background: #fffbeb; color: #d97706; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">No Grade in Classroom</span>`;
+        } else if (item.syncStatus === 'UNMATCHED_EMAIL') {
+            statusBadge = `<span style="background: #fef2f2; color: #ef4444; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">Email Unmatched</span>`;
+        }
+
+        const isCheckable = item.classroomGrade !== null && item.studentCode;
+
+        // Student code cell with fallback dropdown if unmatched
+        let studentCodeHtml = '';
+        if (item.matchedStudent) {
+            studentCodeHtml = `<span style="font-family: monospace; font-weight: 700; color: var(--primary-blue);">${escapeHtml(item.studentCode)}</span> <small style="color: var(--text-gray);">(${escapeHtml(item.targetClass)})</small>`;
+        } else {
+            // Dropdown to manually link student
+            const options = gclassFirestoreStudents.map(st => `<option value="${escapeHtml(st.id)}">${escapeHtml(st.studentName)} (${escapeHtml(st.id)} - ${escapeHtml(st.studentClass)})</option>`).join('');
+            studentCodeHtml = `
+                <select style="font-size: 12px; padding: 4px 6px; border: 1px solid #f87171; border-radius: 6px; background: #fff5f5;" onchange="window.manualLinkGclassStudent(${itemGlobalIndex}, this.value)">
+                    <option value="">-- Link Student --</option>
+                    ${options}
+                </select>
+            `;
+        }
+
+        const scoreDisplay = item.classroomGrade !== null 
+            ? `<strong style="font-size: 14px; color: var(--text-dark);">${item.classroomGrade}</strong> <span style="color: var(--text-gray); font-size: 12px;">/ ${item.courseWorkMaxPoints}</span>`
+            : `<span style="color: var(--text-gray); font-style: italic;">Not Graded</span>`;
+
+        return `
+            <tr style="border-bottom: 1px solid var(--border-color); ${!item.selected ? 'opacity: 0.65;' : ''}">
+                <td style="text-align: center;">
+                    <input type="checkbox" ${item.selected ? 'checked' : ''} ${!isCheckable ? 'disabled' : ''} onchange="window.toggleGclassPreviewItem(${itemGlobalIndex}, this.checked)" style="width: 16px; height: 16px; cursor: pointer;">
+                </td>
+                <td>
+                    <div style="font-weight: 600; color: var(--text-dark); font-size: 13.5px;">${escapeHtml(item.classroomStudentName)}</div>
+                </td>
+                <td>
+                    <div style="font-size: 12.5px; color: #475569; font-family: monospace;">${escapeHtml(item.classroomEmail || 'No email')}</div>
+                </td>
+                <td>${studentCodeHtml}</td>
+                <td>
+                    <div style="font-size: 13px; font-weight: 600; color: var(--text-dark);">${escapeHtml(item.courseWorkTitle)}</div>
+                </td>
+                <td style="text-align: center;">${scoreDisplay}</td>
+                <td style="text-align: center;">${statusBadge}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+window.toggleGclassPreviewItem = function(globalIndex, isChecked) {
+    if (gclassPreviewItems[globalIndex]) {
+        gclassPreviewItems[globalIndex].selected = isChecked;
+        renderGclassPreviewTable();
+    }
+};
+
+window.manualLinkGclassStudent = function(globalIndex, selectedStudentCode) {
+    const item = gclassPreviewItems[globalIndex];
+    if (!item) return;
+
+    const matched = gclassFirestoreStudents.find(st => st.id === selectedStudentCode);
+    if (matched) {
+        item.matchedStudent = matched;
+        item.studentCode = matched.id;
+        item.studentName = matched.studentName;
+        item.targetClass = matched.studentClass;
+        item.syncStatus = item.classroomGrade !== null ? 'READY_NEW' : 'NO_GRADE';
+        item.selected = item.classroomGrade !== null;
+        renderGclassPreviewTable();
     }
 };
 
@@ -4704,13 +5167,12 @@ window.loadSystemDatabases = async function () {
         }
 
         // 5. Populate Quizzes Table (Digital + Offline)
+        // 5. Populate Quizzes Table (Digital + Offline + Classroom)
         const quizTbody = document.querySelector("#quizzesDatabaseTable tbody");
         if (quizTbody) {
             try {
-                // Fetch only offline quizzes (system_quizzes) for this management table
+                // Fetch offline/classroom quizzes (system_quizzes)
                 const manualSnap = await getDocs(collection(db, "system_quizzes"));
-
-                const quizRows = [];
 
                 // Helper for Quiz Type Badges
                 const getQuizTypeBadge = (type) => {
@@ -4748,41 +5210,96 @@ window.loadSystemDatabases = async function () {
                     return `<span style="background: ${bg}; color: ${color}; border: 1px solid ${border}; padding: 3px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 700;">${t}</span>`;
                 };
 
-                // Process Offline Quizzes (Manual Exams)
+                const getSourceBadge = (source) => {
+                    if (source === 'google_classroom') {
+                        return `<span style="background: rgba(59, 130, 246, 0.1); color: #2563eb; border: 1px solid rgba(59, 130, 246, 0.25); padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; margin-left: 6px;">Classroom</span>`;
+                    }
+                    return '';
+                };
+
+                // Map to group unique assignments by (title + subject)
+                const assignmentMap = new Map();
+                const duplicateDocIdsToDelete = [];
+
+                // 1. Process documents purely from system_quizzes
                 manualSnap.forEach(docSnap => {
                     const data = docSnap.data();
-                    const title = data.name;
-                    const sub = data.subject || '-';
-                    const cls = data.targetClass || '-';
+                    const title = (data.name || '').trim();
+                    const sub = (data.subject || 'English').trim();
+                    const cls = data.targetClass || '';
                     const type = data.type || (title.toLowerCase().includes('review') ? 'Review' : 'Quiz');
+                    const source = data.source || (docSnap.id.startsWith('gclass_') ? 'google_classroom' : 'offline');
 
-                    if (title) {
-                        quizRows.push(`
-                            <tr>
-                                <td><strong>${title}</strong></td>
-                                <td>${getQuizTypeBadge(type)}</td>
-                                <td>${sub}</td>
-                                <td>${cls}</td>
-                                <td style="text-align: center; position: relative;">
-                                    <div class="db-action-kebab" style="position: relative; display: inline-block;">
-                                        <button type="button" class="card-kebab-btn" onclick="toggleOfflineQuizKebab(event, '${docSnap.id}')" title="Actions">
-                                            ⋮
-                                        </button>
-                                        <div id="offlineQuizKebab_${docSnap.id}" class="profile-card-dropdown hidden" style="top: 36px; right: 0; min-width: 120px; z-index: 100;">
-                                            <button type="button" class="profile-dropdown-item" onclick="openEditOfflineQuizModal('${docSnap.id}')">
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                                                <span>Edit</span>
-                                            </button>
-                                            <button type="button" class="profile-dropdown-item" style="color: #ef4444 !important;" onclick="deleteSystemRecord('system_quizzes', '${docSnap.id}')">
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                                                <span>Delete</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </td>
-                            </tr>
-                        `);
+                    if (!title) return;
+
+                    const groupKey = `${title.toLowerCase()}::${sub.toLowerCase()}`;
+
+                    if (assignmentMap.has(groupKey)) {
+                        // Already exists: merge classes
+                        const existing = assignmentMap.get(groupKey);
+                        if (cls) {
+                            cls.split(',').map(c => c.trim()).filter(Boolean).forEach(c => existing.classesSet.add(c));
+                        }
+                        if (source === 'google_classroom') existing.source = 'google_classroom';
+                        
+                        // Mark redundant auto-generated duplicate doc for cleanup
+                        if (docSnap.id.startsWith('offline_') || docSnap.id.startsWith('gclass_')) {
+                            duplicateDocIdsToDelete.push(docSnap.id);
+                        }
+                    } else {
+                        const classesSet = new Set();
+                        if (cls) {
+                            cls.split(',').map(c => c.trim()).filter(Boolean).forEach(c => classesSet.add(c));
+                        }
+                        assignmentMap.set(groupKey, {
+                            docId: docSnap.id,
+                            title: title,
+                            subject: sub,
+                            type: type,
+                            source: source,
+                            classesSet: classesSet
+                        });
                     }
+                });
+
+                // Asynchronously clean up redundant duplicate documents in Firestore
+                if (duplicateDocIdsToDelete.length > 0) {
+                    duplicateDocIdsToDelete.forEach(id => {
+                        deleteDoc(doc(db, "system_quizzes", id)).catch(() => {});
+                    });
+                }
+
+                // 2. Render Deduplicated Table Rows
+                const quizRows = [];
+                assignmentMap.forEach((item) => {
+                    const classList = Array.from(item.classesSet).sort();
+                    const classDisplay = classList.length > 0 ? classList.join(', ') : 'All Classes';
+
+                    quizRows.push(`
+                        <tr>
+                            <td><strong>${item.title}</strong></td>
+                            <td>${getQuizTypeBadge(item.type)}${getSourceBadge(item.source)}</td>
+                            <td>${item.subject}</td>
+                            <td>${classDisplay}</td>
+                            <td style="text-align: center; position: relative;">
+                                <div class="db-action-kebab" style="position: relative; display: inline-block;">
+                                    <button type="button" class="card-kebab-btn" onclick="toggleOfflineQuizKebab(event, '${item.docId}')" title="Actions">
+                                        ⋮
+                                    </button>
+                                    <div id="offlineQuizKebab_${item.docId}" class="profile-card-dropdown hidden" style="top: 36px; right: 0; min-width: 120px; z-index: 100;">
+                                        <button type="button" class="profile-dropdown-item" onclick="openEditOfflineQuizModal('${item.docId}')">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                                            <span>Edit</span>
+                                        </button>
+                                        <button type="button" class="profile-dropdown-item" style="color: #ef4444 !important;" onclick="deleteSystemRecord('system_quizzes', '${item.docId}')">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                            <span>Delete</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    `);
                 });
 
                 // Inject into DOM in a single batch operation
@@ -5025,13 +5542,68 @@ async function addManualQuiz() {
 }
 
 async function deleteSystemRecord(collectionName, docId) {
-    if (confirm("Are you sure you want to delete this record?")) {
+    if (confirm("Are you sure you want to permanently delete this assignment?")) {
         try {
-            await deleteDoc(doc(db, collectionName, docId));
-            alert("Record deleted successfully.");
+            if (collectionName === "system_quizzes") {
+                // Fetch document to obtain assignment title
+                let examTitle = "";
+                let examSubject = "";
+                try {
+                    const docRef = doc(db, "system_quizzes", docId);
+                    const docSnap = await getDoc(docRef);
+                    if (docSnap.exists()) {
+                        const d = docSnap.data();
+                        examTitle = (d.name || "").trim();
+                        examSubject = (d.subject || "").trim();
+                    }
+                } catch (e) {}
+
+                // Delete system_quizzes document
+                await deleteDoc(doc(db, "system_quizzes", docId));
+
+                // Also delete any other auto-generated system_quizzes entries for this assignment
+                if (examTitle) {
+                    const safeTitle = examTitle.replace(/[^a-zA-Z0-9_-]/g, "_");
+                    const altDocIds = [`offline_${safeTitle}`, `gclass_${safeTitle}`, `offline_${examTitle}`, `gclass_${examTitle}`];
+                    altDocIds.forEach(altId => {
+                        if (altId !== docId) {
+                            deleteDoc(doc(db, "system_quizzes", altId)).catch(() => {});
+                        }
+                    });
+
+                    // Remove all associated student score records in exam_scores and legacy scores
+                    const allScores = await getDocs(collection(db, "exam_scores"));
+                    const deletePromises = [];
+                    allScores.forEach(sDoc => {
+                        const sData = sDoc.data();
+                        const sTitle = (sData.examName || sData.quizName || "").trim().toLowerCase();
+                        const sSubj = (sData.subject || "").trim().toLowerCase();
+                        if (sTitle === examTitle.toLowerCase() && (!examSubject || sSubj === examSubject.toLowerCase())) {
+                            deletePromises.push(deleteDoc(sDoc.ref));
+                        }
+                    });
+
+                    // Also clean up legacy scores collection
+                    try {
+                        const legScores = await getDocs(collection(db, "scores"));
+                        legScores.forEach(lDoc => {
+                            const lTitle = (lDoc.data().quizTitle || lDoc.data().examName || "").trim().toLowerCase();
+                            if (lTitle === examTitle.toLowerCase()) {
+                                deletePromises.push(deleteDoc(lDoc.ref));
+                            }
+                        });
+                    } catch (le) {}
+
+                    await Promise.all(deletePromises);
+                }
+            } else {
+                await deleteDoc(doc(db, collectionName, docId));
+            }
+
+            alert("Assignment deleted successfully.");
 
             if (typeof window.loadSystemDatabases === "function") {
-                window.loadSystemDatabases();
+                await window.loadSystemDatabases();
             }
         } catch (e) {
             alert("Error deleting record: " + e.message);
@@ -6294,13 +6866,15 @@ async function filterDirectQuizzes() {
 
     if (!selectedSubject || !selectedClass) return;
 
+    const seenTitles = new Set();
+
     try {
         // 1. Digital Quizzes
         try {
             const digitalSnap = await getDocs(collection(db, "quizzes"));
             digitalSnap.forEach(docSnap => {
                 const data = docSnap.data();
-                const title = data.title || data.quizName || "";
+                const title = (data.title || data.quizName || "").trim();
                 const qSubject = (data.subject || "").trim().toLowerCase();
                 const qClass = (data.targetClass || "").trim().toLowerCase();
                 const targetList = Array.isArray(data.targetClassesList) ? data.targetClassesList.map(c => c.toLowerCase()) : [];
@@ -6315,7 +6889,8 @@ async function filterDirectQuizzes() {
                     qClass.includes(selectedClass) ||
                     targetList.includes(selectedClass);
 
-                if (title && matchesSubject && matchesClass) {
+                if (title && matchesSubject && matchesClass && !seenTitles.has(title.toLowerCase())) {
+                    seenTitles.add(title.toLowerCase());
                     quizSelect.innerHTML += `<option value="${title}">${title} (Digital)</option>`;
                 }
             });
@@ -6323,12 +6898,12 @@ async function filterDirectQuizzes() {
             console.warn("Could not read digital quizzes:", err.message);
         }
 
-        // 2. Offline Quizzes
+        // 2. Offline & Classroom Quizzes from system_quizzes
         try {
             const manualSnap = await getDocs(collection(db, "system_quizzes"));
             manualSnap.forEach(docSnap => {
                 const data = docSnap.data();
-                const title = data.name || "";
+                const title = (data.name || "").trim();
                 const qSubject = (data.subject || "").trim().toLowerCase();
                 const qClass = (data.targetClass || "").trim().toLowerCase();
                 const targetList = Array.isArray(data.targetClassesList) ? data.targetClassesList.map(c => c.toLowerCase()) : [];
@@ -6343,13 +6918,34 @@ async function filterDirectQuizzes() {
                     qClass.includes(selectedClass) ||
                     targetList.includes(selectedClass);
 
-                if (title && matchesSubject && matchesClass) {
-                    quizSelect.innerHTML += `<option value="${title}">${title} (Offline)</option>`;
+                if (title && matchesSubject && matchesClass && !seenTitles.has(title.toLowerCase())) {
+                    seenTitles.add(title.toLowerCase());
+                    const tag = (data.source === "google_classroom" || data.gclassCourseWorkId) ? "Classroom" : "Offline";
+                    quizSelect.innerHTML += `<option value="${title}">${title} (${tag})</option>`;
                 }
             });
         } catch (err) {
-            console.warn("Could not read offline quizzes:", err.message);
+            console.warn("Could not read offline/classroom quizzes:", err.message);
         }
+
+        // 3. Fallback: Synced exam_scores entries
+        try {
+            const scoresSnap = await getDocs(collection(db, "exam_scores"));
+            scoresSnap.forEach(docSnap => {
+                const data = docSnap.data();
+                const title = (data.examName || data.quizName || "").trim();
+                const docSubj = (data.subject || "").trim().toLowerCase();
+                const docClass = (data.studentClass || "").trim().toLowerCase();
+
+                if (title && (docSubj === selectedSubject || !selectedSubject) && (docClass === selectedClass || !selectedClass)) {
+                    if (!seenTitles.has(title.toLowerCase())) {
+                        seenTitles.add(title.toLowerCase());
+                        const tag = (data.source === "google_classroom" || data.gclassCourseWorkId) ? "Classroom" : "Offline";
+                        quizSelect.innerHTML += `<option value="${title}">${title} (${tag})</option>`;
+                    }
+                }
+            });
+        } catch (err) { }
 
     } catch (e) {
         console.error("Error filtering direct quizzes:", e.message);
@@ -6371,13 +6967,15 @@ async function filterLedgerQuizzes() {
 
     if (!selectedSubject || !selectedClass) return;
 
+    const seenTitles = new Set();
+
     try {
         // 1. Digital Quizzes
         try {
             const digitalSnap = await getDocs(collection(db, "quizzes"));
             digitalSnap.forEach(docSnap => {
                 const data = docSnap.data();
-                const title = data.title || data.quizName || "";
+                const title = (data.title || data.quizName || "").trim();
                 const qSubject = (data.subject || "").trim().toLowerCase();
                 const qClass = (data.targetClass || "").trim().toLowerCase();
                 const targetList = Array.isArray(data.targetClassesList) ? data.targetClassesList.map(c => c.toLowerCase()) : [];
@@ -6392,7 +6990,8 @@ async function filterLedgerQuizzes() {
                     qClass.includes(selectedClass) ||
                     targetList.includes(selectedClass);
 
-                if (title && matchesSubject && matchesClass) {
+                if (title && matchesSubject && matchesClass && !seenTitles.has(title.toLowerCase())) {
+                    seenTitles.add(title.toLowerCase());
                     quizSelect.innerHTML += `<option value="${title}">${title} (Digital)</option>`;
                 }
             });
@@ -6400,12 +6999,12 @@ async function filterLedgerQuizzes() {
             console.warn("Could not read digital quizzes:", err.message);
         }
 
-        // 2. Offline Quizzes
+        // 2. Offline & Classroom Quizzes from system_quizzes
         try {
             const manualSnap = await getDocs(collection(db, "system_quizzes"));
             manualSnap.forEach(docSnap => {
                 const data = docSnap.data();
-                const title = data.name || "";
+                const title = (data.name || "").trim();
                 const qSubject = (data.subject || "").trim().toLowerCase();
                 const qClass = (data.targetClass || "").trim().toLowerCase();
                 const targetList = Array.isArray(data.targetClassesList) ? data.targetClassesList.map(c => c.toLowerCase()) : [];
@@ -6420,13 +7019,34 @@ async function filterLedgerQuizzes() {
                     qClass.includes(selectedClass) ||
                     targetList.includes(selectedClass);
 
-                if (title && matchesSubject && matchesClass) {
-                    quizSelect.innerHTML += `<option value="${title}">${title} (Offline)</option>`;
+                if (title && matchesSubject && matchesClass && !seenTitles.has(title.toLowerCase())) {
+                    seenTitles.add(title.toLowerCase());
+                    const tag = (data.source === "google_classroom" || data.gclassCourseWorkId) ? "Classroom" : "Offline";
+                    quizSelect.innerHTML += `<option value="${title}">${title} (${tag})</option>`;
                 }
             });
         } catch (err) {
-            console.warn("Could not read offline quizzes:", err.message);
+            console.warn("Could not read offline/classroom quizzes:", err.message);
         }
+
+        // 3. Fallback: Synced exam_scores entries directly
+        try {
+            const scoresSnap = await getDocs(collection(db, "exam_scores"));
+            scoresSnap.forEach(docSnap => {
+                const data = docSnap.data();
+                const title = (data.examName || data.quizName || "").trim();
+                const docSubj = (data.subject || "").trim().toLowerCase();
+                const docClass = (data.studentClass || "").trim().toLowerCase();
+
+                if (title && (docSubj === selectedSubject || !selectedSubject) && (docClass === selectedClass || !selectedClass)) {
+                    if (!seenTitles.has(title.toLowerCase())) {
+                        seenTitles.add(title.toLowerCase());
+                        const tag = (data.source === "google_classroom" || data.gclassCourseWorkId) ? "Classroom" : "Offline";
+                        quizSelect.innerHTML += `<option value="${title}">${title} (${tag})</option>`;
+                    }
+                }
+            });
+        } catch (err) { }
 
     } catch (e) {
         console.error("Error filtering ledger quizzes:", e.message);
@@ -6448,12 +7068,14 @@ async function filterBulkQuizzes() {
 
     if (!selectedSubject || !selectedClass) return;
 
+    const seenTitles = new Set();
+
     try {
         // Fetch Digital Quizzes
         const digitalSnap = await getDocs(collection(db, "quizzes"));
         digitalSnap.forEach(docSnap => {
             const data = docSnap.data();
-            const title = data.title || data.quizName || "";
+            const title = (data.title || data.quizName || "").trim();
             const qSubject = (data.subject || "").trim().toLowerCase();
             const qClass = (data.targetClass || "").trim().toLowerCase();
             const targetList = Array.isArray(data.targetClassesList) ? data.targetClassesList.map(c => c.toLowerCase()) : [];
@@ -6468,16 +7090,17 @@ async function filterBulkQuizzes() {
                 qClass.includes(selectedClass) ||
                 targetList.includes(selectedClass);
 
-            if (title && matchesSubject && matchesClass) {
+            if (title && matchesSubject && matchesClass && !seenTitles.has(title.toLowerCase())) {
+                seenTitles.add(title.toLowerCase());
                 quizSelect.innerHTML += `<option value="${title}">${title} (Digital)</option>`;
             }
         });
 
-        // Fetch Offline Quizzes
+        // Fetch Offline & Classroom Quizzes
         const manualSnap = await getDocs(collection(db, "system_quizzes"));
         manualSnap.forEach(docSnap => {
             const data = docSnap.data();
-            const title = data.name || "";
+            const title = (data.name || "").trim();
             const qSubject = (data.subject || "").trim().toLowerCase();
             const qClass = (data.targetClass || "").trim().toLowerCase();
             const targetList = Array.isArray(data.targetClassesList) ? data.targetClassesList.map(c => c.toLowerCase()) : [];
@@ -6492,10 +7115,31 @@ async function filterBulkQuizzes() {
                 qClass.includes(selectedClass) ||
                 targetList.includes(selectedClass);
 
-            if (title && matchesSubject && matchesClass) {
-                quizSelect.innerHTML += `<option value="${title}">${title} (Offline)</option>`;
+            if (title && matchesSubject && matchesClass && !seenTitles.has(title.toLowerCase())) {
+                seenTitles.add(title.toLowerCase());
+                const tag = (data.source === "google_classroom" || data.gclassCourseWorkId) ? "Classroom" : "Offline";
+                quizSelect.innerHTML += `<option value="${title}">${title} (${tag})</option>`;
             }
         });
+
+        // Fallback: exam_scores
+        try {
+            const scoresSnap = await getDocs(collection(db, "exam_scores"));
+            scoresSnap.forEach(docSnap => {
+                const data = docSnap.data();
+                const title = (data.examName || data.quizName || "").trim();
+                const docSubj = (data.subject || "").trim().toLowerCase();
+                const docClass = (data.studentClass || "").trim().toLowerCase();
+
+                if (title && (docSubj === selectedSubject || !selectedSubject) && (docClass === selectedClass || !selectedClass)) {
+                    if (!seenTitles.has(title.toLowerCase())) {
+                        seenTitles.add(title.toLowerCase());
+                        const tag = (data.source === "google_classroom" || data.gclassCourseWorkId) ? "Classroom" : "Offline";
+                        quizSelect.innerHTML += `<option value="${title}">${title} (${tag})</option>`;
+                    }
+                }
+            });
+        } catch (err) { }
     } catch (e) {
         console.error("Error filtering bulk quizzes:", e.message);
     }

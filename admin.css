@@ -4956,4 +4956,48 @@ body.dark-mode .greeting-subtitle {
         width: 45% !important;
         opacity: 0.2 !important;
     }
-}
+}
+
+/* ==========================================================================
+   GOOGLE CLASSROOM SYNC ENHANCEMENTS & DARK THEME
+   ========================================================================== */
+.gclass-connect-banner {
+    transition: all 0.2s ease;
+}
+body.dark-theme .gclass-connect-banner {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+}
+body.dark-theme #gclassSettingsPanel {
+    background: #0f172a !important;
+    border-color: var(--primary-blue) !important;
+}
+body.dark-theme #gclassWorkListContainer {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+}
+body.dark-theme #gclassWorkListContainer label {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+}
+body.dark-theme #gclassWorkListContainer label:hover {
+    border-color: var(--primary-blue) !important;
+}
+body.dark-theme #gclassPreviewTable {
+    border-color: #334155 !important;
+}
+body.dark-theme #gclassPreviewTable th {
+    background: #1e293b !important;
+    color: #cbd5e1 !important;
+}
+body.dark-theme #gclassPreviewTable td {
+    border-bottom-color: #334155 !important;
+    color: #f1f5f9 !important;
+}
+body.dark-theme #btnSelectAllGclassWork,
+body.dark-theme #btnDeselectAllGclassWork {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #cbd5e1 !important;
+}
+
