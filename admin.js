@@ -48,11 +48,19 @@ onAuthStateChanged(auth, async (user) => {
             const sidebarRoleEl = document.getElementById('sidebarUserRole');
             const avatarCircleEl = document.getElementById('userAvatarCircle');
 
+            const mobileSidebarNameEl = document.getElementById('mobileSidebarUserName');
+            const mobileSidebarRoleEl = document.getElementById('mobileSidebarUserRole');
+            const mobileAvatarCircleEl = document.getElementById('mobileUserAvatarCircle');
+
             const roleDisplayName = userRole === "admin" ? "Super Admin" : `Teacher (${teacherSubject})`;
 
             if (sidebarNameEl) sidebarNameEl.innerText = formattedName;
             if (sidebarRoleEl) sidebarRoleEl.innerText = roleDisplayName;
             if (avatarCircleEl) avatarCircleEl.innerText = formattedName.charAt(0).toUpperCase();
+
+            if (mobileSidebarNameEl) mobileSidebarNameEl.innerText = formattedName;
+            if (mobileSidebarRoleEl) mobileSidebarRoleEl.innerText = roleDisplayName;
+            if (mobileAvatarCircleEl) mobileAvatarCircleEl.innerText = formattedName.charAt(0).toUpperCase();
 
             const welcomeTitleEl = document.getElementById('welcomeTitle') || document.querySelector('.greeting-title');
             const welcomeSubEl = document.getElementById('welcomeSub') || document.querySelector('.greeting-subtitle');
@@ -6516,14 +6524,17 @@ const DARK_MODE_ICON_URL = 'https://lh3.googleusercontent.com/d/1N2sZUgBKIQCviZY
 const LIGHT_MODE_ICON_URL = 'https://lh3.googleusercontent.com/d/1_NNJ0sMnU6x1pLW1GiV8FmfL9bPccVhd';
 
 function applyAdminTheme(theme) {
+    const mobileThemeText = document.getElementById('mobileKebabThemeText');
     if (theme === 'dark') {
         document.body.classList.add('dark-theme');
         if (adminThemeIcon) adminThemeIcon.src = LIGHT_MODE_ICON_URL;
         if (adminThemeText) adminThemeText.innerText = 'Light Mode';
+        if (mobileThemeText) mobileThemeText.innerText = 'Light Mode';
     } else {
         document.body.classList.remove('dark-theme');
         if (adminThemeIcon) adminThemeIcon.src = DARK_MODE_ICON_URL;
         if (adminThemeText) adminThemeText.innerText = 'Dark Mode';
+        if (mobileThemeText) mobileThemeText.innerText = 'Dark Mode';
     }
 }
 

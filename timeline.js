@@ -7,6 +7,70 @@ let currentUser = null;
 let unsubscribePosts = null; 
 let unsubscribeNotifs = null; 
 let allUserNames = [];
+let unsubscribeStudents = null;
+const userPhotoMap = new Map();
+
+// Helper to convert Google Drive share link to direct high-res image link
+export function resolvePhotoUrl(rawUrl) {
+    if (!rawUrl || typeof rawUrl !== 'string') return '';
+    const trimmed = rawUrl.trim();
+    if (trimmed.startsWith('https://lh3.googleusercontent.com/d/') || trimmed.startsWith('data:image/')) {
+        return trimmed;
+    }
+    const driveMatch = trimmed.match(/\/d\/([a-zA-Z0-9_-]+)/) || trimmed.match(/id=([a-zA-Z0-9_-]+)/);
+    if (driveMatch && driveMatch[1]) {
+        return `https://lh3.googleusercontent.com/d/${driveMatch[1]}`;
+    }
+    return trimmed;
+}
+
+// Look up photo URL by student code or full name or explicit url
+export function getUserPhotoUrl(code, name, explicitUrl) {
+    if (explicitUrl) {
+        const resolved = resolvePhotoUrl(explicitUrl);
+        if (resolved) return resolved;
+    }
+    if (code) {
+        const byCode = userPhotoMap.get(code.toUpperCase());
+        if (byCode) return byCode;
+    }
+    if (name) {
+        const byName = userPhotoMap.get(name.trim().toLowerCase());
+        if (byName) return byName;
+    }
+    return '';
+}
+
+// Generate unified avatar HTML (profile photo if available, or fallback initial letter)
+export function renderAvatarHTML(name, code, explicitPhotoUrl, isStaff, extraClass = '') {
+    const photoUrl = getUserPhotoUrl(code, name, explicitPhotoUrl);
+    const initial = escapeHtml(name ? name.trim().charAt(0).toUpperCase() : 'U');
+    const staffStyle = isStaff ? 'background: #1e5eff !important; color: #ffffff !important;' : '';
+
+    if (photoUrl) {
+        return `
+            <div class="avatar-circle ${extraClass}">
+                <img src="${escapeHtml(photoUrl)}" alt="${escapeHtml(name || 'Avatar')}" class="avatar-circle-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <span class="avatar-fallback" style="display:none; ${staffStyle}">${initial}</span>
+            </div>
+        `;
+    }
+    return `
+        <div class="avatar-circle ${extraClass}" style="${staffStyle}">
+            <span class="avatar-fallback">${initial}</span>
+        </div>
+    `;
+}
+
+// Helper function to extract user nickname (first name) if full name is too long
+export function formatNickname(name) {
+    if (!name || typeof name !== 'string') return 'User';
+    const trimmed = name.trim();
+    if (!trimmed) return 'User';
+    if (trimmed.toLowerCase() === 'administrator') return 'Administrator';
+    const parts = trimmed.split(/\s+/);
+    return parts[0] || trimmed;
+}
 
 // --- 1. DARK MODE & GLOBAL CLICK HANDLER ---
 // --- 1. DARK MODE TOGGLE SYSTEM ---
@@ -166,8 +230,14 @@ onAuthStateChanged(auth, async (user) => {
             const rawName = email.split('@')[0];
             const teacherName = rawName.replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
             const displayName = data.role === 'admin' ? 'Administrator' : teacherName;
+            const staffPhoto = resolvePhotoUrl(data.photoUrl || data.photo || data.avatar || '');
             
-            currentUser = { type: 'staff', name: displayName, code: email };
+            currentUser = { type: 'staff', name: displayName, code: email, photoUrl: staffPhoto };
+            if (staffPhoto) {
+                userPhotoMap.set(email.toUpperCase(), staffPhoto);
+                userPhotoMap.set(email.toLowerCase(), staffPhoto);
+                userPhotoMap.set(displayName.trim().toLowerCase(), staffPhoto);
+            }
             showTimelineApp();
         }
     }
@@ -183,12 +253,31 @@ async function initTimelineSession() {
         try {
             const parsed = JSON.parse(savedSession);
             if (parsed && (parsed.code || parsed.studentName || parsed.name)) {
+                const sCode = (parsed.code || '').toUpperCase();
                 currentUser = {
                     type: parsed.type || 'student',
                     name: parsed.name || parsed.studentName || 'Student',
-                    code: parsed.code || '',
-                    studentClass: parsed.studentClass || parsed.class || 'Unassigned'
+                    code: sCode,
+                    studentClass: parsed.studentClass || parsed.class || 'Unassigned',
+                    photoUrl: resolvePhotoUrl(parsed.photoUrl || parsed.photo || parsed.avatar || '')
                 };
+                if (currentUser.photoUrl && sCode) {
+                    userPhotoMap.set(sCode, currentUser.photoUrl);
+                    userPhotoMap.set((currentUser.name || '').trim().toLowerCase(), currentUser.photoUrl);
+                }
+                if (sCode) {
+                    getDoc(doc(db, "students", sCode)).then(snap => {
+                        if (snap.exists()) {
+                            const freshPhoto = resolvePhotoUrl(snap.data().photoUrl || snap.data().photo || snap.data().avatar || '');
+                            if (freshPhoto) {
+                                currentUser.photoUrl = freshPhoto;
+                                userPhotoMap.set(sCode, freshPhoto);
+                                userPhotoMap.set((currentUser.name || '').trim().toLowerCase(), freshPhoto);
+                                updateComposerAvatar();
+                            }
+                        }
+                    }).catch(() => {});
+                }
                 await showTimelineApp();
                 return;
             }
@@ -204,12 +293,18 @@ async function initTimelineSession() {
             const studentSnap = await getDoc(studentRef);
             if (studentSnap.exists()) {
                 const sData = studentSnap.data();
+                const sPhoto = resolvePhotoUrl(sData.photoUrl || sData.photo || sData.avatar || '');
                 currentUser = { 
                     type: 'student', 
                     name: sData.studentName || 'Student', 
                     code: localCode.toUpperCase(),
-                    studentClass: sData.studentClass || sData.class || 'Unassigned'
+                    studentClass: sData.studentClass || sData.class || 'Unassigned',
+                    photoUrl: sPhoto
                 };
+                if (sPhoto) {
+                    userPhotoMap.set(localCode.toUpperCase(), sPhoto);
+                    userPhotoMap.set((sData.studentName || '').trim().toLowerCase(), sPhoto);
+                }
                 sessionStorage.setItem('studentTimelineSession', JSON.stringify(currentUser));
                 sessionStorage.setItem('studentLoggedInSession', JSON.stringify(currentUser));
                 localStorage.setItem('studentTimelineSession', JSON.stringify(currentUser));
@@ -261,12 +356,18 @@ document.getElementById('loginBtn')?.addEventListener('click', async () => {
             const studentSnap = await getDoc(studentRef);
             if (studentSnap.exists()) {
                 const sData = studentSnap.data();
+                const sPhoto = resolvePhotoUrl(sData.photoUrl || sData.photo || sData.avatar || '');
                 currentUser = { 
                     type: 'student', 
                     name: sData.studentName || 'Student', 
                     code: code,
-                    studentClass: sData.studentClass || sData.class || 'Unassigned'
+                    studentClass: sData.studentClass || sData.class || 'Unassigned',
+                    photoUrl: sPhoto
                 };
+                if (sPhoto) {
+                    userPhotoMap.set(code.toUpperCase(), sPhoto);
+                    userPhotoMap.set((sData.studentName || '').trim().toLowerCase(), sPhoto);
+                }
                 sessionStorage.setItem('studentTimelineSession', JSON.stringify(currentUser));
                 sessionStorage.setItem('studentLoggedInSession', JSON.stringify(currentUser));
                 localStorage.setItem('studentTimelineSession', JSON.stringify(currentUser));
@@ -310,18 +411,21 @@ async function showTimelineApp() {
     }
 
     const badgeHTML = isVerified ? ` <span class="staff-badge" title="Verified Staff">✓</span>` : '';
-    const displayName = currentUser.name || 'User';
+    const displayName = formatNickname(currentUser.name || 'User');
 
-    if (nameDisp) nameDisp.innerHTML = displayName + badgeHTML;
-    if (roleBadge) roleBadge.innerText = roleText;
-    if (composerAvatar) {
-        composerAvatar.innerText = displayName.charAt(0).toUpperCase();
-        composerAvatar.style.background = (currentUser.type === 'staff') ? '#1e5eff' : '#10b981';
+    if (nameDisp) {
+        nameDisp.innerHTML = displayName + badgeHTML;
+        nameDisp.title = currentUser.name || '';
     }
+    if (roleBadge) roleBadge.innerText = roleText;
+    updateComposerAvatar();
 
     const sidebarName = document.getElementById('sidebarStudentName');
     const sidebarClass = document.getElementById('sidebarStudentClass');
-    if (sidebarName) sidebarName.innerText = currentUser.name;
+    if (sidebarName) {
+        sidebarName.innerText = displayName;
+        sidebarName.title = currentUser.name || '';
+    }
     if (sidebarClass) sidebarClass.innerText = currentUser.studentClass ? `Class: ${currentUser.studentClass}` : 'Logged in';
 
 function isTimelineAdmin() {
@@ -353,11 +457,58 @@ function isTimelineAdmin() {
     });
 
     await fetchAllNames();
+    listenStudentsDirectory();
     await populateClassDropdown();
     initTimelineImageUpload();
     loadPosts();
     loadNotifications();
     initDMSystem();
+}
+
+function updateComposerAvatar() {
+    const composerAvatar = document.getElementById('composerAvatarCircle');
+    if (!composerAvatar || !currentUser) return;
+    const displayName = formatNickname(currentUser.name || 'User');
+    const myPhoto = getUserPhotoUrl(currentUser.code, currentUser.name, currentUser.photoUrl);
+    if (myPhoto) {
+        composerAvatar.innerHTML = `
+            <img src="${escapeHtml(myPhoto)}" alt="Avatar" class="avatar-circle-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <span class="avatar-fallback" style="display:none; ${(currentUser.type === 'staff') ? 'background: #1e5eff !important; color: #fff !important;' : 'background: #10b981 !important; color: #fff !important;'}">${displayName.charAt(0).toUpperCase()}</span>
+        `;
+        composerAvatar.style.background = 'transparent';
+    } else {
+        composerAvatar.innerHTML = `<span class="avatar-fallback">${displayName.charAt(0).toUpperCase()}</span>`;
+        composerAvatar.style.background = (currentUser.type === 'staff') ? '#1e5eff' : '#10b981';
+    }
+}
+
+// Live real-time listener to keep student photos synced with Firestore picture database
+function listenStudentsDirectory() {
+    if (unsubscribeStudents) unsubscribeStudents();
+    try {
+        unsubscribeStudents = onSnapshot(collection(db, "students"), (snapshot) => {
+            snapshot.forEach(docSnap => {
+                const sData = docSnap.data();
+                const pUrl = resolvePhotoUrl(sData.photoUrl || sData.photo || sData.avatar || '');
+                if (pUrl) {
+                    userPhotoMap.set(docSnap.id.toUpperCase(), pUrl);
+                    if (sData.studentName) {
+                        userPhotoMap.set(sData.studentName.trim().toLowerCase(), pUrl);
+                    }
+                }
+                if (currentUser && currentUser.code && currentUser.code.toUpperCase() === docSnap.id.toUpperCase()) {
+                    if (pUrl && currentUser.photoUrl !== pUrl) {
+                        currentUser.photoUrl = pUrl;
+                        updateComposerAvatar();
+                    }
+                }
+            });
+        }, (err) => {
+            console.warn("Real-time students photo sync error:", err);
+        });
+    } catch (e) {
+        console.warn("Could not listen to students collection:", e);
+    }
 }
 
 function handleTimelineLogout() {
@@ -368,6 +519,7 @@ function handleTimelineLogout() {
     localStorage.removeItem('loggedInStudentCode');
     localStorage.removeItem('studentLoggedIn');
     currentUser = null;
+    if (unsubscribeStudents) unsubscribeStudents();
     if (unsubscribePosts) unsubscribePosts(); 
     if (unsubscribeNotifs) unsubscribeNotifs();
     if (auth.currentUser) signOut(auth);
@@ -390,13 +542,20 @@ async function fetchAllNames() {
                 const rawName = data.email.split('@')[0];
                 const teacherName = rawName.replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
                 const name = data.role === 'admin' ? 'Administrator' : teacherName;
+                const pUrl = resolvePhotoUrl(data.photoUrl || data.photo || data.avatar || '');
                 names.push(name);
                 directory.push({
                     name: name,
                     code: data.email,
                     role: data.role === 'admin' ? 'Super Admin' : 'Teacher',
-                    studentClass: 'Staff'
+                    studentClass: 'Staff',
+                    photoUrl: pUrl
                 });
+                if (pUrl) {
+                    userPhotoMap.set(data.email.toLowerCase(), pUrl);
+                    userPhotoMap.set(data.email.toUpperCase(), pUrl);
+                    userPhotoMap.set(name.trim().toLowerCase(), pUrl);
+                }
             }
         });
     } catch (e) {
@@ -408,13 +567,19 @@ async function fetchAllNames() {
         studentsSnap.forEach(docSnap => {
             const sData = docSnap.data();
             if (sData.studentName) {
+                const pUrl = resolvePhotoUrl(sData.photoUrl || sData.photo || sData.avatar || '');
                 names.push(sData.studentName);
                 directory.push({
                     name: sData.studentName,
                     code: docSnap.id,
                     role: 'Student',
-                    studentClass: sData.studentClass || sData.class || 'Student'
+                    studentClass: sData.studentClass || sData.class || 'Student',
+                    photoUrl: pUrl
                 });
+                if (pUrl) {
+                    userPhotoMap.set(docSnap.id.toUpperCase(), pUrl);
+                    userPhotoMap.set(sData.studentName.trim().toLowerCase(), pUrl);
+                }
             }
         });
     } catch (e) {
@@ -793,9 +958,11 @@ document.getElementById('submitPostBtn')?.addEventListener('click', async () => 
     }
 
     try {
+        const photoUrl = getUserPhotoUrl(currentUser.code, currentUser.name, currentUser.photoUrl);
         const postData = {
             authorCode: currentUser.code || '',
             authorName: currentUser.name || 'Student',
+            authorPhotoUrl: photoUrl || '',
             isStaff: currentUser.type === 'staff',
             message: message,
             targetClass: targetClass, // Saved class target
@@ -847,9 +1014,12 @@ function loadPosts() {
             const dateStr = formatTimeAgo(post.timestamp);
             const badgeHTML = post.isStaff ? `<img src="https://lh3.googleusercontent.com/d/1F9iWlab0M6Hlc1L5NR_HP4vsQDJJpd3d" alt="Verified" class="staff-badge-img">` : '';
             const safeClass = escapeHtml(postTarget);
-            const classBadgeHTML = `<span class="target-class-badge">${safeClass === 'All' ? 'All' : ' ' + safeClass}</span>`;
-            const initialLetter = escapeHtml(post.authorName ? post.authorName.charAt(0).toUpperCase() : 'U');
-            const safeAuthor = escapeHtml(post.authorName || 'Student');
+            const classBadgeHTML = `<span class="target-class-badge">${safeClass}</span>`;
+            const fullAuthorName = post.authorName || 'Student';
+            const nickname = formatNickname(fullAuthorName);
+            const safeAuthor = escapeHtml(nickname);
+            const safeFullName = escapeHtml(fullAuthorName);
+            const authorAvatarHTML = renderAvatarHTML(nickname, post.authorCode, post.authorPhotoUrl, post.isStaff);
 
             const canDeletePost = (currentUser.type === 'staff') || (currentUser.code && post.authorCode === currentUser.code);
             let kebabMenuHTML = '';
@@ -883,10 +1053,10 @@ function loadPosts() {
             postElement.innerHTML = `
                 <div class="post-sender-row">
                     <div class="sender-info-wrapper">
-                        <div class="avatar-circle">${initialLetter}</div>
+                        ${authorAvatarHTML}
                         <div class="sender-details">
                             <div class="sender-name-line">
-                                <span class="sender-name">${safeAuthor}</span>
+                                <span class="sender-name" title="${safeFullName}">${safeAuthor}</span>
                                 ${badgeHTML}
                                 ${classBadgeHTML}
                             </div>
@@ -945,8 +1115,13 @@ function loadCommentsForPost(postId) {
         }
 
         commentsList.forEach(comment => {
-            const badgeHTML = comment.isStaff ? `<span class="staff-badge">✓</span>` : '';
-            const safeCommentAuthor = escapeHtml(comment.authorName || 'Student');
+            const badgeHTML = comment.isStaff ? `<img src="https://lh3.googleusercontent.com/d/1F9iWlab0M6Hlc1L5NR_HP4vsQDJJpd3d" alt="Verified" class="staff-badge-img">` : '';
+            const fullCommentAuthor = comment.authorName || 'Student';
+            const nickname = formatNickname(fullCommentAuthor);
+            const safeCommentAuthor = escapeHtml(nickname);
+            const safeFullAuthor = escapeHtml(fullCommentAuthor);
+            const commentTimeStr = formatTimeAgo(comment.timestamp);
+            const commentAvatarHTML = renderAvatarHTML(nickname, comment.authorCode, comment.authorPhotoUrl, comment.isStaff, 'comment-avatar');
             
             const canDeleteComment = (currentUser.type === 'staff') || (currentUser.code && comment.authorCode === currentUser.code);
             let commentKebabHTML = '';
@@ -964,12 +1139,23 @@ function loadCommentsForPost(postId) {
             }
 
             commentListEl.innerHTML += `
-                <div class="comment-item">
-                    <div class="comment-content">
-                        <strong>${safeCommentAuthor} ${badgeHTML}:</strong> 
+                <div class="comment-item" id="comment-${comment.id}">
+                    <div class="comment-sender-row">
+                        <div class="sender-info-wrapper">
+                            ${commentAvatarHTML}
+                            <div class="sender-details">
+                                <div class="sender-name-line">
+                                    <span class="sender-name comment-sender-name" title="${safeFullAuthor}">${safeCommentAuthor}</span>
+                                    ${badgeHTML}
+                                </div>
+                                <span class="post-time comment-time" data-timestamp="${comment.timestamp}">${commentTimeStr}</span>
+                            </div>
+                        </div>
+                        ${commentKebabHTML}
+                    </div>
+                    <div class="comment-body">
                         ${formatMessageMentions(comment.message)}
                     </div>
-                    ${commentKebabHTML}
                 </div>
             `;
         });
@@ -991,10 +1177,12 @@ window.submitReply = async function(postId, postAuthorName) {
     if (!message) return alert("Reply cannot be empty.");
 
     try {
+        const photoUrl = getUserPhotoUrl(currentUser.code, currentUser.name, currentUser.photoUrl);
         await addDoc(collection(db, "timeline_comments"), {
             postId: postId,
-            authorCode: currentUser.code,
-            authorName: currentUser.name,
+            authorCode: currentUser.code || '',
+            authorName: currentUser.name || 'Student',
+            authorPhotoUrl: photoUrl || '',
             isStaff: currentUser.type === 'staff',
             message: message,
             timestamp: new Date().toISOString()
@@ -1329,19 +1517,27 @@ function subscribeDMThreads() {
 
             threadsListEl.innerHTML = '';
             threadsMap.forEach(thread => {
-                const initial = escapeHtml(thread.partnerName ? thread.partnerName.charAt(0).toUpperCase() : '?');
+                const fullPartnerName = thread.partnerName || 'User';
+                const nickName = formatNickname(fullPartnerName);
+                const initial = escapeHtml(nickName ? nickName.charAt(0).toUpperCase() : '?');
                 const dateStr = formatTimeAgo(thread.timestamp);
                 const unreadHTML = thread.unread > 0 ? `<span class="dm-unread-badge">${thread.unread}</span>` : '';
                 const safeCode = (thread.partnerCode || 'user').replace(/[^a-zA-Z0-9]/g, '_');
-                const safePartnerName = escapeHtml(thread.partnerName || 'User');
+                const safePartnerName = escapeHtml(nickName);
+                const safeFullName = escapeHtml(fullPartnerName);
                 const safeLastMsg = escapeHtml(thread.lastMessage || '');
+
+                const dmPhoto = getUserPhotoUrl(thread.partnerCode, fullPartnerName);
+                const dmAvatarHTML = dmPhoto 
+                    ? `<div class="dm-contact-avatar"><img src="${escapeHtml(dmPhoto)}" alt="Avatar" class="avatar-circle-img" onerror="this.parentElement.innerHTML='${initial}'"></div>`
+                    : `<div class="dm-contact-avatar">${initial}</div>`;
 
                 const item = document.createElement('div');
                 item.className = 'dm-thread-item';
                 item.innerHTML = `
-                    <div class="dm-contact-avatar">${initial}</div>
+                    ${dmAvatarHTML}
                     <div class="dm-contact-info">
-                        <div class="dm-contact-name">${safePartnerName}</div>
+                        <div class="dm-contact-name" title="${safeFullName}">${safePartnerName}</div>
                         <div class="dm-preview-text">${safeLastMsg}</div>
                     </div>
                     <div style="display: flex; align-items: center; gap: 4px;">
@@ -1408,18 +1604,25 @@ function renderLocalDMThreads() {
 
     threadsListEl.innerHTML = '';
     threadsMap.forEach(thread => {
-        const initial = escapeHtml(thread.partnerName ? thread.partnerName.charAt(0).toUpperCase() : '?');
+        const fullPartnerName = thread.partnerName || 'User';
+        const nickName = formatNickname(fullPartnerName);
+        const initial = escapeHtml(nickName ? nickName.charAt(0).toUpperCase() : '?');
         const dateStr = formatTimeAgo(thread.timestamp);
         const safeCode = (thread.partnerCode || 'user').replace(/[^a-zA-Z0-9]/g, '_');
-        const safePartnerName = escapeHtml(thread.partnerName || 'User');
+        const safePartnerName = escapeHtml(nickName);
+        const safeFullName = escapeHtml(fullPartnerName);
         const safeLastMsg = escapeHtml(thread.lastMessage || '');
+        const dmPhoto = getUserPhotoUrl(thread.partnerCode, fullPartnerName);
+        const dmAvatarHTML = dmPhoto 
+            ? `<div class="dm-contact-avatar"><img src="${escapeHtml(dmPhoto)}" alt="Avatar" class="avatar-circle-img" onerror="this.parentElement.innerHTML='${initial}'"></div>`
+            : `<div class="dm-contact-avatar">${initial}</div>`;
 
         const item = document.createElement('div');
         item.className = 'dm-thread-item';
         item.innerHTML = `
-            <div class="dm-contact-avatar">${initial}</div>
+            ${dmAvatarHTML}
             <div class="dm-contact-info">
-                <div class="dm-contact-name">${safePartnerName}</div>
+                <div class="dm-contact-name" title="${safeFullName}">${safePartnerName}</div>
                 <div class="dm-preview-text">${safeLastMsg}</div>
             </div>
             <div style="display: flex; align-items: center; gap: 4px;">
@@ -1465,16 +1668,24 @@ function renderDMContactsList(filterStr) {
 
     listEl.innerHTML = '';
     filtered.forEach(contact => {
-        const initial = escapeHtml(contact.name ? contact.name.charAt(0).toUpperCase() : '?');
-        const safeContactName = escapeHtml(contact.name || 'User');
+        const fullContactName = contact.name || 'User';
+        const nickName = formatNickname(fullContactName);
+        const initial = escapeHtml(nickName ? nickName.charAt(0).toUpperCase() : '?');
+        const safeContactName = escapeHtml(nickName);
+        const safeFullName = escapeHtml(fullContactName);
         const safeRole = escapeHtml(contact.role || 'User');
         const safeClass = contact.studentClass ? ' • ' + escapeHtml(contact.studentClass) : '';
+        const dmPhoto = getUserPhotoUrl(contact.code, fullContactName, contact.photoUrl);
+        const dmAvatarHTML = dmPhoto 
+            ? `<div class="dm-contact-avatar"><img src="${escapeHtml(dmPhoto)}" alt="Avatar" class="avatar-circle-img" onerror="this.parentElement.innerHTML='${initial}'"></div>`
+            : `<div class="dm-contact-avatar">${initial}</div>`;
+
         const item = document.createElement('div');
         item.className = 'dm-contact-item';
         item.innerHTML = `
-            <div class="dm-contact-avatar">${initial}</div>
+            ${dmAvatarHTML}
             <div class="dm-contact-info">
-                <div class="dm-contact-name">${safeContactName}</div>
+                <div class="dm-contact-name" title="${safeFullName}">${safeContactName}</div>
                 <div class="dm-preview-text">${safeRole}${safeClass}</div>
             </div>
             <button class="dm-new-chat-btn">Chat</button>
@@ -1491,7 +1702,10 @@ function openDMChatroom(partner) {
 
     const nameEl = document.getElementById('dmChatPartnerName');
     const roleEl = document.getElementById('dmChatPartnerRole');
-    if (nameEl) nameEl.innerText = partner.name;
+    if (nameEl) {
+        nameEl.innerText = formatNickname(partner.name || 'User');
+        nameEl.title = partner.name || '';
+    }
     if (roleEl) roleEl.innerText = partner.role || 'User';
 
     showDMView('chatroom');

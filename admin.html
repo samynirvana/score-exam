@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="admin.css?v=353">
+    <link rel="stylesheet" href="admin.css?v=355">
 </head>
 
 <body>
@@ -196,7 +196,7 @@
             </div>
 
             <!-- USER PROFILE & ACTIONS (DESKTOP NAVBAR) -->
-            <div class="user-profile-bottom desktop-user-actions" style="display: flex; flex-direction: row; align-items: center; gap: 8px; margin: 0; padding: 0;">
+            <div class="user-profile-bottom desktop-user-actions">
                 <!-- 1. Dark Mode Toggle (Smaller, Left of User) -->
                 <button id="themeToggleBtn" class="theme-toggle-btn"
                     style="height: 32px; min-height: 32px; padding: 4px 12px; font-size: 12px; border-radius: 20px; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; cursor: pointer; white-space: nowrap; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.08); color: #ffffff; transition: 0.2s;">
@@ -239,6 +239,17 @@
                 </button>
 
                 <div id="mobileTopbarDropdown" class="mobile-topbar-dropdown hidden">
+                    <!-- User Profile Info in Mobile Dropdown -->
+                    <div class="mobile-kebab-user-info" style="display: flex; align-items: center; gap: 10px; padding: 6px 8px 10px 8px; margin-bottom: 4px; border-bottom: 1px solid var(--border-color, #e2e8f0);">
+                        <div id="mobileUserAvatarCircle" style="width: 32px; height: 32px; background: #1e5eff; color: #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13.5px; flex-shrink: 0;">
+                            A
+                        </div>
+                        <div style="overflow: hidden; line-height: 1.2;">
+                            <h4 id="mobileSidebarUserName" style="margin: 0; font-size: 13px; font-weight: 700; color: var(--text-dark, #0f172a); white-space: nowrap; max-width: 145px; overflow: hidden; text-overflow: ellipsis;">Administrator</h4>
+                            <p id="mobileSidebarUserRole" style="margin: 0; font-size: 11px; color: var(--text-gray, #64748b); font-weight: 500;">Super Admin</p>
+                        </div>
+                    </div>
+
                     <div class="kebab-group-label">WORKSPACE</div>
                     
                     <!-- 1. Dashboard -->
@@ -2490,8 +2501,8 @@
 
 
     <!-- Navigation & Core Scripts -->
-    <script src="studentNav.js?v=354"></script>
-    <script type="module" src="admin.js?v=354"></script>
+    <script src="studentNav.js?v=355"></script>
+    <script type="module" src="admin.js?v=355"></script>
 </body>
 
 </html>

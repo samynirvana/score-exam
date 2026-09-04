@@ -3247,6 +3247,9 @@ body.dark-mode #mobileTopbarKebabBtn {
     display: flex !important;
     flex-direction: column !important;
     gap: 4px !important;
+    max-height: calc(100dvh - 70px) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
     animation: kebabDropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
@@ -3344,7 +3347,10 @@ body.dark-mode #mobileTopbarKebabBtn {
     }
 
     .desktop-menu-bar,
-    .desktop-user-actions {
+    .desktop-user-actions,
+    .user-profile-bottom,
+    .sidebar .user-profile-bottom,
+    .student-sidebar .user-profile-bottom {
         display: none !important;
     }
 
@@ -4784,73 +4790,100 @@ body.dark-mode #topbarUserRole {
 }
 
 /* ======================================================
-   TOP NAVIGATION USER PROFILE & COMPACT ACTION BUTTONS
+   TOP NAVIGATION USER PROFILE & COMPACT ACTION BUTTONS (DESKTOP)
    ====================================================== */
-.sidebar .user-profile-bottom,
-.student-sidebar .user-profile-bottom {
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    gap: 8px !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    border: none !important;
+@media screen and (min-width: 769px) {
+    .sidebar .user-profile-bottom,
+    .student-sidebar .user-profile-bottom {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 8px !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+    }
+
+    .sidebar #themeToggleBtn,
+    .student-sidebar #themeToggleBtn {
+        height: 32px !important;
+        min-height: 32px !important;
+        max-height: 32px !important;
+        padding: 4px 12px !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        border-radius: 20px !important;
+        gap: 6px !important;
+        min-width: auto !important;
+        background: rgba(255, 255, 255, 0.08) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        color: #ffffff !important;
+        cursor: pointer !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .sidebar #themeToggleBtn:hover,
+    .student-sidebar #themeToggleBtn:hover {
+        background: rgba(255, 255, 255, 0.18) !important;
+    }
+
+    .sidebar #themeToggleBtn .btn-icon,
+    .student-sidebar #themeToggleBtn .btn-icon {
+        width: 14px !important;
+        height: 14px !important;
+        margin: 0 !important;
+    }
+
+    .sidebar #logoutBtn,
+    .student-sidebar #logoutBtn {
+        height: 32px !important;
+        min-height: 32px !important;
+        max-height: 32px !important;
+        padding: 4px 14px !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        border-radius: 20px !important;
+        background: rgba(239, 68, 68, 0.15) !important;
+        border: 1px solid rgba(239, 68, 68, 0.35) !important;
+        color: #ff6b6b !important;
+        cursor: pointer !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    .sidebar #logoutBtn:hover,
+    .student-sidebar #logoutBtn:hover {
+        background: rgba(239, 68, 68, 0.28) !important;
+        color: #ffffff !important;
+    }
 }
 
-.sidebar #themeToggleBtn,
-.student-sidebar #themeToggleBtn {
-    height: 32px !important;
-    min-height: 32px !important;
-    max-height: 32px !important;
-    padding: 4px 12px !important;
-    font-size: 12px !important;
-    font-weight: 600 !important;
-    border-radius: 20px !important;
-    gap: 6px !important;
-    min-width: auto !important;
-    background: rgba(255, 255, 255, 0.08) !important;
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    color: #ffffff !important;
-    cursor: pointer !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+/* Mobile Kebab User Info Styling */
+.mobile-kebab-user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px 10px 8px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--border-color, #e2e8f0);
 }
 
-.sidebar #themeToggleBtn:hover,
-.student-sidebar #themeToggleBtn:hover {
-    background: rgba(255, 255, 255, 0.18) !important;
+body.dark-theme .mobile-kebab-user-info h4,
+body.dark-mode .mobile-kebab-user-info h4 {
+    color: #f1f5f9 !important;
 }
 
-.sidebar #themeToggleBtn .btn-icon,
-.student-sidebar #themeToggleBtn .btn-icon {
-    width: 14px !important;
-    height: 14px !important;
-    margin: 0 !important;
+body.dark-theme .mobile-kebab-user-info p,
+body.dark-mode .mobile-kebab-user-info p {
+    color: #94a3b8 !important;
 }
 
-.sidebar #logoutBtn,
-.student-sidebar #logoutBtn {
-    height: 32px !important;
-    min-height: 32px !important;
-    max-height: 32px !important;
-    padding: 4px 14px !important;
-    font-size: 12px !important;
-    font-weight: 600 !important;
-    border-radius: 20px !important;
-    background: rgba(239, 68, 68, 0.15) !important;
-    border: 1px solid rgba(239, 68, 68, 0.35) !important;
-    color: #ff6b6b !important;
-    cursor: pointer !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-
-.sidebar #logoutBtn:hover,
-.student-sidebar #logoutBtn:hover {
-    background: rgba(239, 68, 68, 0.28) !important;
-    color: #ffffff !important;
+body.dark-theme .mobile-kebab-user-info,
+body.dark-mode .mobile-kebab-user-info {
+    border-bottom-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 /* ======================================================
