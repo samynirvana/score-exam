@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="admin.css?v=359">
+    <link rel="stylesheet" href="admin.css?v=367">
 </head>
 
 <body>
@@ -61,15 +61,47 @@
                     <span class="menu-label">Dashboard</span>
                 </button>
 
-                <!-- 2. Manage Score -->
-                <button class="menu-btn" data-tab="tab-manage-scores" data-label="Manage Score" id="menuManageScore">
-                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
-                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M9 11l3 3L22 4"></path>
-                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
-                    </svg>
-                    <span class="menu-label">Manage Score</span>
-                </button>
+                <!-- 2. Manage Score (with sub tabs) -->
+                <div class="menu-item-group" id="groupManageScore">
+                    <button class="menu-btn menu-btn-expandable" data-tab="tab-manage-scores" data-label="Manage Score"
+                        id="menuManageScore">
+                        <span class="menu-btn-content">
+                            <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M9 11l3 3L22 4"></path>
+                                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                            </svg>
+                            <span class="menu-label">Manage Score</span>
+                        </span>
+                        <svg class="submenu-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+                    <div class="submenu" id="manageScoreSubmenu">
+                        <button class="submenu-btn" data-tab="tab-manage-scores" data-subtab="score-input"
+                            id="subtabScoreInput">
+                            <svg class="submenu-icon" viewBox="0 0 24 24" width="16" height="16" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                            </svg>
+                            <span>Input Scores</span>
+                        </button>
+                        <button class="submenu-btn" data-tab="tab-manage-scores" data-subtab="assignment-reminder"
+                            id="subtabAssignmentReminder">
+                            <svg class="submenu-icon" viewBox="0 0 24 24" width="16" height="16" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                                <line x1="12" y1="2" x2="12" y2="4"></line>
+                            </svg>
+                            <span>Assignment Reminder</span>
+                        </button>
+                    </div>
+                </div>
 
                 <!-- 3. Students Behavior -->
                 <button class="menu-btn" data-tab="tab-manage-behavior" data-label="Students Behavior"
@@ -266,13 +298,22 @@
                     </button>
 
                     <!-- 2. Manage Score -->
-                    <button class="kebab-item" data-tab="tab-manage-scores" id="mobileMenuManageScore">
+                    <button class="kebab-item" data-tab="tab-manage-scores" data-subtab="score-input" id="mobileMenuManageScore">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M9 11l3 3L22 4"></path>
                             <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
                         </svg>
-                        <span>Manage Score</span>
+                        <span>Input Scores</span>
+                    </button>
+                    <button class="kebab-item" data-tab="tab-manage-scores" data-subtab="assignment-reminder" id="mobileMenuAssignmentReminder">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                            <line x1="12" y1="2" x2="12" y2="4"></line>
+                        </svg>
+                        <span>Assignment Reminder</span>
                     </button>
 
                     <!-- 3. Students Behavior -->
@@ -644,8 +685,11 @@
             <!-- TAB: Manage Score -->
             <div id="tab-manage-scores" class="tab-content">
 
-                <!-- Combined Score Input Panel -->
-                <div class="box" style="margin-bottom: 24px;">
+                <!-- SUBTAB 1 VIEW: Score Management (Input & Ledgers) -->
+                <div id="sectionManageScoreInput">
+
+                    <!-- Combined Score Input Panel -->
+                    <div class="box" style="margin-bottom: 24px;">
                     <div
                         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 12px;">
                         <h3 style="margin: 0;" id="scoreInputHeaderTitle">Input scores</h3>
@@ -980,7 +1024,176 @@
                             </table>
                         </div>
                     </div>
-                </div>
+                </div> <!-- End View Score box -->
+            </div> <!-- End #sectionManageScoreInput -->
+
+            <!-- SUBTAB 2 VIEW: Assignment Reminder -->
+            <div id="sectionAssignmentReminder" class="hidden">
+                    <!-- Box 1: Create Assignment Reminder Form -->
+                    <div class="box" style="margin-bottom: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 12px;">
+                            <div>
+                                <h3 style="margin: 0; font-size: 18px; font-weight: 800; color: var(--text-dark); display: flex; align-items: center; gap: 8px;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-blue)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                                        <line x1="12" y1="2" x2="12" y2="4"></line>
+                                    </svg>
+                                    Create Assignment Reminder
+                                </h3>
+                            </div>
+                        </div>
+
+                        <!-- Form Controls Grid -->
+                        <div class="form-row" style="margin-bottom: 16px;">
+                            <div class="form-group" style="flex: 1; min-width: 180px;">
+                                <label for="reminderSubjectSelect">Subject: <span style="color: #ef4444;">*</span></label>
+                                <select id="reminderSubjectSelect">
+                                    <option value="">-- Select Subject --</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="flex: 1; min-width: 180px;">
+                                <label for="reminderClassSelect">Class: <span style="color: #ef4444;">*</span></label>
+                                <select id="reminderClassSelect">
+                                    <option value="">-- Select Class --</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="flex: 1.5; min-width: 220px;">
+                                <label for="reminderAssignmentSelect">Assignment Name: <span style="color: #ef4444;">*</span></label>
+                                <select id="reminderAssignmentSelect">
+                                    <option value="">-- Choose Subject & Class First --</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Optional Custom Assignment Name (shown when user chooses "+ Enter Custom Assignment Name") -->
+                        <div id="reminderCustomAssignmentWrapper" class="hidden" style="margin-bottom: 16px;">
+                            <label for="reminderCustomAssignmentInput">Custom Assignment Title: <span style="color: #ef4444;">*</span></label>
+                            <input type="text" id="reminderCustomAssignmentInput" placeholder="e.g. Science Chapter 3 Lab Report">
+                        </div>
+
+                        <!-- Due Date & Instructions Row -->
+                        <div class="form-row" style="margin-bottom: 18px;">
+                            <div class="form-group" style="flex: 1; min-width: 180px;">
+                                <label for="reminderDueDateInput">Submission Due Date: <span style="color: #ef4444;">*</span></label>
+                                <input type="date" id="reminderDueDateInput" style="height: 42px; border-radius: 8px;">
+                            </div>
+                            <div class="form-group" style="flex: 2; min-width: 240px;">
+                                <label for="reminderNotesInput">Additional Instructions / Notes (Optional):</label>
+                                <input type="text" id="reminderNotesInput" placeholder="e.g. Submit via Google Classroom or printed worksheet">
+                            </div>
+                        </div>
+
+                        <!-- Student Roster Selector Box -->
+                        <div style="background: var(--bg-hover, #f8fafc); border: 1.5px solid var(--border-color, #e2e8f0); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <label style="margin: 0; font-size: 13.5px; font-weight: 700; color: var(--text-dark);">
+                                        Select Students for Reminder:
+                                    </label>
+                                    <span id="reminderStudentCountBadge" style="background: rgba(30, 94, 255, 0.1); color: var(--primary-blue, #1e5eff); font-weight: 700; font-size: 12px; padding: 2px 10px; border-radius: 20px;">
+                                        0 Selected
+                                    </span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                    <input type="text" id="reminderStudentSearchInput" placeholder="Search student..." style="height: 36px; font-size: 12.5px; min-width: 220px; width: 220px; padding: 0 12px; border-radius: 8px; border: 1.5px solid var(--border-color, #cbd5e1); box-sizing: border-box; flex-shrink: 0; margin: 0; background: var(--input-bg, #ffffff); color: var(--text-dark);">
+                                    <button type="button" id="reminderSelectAllBtn" style="padding: 6px 14px; font-size: 12px; font-weight: 600; border-radius: 6px; background: #e2e8f0; color: #1e293b; border: none; cursor: pointer; height: 36px;">
+                                        Select All
+                                    </button>
+                                    <button type="button" id="reminderDeselectAllBtn" style="padding: 6px 14px; font-size: 12px; font-weight: 600; border-radius: 6px; background: #e2e8f0; color: #1e293b; border: none; cursor: pointer; height: 36px;">
+                                        Clear
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Scrollable Checkbox Grid -->
+                            <div id="reminderStudentListContainer" style="max-height: 280px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; padding: 6px 2px;">
+                                <div style="grid-column: 1 / -1; text-align: center; color: var(--text-gray); padding: 20px; font-size: 13px;">
+                                    Please select a Class above to load students.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Deploy Button -->
+                        <div style="display: flex; justify-content: flex-end;">
+                            <button type="button" id="btnDeployReminders" style="background: var(--primary-blue, #1e5eff); color: #ffffff; border: none; padding: 10px 24px; border-radius: 9px; font-size: 14px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(30, 94, 255, 0.25);">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M22 2L11 13"></path>
+                                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                </svg>
+                                <span>Deploy Assignment Reminder</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Box 2: Reminders Ledger & Tracker -->
+                    <div class="box">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                            <div>
+                                <h3 style="margin: 0; font-size: 18px; font-weight: 800; color: var(--text-dark);">Active Reminders</h3>
+                            </div>
+                            <button type="button" id="refreshRemindersBtn" style="background: #f1f5f9; color: #1e293b; border: 1px solid var(--border-color); padding: 7px 14px; border-radius: 8px; font-size: 12.5px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="23 4 23 10 17 10"></polyline>
+                                    <polyline points="1 20 1 14 7 14"></polyline>
+                                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                                </svg>
+                                <span>Refresh</span>
+                            </button>
+                        </div>
+
+                        <!-- Filter Controls -->
+                        <div class="form-row" style="margin-bottom: 16px; background: var(--bg-hover, #f8fafc); padding: 12px; border-radius: 10px; border: 1px solid var(--border-color);">
+                            <div class="form-group" style="flex: 1; min-width: 150px; margin: 0;">
+                                <label for="filterReminderClass" style="font-size: 11.5px;">Filter Class:</label>
+                                <select id="filterReminderClass" style="height: 36px; font-size: 12.5px;">
+                                    <option value="">All Classes</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="flex: 1; min-width: 150px; margin: 0;">
+                                <label for="filterReminderSubject" style="font-size: 11.5px;">Filter Subject:</label>
+                                <select id="filterReminderSubject" style="height: 36px; font-size: 12.5px;">
+                                    <option value="">All Subjects</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="flex: 1; min-width: 150px; margin: 0;">
+                                <label for="filterReminderStatus" style="font-size: 11.5px;">Status:</label>
+                                <select id="filterReminderStatus" style="height: 36px; font-size: 12.5px;">
+                                    <option value="pending">Pending (Overdue & Upcoming)</option>
+                                    <option value="completed">Completed / Submitted</option>
+                                    <option value="all">All Reminders</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="flex: 1.5; min-width: 180px; margin: 0;">
+                                <label for="filterReminderSearch" style="font-size: 11.5px;">Search Student or Assignment:</label>
+                                <input type="text" id="filterReminderSearch" placeholder="Type to filter..." style="height: 36px; font-size: 12.5px;">
+                            </div>
+                        </div>
+
+                        <!-- Reminders Table -->
+                        <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
+                            <table id="assignmentReminderTable">
+                                <thead>
+                                    <tr>
+                                        <th>Student</th>
+                                        <th>Class</th>
+                                        <th>Subject</th>
+                                        <th>Assignment Title</th>
+                                        <th>Due Date & Overdue</th>
+                                        <th style="width: 100px; text-align: center;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="assignmentReminderTbody">
+                                    <tr>
+                                        <td colspan="6" style="text-align: center; padding: 24px; color: var(--text-gray);">
+                                            Loading assignment reminders...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div> <!-- End #sectionAssignmentReminder -->
             </div>
             <!-- TAB 3: Behavior Points -->
             <div id="tab-manage-behavior" class="tab-content">
@@ -2622,8 +2835,8 @@
 
 
     <!-- Navigation & Core Scripts -->
-    <script src="studentNav.js?v=360"></script>
-    <script type="module" src="admin.js?v=360"></script>
+    <script src="studentNav.js?v=367"></script>
+    <script type="module" src="admin.js?v=367"></script>
 </body>
 
 </html>

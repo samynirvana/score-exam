@@ -42,7 +42,9 @@ const initMobileNav = () => {
                 }
 
                 const subtab = item.getAttribute('data-subtab');
-                if (subtab && typeof window.switchDbView === 'function') {
+                if (subtab && tabId === 'tab-manage-scores' && typeof window.switchManageScoreSubtab === 'function') {
+                    window.switchManageScoreSubtab(subtab);
+                } else if (subtab && typeof window.switchDbView === 'function') {
                     window.switchDbView(subtab);
                 }
 

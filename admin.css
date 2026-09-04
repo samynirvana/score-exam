@@ -3012,6 +3012,29 @@ textarea:focus {
    ====================================================== */
 
 /* --- KEBAB MENU POPUP STYLING (FLAT CLEAN LIST) --- */
+.kebab-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.kebab-btn {
+    background: transparent;
+    border: none;
+    font-size: 18px;
+    font-weight: 800;
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: 6px;
+    color: var(--text-gray, #64748b);
+    line-height: 1;
+    transition: all 0.2s ease;
+}
+
+.kebab-btn:hover {
+    background: var(--bg-hover, #f1f5f9);
+    color: var(--text-dark, #0f172a);
+}
+
 .dropdown-menu,
 .kebab-dropdown,
 .dropdown-menu.hidden,

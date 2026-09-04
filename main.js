@@ -41,6 +41,7 @@ themeToggleBtn?.addEventListener('click', () => {
 
 // --- STUDENT LOGIN & SESSION SYSTEM ---
 let currentLoggedInStudent = null;
+let studentReminderUnsubscribe = null;
 
 async function checkStudentSession() {
     const saved = sessionStorage.getItem('studentLoggedInSession');
@@ -49,11 +50,14 @@ async function checkStudentSession() {
     if (saved) {
         currentLoggedInStudent = JSON.parse(saved);
         if (overlay) overlay.style.display = 'none';
+        updateGreetingBanner(currentLoggedInStudent.name, currentLoggedInStudent.birthDate);
         fetchStudentUnifiedData(currentLoggedInStudent.code);
         loadNewsTicker();
         listenActiveStudentAttendance();
+        listenStudentAssignmentReminders(currentLoggedInStudent.code);
     } else {
         if (overlay) overlay.style.display = 'flex';
+        updateGreetingBanner();
     }
 }
 
@@ -128,10 +132,12 @@ async function handleStudentLogin() {
         }
 
         const sData = studentSnap.data();
+        const studentBirthDate = sData.birthDate || sData.dateOfBirth || '';
         currentLoggedInStudent = {
             code: userIn,
-            name: sData.studentName || 'Student',
-            studentClass: sData.studentClass || sData.class || 'Unassigned'
+            name: sData.studentName || sData.name || 'Student',
+            studentClass: sData.studentClass || sData.class || 'Unassigned',
+            birthDate: studentBirthDate
         };
 
         // Save session in sessionStorage so it persists across page navigation (Quiz, Timeline, etc.)
@@ -140,15 +146,18 @@ async function handleStudentLogin() {
             type: 'student',
             name: currentLoggedInStudent.name,
             code: currentLoggedInStudent.code,
-            studentClass: currentLoggedInStudent.studentClass
+            studentClass: currentLoggedInStudent.studentClass,
+            birthDate: studentBirthDate
         }));
 
         const overlay = document.getElementById('studentLoginOverlay');
         if (overlay) overlay.style.display = 'none';
 
+        updateGreetingBanner(currentLoggedInStudent.name, studentBirthDate);
         fetchStudentUnifiedData(userIn);
         loadNewsTicker();
         listenActiveStudentAttendance();
+        listenStudentAssignmentReminders(userIn);
 
     } catch (err) {
         console.error("Student login error:", err);
@@ -178,21 +187,41 @@ async function fetchStudentUnifiedData(codeInput) {
     try {
         const scoreQuery = query(collection(db, "exam_scores"), where("studentCode", "==", upperCode));
         const pointQuery = query(collection(db, "student_points"), where("studentCode", "==", upperCode));
+        const studentRef = doc(db, "students", upperCode);
 
-        const [scoreSnap, pointSnap] = await Promise.all([
+        const [scoreSnap, pointSnap, studentDocSnap] = await Promise.all([
             getDocs(scoreQuery),
-            getDocs(pointQuery)
+            getDocs(pointQuery),
+            getDoc(studentRef)
         ]);
 
-        renderUnifiedProfile(scoreSnap, pointSnap, upperCode);
+        let studentBirthDate = currentLoggedInStudent ? (currentLoggedInStudent.birthDate || '') : '';
+        let fetchedName = '';
+        let fetchedClass = '';
+
+        if (studentDocSnap && studentDocSnap.exists()) {
+            const sData = studentDocSnap.data();
+            studentBirthDate = sData.birthDate || sData.dateOfBirth || studentBirthDate;
+            fetchedName = sData.studentName || sData.name || '';
+            fetchedClass = sData.studentClass || sData.class || '';
+
+            if (currentLoggedInStudent) {
+                currentLoggedInStudent.birthDate = studentBirthDate;
+                if (fetchedName) currentLoggedInStudent.name = fetchedName;
+                if (fetchedClass) currentLoggedInStudent.studentClass = fetchedClass;
+                sessionStorage.setItem('studentLoggedInSession', JSON.stringify(currentLoggedInStudent));
+            }
+        }
+
+        renderUnifiedProfile(scoreSnap, pointSnap, upperCode, studentBirthDate, fetchedName, fetchedClass);
 
     } catch (error) {
         console.error("Profile lookup error:", error);
     }
 }
 // --- UPDATED STUDENT PROFILE & DROPDOWN SCORE FILTER LOGIC ---
-function renderUnifiedProfile(scoreSnap, pointSnap) {
-    let studentName = "";
+function renderUnifiedProfile(scoreSnap, pointSnap, upperCode, studentBirthDate, fetchedName, fetchedClass) {
+    let studentName = fetchedName || "";
     let studentClass = "";
     let totalBehaviorPoints = 0;
 
@@ -289,8 +318,10 @@ function renderUnifiedProfile(scoreSnap, pointSnap) {
     const classDisp = document.getElementById('studentClassDisplay');
     if (classDisp) classDisp.innerText = `Class: ${displayClass}`;
 
-    // Update Greeting Banner & Sidebar Profile
-    updateGreetingBanner(displayName);
+    const finalBirthDate = studentBirthDate || (currentLoggedInStudent ? currentLoggedInStudent.birthDate : '');
+
+    // Update Greeting Banner with birthday check & Sidebar Profile
+    updateGreetingBanner(displayName, finalBirthDate);
 
     const sidebarNameEl = document.getElementById('sidebarStudentName');
     if (sidebarNameEl) sidebarNameEl.innerText = displayName;
@@ -434,14 +465,151 @@ function getTimeBasedGreeting(displayName) {
     } else if (hour >= 17 || hour < 5) {
         timeGreeting = "Good evening";
     }
-    const namePart = displayName ? displayName.split(' ')[0] : 'Student';
+    const namePart = displayName ? displayName.trim().split(' ')[0] : 'Student';
     return `${timeGreeting}, ${namePart} 👋`;
 }
 
-function updateGreetingBanner(displayName) {
+export function isTodayBirthday(birthDate) {
+    if (!birthDate) return false;
+    const today = new Date();
+    const curMonth = today.getMonth(); // 0-indexed: 0-11
+    const curDate = today.getDate(); // 1-31
+
+    // 1. Standard ISO: YYYY-MM-DD
+    if (typeof birthDate === 'string') {
+        const trimmed = birthDate.trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+            const parts = trimmed.split('-');
+            const m = parseInt(parts[1], 10) - 1;
+            const d = parseInt(parts[2], 10);
+            return m === curMonth && d === curDate;
+        }
+        // DD/MM/YYYY or DD-MM-YYYY
+        const ddmmyyyy = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+        if (ddmmyyyy) {
+            const d = parseInt(ddmmyyyy[1], 10);
+            const m = parseInt(ddmmyyyy[2], 10) - 1;
+            return m === curMonth && d === curDate;
+        }
+    }
+
+    // 2. Parseable Date string, Firestore Timestamp, or Date object
+    try {
+        let dateObj;
+        if (typeof birthDate.toDate === 'function') {
+            dateObj = birthDate.toDate();
+        } else if (birthDate.seconds) {
+            dateObj = new Date(birthDate.seconds * 1000);
+        } else {
+            dateObj = new Date(birthDate);
+        }
+        if (!isNaN(dateObj.getTime())) {
+            return dateObj.getMonth() === curMonth && dateObj.getDate() === curDate;
+        }
+    } catch (e) {
+        // ignore
+    }
+    return false;
+}
+
+let birthdayConfettiTriggered = false;
+
+function launchBirthdayConfetti() {
+    if (birthdayConfettiTriggered) return;
+    birthdayConfettiTriggered = true;
+
+    try {
+        const canvas = document.createElement('canvas');
+        canvas.id = 'birthdayConfettiCanvas';
+        canvas.style.position = 'fixed';
+        canvas.style.top = '0';
+        canvas.style.left = '0';
+        canvas.style.width = '100vw';
+        canvas.style.height = '100vh';
+        canvas.style.pointerEvents = 'none';
+        canvas.style.zIndex = '999999';
+        document.body.appendChild(canvas);
+
+        const ctx = canvas.getContext('2d');
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        const colors = ['#f43f5e', '#ec4899', '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#fbbf24'];
+        const particles = Array.from({ length: 70 }, () => ({
+            x: Math.random() * width,
+            y: Math.random() * (height * 0.4) - 20,
+            size: Math.random() * 8 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            vx: Math.random() * 4 - 2,
+            vy: Math.random() * 3 + 2,
+            rot: Math.random() * 360,
+            rotSpeed: Math.random() * 6 - 3,
+            opacity: 1
+        }));
+
+        let startTime = Date.now();
+        function animate() {
+            const elapsed = Date.now() - startTime;
+            ctx.clearRect(0, 0, width, height);
+
+            let allDead = true;
+            particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.rot += p.rotSpeed;
+                if (elapsed > 2500) {
+                    p.opacity = Math.max(0, p.opacity - 0.02);
+                }
+                if (p.opacity > 0 && p.y < height) {
+                    allDead = false;
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate((p.rot * Math.PI) / 180);
+                    ctx.globalAlpha = p.opacity;
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+                    ctx.restore();
+                }
+            });
+
+            if (!allDead && elapsed < 5000) {
+                requestAnimationFrame(animate);
+            } else {
+                canvas.remove();
+            }
+        }
+        requestAnimationFrame(animate);
+    } catch (e) {
+        console.warn('Birthday confetti skipped:', e);
+    }
+}
+
+function updateGreetingBanner(displayName, birthDate) {
     const greetingEl = document.querySelector('.greeting-title');
-    if (greetingEl) {
+    const subtitleEl = document.querySelector('.greeting-subtitle');
+    const bannerEl = document.querySelector('.student-greeting-banner');
+    if (!greetingEl) return;
+
+    const namePart = displayName ? displayName.trim().split(' ')[0] : 'Student';
+    const isBirthday = isTodayBirthday(birthDate);
+
+    if (isBirthday) {
+        greetingEl.innerHTML = `Happy Blessed Birthday to you, ${escapeHtml(namePart)} 🎂🎉`;
+        if (subtitleEl) {
+            subtitleEl.innerText = "Wishing you a joyful, blessed, and wonderful day! ✨🎈";
+        }
+        if (bannerEl) {
+            bannerEl.classList.add('birthday-active');
+        }
+        launchBirthdayConfetti();
+    } else {
         greetingEl.innerText = getTimeBasedGreeting(displayName);
+        if (subtitleEl) {
+            subtitleEl.innerText = "Here’s what’s happening today.";
+        }
+        if (bannerEl) {
+            bannerEl.classList.remove('birthday-active');
+        }
     }
 }
 
@@ -647,4 +815,169 @@ document.getElementById('btnSubmitStudentAttendance')?.addEventListener('click',
             submitBtn.innerHTML = `<span>Submit Attendance</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>`;
         }
     }
-});
+});
+
+// ===============================================
+// --- STUDENT ASSIGNMENT REMINDER SYSTEM ---
+// ===============================================
+
+function getReminderDaysLate(dueDateStr) {
+    if (!dueDateStr) return 0;
+    try {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const parts = dueDateStr.split('-');
+        if (parts.length !== 3) return 0;
+        const due = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        const diffMs = today.getTime() - due.getTime();
+        return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    } catch (e) {
+        return 0;
+    }
+}
+
+function listenStudentAssignmentReminders(studentCode) {
+    if (studentReminderUnsubscribe) {
+        studentReminderUnsubscribe();
+        studentReminderUnsubscribe = null;
+    }
+
+    if (!studentCode) return;
+    const upperCode = studentCode.toString().trim().toUpperCase();
+
+    const reminderCard = document.getElementById('studentAssignmentReminderCard');
+    const container = document.getElementById('studentReminderListContainer');
+    const headerCount = document.getElementById('studentReminderHeaderCount');
+
+    try {
+        // Query by studentCode alone to avoid requiring composite indexes in Firestore
+        const q = query(
+            collection(db, "assignment_reminders"),
+            where("studentCode", "==", upperCode)
+        );
+
+        studentReminderUnsubscribe = onSnapshot(q, (snapshot) => {
+            const reminders = [];
+            snapshot.forEach(docSnap => {
+                const d = docSnap.data();
+                if ((d.status || 'pending').toLowerCase() === 'pending') {
+                    reminders.push({
+                        id: docSnap.id,
+                        ...d
+                    });
+                }
+            });
+
+            if (reminders.length === 0) {
+                if (reminderCard) reminderCard.style.display = 'none';
+                return;
+            }
+
+            // Sort: Most overdue first, then upcoming
+            reminders.sort((a, b) => {
+                const lateA = getReminderDaysLate(a.dueDate);
+                const lateB = getReminderDaysLate(b.dueDate);
+                return lateB - lateA;
+            });
+
+            if (headerCount) {
+                headerCount.innerText = `${reminders.length} Pending`;
+            }
+
+            if (container) {
+                let html = '';
+                reminders.forEach(r => {
+                    const daysLate = getReminderDaysLate(r.dueDate);
+                    let lateTierClass = '';
+                    let lateBadgeHtml = '';
+
+                    // Date display formatting
+                    let formattedDueDate = r.dueDate || 'No due date';
+                    try {
+                        const parts = r.dueDate.split('-');
+                        if (parts.length === 3) {
+                            const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                            formattedDueDate = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                        }
+                    } catch (e) {}
+
+                    if (daysLate >= 3) {
+                        // 3+ days late: Aggressive shake, flashing red text, neon border
+                        lateTierClass = 'reminder-late-critical';
+                        lateBadgeHtml = `
+                            <div class="reminder-badge-critical">
+                                <span class="reminder-badge-fire">🚨</span>
+                                <span class="reminder-late-text-animated">CRITICAL: ${daysLate} DAYS LATE!</span>
+                            </div>
+                        `;
+                    } else if (daysLate === 2) {
+                        // 2 days late: Energetic vibration and red alert
+                        lateTierClass = 'reminder-late-2days';
+                        lateBadgeHtml = `
+                            <div class="reminder-badge-2days">
+                                <span>⚠️</span>
+                                <span class="reminder-late-text-animated">2 DAYS LATE!</span>
+                            </div>
+                        `;
+                    } else if (daysLate === 1) {
+                        // 1 day late: Mild animation / gentle amber-orange pulse
+                        lateTierClass = 'reminder-late-1day';
+                        lateBadgeHtml = `
+                            <div class="reminder-badge-1day">
+                                <span>⚠️</span>
+                                <span>Late by 1 day</span>
+                            </div>
+                        `;
+                    } else if (daysLate === 0) {
+                        // Due today
+                        lateTierClass = 'reminder-due-today';
+                        lateBadgeHtml = `
+                            <div class="reminder-badge-today">
+                                <span>⏳</span>
+                                <span>Due Today</span>
+                            </div>
+                        `;
+                    } else {
+                        // Upcoming
+                        const daysLeft = Math.abs(daysLate);
+                        lateTierClass = 'reminder-due-future';
+                        lateBadgeHtml = `
+                            <div class="reminder-badge-future">
+                                <span>📅</span>
+                                <span>Due in ${daysLeft} day${daysLeft > 1 ? 's' : ''}</span>
+                            </div>
+                        `;
+                    }
+
+                    html += `
+                        <div class="student-reminder-item ${lateTierClass}">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;">
+                                <span class="reminder-subject-tag">${escapeHtml(r.subject || 'Subject')}</span>
+                                ${lateBadgeHtml}
+                            </div>
+                            <h4 class="reminder-assignment-title">${escapeHtml(r.assignmentTitle || 'Assignment')}</h4>
+                            <div class="reminder-due-row">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                                <span>Due: <strong>${escapeHtml(formattedDueDate)}</strong></span>
+                            </div>
+                            ${r.notes ? `<div class="reminder-notes-text">📝 ${escapeHtml(r.notes)}</div>` : ''}
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = html;
+            }
+
+            if (reminderCard) reminderCard.style.display = 'block';
+
+        }, (err) => {
+            console.error("Student assignment reminders listener error:", err);
+        });
+
+    } catch (e) {
+        console.error("Could not setup student assignment reminders:", e);
+    }
+}

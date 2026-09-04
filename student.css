@@ -589,6 +589,43 @@ td {
     border-color: #1e293b;
 }
 
+/* Birthday Celebratory Banner State */
+.student-greeting-banner.birthday-active {
+    background: linear-gradient(135deg, #eff6ff 0%, #fdf2f8 50%, #fef3c7 100%) !important;
+    border: 1.5px solid #f472b6 !important;
+    box-shadow: 0 10px 25px -5px rgba(244, 114, 182, 0.25) !important;
+}
+
+body.dark-theme .student-greeting-banner.birthday-active,
+body.dark-mode .student-greeting-banner.birthday-active {
+    background: linear-gradient(135deg, #1e1b4b 0%, #311042 50%, #451a03 100%) !important;
+    border: 1.5px solid #ec4899 !important;
+    box-shadow: 0 10px 25px -5px rgba(236, 72, 153, 0.3) !important;
+}
+
+.student-greeting-banner.birthday-active .greeting-title {
+    background: linear-gradient(135deg, #1e40af, #db2777, #d97706);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+body.dark-theme .student-greeting-banner.birthday-active .greeting-title,
+body.dark-mode .student-greeting-banner.birthday-active .greeting-title {
+    background: linear-gradient(135deg, #93c5fd, #f472b6, #fde047);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.student-greeting-banner.birthday-active .greeting-subtitle {
+    color: #db2777 !important;
+    font-weight: 600 !important;
+}
+
+body.dark-theme .student-greeting-banner.birthday-active .greeting-subtitle,
+body.dark-mode .student-greeting-banner.birthday-active .greeting-subtitle {
+    color: #f9a8d4 !important;
+}
+
 .greeting-text-container {
     z-index: 2;
     max-width: 55%;
@@ -1579,3 +1616,349 @@ body.dark-mode .photo-modal-card {
     border-color: #334155 !important;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6) !important;
 }
+
+/* =========================================================
+   STUDENT ASSIGNMENT REMINDER CARD & MULTI-TIER ANIMATIONS
+   ========================================================= */
+
+.student-reminder-card-box {
+    background: var(--card-bg, #ffffff);
+    border: 1px solid var(--border-color, #e2e8f0);
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s ease;
+}
+
+body.dark-theme .student-reminder-card-box,
+body.dark-mode .student-reminder-card-box {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.45);
+}
+
+.student-reminder-icon-badge {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.student-reminder-count-pill {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+    font-size: 11.5px;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    letter-spacing: 0.3px;
+}
+
+.student-reminder-card-box {
+    margin-bottom: 20px;
+    border-radius: 16px;
+}
+
+#studentReminderListContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 440px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 2px 4px;
+}
+
+.student-reminder-item {
+    padding: 14px 16px;
+    border-radius: 13px;
+    border: 1.5px solid var(--border-color, #e2e8f0);
+    background: var(--bg-hover, #f8fafc);
+    position: relative;
+    box-sizing: border-box;
+    transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+}
+
+body.dark-theme .student-reminder-item,
+body.dark-mode .student-reminder-item {
+    background: #0f172a;
+    border-color: #334155;
+}
+
+.reminder-subject-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 9px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: rgba(30, 94, 255, 0.1);
+    color: var(--primary-blue, #1e5eff);
+    border: 1px solid rgba(30, 94, 255, 0.2);
+}
+
+.reminder-assignment-title {
+    margin: 4px 0 6px 0;
+    font-size: 14.5px;
+    font-weight: 800;
+    color: var(--text-dark, #0f172a);
+    line-height: 1.35;
+}
+
+body.dark-theme .reminder-assignment-title,
+body.dark-mode .reminder-assignment-title {
+    color: #f8fafc;
+}
+
+.reminder-due-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-gray, #64748b);
+}
+
+.reminder-notes-text {
+    margin-top: 6px;
+    font-size: 11.5px;
+    color: var(--text-gray, #64748b);
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.03);
+    border-radius: 6px;
+    font-style: italic;
+}
+
+body.dark-theme .reminder-notes-text,
+body.dark-mode .reminder-notes-text {
+    background: rgba(255, 255, 255, 0.05);
+    color: #94a3b8;
+}
+
+/* --- TIER 0: UPCOMING / DUE TODAY --- */
+.student-reminder-item.reminder-due-future {
+    border-color: rgba(30, 94, 255, 0.3);
+}
+
+.reminder-badge-future {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    background: rgba(30, 94, 255, 0.08);
+    color: var(--primary-blue, #1e5eff);
+    border: 1px solid rgba(30, 94, 255, 0.2);
+}
+
+.student-reminder-item.reminder-due-today {
+    border-color: #f59e0b;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.06) 0%, rgba(245, 158, 11, 0.02) 100%);
+}
+
+.reminder-badge-today {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    background: rgba(245, 158, 11, 0.15);
+    color: #d97706;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+/* --- TIER 1: LATE BY 1 DAY (MILD ANIMATION & SUBTLE COLOR CHANGE) --- */
+.student-reminder-item.reminder-late-1day {
+    border-color: #f97316;
+    border-width: 1.5px;
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.08) 0%, rgba(245, 158, 11, 0.03) 100%);
+    box-shadow: 0 2px 10px rgba(249, 115, 22, 0.12);
+}
+
+.reminder-badge-1day {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 800;
+    background: #ea580c;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(234, 88, 12, 0.35);
+    animation: gentle-amber-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes gentle-amber-pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 2px 8px rgba(234, 88, 12, 0.35);
+    }
+    50% {
+        transform: scale(1.04);
+        box-shadow: 0 4px 14px rgba(234, 88, 12, 0.6);
+    }
+}
+
+/* --- TIER 2: LATE BY 2 DAYS (MORE ENERGETIC & ACTIVE ANIMATION) --- */
+.student-reminder-item.reminder-late-2days {
+    border-color: #ef4444;
+    border-width: 2px;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(220, 38, 38, 0.05) 100%);
+    box-shadow: 0 0 14px rgba(239, 68, 68, 0.25);
+    animation: reminder-box-wiggle 3.2s ease-in-out infinite;
+}
+
+.reminder-badge-2days {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 7px;
+    font-size: 11.5px;
+    font-weight: 900;
+    background: #ef4444;
+    color: #ffffff;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+    letter-spacing: 0.5px;
+}
+
+.reminder-badge-2days .reminder-late-text-animated {
+    display: inline-block;
+    animation: text-vibrate 1.2s ease-in-out infinite;
+}
+
+@keyframes reminder-box-wiggle {
+    0%, 78%, 100% {
+        transform: translateX(0);
+    }
+    81% {
+        transform: translateX(-2px);
+    }
+    85% {
+        transform: translateX(2px);
+    }
+    89% {
+        transform: translateX(-1.5px);
+    }
+    93% {
+        transform: translateX(1.5px);
+    }
+    97% {
+        transform: translateX(-0.5px);
+    }
+}
+
+@keyframes text-vibrate {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.08);
+        text-shadow: 0 0 8px rgba(255, 255, 255, 0.9);
+    }
+}
+
+/* --- TIER 3: LATE BY 3+ DAYS (AGGRESSIVE NEON GLOW, SHAKING, FLASHING TEXT) --- */
+.student-reminder-item.reminder-late-critical {
+    border-width: 2.5px !important;
+    background: linear-gradient(135deg, rgba(220, 38, 38, 0.16) 0%, rgba(185, 28, 28, 0.08) 100%);
+    animation: aggressive-neon-glow 1.4s ease-in-out infinite, reminder-box-shake 2.5s infinite !important;
+}
+
+.reminder-badge-critical {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 11px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 900;
+    background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+    color: #ffffff;
+    box-shadow: 0 0 14px rgba(220, 38, 38, 0.8), inset 0 0 6px rgba(255, 255, 255, 0.3);
+    letter-spacing: 0.6px;
+    border: 1px solid #ff4444;
+}
+
+.reminder-badge-critical .reminder-badge-fire {
+    display: inline-block;
+    animation: fire-bounce 0.6s infinite alternate ease-in-out;
+}
+
+.reminder-badge-critical .reminder-late-text-animated {
+    display: inline-block;
+    animation: critical-text-flash 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes aggressive-neon-glow {
+    0%, 100% {
+        border-color: #ef4444;
+        box-shadow: 0 0 8px rgba(239, 68, 68, 0.4), inset 0 0 4px rgba(239, 68, 68, 0.12);
+    }
+    50% {
+        border-color: #ff0033;
+        box-shadow: 0 0 16px rgba(255, 0, 51, 0.7), inset 0 0 8px rgba(255, 0, 51, 0.25);
+    }
+}
+
+@keyframes reminder-box-shake {
+    0%, 72%, 100% {
+        transform: translateX(0);
+    }
+    75% {
+        transform: translateX(-3px);
+    }
+    78% {
+        transform: translateX(3px);
+    }
+    81% {
+        transform: translateX(-2.5px);
+    }
+    84% {
+        transform: translateX(2.5px);
+    }
+    87% {
+        transform: translateX(-1.5px);
+    }
+    90% {
+        transform: translateX(1.5px);
+    }
+    93% {
+        transform: translateX(-0.5px);
+    }
+    96% {
+        transform: translateX(0.5px);
+    }
+}
+
+@keyframes critical-text-flash {
+    0% {
+        color: #ffffff;
+        text-shadow: 0 0 4px rgba(255, 255, 255, 0.8), 0 0 10px rgba(255, 50, 50, 0.9);
+        transform: scale(1);
+    }
+    100% {
+        color: #fff1f2;
+        text-shadow: 0 0 10px rgba(255, 255, 255, 1), 0 0 18px rgba(255, 0, 0, 1);
+        transform: scale(1.06);
+    }
+}
+
+@keyframes fire-bounce {
+    0% {
+        transform: scale(1) translateY(0);
+    }
+    100% {
+        transform: scale(1.3) translateY(-2px);
+    }
+}

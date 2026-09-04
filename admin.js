@@ -2224,26 +2224,35 @@ document.querySelectorAll('.menu-btn').forEach(button => {
     button.addEventListener('click', async (e) => {
         const tabId = button.getAttribute('data-tab');
         if (!tabId) return;
-        const dbGroup = document.getElementById('groupDatabases');
+        const parentGroup = button.closest('.menu-item-group');
 
-        // Check if this is the expandable Databases menu item
-        if (button.classList.contains('menu-btn-expandable') || button.id === 'menuAdminOnly') {
-            if (dbGroup) {
+        // Check if this is an expandable menu item
+        if (button.classList.contains('menu-btn-expandable') || button.id === 'menuAdminOnly' || button.id === 'menuManageScore') {
+            if (parentGroup) {
                 // If it's already active and open, toggle close; otherwise open
-                if (button.classList.contains('active') && dbGroup.classList.contains('open')) {
-                    dbGroup.classList.toggle('open');
+                if (button.classList.contains('active') && parentGroup.classList.contains('open')) {
+                    parentGroup.classList.toggle('open');
                 } else {
-                    dbGroup.classList.add('open');
+                    document.querySelectorAll('.menu-item-group').forEach(grp => {
+                        if (grp !== parentGroup) grp.classList.remove('open');
+                    });
+                    parentGroup.classList.add('open');
                 }
             }
-            // If no subtab is active, default to students view
-            const activeSub = document.querySelector('.submenu-btn.active');
-            if (!activeSub) {
-                window.switchDbView('students');
+            if (parentGroup && parentGroup.id === 'groupDatabases') {
+                const activeSub = parentGroup.querySelector('.submenu-btn.active');
+                if (!activeSub) {
+                    window.switchDbView('students');
+                }
+            } else if (parentGroup && parentGroup.id === 'groupManageScore') {
+                const activeSub = parentGroup.querySelector('.submenu-btn.active');
+                if (!activeSub) {
+                    window.switchManageScoreSubtab('score-input');
+                }
             }
         } else {
-            // Close database dropdown when navigating to a different main tab
-            if (dbGroup) dbGroup.classList.remove('open');
+            // Close all dropdowns when navigating to a different main tab
+            document.querySelectorAll('.menu-item-group').forEach(grp => grp.classList.remove('open'));
             document.querySelectorAll('.submenu-btn').forEach(btn => btn.classList.remove('active'));
         }
 
@@ -2267,31 +2276,37 @@ document.querySelectorAll('.menu-btn').forEach(button => {
             await populateAttendanceSubjects();
             await populateAttendanceClasses();
             checkAndLoadAttendance();
+        } else if (tabId === 'tab-manage-scores') {
+            if (typeof populateAssignmentReminderDropdowns === 'function') {
+                populateAssignmentReminderDropdowns();
+            }
         }
     });
 });
 
-// Sidebar Sub-menu Button Handlers (Databases -> Students, Teacher, Quiz)
+// Sidebar Sub-menu Button Handlers (Databases -> Students, Teacher, Quiz & Manage Score -> Input, Reminder)
 document.querySelectorAll('.submenu-btn').forEach(subBtn => {
     subBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         const tabId = subBtn.getAttribute('data-tab');
         const subtab = subBtn.getAttribute('data-subtab');
-        const dbGroup = document.getElementById('groupDatabases');
+        const parentGroup = subBtn.closest('.menu-item-group');
 
         // Keep parent group open and parent button active
-        if (dbGroup) dbGroup.classList.add('open');
+        if (parentGroup) parentGroup.classList.add('open');
         document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
-        const parentBtn = document.getElementById('menuAdminOnly');
+        const parentBtn = parentGroup?.querySelector('.menu-btn');
         if (parentBtn) parentBtn.classList.add('active');
 
-        // Activate Databases tab content
+        // Activate tab content
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
         const targetTab = document.getElementById(tabId);
         if (targetTab) targetTab.classList.add('active');
 
         // Switch to the specific sub-view
-        if (subtab && typeof window.switchDbView === 'function') {
+        if (parentGroup && parentGroup.id === 'groupManageScore' && typeof window.switchManageScoreSubtab === 'function') {
+            window.switchManageScoreSubtab(subtab);
+        } else if (subtab && typeof window.switchDbView === 'function') {
             window.switchDbView(subtab);
         }
 
@@ -2302,12 +2317,13 @@ document.querySelectorAll('.submenu-btn').forEach(subBtn => {
     });
 });
 
-// Close database dropdown when clicking outside
+// Close database and manage score dropdowns when clicking outside
 document.addEventListener('click', (e) => {
-    const dbGroup = document.getElementById('groupDatabases');
-    if (dbGroup && !dbGroup.contains(e.target)) {
-        dbGroup.classList.remove('open');
-    }
+    document.querySelectorAll('.menu-item-group').forEach(grp => {
+        if (!grp.contains(e.target)) {
+            grp.classList.remove('open');
+        }
+    });
 });
 
 
@@ -5215,6 +5231,10 @@ window.loadSystemDatabases = async function () {
                 if (manualQuizClassSelect) manualQuizClassSelect.innerHTML += `<option value="${name}">${name}</option>`;
                 if (bulkClassSelect) bulkClassSelect.innerHTML += `<option value="${name}">${name}</option>`;
             });
+
+            if (typeof populateAssignmentReminderDropdowns === 'function') {
+                populateAssignmentReminderDropdowns();
+            }
         } catch (err) {
             console.warn("Students collection read restricted:", err.message);
         }
@@ -8868,4 +8888,634 @@ window.saveTeacherProfile = async function() {
         }
     }
 };
+
+// ==========================================
+// --- ASSIGNMENT REMINDER SYSTEM (ADMIN) ---
+// ==========================================
+
+let cachedAssignmentReminders = [];
+let reminderListenerUnsubscribe = null;
+let reminderListenersInitialized = false;
+
+window.switchManageScoreSubtab = function (subtabName) {
+    if (!subtabName) subtabName = 'score-input';
+
+    const btnScores = document.getElementById('btnManageScoreScores');
+    const btnReminder = document.getElementById('btnManageScoreReminder');
+    const subBtnScores = document.getElementById('subtabScoreInput');
+    const subBtnReminder = document.getElementById('subtabAssignmentReminder');
+    const secScores = document.getElementById('sectionManageScoreInput');
+    const secReminder = document.getElementById('sectionAssignmentReminder');
+
+    if (subtabName === 'assignment-reminder') {
+        if (btnScores) btnScores.classList.remove('active');
+        if (btnReminder) btnReminder.classList.add('active');
+        if (subBtnScores) subBtnScores.classList.remove('active');
+        if (subBtnReminder) subBtnReminder.classList.add('active');
+
+        if (secScores) {
+            secScores.classList.add('hidden');
+            secScores.style.display = 'none';
+        }
+        if (secReminder) {
+            secReminder.classList.remove('hidden');
+            secReminder.style.display = 'block';
+        }
+
+        initAssignmentReminderTab();
+    } else {
+        if (btnScores) btnScores.classList.add('active');
+        if (btnReminder) btnReminder.classList.remove('active');
+        if (subBtnScores) subBtnScores.classList.add('active');
+        if (subBtnReminder) subBtnReminder.classList.remove('active');
+
+        if (secScores) {
+            secScores.classList.remove('hidden');
+            secScores.style.display = 'block';
+        }
+        if (secReminder) {
+            secReminder.classList.add('hidden');
+            secReminder.style.display = 'none';
+        }
+    }
+};
+
+function initAssignmentReminderTab() {
+    // 1. Set default due date to tomorrow if empty
+    const dueInput = document.getElementById('reminderDueDateInput');
+    if (dueInput && !dueInput.value) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        dueInput.value = tomorrow.toISOString().split('T')[0];
+    }
+
+    // 2. Populate Dropdowns
+    populateAssignmentReminderDropdowns();
+    const directSubSelect = document.getElementById('directSubjectSelect');
+    if ((!directSubSelect || directSubSelect.options.length <= 1) && typeof window.loadSystemDatabases === 'function') {
+        window.loadSystemDatabases();
+    }
+
+    // 3. Initialize Event Listeners (once)
+    if (!reminderListenersInitialized) {
+        reminderListenersInitialized = true;
+
+        const subSelect = document.getElementById('reminderSubjectSelect');
+        const classSelect = document.getElementById('reminderClassSelect');
+        const assignSelect = document.getElementById('reminderAssignmentSelect');
+
+        subSelect?.addEventListener('change', () => {
+            loadReminderAssignments();
+        });
+
+        classSelect?.addEventListener('change', () => {
+            loadReminderAssignments();
+            loadReminderStudents();
+        });
+
+        assignSelect?.addEventListener('change', () => {
+            const customWrapper = document.getElementById('reminderCustomAssignmentWrapper');
+            if (customWrapper) {
+                if (assignSelect.value === '__custom__') {
+                    customWrapper.classList.remove('hidden');
+                    document.getElementById('reminderCustomAssignmentInput')?.focus();
+                } else {
+                    customWrapper.classList.add('hidden');
+                }
+            }
+        });
+
+        // Search student input
+        document.getElementById('reminderStudentSearchInput')?.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            const items = document.querySelectorAll('.reminder-student-item');
+            items.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = text.includes(query) ? 'flex' : 'none';
+            });
+        });
+
+        // Select All / Deselect All
+        document.getElementById('reminderSelectAllBtn')?.addEventListener('click', () => {
+            document.querySelectorAll('.reminder-student-cb').forEach(cb => {
+                const parent = cb.closest('.reminder-student-item');
+                if (!parent || parent.style.display !== 'none') {
+                    cb.checked = true;
+                }
+            });
+            updateReminderSelectedCount();
+        });
+
+        document.getElementById('reminderDeselectAllBtn')?.addEventListener('click', () => {
+            document.querySelectorAll('.reminder-student-cb').forEach(cb => cb.checked = false);
+            updateReminderSelectedCount();
+        });
+
+        // Deploy Reminders Button
+        document.getElementById('btnDeployReminders')?.addEventListener('click', deployAssignmentReminders);
+
+        // Tracker Table Filters
+        document.getElementById('filterReminderClass')?.addEventListener('change', renderAssignmentRemindersTable);
+        document.getElementById('filterReminderSubject')?.addEventListener('change', renderAssignmentRemindersTable);
+        document.getElementById('filterReminderStatus')?.addEventListener('change', renderAssignmentRemindersTable);
+        document.getElementById('filterReminderSearch')?.addEventListener('input', debounce(renderAssignmentRemindersTable, 150));
+        document.getElementById('refreshRemindersBtn')?.addEventListener('click', () => {
+            listenAssignmentReminders();
+        });
+    }
+
+    // 4. Start real-time listener for reminder ledger
+    listenAssignmentReminders();
+}
+
+function populateAssignmentReminderDropdowns() {
+    const subSelect = document.getElementById('reminderSubjectSelect');
+    const classSelect = document.getElementById('reminderClassSelect');
+    const filterSub = document.getElementById('filterReminderSubject');
+    const filterClass = document.getElementById('filterReminderClass');
+
+    // Populate from directSelect options if available
+    const directSubSelect = document.getElementById('directSubjectSelect');
+    const directClassSelect = document.getElementById('directClassSelect');
+
+    if (subSelect && directSubSelect && directSubSelect.options.length > 1) {
+        subSelect.innerHTML = directSubSelect.innerHTML;
+        if (userRole !== 'admin' && teacherSubject) {
+            subSelect.value = teacherSubject;
+        }
+    }
+
+    if (filterSub && directSubSelect && directSubSelect.options.length > 1) {
+        let opts = '<option value="">All Subjects</option>';
+        for (let i = 0; i < directSubSelect.options.length; i++) {
+            const opt = directSubSelect.options[i];
+            if (opt.value) opts += `<option value="${opt.value}">${opt.text}</option>`;
+        }
+        filterSub.innerHTML = opts;
+    }
+
+    if (classSelect && directClassSelect && directClassSelect.options.length > 1) {
+        classSelect.innerHTML = directClassSelect.innerHTML;
+    }
+
+    if (filterClass && directClassSelect && directClassSelect.options.length > 1) {
+        let opts = '<option value="">All Classes</option>';
+        for (let i = 0; i < directClassSelect.options.length; i++) {
+            const opt = directClassSelect.options[i];
+            if (opt.value) opts += `<option value="${opt.value}">${opt.text}</option>`;
+        }
+        filterClass.innerHTML = opts;
+    }
+}
+
+async function loadReminderAssignments() {
+    const subSelect = document.getElementById('reminderSubjectSelect');
+    const classSelect = document.getElementById('reminderClassSelect');
+    const assignSelect = document.getElementById('reminderAssignmentSelect');
+
+    if (!assignSelect) return;
+
+    const selectedSubject = subSelect ? subSelect.value.trim().toLowerCase() : "";
+    const selectedClass = classSelect ? classSelect.value.trim().toLowerCase() : "";
+
+    assignSelect.innerHTML = '<option value="">-- Select Assignment --</option>';
+
+    if (!selectedSubject || !selectedClass) {
+        assignSelect.innerHTML = '<option value="">-- Choose Subject & Class First --</option>';
+        return;
+    }
+
+    const seenTitles = new Set();
+
+    try {
+        // 1. Digital Quizzes
+        try {
+            const digitalSnap = await getDocs(collection(db, "quizzes"));
+            digitalSnap.forEach(docSnap => {
+                const data = docSnap.data();
+                const title = (data.title || data.quizName || "").trim();
+                const qSubject = (data.subject || "").trim().toLowerCase();
+                const qClass = (data.targetClass || "").trim().toLowerCase();
+                const targetList = Array.isArray(data.targetClassesList) ? data.targetClassesList.map(c => c.toLowerCase()) : [];
+
+                const matchesSubject = !qSubject || qSubject === selectedSubject || selectedSubject.includes(qSubject) || qSubject.includes(selectedSubject);
+                const matchesClass = !qClass ||
+                    qClass === selectedClass ||
+                    qClass === "all classes" ||
+                    qClass === "all" ||
+                    qClass.includes("all classes") ||
+                    qClass.includes("all") ||
+                    qClass.includes(selectedClass) ||
+                    targetList.includes(selectedClass);
+
+                if (title && matchesSubject && matchesClass && !seenTitles.has(title.toLowerCase())) {
+                    seenTitles.add(title.toLowerCase());
+                    assignSelect.innerHTML += `<option value="${escapeHtml(title)}">${escapeHtml(title)} (Digital Quiz)</option>`;
+                }
+            });
+        } catch (err) {
+            console.warn("Could not read digital quizzes for reminder:", err.message);
+        }
+
+        // 2. Offline & Classroom Quizzes from system_quizzes
+        try {
+            const manualSnap = await getDocs(collection(db, "system_quizzes"));
+            manualSnap.forEach(docSnap => {
+                const data = docSnap.data();
+                const title = (data.name || "").trim();
+                const qSubject = (data.subject || "").trim().toLowerCase();
+                const qClass = (data.targetClass || "").trim().toLowerCase();
+                const targetList = Array.isArray(data.targetClassesList) ? data.targetClassesList.map(c => c.toLowerCase()) : [];
+
+                const matchesSubject = !qSubject || qSubject === selectedSubject || selectedSubject.includes(qSubject) || qSubject.includes(selectedSubject);
+                const matchesClass = !qClass ||
+                    qClass === selectedClass ||
+                    qClass === "all classes" ||
+                    qClass === "all" ||
+                    qClass.includes("all classes") ||
+                    qClass.includes("all") ||
+                    qClass.includes(selectedClass) ||
+                    targetList.includes(selectedClass);
+
+                if (title && matchesSubject && matchesClass && !seenTitles.has(title.toLowerCase())) {
+                    seenTitles.add(title.toLowerCase());
+                    const tag = (data.source === "google_classroom" || data.gclassCourseWorkId) ? "Classroom Assignment" : "Offline Assignment";
+                    assignSelect.innerHTML += `<option value="${escapeHtml(title)}">${escapeHtml(title)} (${tag})</option>`;
+                }
+            });
+        } catch (err) {
+            console.warn("Could not read system_quizzes for reminder:", err.message);
+        }
+
+        // 3. Fallback: Existing exam_scores titles
+        try {
+            const scoresSnap = await getDocs(collection(db, "exam_scores"));
+            scoresSnap.forEach(docSnap => {
+                const data = docSnap.data();
+                const title = (data.examName || data.quizName || "").trim();
+                const docSubj = (data.subject || "").trim().toLowerCase();
+                const docClass = (data.studentClass || "").trim().toLowerCase();
+
+                if (title && (docSubj === selectedSubject || !selectedSubject) && (docClass === selectedClass || !selectedClass)) {
+                    if (!seenTitles.has(title.toLowerCase())) {
+                        seenTitles.add(title.toLowerCase());
+                        assignSelect.innerHTML += `<option value="${escapeHtml(title)}">${escapeHtml(title)} (Score Record)</option>`;
+                    }
+                }
+            });
+        } catch (err) {
+            console.warn("Could not read exam scores for reminder:", err.message);
+        }
+
+    } catch (e) {
+        console.error("Error loading reminder assignments:", e);
+    }
+
+    // Always add Custom Option
+    assignSelect.innerHTML += `<option value="__custom__">+ Enter Custom Assignment Name...</option>`;
+}
+
+async function loadReminderStudents() {
+    const classSelect = document.getElementById('reminderClassSelect');
+    const container = document.getElementById('reminderStudentListContainer');
+    if (!container) return;
+
+    const selectedClass = classSelect ? classSelect.value.trim() : "";
+    if (!selectedClass) {
+        container.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; color: var(--text-gray); padding: 20px; font-size: 13px;">Please select a Class above to load students.</div>`;
+        updateReminderSelectedCount();
+        return;
+    }
+
+    container.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; color: var(--primary-blue); padding: 20px; font-size: 13px;">Loading students for Class ${escapeHtml(selectedClass)}...</div>`;
+
+    try {
+        const q = query(collection(db, "students"), where("studentClass", "==", selectedClass));
+        const snap = await getDocs(q);
+
+        if (snap.empty) {
+            container.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; color: #ef4444; padding: 20px; font-size: 13px;">No students found in Class ${escapeHtml(selectedClass)}.</div>`;
+            updateReminderSelectedCount();
+            return;
+        }
+
+        const studentsList = [];
+        snap.forEach(docSnap => {
+            const d = docSnap.data();
+            studentsList.push({
+                code: (d.studentCode || docSnap.id).toString().trim().toUpperCase(),
+                name: d.studentName || d.name || "Student",
+                studentClass: d.studentClass || selectedClass,
+                photoUrl: d.photoUrl || d.photo || null
+            });
+        });
+
+        // Sort alphabetically by name
+        studentsList.sort((a, b) => a.name.localeCompare(b.name));
+
+        let html = '';
+        studentsList.forEach(s => {
+            const initial = (s.name.charAt(0) || 'S').toUpperCase();
+            const avatarHtml = s.photoUrl
+                ? `<img src="${s.photoUrl}" alt="${escapeHtml(s.name)}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">`
+                : `<div style="width: 28px; height: 28px; border-radius: 50%; background: #1e5eff; color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center;">${initial}</div>`;
+
+            html += `
+                <label class="reminder-student-item" style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--card-bg, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: 9px; cursor: pointer; transition: background 0.15s; user-select: none;">
+                    <input type="checkbox" class="reminder-student-cb" value="${escapeHtml(s.code)}" data-name="${escapeHtml(s.name)}" data-class="${escapeHtml(s.studentClass)}" onchange="updateReminderSelectedCount()" style="width: 16px; height: 16px; accent-color: var(--primary-blue, #1e5eff); cursor: pointer;">
+                    ${avatarHtml}
+                    <div style="overflow: hidden; line-height: 1.2; flex: 1;">
+                        <div style="font-size: 13px; font-weight: 700; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(s.name)}</div>
+                        <div style="font-size: 11px; color: var(--text-gray); font-family: monospace;">${escapeHtml(s.code)}</div>
+                    </div>
+                </label>
+            `;
+        });
+
+        container.innerHTML = html;
+        updateReminderSelectedCount();
+
+    } catch (err) {
+        console.error("Error loading students for reminder:", err);
+        container.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; color: #ef4444; padding: 20px; font-size: 13px;">Error loading students: ${escapeHtml(err.message)}</div>`;
+    }
+}
+
+function updateReminderSelectedCount() {
+    const badge = document.getElementById('reminderStudentCountBadge');
+    if (!badge) return;
+    const total = document.querySelectorAll('.reminder-student-cb:checked').length;
+    badge.innerText = `${total} Selected`;
+}
+
+async function deployAssignmentReminders() {
+    const subject = document.getElementById('reminderSubjectSelect')?.value.trim();
+    const studentClass = document.getElementById('reminderClassSelect')?.value.trim();
+    const assignmentVal = document.getElementById('reminderAssignmentSelect')?.value.trim();
+    const customTitle = document.getElementById('reminderCustomAssignmentInput')?.value.trim();
+    const dueDate = document.getElementById('reminderDueDateInput')?.value.trim();
+    const notes = document.getElementById('reminderNotesInput')?.value.trim() || '';
+
+    const assignmentTitle = assignmentVal === '__custom__' ? customTitle : assignmentVal;
+
+    if (!subject) return alert("Please select a Subject.");
+    if (!studentClass) return alert("Please select a Class.");
+    if (!assignmentTitle) return alert("Please select or enter an Assignment Name.");
+    if (!dueDate) return alert("Please specify a Submission Due Date.");
+
+    // Collect checked students
+    const checkedCheckboxes = document.querySelectorAll('.reminder-student-cb:checked');
+    if (checkedCheckboxes.length === 0) {
+        return alert("Please select at least one student to receive this reminder.");
+    }
+
+    const studentsToRemind = [];
+    checkedCheckboxes.forEach(cb => {
+        studentsToRemind.push({
+            code: cb.value,
+            name: cb.getAttribute('data-name') || 'Student',
+            studentClass: cb.getAttribute('data-class') || studentClass
+        });
+    });
+
+    if (!confirm(`Deploy reminder for ${studentsToRemind.length} student(s) for "${assignmentTitle}" (Due: ${dueDate})?`)) {
+        return;
+    }
+
+    const deployBtn = document.getElementById('btnDeployReminders');
+    if (deployBtn) {
+        deployBtn.disabled = true;
+        deployBtn.innerHTML = `<span>Deploying ${studentsToRemind.length} Reminders...</span>`;
+    }
+
+    try {
+        const createdBy = auth.currentUser?.email || "Teacher";
+        const nowIso = new Date().toISOString();
+
+        // Write each reminder document to Firestore
+        const writePromises = studentsToRemind.map(s => {
+            return addDoc(collection(db, "assignment_reminders"), {
+                studentCode: s.code.toUpperCase(),
+                studentName: s.name,
+                studentClass: s.studentClass,
+                subject: subject,
+                assignmentTitle: assignmentTitle,
+                dueDate: dueDate,
+                notes: notes,
+                status: "pending",
+                createdBy: createdBy,
+                createdAt: nowIso,
+                completedAt: null
+            });
+        });
+
+        await Promise.all(writePromises);
+
+        alert(`Successfully deployed ${studentsToRemind.length} reminder(s) for "${assignmentTitle}"!`);
+
+        // Uncheck all students
+        document.querySelectorAll('.reminder-student-cb').forEach(cb => cb.checked = false);
+        updateReminderSelectedCount();
+
+    } catch (err) {
+        console.error("Error deploying reminders:", err);
+        alert("Failed to deploy reminders: " + err.message);
+    } finally {
+        if (deployBtn) {
+            deployBtn.disabled = false;
+            deployBtn.innerHTML = `
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 2L11 13"></path>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+                <span>Deploy Assignment Reminder</span>`;
+        }
+    }
+}
+
+function getDaysLate(dueDateStr) {
+    if (!dueDateStr) return 0;
+    try {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const parts = dueDateStr.split('-');
+        if (parts.length !== 3) return 0;
+        const due = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        const diffMs = today.getTime() - due.getTime();
+        return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    } catch (e) {
+        return 0;
+    }
+}
+
+function listenAssignmentReminders() {
+    if (reminderListenerUnsubscribe) {
+        reminderListenerUnsubscribe();
+    }
+
+    try {
+        const q = collection(db, "assignment_reminders");
+        reminderListenerUnsubscribe = onSnapshot(q, (snapshot) => {
+            cachedAssignmentReminders = [];
+            snapshot.forEach(docSnap => {
+                cachedAssignmentReminders.push({
+                    id: docSnap.id,
+                    ...docSnap.data()
+                });
+            });
+            renderAssignmentRemindersTable();
+        }, (err) => {
+            console.error("Assignment reminders snapshot error:", err);
+        });
+    } catch (e) {
+        console.error("Failed to attach assignment reminders listener:", e);
+    }
+}
+
+function renderAssignmentRemindersTable() {
+    const tbody = document.getElementById('assignmentReminderTbody');
+    if (!tbody) return;
+
+    const filterClass = (document.getElementById('filterReminderClass')?.value || "").toLowerCase().trim();
+    const filterSubject = (document.getElementById('filterReminderSubject')?.value || "").toLowerCase().trim();
+    const filterStatus = document.getElementById('filterReminderStatus')?.value || "pending";
+    const filterSearch = (document.getElementById('filterReminderSearch')?.value || "").toLowerCase().trim();
+
+    let filtered = cachedAssignmentReminders.filter(r => {
+        if (filterClass && (r.studentClass || "").toLowerCase() !== filterClass) return false;
+        if (filterSubject && (r.subject || "").toLowerCase() !== filterSubject) return false;
+        if (filterStatus !== 'all') {
+            if (filterStatus === 'pending' && r.status !== 'pending') return false;
+            if (filterStatus === 'completed' && r.status !== 'completed') return false;
+        }
+        if (filterSearch) {
+            const matchName = (r.studentName || "").toLowerCase().includes(filterSearch);
+            const matchCode = (r.studentCode || "").toLowerCase().includes(filterSearch);
+            const matchTitle = (r.assignmentTitle || "").toLowerCase().includes(filterSearch);
+            if (!matchName && !matchCode && !matchTitle) return false;
+        }
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 24px; color: var(--text-gray);">No assignment reminders match your filters.</td></tr>`;
+        return;
+    }
+
+    // Sort by status (pending first), then by days late (most overdue first), then by student name
+    filtered.sort((a, b) => {
+        if (a.status !== b.status) return a.status === 'pending' ? -1 : 1;
+        const lateA = getDaysLate(a.dueDate);
+        const lateB = getDaysLate(b.dueDate);
+        if (lateA !== lateB) return lateB - lateA;
+        return (a.studentName || "").localeCompare(b.studentName || "");
+    });
+
+    let html = '';
+    filtered.forEach(item => {
+        const daysLate = getDaysLate(item.dueDate);
+        let dueDisplay = `<span style="font-weight: 600;">${escapeHtml(item.dueDate || 'No date')}</span>`;
+
+        if (item.status === 'completed') {
+            dueDisplay += ` <span style="background: rgba(16, 185, 129, 0.12); color: #10b981; font-weight: 700; font-size: 11px; padding: 2px 7px; border-radius: 4px; margin-left: 6px; display: inline-flex; align-items: center; gap: 3px;">✓ Submitted</span>`;
+        } else if (daysLate > 1) {
+            dueDisplay += ` <strong style="color: #ef4444; font-size: 11.5px; margin-left: 6px; background: rgba(239, 68, 68, 0.1); padding: 2px 7px; border-radius: 4px; border: 1px solid rgba(239, 68, 68, 0.3);">🚨 ${daysLate}d Overdue</strong>`;
+        } else if (daysLate === 1) {
+            dueDisplay += ` <strong style="color: #ea580c; font-size: 11.5px; margin-left: 6px; background: rgba(249, 115, 22, 0.1); padding: 2px 7px; border-radius: 4px; border: 1px solid rgba(249, 115, 22, 0.3);">⚠️ 1d Overdue</strong>`;
+        } else if (daysLate === 0) {
+            dueDisplay += ` <strong style="color: #d97706; font-size: 11.5px; margin-left: 6px; background: rgba(245, 158, 11, 0.1); padding: 2px 7px; border-radius: 4px; border: 1px solid rgba(245, 158, 11, 0.3);">⏳ Due Today</strong>`;
+        } else {
+            const inDays = Math.abs(daysLate);
+            dueDisplay += ` <span style="color: var(--primary-blue); font-size: 11.5px; margin-left: 6px;">(in ${inDays}d)</span>`;
+        }
+
+        const isCompleted = item.status === 'completed';
+
+        html += `
+            <tr style="${isCompleted ? 'opacity: 0.65;' : ''}">
+                <td>
+                    <div style="font-weight: 700; color: var(--text-dark);">${escapeHtml(item.studentName || 'Student')}</div>
+                    <div style="font-size: 11px; color: var(--text-gray); font-family: monospace;">${escapeHtml(item.studentCode || '')}</div>
+                </td>
+                <td><span style="font-weight: 600;">${escapeHtml(item.studentClass || '')}</span></td>
+                <td><span style="background: rgba(30,94,255,0.08); color: var(--primary-blue); padding: 2px 7px; border-radius: 4px; font-weight: 700; font-size: 11.5px;">${escapeHtml(item.subject || '')}</span></td>
+                <td>
+                    <div style="font-weight: 700; color: var(--text-dark);">${escapeHtml(item.assignmentTitle || '')}</div>
+                    ${item.notes ? `<div style="font-size: 11px; color: var(--text-gray); font-style: italic;">${escapeHtml(item.notes)}</div>` : ''}
+                </td>
+                <td>${dueDisplay}</td>
+                <td style="text-align: center; position: relative;">
+                    <div class="kebab-wrapper" style="position: relative; display: inline-block;">
+                        <button type="button" class="kebab-btn" onclick="toggleReminderKebabMenu(event, '${item.id}')" title="Actions">
+                            ⋮
+                        </button>
+                        <div id="reminder-kebab-${item.id}" class="kebab-dropdown">
+                            <button type="button" class="kebab-item" onclick="toggleAssignmentReminderStatus('${item.id}', '${isCompleted ? 'pending' : 'completed'}')">
+                                <span style="font-size: 13px;">${isCompleted ? '↺' : '✓'}</span>
+                                <span>${isCompleted ? 'Mark Pending' : 'Mark as Done'}</span>
+                            </button>
+                            <button type="button" class="kebab-item danger" onclick="deleteAssignmentReminder('${item.id}')">
+                                <span style="font-size: 13px;">🗑</span>
+                                <span>Delete Reminder</span>
+                            </button>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = html;
+}
+
+window.toggleReminderKebabMenu = function (e, id) {
+    e.stopPropagation();
+    const targetDropdown = document.getElementById(`reminder-kebab-${id}`);
+    const isAlreadyOpen = targetDropdown && targetDropdown.classList.contains('show');
+
+    document.querySelectorAll('.kebab-dropdown.show').forEach(d => {
+        d.classList.remove('show');
+    });
+
+    if (targetDropdown && !isAlreadyOpen) {
+        targetDropdown.classList.add('show');
+    }
+};
+
+// Global click to dismiss kebab menus
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.kebab-wrapper') && !e.target.closest('.kebab-menu')) {
+        document.querySelectorAll('.kebab-dropdown.show').forEach(d => {
+            d.classList.remove('show');
+        });
+    }
+});
+
+window.toggleAssignmentReminderStatus = async function (reminderId, newStatus) {
+    // Close open kebab dropdowns
+    document.querySelectorAll('.kebab-dropdown.show').forEach(d => d.classList.remove('show'));
+    try {
+        await updateDoc(doc(db, "assignment_reminders", reminderId), {
+            status: newStatus,
+            completedAt: newStatus === 'completed' ? new Date().toISOString() : null
+        });
+    } catch (e) {
+        alert("Error updating reminder status: " + e.message);
+    }
+};
+
+window.deleteAssignmentReminder = async function (reminderId) {
+    // Close open kebab dropdowns
+    document.querySelectorAll('.kebab-dropdown.show').forEach(d => d.classList.remove('show'));
+    if (!confirm("Are you sure you want to delete this assignment reminder?")) return;
+    try {
+        await deleteDoc(doc(db, "assignment_reminders", reminderId));
+    } catch (e) {
+        alert("Error deleting reminder: " + e.message);
+    }
+};
+
+window.updateReminderSelectedCount = updateReminderSelectedCount;
+window.populateAssignmentReminderDropdowns = populateAssignmentReminderDropdowns;
+
 
