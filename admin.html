@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="admin.css?v=355">
+    <link rel="stylesheet" href="admin.css?v=359">
 </head>
 
 <body>
@@ -211,8 +211,8 @@
                     Logout
                 </button>
 
-                <!-- 3. User Info Badge (Right) -->
-                <div style="display: flex; align-items: center; gap: 8px; margin-left: 4px;">
+                <!-- 3. User Info Badge (Right - Click to Edit Profile) -->
+                <div id="desktopUserProfileBadge" onclick="openTeacherProfileModal()" style="display: flex; align-items: center; gap: 8px; margin-left: 4px;" title="Click to edit profile, email, password & photo">
                     <div id="userAvatarCircle"
                         style="width: 32px; height: 32px; background: #1e5eff; color: #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13.5px; flex-shrink: 0;">
                         A
@@ -239,15 +239,16 @@
                 </button>
 
                 <div id="mobileTopbarDropdown" class="mobile-topbar-dropdown hidden">
-                    <!-- User Profile Info in Mobile Dropdown -->
-                    <div class="mobile-kebab-user-info" style="display: flex; align-items: center; gap: 10px; padding: 6px 8px 10px 8px; margin-bottom: 4px; border-bottom: 1px solid var(--border-color, #e2e8f0);">
+                    <!-- User Profile Info in Mobile Dropdown (Click to Edit Profile) -->
+                    <div id="mobileUserProfileBadge" onclick="openTeacherProfileModal()" class="mobile-kebab-user-info" style="display: flex; align-items: center; gap: 10px; padding: 7px 8px 10px 8px; margin-bottom: 4px; border-bottom: 1px solid var(--border-color, #e2e8f0); cursor: pointer;" title="Click to edit profile, email, password & photo">
                         <div id="mobileUserAvatarCircle" style="width: 32px; height: 32px; background: #1e5eff; color: #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13.5px; flex-shrink: 0;">
                             A
                         </div>
-                        <div style="overflow: hidden; line-height: 1.2;">
+                        <div style="overflow: hidden; line-height: 1.2; flex: 1;">
                             <h4 id="mobileSidebarUserName" style="margin: 0; font-size: 13px; font-weight: 700; color: var(--text-dark, #0f172a); white-space: nowrap; max-width: 145px; overflow: hidden; text-overflow: ellipsis;">Administrator</h4>
                             <p id="mobileSidebarUserRole" style="margin: 0; font-size: 11px; color: var(--text-gray, #64748b); font-weight: 500;">Super Admin</p>
                         </div>
+                        <span style="font-size: 11px; color: var(--primary-blue, #1e5eff); font-weight: 700; padding: 2px 7px; background: rgba(30,94,255,0.08); border-radius: 6px; border: 1px solid rgba(30,94,255,0.18);">Edit</span>
                     </div>
 
                     <div class="kebab-group-label">WORKSPACE</div>
@@ -504,20 +505,12 @@
 
                     <!-- LEFT PANEL: Quick Actions -->
                     <div class="box dashboard-panel">
-                        <div
-                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                            <div>
-                                <h3 style="margin: 0; font-size: 18px; font-weight: 700;">Quick Actions</h3>
-                                <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-gray);">Frequently used
-                                    administrative shortcuts</p>
-                            </div>
-                            <span
-                                style="background: rgba(30, 94, 255, 0.1); color: var(--primary-blue); font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px;">5
-                                Actions</span>
+                        <div style="margin-bottom: 18px;">
+                            <h3 style="margin: 0; font-size: 18px; font-weight: 700;">Quick Actions</h3>
                         </div>
 
                         <div class="quick-actions-list">
-                            <!-- 1. Register New Student -->
+                            <!-- 1. Register Student -->
                             <div class="quick-action-item"
                                 onclick="document.getElementById('subtabStudents') ? document.getElementById('subtabStudents').click() : document.getElementById('menuAdminOnly').click()">
                                 <div class="stat-icon" style="background: #eef2ff; width: 44px; height: 44px;">
@@ -530,10 +523,7 @@
                                     </svg>
                                 </div>
                                 <div style="flex: 1;">
-                                    <h4 style="margin: 0; font-size: 14.5px; font-weight: 600;">Register New Student
-                                    </h4>
-                                    <p style="margin: 3px 0 0 0; font-size: 12.5px; color: var(--text-gray);">Add
-                                        student & generate access code</p>
+                                    <h4 style="margin: 0; font-size: 14.5px; font-weight: 600;">Register Student</h4>
                                 </div>
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8"
                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -541,7 +531,7 @@
                                 </svg>
                             </div>
 
-                            <!-- 2. Sync Google Classroom (NEW) -->
+                            <!-- 2. Sync Google Classroom -->
                             <div class="quick-action-item" onclick="document.getElementById('menuManageScore').click(); setScoreInputMode('gclass');">
                                 <div class="stat-icon" style="background: #e0f2fe; width: 44px; height: 44px;">
                                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0284c7"
@@ -552,7 +542,6 @@
                                 </div>
                                 <div style="flex: 1;">
                                     <h4 style="margin: 0; font-size: 14.5px; font-weight: 600;">Sync Google Classroom</h4>
-                                    <p style="margin: 3px 0 0 0; font-size: 12.5px; color: var(--text-gray);">Pull & sync assignments for Grade 9A & more</p>
                                 </div>
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8"
                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -560,7 +549,7 @@
                                 </svg>
                             </div>
 
-                            <!-- 3. Bulk Upload Scores -->
+                            <!-- 3. Multiple Score Input -->
                             <div class="quick-action-item" onclick="document.getElementById('menuManageScore').click()">
                                 <div class="stat-icon" style="background: #f5f3ff; width: 44px; height: 44px;">
                                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6"
@@ -573,10 +562,7 @@
                                     </svg>
                                 </div>
                                 <div style="flex: 1;">
-                                    <h4 style="margin: 0; font-size: 14.5px; font-weight: 600;">Bulk Upload Scores
-                                        (Excel)</h4>
-                                    <p style="margin: 3px 0 0 0; font-size: 12.5px; color: var(--text-gray);">Upload
-                                        exam scores in bulk spreadsheet</p>
+                                    <h4 style="margin: 0; font-size: 14.5px; font-weight: 600;">Multiple Score Input</h4>
                                 </div>
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8"
                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -584,7 +570,7 @@
                                 </svg>
                             </div>
 
-                            <!-- 4. Record Behavior Points -->
+                            <!-- 4. Behavior Points -->
                             <div class="quick-action-item"
                                 onclick="document.getElementById('menuManageBehavior').click()">
                                 <div class="stat-icon" style="background: #fffbeb; width: 44px; height: 44px;">
@@ -596,10 +582,7 @@
                                     </svg>
                                 </div>
                                 <div style="flex: 1;">
-                                    <h4 style="margin: 0; font-size: 14.5px; font-weight: 600;">Record Behavior Points
-                                    </h4>
-                                    <p style="margin: 3px 0 0 0; font-size: 12.5px; color: var(--text-gray);">Add or
-                                        deduct student conduct points</p>
+                                    <h4 style="margin: 0; font-size: 14.5px; font-weight: 600;">Behavior Points</h4>
                                 </div>
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8"
                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -619,8 +602,6 @@
                                 </div>
                                 <div style="flex: 1;">
                                     <h4 style="margin: 0; font-size: 14.5px; font-weight: 600;">Create a Quiz</h4>
-                                    <p style="margin: 3px 0 0 0; font-size: 12.5px; color: var(--text-gray);">Build &
-                                        publish interactive quizzes</p>
                                 </div>
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8"
                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -2496,13 +2477,153 @@
             </div>
         </div>
     </div>
+    <!-- TEACHER / ADMIN EDIT PROFILE MODAL -->
+    <div id="teacherProfileModal" class="hidden" onclick="if(event.target === this) closeTeacherProfileModal()"
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.65); z-index: 2500; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); padding: 16px; box-sizing: border-box;">
+        <div class="teacher-modal-card">
+            <!-- Close button -->
+            <button type="button" class="teacher-modal-close-btn" onclick="closeTeacherProfileModal()" aria-label="Close modal">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px;">
+                <div style="width: 36px; height: 36px; border-radius: 10px; background: rgba(30, 94, 255, 0.1); color: var(--primary-blue, #1e5eff); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                </div>
+                <h3 style="margin: 0; font-size: 19px; font-weight: 800; color: var(--text-dark, #0f172a);">Edit Profile</h3>
+            </div>
+            <p style="margin: 0 0 18px 0; font-size: 12.5px; color: var(--text-gray, #64748b);">
+                Update your personal details, email, password, and profile picture
+            </p>
+
+            <!-- Alert notification box inside modal -->
+            <div id="teacherProfileAlert" class="hidden" style="margin-bottom: 16px; padding: 10px 14px; border-radius: 10px; font-size: 12.5px; line-height: 1.4;"></div>
+
+            <!-- Profile Photo Section -->
+            <div class="profile-photo-card" style="display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; padding: 16px; background: var(--bg-hover, #f8fafc); border-radius: 16px; border: 1px dashed var(--border-color, #cbd5e1);">
+                <div style="position: relative; width: 88px; height: 88px; margin-bottom: 12px;">
+                    <div id="teacherModalAvatarPreview" onclick="document.getElementById('teacherPhotoFileInput').click()"
+                        style="width: 88px; height: 88px; border-radius: 50%; background: #1e5eff; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 34px; font-weight: 800; overflow: hidden; box-shadow: 0 4px 14px rgba(30, 94, 255, 0.25); border: 3px solid #ffffff; cursor: pointer;"
+                        title="Click to upload photo">
+                        T
+                    </div>
+                    <input type="file" id="teacherPhotoFileInput" accept="image/jpeg,image/png,image/webp"
+                        style="display: none !important; position: absolute !important; opacity: 0 !important; width: 0 !important; height: 0 !important; pointer-events: none !important;">
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center; justify-content: center;">
+                    <span role="button" class="teacher-photo-action-btn" onclick="document.getElementById('teacherPhotoFileInput').click()" style="display: inline-flex; align-items: center; gap: 6px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        Upload Photo
+                    </span>
+                    <span role="button" id="teacherPhotoRemoveBtn" class="teacher-photo-remove-btn" onclick="removeTeacherPhotoPreview()" style="display: none; align-items: center; gap: 5px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                        Remove Photo
+                    </span>
+                </div>
+                <div style="font-size: 11px; color: var(--text-gray, #64748b); text-align: center; margin-top: 8px;">
+                    Saved in student photos folder (<strong>picdb</strong>) as <span id="teacherPhotoDriveFilenameHint" style="font-family: monospace; color: var(--primary-blue, #1e5eff); font-weight: 600;">teacher@mks.sch.id.jpg</span>
+                </div>
+            </div>
+
+            <!-- Form Fields -->
+            <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 22px;">
+                <!-- Full / Display Name -->
+                <div>
+                    <label for="teacherEditName" style="font-size: 12.5px; font-weight: 700; color: var(--text-dark, #0f172a); display: block; margin-bottom: 5px;">
+                        Full Name / Display Name <span style="color: #ef4444;">*</span>
+                    </label>
+                    <input type="text" id="teacherEditName" placeholder="e.g. Syam Muhammad">
+                </div>
+
+                <!-- Email Address -->
+                <div>
+                    <label for="teacherEditEmail" style="font-size: 12.5px; font-weight: 700; color: var(--text-dark, #0f172a); display: block; margin-bottom: 5px;">
+                        Email Address (Login Account) <span style="color: #ef4444;">*</span>
+                    </label>
+                    <input type="email" id="teacherEditEmail" placeholder="teacher@mks.sch.id">
+                    <span style="font-size: 11px; color: var(--text-gray, #64748b); margin-top: 4px; display: block;">
+                        Used to sign in and name your photo in Google Drive.
+                    </span>
+                </div>
+
+                <!-- Password Section -->
+                <div class="password-section-card" style="padding: 14px; background: var(--bg-hover, #f8fafc); border-radius: 12px; border: 1px solid var(--border-color, #e2e8f0);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                        <label style="font-size: 12.5px; font-weight: 700; color: var(--text-dark, #0f172a); margin: 0;">
+                            Change Password
+                        </label>
+                        <span style="font-size: 11px; color: var(--text-gray, #64748b); font-weight: 500;">Leave blank to keep unchanged</span>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <div style="position: relative; width: 100%;">
+                            <input type="password" id="teacherEditPassword" placeholder="New Password (min 6 characters)">
+                            <span role="button" class="password-eye-btn" onclick="togglePasswordVisibility('teacherEditPassword', this)" title="Toggle password visibility">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </span>
+                        </div>
+                        <div style="position: relative; width: 100%;">
+                            <input type="password" id="teacherEditPasswordConfirm" placeholder="Confirm New Password">
+                            <span role="button" class="password-eye-btn" onclick="togglePasswordVisibility('teacherEditPasswordConfirm', this)" title="Toggle password visibility">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Assigned Role & Department Badges (Read-Only context) -->
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: rgba(30,94,255,0.05); border-radius: 10px; border: 1px solid rgba(30,94,255,0.15);">
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="font-size: 11px; font-weight: 600; color: var(--text-gray, #64748b); text-transform: uppercase; letter-spacing: 0.5px;">Account Role</span>
+                        <span id="teacherModalRoleBadge" style="font-size: 13px; font-weight: 700; color: var(--primary-blue, #1e5eff);">Teacher</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; text-align: right;">
+                        <span style="font-size: 11px; font-weight: 600; color: var(--text-gray, #64748b); text-transform: uppercase; letter-spacing: 0.5px;">Subject(s)</span>
+                        <span id="teacherModalSubjectBadge" style="font-size: 13px; font-weight: 700; color: var(--text-dark, #0f172a);">English, ICT</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Action Buttons -->
+            <div style="display: flex; gap: 10px; justify-content: flex-end; align-items: center; margin-top: 6px;">
+                <button type="button" class="teacher-modal-cancel-btn" onclick="closeTeacherProfileModal()">
+                    Cancel
+                </button>
+                <button type="button" id="btnSaveTeacherProfile" class="teacher-modal-save-btn" onclick="saveTeacherProfile()">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span>Save Changes</span>
+                </button>
+            </div>
+        </div>
+    </div>
     </main>
     </div>
 
 
     <!-- Navigation & Core Scripts -->
-    <script src="studentNav.js?v=355"></script>
-    <script type="module" src="admin.js?v=355"></script>
+    <script src="studentNav.js?v=360"></script>
+    <script type="module" src="admin.js?v=360"></script>
 </body>
 
 </html>

@@ -5033,4 +5033,289 @@ body.dark-theme #btnDeselectAllGclassWork {
     border-color: #334155 !important;
     color: #cbd5e1 !important;
 }
+
+/* ==========================================================================
+   TEACHER & ADMIN PROFILE BADGE & EDIT MODAL
+   ========================================================================== */
+#desktopUserProfileBadge {
+    cursor: pointer;
+    border-radius: 10px;
+    padding: 3px 8px;
+    transition: background-color 0.2s ease, transform 0.15s ease;
+    user-select: none;
+}
+#desktopUserProfileBadge:hover {
+    background-color: rgba(255, 255, 255, 0.14) !important;
+    transform: translateY(-1px);
+}
+#desktopUserProfileBadge:active {
+    transform: translateY(0);
+}
+
+#mobileUserProfileBadge {
+    cursor: pointer;
+    border-radius: 10px;
+    transition: background-color 0.2s ease;
+    user-select: none;
+}
+#mobileUserProfileBadge:hover {
+    background-color: var(--bg-hover, rgba(0, 0, 0, 0.05));
+}
+
+#userAvatarCircle, #mobileUserAvatarCircle {
+    overflow: hidden;
+    position: relative;
+}
+#userAvatarCircle img, #mobileUserAvatarCircle img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+}
+
+#teacherModalAvatarPreview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+}
+
+#teacherProfileModal:not(.hidden) {
+    display: flex !important;
+    animation: fadeInModal 0.2s ease-out;
+}
+
+@keyframes fadeInModal {
+    from {
+        opacity: 0;
+        transform: scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Dedicated modal card styles (independent of .box to prevent CSS collisions) */
+.teacher-modal-card {
+    width: 100%;
+    max-width: 480px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    padding: 26px 28px;
+    border-radius: 20px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-color, #e2e8f0);
+    background: var(--card-bg, #ffffff);
+    box-sizing: border-box;
+}
+
+.teacher-modal-close-btn {
+    position: absolute !important;
+    right: 16px !important;
+    top: 16px !important;
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 50% !important;
+    background: rgba(0, 0, 0, 0.05) !important;
+    color: var(--text-gray, #64748b) !important;
+    border: none !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 14px !important;
+    font-weight: bold !important;
+    transition: background 0.15s, transform 0.1s !important;
+    user-select: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+}
+.teacher-modal-close-btn:hover {
+    background: rgba(0, 0, 0, 0.1) !important;
+    color: var(--text-dark, #0f172a) !important;
+}
+
+.teacher-modal-card input:not([type="file"]) {
+    height: 40px !important;
+    padding: 8px 12px !important;
+    font-size: 13.5px !important;
+    border-radius: 8px !important;
+    border: 1px solid var(--border-color, #cbd5e1) !important;
+    background: var(--input-bg, #ffffff) !important;
+    color: var(--text-dark, #0f172a) !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    outline: none !important;
+    display: block !important;
+    box-shadow: none !important;
+}
+.teacher-modal-card input:not([type="file"]):focus {
+    border-color: var(--primary-blue, #1e5eff) !important;
+    box-shadow: 0 0 0 3px rgba(30, 94, 255, 0.15) !important;
+}
+.teacher-modal-card input[type="password"] {
+    padding-right: 42px !important;
+}
+
+.teacher-modal-card .password-eye-btn {
+    position: absolute !important;
+    right: 8px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    cursor: pointer !important;
+    user-select: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 6px !important;
+    font-size: 15px !important;
+    line-height: 1 !important;
+    transition: background 0.15s !important;
+    color: #64748b !important;
+    z-index: 2 !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+.teacher-modal-card .password-eye-btn:hover {
+    background: rgba(0, 0, 0, 0.08) !important;
+}
+
+.teacher-photo-action-btn {
+    color: var(--primary-blue, #1e5eff) !important;
+    font-size: 12.5px !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    padding: 5px 14px !important;
+    border-radius: 20px !important;
+    background: rgba(30, 94, 255, 0.08) !important;
+    border: 1px solid rgba(30, 94, 255, 0.2) !important;
+    transition: background 0.15s, transform 0.1s !important;
+    user-select: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+.teacher-photo-action-btn:hover {
+    background: rgba(30, 94, 255, 0.15) !important;
+    transform: translateY(-1px) !important;
+}
+
+.teacher-photo-remove-btn {
+    color: #ef4444 !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    padding: 5px 12px !important;
+    border-radius: 20px !important;
+    background: rgba(239, 68, 68, 0.08) !important;
+    border: 1px solid rgba(239, 68, 68, 0.2) !important;
+    transition: background 0.15s, transform 0.1s !important;
+    user-select: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+.teacher-photo-remove-btn:hover {
+    background: rgba(239, 68, 68, 0.16) !important;
+    transform: translateY(-1px) !important;
+}
+
+#teacherProfileModal .teacher-modal-cancel-btn {
+    height: 38px !important;
+    padding: 0 18px !important;
+    background: #f1f5f9 !important;
+    color: var(--text-dark, #0f172a) !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    transition: 0.15s !important;
+}
+#teacherProfileModal .teacher-modal-cancel-btn:hover {
+    background: #e2e8f0 !important;
+}
+
+#teacherProfileModal .teacher-modal-save-btn {
+    height: 38px !important;
+    padding: 0 22px !important;
+    background: var(--primary-blue, #1e5eff) !important;
+    color: #ffffff !important;
+    border: 1px solid var(--primary-blue, #1e5eff) !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    box-shadow: 0 4px 12px rgba(30, 94, 255, 0.25) !important;
+    margin: 0 !important;
+    transition: 0.15s !important;
+}
+#teacherProfileModal .teacher-modal-save-btn:hover {
+    background: #174ed8 !important;
+    border-color: #174ed8 !important;
+    color: #ffffff !important;
+}
+
+body.dark-theme .teacher-modal-card {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f1f5f9 !important;
+}
+body.dark-theme .teacher-modal-card input:not([type="file"]) {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+    color: #f1f5f9 !important;
+}
+body.dark-theme .teacher-modal-card .teacher-modal-close-btn {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: #cbd5e1 !important;
+}
+body.dark-theme .teacher-modal-card .teacher-modal-close-btn:hover {
+    background: rgba(255, 255, 255, 0.18) !important;
+    color: #ffffff !important;
+}
+body.dark-theme .teacher-modal-card .password-eye-btn {
+    color: #94a3b8 !important;
+}
+body.dark-theme .teacher-modal-card .password-eye-btn:hover {
+    background: rgba(255, 255, 255, 0.12) !important;
+}
+body.dark-theme .teacher-modal-card .teacher-modal-cancel-btn {
+    background: #334155 !important;
+    border-color: #475569 !important;
+    color: #cbd5e1 !important;
+}
+body.dark-theme .teacher-modal-card .teacher-modal-cancel-btn:hover {
+    background: #475569 !important;
+    color: #ffffff !important;
+}
+body.dark-theme .teacher-modal-card .profile-photo-card {
+    background: rgba(15, 23, 42, 0.5) !important;
+    border-color: #334155 !important;
+}
+body.dark-theme .teacher-modal-card .password-section-card {
+    background: rgba(15, 23, 42, 0.5) !important;
+    border-color: #334155 !important;
+}
+
+
 
