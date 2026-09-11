@@ -1929,6 +1929,60 @@ let currentChatPartner = null;
 let unsubscribeDMMessages = null;
 let unsubscribeDMThreads = null;
 
+let pendingDMAttachment = null;
+
+async function uploadDMAttachment(file) {
+    if (!file || !currentUser) return;
+    if (file.size > 25 * 1024 * 1024) return alert('Files must be 25MB or smaller.');
+    const scriptUrl = timelineDriveConfig.scriptUrl || localStorage.getItem('timelineDriveScriptUrl') || localStorage.getItem('googleDriveScriptUrl') || '';
+    if (!scriptUrl) return alert('Google Drive upload is not configured yet.');
+    const reader = new FileReader();
+    reader.onload = async event => {
+        const base64Data = String(event.target.result).split(',')[1];
+        const folderId = timelineDriveConfig.folderId || localStorage.getItem('timelineDriveFolderId') || '';
+        const btn = document.getElementById('dmAttachmentBtn');
+        if (btn) btn.disabled = true;
+        try {
+            const response = await fetch(scriptUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ fileName: file.name, mimeType: file.type || 'application/octet-stream', base64Data, folderName: 'TimelineDB', folderId, type: 'direct_message' }) });
+            const body = await response.text();
+            let result = {};
+            try { result = JSON.parse(body); } catch (_) {}
+            const url = result.url || result.directUrl || result.viewUrl || (result.fileId ? `https://drive.google.com/uc?export=download&id=${result.fileId}` : '');
+            if (!url) throw new Error('The upload service did not return a file URL.');
+            pendingDMAttachment = { url, fileName: file.name, mimeType: file.type || 'application/octet-stream' };
+            if (btn) btn.title = `Attached: ${file.name}`;
+            btn?.classList.add('has-attachment');
+        } catch (error) {
+            alert('Could not upload this file to TimelineDB.');
+            console.warn('DM attachment upload failed', error);
+        } finally { if (btn) btn.disabled = false; }
+    };
+    reader.readAsDataURL(file);
+}
+
+function renderDMAttachment(attachment) {
+    if (!attachment?.url) return '';
+    const url = escapeHtml(attachment.url);
+    const name = escapeHtml(attachment.fileName || 'Download attachment');
+    const type = String(attachment.mimeType || '');
+    let preview = '';
+    if (type.startsWith('image/')) preview = `<img class="dm-attachment-preview" src="${url}" alt="${name}" loading="lazy">`;
+    else if (type.startsWith('audio/')) preview = `<audio class="dm-attachment-media" controls src="${url}"></audio>`;
+    else if (type.startsWith('video/')) preview = `<video class="dm-attachment-media" controls src="${url}"></video>`;
+    return `<div class="dm-attachment">${preview}<a href="${url}" target="_blank" rel="noopener" download="${name}">${name}</a><button type="button" class="dm-download-btn" data-download-url="${url}" data-download-name="${name}" title="Download">⇩</button></div>`;
+}
+
+document.addEventListener('click', event => {
+    const button = event.target.closest('.dm-download-btn');
+    if (!button) return;
+    const link = document.createElement('a');
+    link.href = button.dataset.downloadUrl;
+    link.download = button.dataset.downloadName || 'attachment';
+    link.target = '_blank';
+    link.rel = 'noopener';
+    document.body.appendChild(link); link.click(); link.remove();
+});
+
 function initDMSystem() {
     if (!currentUser) return;
 
@@ -1943,6 +1997,15 @@ function initDMSystem() {
     const leaveBtn = document.getElementById('dmLeaveChatroomBtn');
     const searchInput = document.getElementById('dmContactSearchInput');
     const msgForm = document.getElementById('dmMessageForm');
+    const attachmentBtn = document.getElementById('dmAttachmentBtn');
+    const attachmentInput = document.getElementById('dmAttachmentInput');
+    const emojiBtn = document.getElementById('dmEmojiBtn');
+    const emojiPicker = document.getElementById('dmEmojiPicker');
+
+    attachmentBtn?.addEventListener('click', () => attachmentInput?.click());
+    attachmentInput?.addEventListener('change', event => { uploadDMAttachment(event.target.files?.[0]); event.target.value = ''; });
+    emojiBtn?.addEventListener('click', event => { event.stopPropagation(); emojiPicker?.classList.toggle('hidden'); });
+    emojiPicker?.querySelectorAll('button').forEach(button => button.addEventListener('click', () => { const input = document.getElementById('dmMessageInput'); if (input) { input.value += button.textContent; input.focus(); } emojiPicker.classList.add('hidden'); }));
 
     floatBtn?.addEventListener('click', () => {
         widget?.classList.toggle('hidden');
@@ -1978,7 +2041,7 @@ function initDMSystem() {
         e.preventDefault();
         const input = document.getElementById('dmMessageInput');
         const text = input ? input.value.trim() : '';
-        if (!text || !currentChatPartner || !currentUser) return;
+        if ((!text && !pendingDMAttachment) || !currentChatPartner || !currentUser) return;
 
         const newMsgDoc = {
             participants: [currentUser.code, currentChatPartner.code].sort(),
@@ -1987,6 +2050,7 @@ function initDMSystem() {
             receiverCode: currentChatPartner.code,
             receiverName: currentChatPartner.name,
             message: text,
+            attachment: pendingDMAttachment || null,
             timestamp: new Date().toISOString(),
             read: false
         };
@@ -2001,6 +2065,9 @@ function initDMSystem() {
         }
 
         if (input) input.value = '';
+        pendingDMAttachment = null;
+        attachmentBtn?.classList.remove('has-attachment');
+        if (attachmentBtn) attachmentBtn.title = 'Attach a file';
     });
 
     window.deleteDMChatroom = async function(partnerCode, partnerName) {
@@ -2400,7 +2467,8 @@ function subscribeDMMessagesStream() {
                 const div = document.createElement('div');
                 div.className = `dm-message-bubble ${msgClass}`;
                 div.innerHTML = `
-                    <div>${safeMessage}</div>
+                    ${safeMessage ? `<div>${safeMessage}</div>` : ''}
+                    ${renderDMAttachment(data.attachment)}
                     <div class="dm-msg-time">${timeStr}</div>
                 `;
                 streamEl.appendChild(div);
@@ -2443,7 +2511,8 @@ function renderLocalDMMessagesStream() {
         const div = document.createElement('div');
         div.className = `dm-message-bubble ${msgClass}`;
         div.innerHTML = `
-            <div>${safeMessage}</div>
+            ${safeMessage ? `<div>${safeMessage}</div>` : ''}
+            ${renderDMAttachment(data.attachment)}
             <div class="dm-msg-time">${timeStr}</div>
         `;
         streamEl.appendChild(div);

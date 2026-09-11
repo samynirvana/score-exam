@@ -7669,3 +7669,120 @@ body.dark-mode .att-page-num-btn.active {
 #btnAttendanceMenuToggle {
     margin: 0 !important;
 }
+
+/* Navigation icon contrast and interaction states. */
+.desktop-menu-bar .menu-icon,
+.desktop-menu-bar .submenu-arrow {
+    color: #ffffff !important;
+    stroke: #ffffff !important;
+    transition: color 0.18s ease, stroke 0.18s ease;
+}
+
+.desktop-menu-bar .submenu-icon {
+    color: #ffffff !important;
+    stroke: #ffffff !important;
+    transition: color 0.18s ease, stroke 0.18s ease;
+}
+
+.desktop-menu-bar .submenu-btn,
+.desktop-menu-bar .submenu-btn:hover,
+.desktop-menu-bar .submenu-btn.active {
+    color: #ffffff !important;
+}
+
+.desktop-menu-bar .menu-btn.active .menu-icon,
+.desktop-menu-bar .menu-item-group.open > .menu-btn .menu-icon,
+.desktop-menu-bar .menu-btn.active .submenu-arrow,
+.desktop-menu-bar .menu-item-group.open > .menu-btn .submenu-arrow,
+.desktop-menu-bar .submenu-btn.active .submenu-icon {
+    color: #60a5fa !important;
+    stroke: #60a5fa !important;
+}
+
+.desktop-menu-bar .menu-btn:hover .menu-icon,
+.desktop-menu-bar .menu-item-group:hover > .menu-btn .menu-icon,
+.desktop-menu-bar .submenu-btn:hover .submenu-icon {
+    animation: navIconJiggle 0.42s ease-in-out;
+}
+
+@keyframes navIconJiggle {
+    0%, 100% { transform: rotate(0deg) scale(1); }
+    25% { transform: rotate(-8deg) scale(1.08); }
+    50% { transform: rotate(7deg) scale(1.1); }
+    75% { transform: rotate(-4deg) scale(1.06); }
+}
+
+/* Mobile menu uses a light surface in light mode, so retain readable dark icons. */
+#mobileTopbarDropdown .kebab-item > svg {
+    color: var(--text-dark, #0f172a) !important;
+    stroke: currentColor !important;
+    transition: color 0.18s ease, stroke 0.18s ease;
+}
+
+#mobileTopbarDropdown .kebab-item:hover > svg,
+#mobileTopbarDropdown .kebab-item.active > svg,
+#mobileTopbarDropdown .mobile-db-subtab.active > svg {
+    color: var(--primary-blue, #1e5eff) !important;
+    stroke: currentColor !important;
+    animation: navIconJiggle 0.42s ease-in-out;
+}
+
+body.dark-theme #mobileTopbarDropdown .kebab-item > svg,
+body.dark-mode #mobileTopbarDropdown .kebab-item > svg {
+    color: #ffffff !important;
+}
+
+body.dark-theme #mobileTopbarDropdown .kebab-item:hover > svg,
+body.dark-mode #mobileTopbarDropdown .kebab-item:hover > svg,
+body.dark-theme #mobileTopbarDropdown .kebab-item.active > svg,
+body.dark-mode #mobileTopbarDropdown .kebab-item.active > svg {
+    color: #60a5fa !important;
+}
+
+#saveDirectScoresBtn {
+    box-shadow: none !important;
+    border: none !important;
+    transition: transform 160ms ease, filter 160ms ease, background-color 160ms ease !important;
+}
+
+#saveDirectScoresBtn:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.06);
+}
+
+#saveDirectScoresBtn:active {
+    transform: translateY(1px) scale(0.985);
+    filter: brightness(0.94);
+}
+
+#saveDirectScoresBtn:focus-visible {
+    outline: 3px solid rgba(30, 94, 255, 0.35);
+    outline-offset: 2px;
+}
+
+/* Keep the ledger action content optically centered inside the split button. */
+#viewLedgerBtn {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+}
+
+#viewLedgerBtn > span {
+    display: flex !important;
+    align-items: center !important;
+    height: 100% !important;
+    line-height: normal !important;
+}
+
+#viewLedgerBtn > svg {
+    align-self: center !important;
+}
+
+/* Font glyphs sit below the mathematical center of their line box. Lift the
+   content one pixel so the visible ink is centered in every split action. */
+.reminder-deploy-main-btn > *,
+.att-split-main-btn > *,
+.score-ledger-main-btn > * {
+    transform: translateY(-1px);
+}

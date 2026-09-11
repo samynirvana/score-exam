@@ -377,39 +377,49 @@
                                 <!-- Grid Size -->
                                 <div class="iso-control-header">
                                     <span>GRID SIZE</span>
-                                    <span id="isometricSizeLabel" class="iso-size-badge">60px</span>
+                                    <span id="isometricSizeLabel" class="iso-size-badge">20px</span>
                                 </div>
                                 <div class="isometric-size-row">
                                     <button type="button" id="btnIsoSizeDown" class="iso-control-btn" title="Smaller Grid (-)" aria-label="Smaller Grid">-</button>
-                                    <input type="range" id="isoSizeSlider" min="20" max="140" step="5" value="60" class="iso-control-slider" title="Adjust Isometric Spacing" />
+                                    <input type="range" id="isoSizeSlider" min="10" max="140" step="1" value="20" class="iso-control-slider" title="Adjust Isometric Spacing" />
                                     <button type="button" id="btnIsoSizeUp" class="iso-control-btn" title="Bigger Grid (+)" aria-label="Bigger Grid">+</button>
                                 </div>
                                 <div class="isometric-presets-row size-presets">
-                                    <button type="button" class="iso-preset-btn" data-iso-size="30">30px</button>
-                                    <button type="button" class="iso-preset-btn active" data-iso-size="60">60px</button>
-                                    <button type="button" class="iso-preset-btn" data-iso-size="90">90px</button>
-                                    <button type="button" class="iso-preset-btn" data-iso-size="120">120px</button>
+                                    <button type="button" class="iso-preset-btn active" data-iso-size="20">20px</button>
+                                    <button type="button" class="iso-preset-btn" data-iso-size="40">40px</button>
+                                    <button type="button" class="iso-preset-btn" data-iso-size="60">60px</button>
+                                    <button type="button" class="iso-preset-btn" data-iso-size="80">80px</button>
                                 </div>
 
-                                <!-- Grid Angle / Rotation -->
-                                <div class="iso-control-header" style="margin-top: 6px;">
-                                    <span>GRID ANGLE</span>
-                                    <div style="display: flex; align-items: center; gap: 4px;">
-                                        <span id="isometricAngleLabel" class="iso-size-badge">0°</span>
-                                        <button type="button" id="btnIsoAngleReset" class="iso-reset-angle-btn" title="Reset Angle to 0°">⟲</button>
-                                    </div>
+                                <!-- Two independent isometric line angles -->
+                                <div class="iso-angle-pair-row">
+                                    <label class="iso-angle-field">ANGLE 1
+                                        <input type="number" id="isometricAngle1Label" class="iso-angle-input" min="-90" max="90" step="1" value="30" aria-label="Isometric Angle 1" />
+                                        <input type="range" id="isoAngle1Slider" min="-90" max="90" step="1" value="30" class="iso-control-slider" title="Adjust Isometric Angle 1" />
+                                    </label>
+                                    <label class="iso-angle-field">ANGLE 2
+                                        <input type="number" id="isometricAngle2Label" class="iso-angle-input" min="-90" max="90" step="1" value="-30" aria-label="Isometric Angle 2" />
+                                        <input type="range" id="isoAngle2Slider" min="-90" max="90" step="1" value="-30" class="iso-control-slider" title="Adjust Isometric Angle 2" />
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Normal Grid Controls (spacing) -->
+                            <div id="normalGridSizeControl" class="isometric-size-control">
+                                <div class="iso-control-header">
+                                    <span>GRID SIZE</span>
+                                    <span id="normalGridSizeLabel" class="iso-size-badge">24px</span>
                                 </div>
                                 <div class="isometric-size-row">
-                                    <button type="button" id="btnIsoAngleDown" class="iso-control-btn" title="Rotate Counter-Clockwise (-15°)" aria-label="Rotate Counter-Clockwise">↺</button>
-                                    <input type="range" id="isoAngleSlider" min="-90" max="90" step="5" value="0" class="iso-control-slider" title="Rotate Isometric Angle" />
-                                    <button type="button" id="btnIsoAngleUp" class="iso-control-btn" title="Rotate Clockwise (+15°)" aria-label="Rotate Clockwise">↻</button>
+                                    <button type="button" id="btnNormalGridSizeDown" class="iso-control-btn" title="Smaller Grid" aria-label="Smaller Grid">-</button>
+                                    <input type="range" id="normalGridSizeSlider" min="10" max="120" step="2" value="24" class="iso-control-slider" title="Adjust Normal Grid Spacing" />
+                                    <button type="button" id="btnNormalGridSizeUp" class="iso-control-btn" title="Bigger Grid" aria-label="Bigger Grid">+</button>
                                 </div>
-                                <div class="isometric-presets-row angle-presets">
-                                    <button type="button" class="iso-angle-preset-btn active" data-iso-angle="0">0°</button>
-                                    <button type="button" class="iso-angle-preset-btn" data-iso-angle="30">30°</button>
-                                    <button type="button" class="iso-angle-preset-btn" data-iso-angle="45">45°</button>
-                                    <button type="button" class="iso-angle-preset-btn" data-iso-angle="60">60°</button>
-                                    <button type="button" class="iso-angle-preset-btn" data-iso-angle="90">90°</button>
+                                <div class="isometric-presets-row size-presets">
+                                    <button type="button" class="normal-grid-preset-btn" data-grid-size="16">16px</button>
+                                    <button type="button" class="normal-grid-preset-btn active" data-grid-size="24">24px</button>
+                                    <button type="button" class="normal-grid-preset-btn" data-grid-size="40">40px</button>
+                                    <button type="button" class="normal-grid-preset-btn" data-grid-size="60">60px</button>
                                 </div>
                             </div>
 
@@ -418,9 +428,9 @@
                                 <span>Paper Line</span>
                                 <svg class="bg-check-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
                             </button>
-                            <button type="button" class="bg-option-item" data-bg="lines" title="Square Grid">
+                            <button type="button" class="bg-option-item" data-bg="lines" title="Normal Box Grid">
                                 <span class="bg-preview-box preview-grid"></span>
-                                <span>Square Grid</span>
+                                <span>Normal Grid</span>
                                 <svg class="bg-check-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
                             </button>
                         </div>
@@ -470,7 +480,6 @@
                 <button class="tool-btn" data-tool="pan" title="Pan / Hand Tool (H / Space)" aria-label="Hand Tool">
                     <img src="https://lh3.googleusercontent.com/d/1s06PoXBszFyqnsnNHig3i8JHHGKhds7W" width="22" height="22" alt="Hand Tool" style="display:block; object-fit:contain;">
                 </button>
-
                 <div class="tool-divider"></div>
 
                 <!-- Group 2: Elements (Sticky, Shape, Text, Line, Arrow, Image) -->
@@ -610,7 +619,7 @@
                 <!-- Font Size -->
                 <div class="fmt-btn-group">
                     <button id="fmtSizeDown" class="fmt-btn" title="Decrease Font Size">-</button>
-                    <span id="fmtSizeVal" class="fmt-val">18px</span>
+                    <input id="fmtSizeVal" class="fmt-val fmt-size-input" type="text" inputmode="numeric" value="18" aria-label="Font size" title="Type font size (10–250)" />
                     <button id="fmtSizeUp" class="fmt-btn" title="Increase Font Size">+</button>
                 </div>
 

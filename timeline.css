@@ -2112,6 +2112,10 @@ body.dark-mode .desktop-user-actions svg.theme-icon-moon {
 }
 
 /* --- ICON & LOGO UTILITY CLASSES --- */
+.sidebar.student-sidebar .brand p {
+    color: #ffffff !important;
+}
+
 .brand-badge-img {
     max-width: 100%;
     max-height: 100%;
@@ -2786,3 +2790,24 @@ body.dark-mode .timeline-tab-select option {
     background-color: #1e293b !important;
     color: #f8fafc !important;
 }
+
+.dm-message-input-bar { position: relative !important; }
+.dm-compose-tool-btn { flex: 0 0 30px !important; width: 30px !important; min-width: 30px !important; height: 30px !important; min-height: 30px !important; padding: 0 !important; border: 1px solid var(--border-color) !important; border-radius: 8px !important; background: var(--input-bg) !important; color: var(--text-main) !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important; font-size: 19px !important; }
+.dm-compose-tool-btn:hover { color: #1e5eff !important; border-color: #1e5eff !important; }
+.dm-emoji-picker { position: absolute !important; right: 50px !important; bottom: 44px !important; z-index: 1010 !important; display: grid !important; grid-template-columns: repeat(6, 30px) !important; gap: 3px !important; padding: 7px !important; border: 1px solid var(--border-color) !important; border-radius: 10px !important; background: var(--card-bg) !important; box-shadow: 0 8px 22px rgba(0,0,0,.2) !important; }
+.dm-emoji-picker.hidden { display: none !important; }
+.dm-emoji-picker button { width: 30px !important; height: 30px !important; min-height: 30px !important; padding: 0 !important; border: 0 !important; background: transparent !important; cursor: pointer !important; font-size: 18px !important; }
+.dm-emoji-picker button:hover { background: var(--comment-bg) !important; border-radius: 6px !important; }
+.dm-attachment { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; padding: 5px 7px; border-radius: 7px; background: rgba(255,255,255,.18); }
+.dm-msg-received .dm-attachment { background: var(--input-bg); }
+.dm-attachment a { color: inherit; text-decoration: none; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dm-attachment-preview { display: block; max-width: 180px; max-height: 120px; border-radius: 6px; object-fit: cover; }
+.dm-attachment-media { display: block; max-width: 190px; max-height: 110px; }
+.dm-compose-tool-btn.has-attachment { color: #1e5eff !important; border-color: #1e5eff !important; background: rgba(30,94,255,.12) !important; }
+#dmPopupWidget .dm-compose-tool-btn { flex: 0 0 38px !important; width: 38px !important; min-width: 38px !important; height: 38px !important; min-height: 38px !important; padding: 0 !important; border: 1px solid var(--border-color) !important; border-radius: 10px !important; background: var(--input-bg) !important; color: var(--text-main) !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; font-size: 20px !important; }
+#dmPopupWidget .dm-compose-tool-btn svg { width: 21px !important; height: 21px !important; display: block !important; stroke: currentColor !important; color: currentColor !important; }
+#dmPopupWidget .dm-compose-tool-btn:hover { color: #1e5eff !important; border-color: #1e5eff !important; background: rgba(30,94,255,.1) !important; }
+.dm-emoji-picker { grid-template-columns: repeat(6, 34px) !important; max-height: 230px !important; overflow-y: auto !important; }
+.dm-emoji-picker button { width: 34px !important; height: 34px !important; min-height: 34px !important; font-size: 22px !important; line-height: 1 !important; }
+.dm-download-btn { flex: 0 0 auto; border: 0 !important; background: transparent !important; color: inherit !important; cursor: pointer !important; padding: 2px !important; font-size: 15px !important; }
+@media (max-width: 480px) { .dm-emoji-picker { right: 42px !important; } }

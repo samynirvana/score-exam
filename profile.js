@@ -6,6 +6,40 @@ let currentStudentCode = "";
 let currentStudentName = "";
 let currentPhotoUrl = "";
 
+async function loadProfileAttendance(studentCode) {
+    const totalEl = document.getElementById('profileAttendanceTotal');
+    const summaryEl = document.getElementById('profileAttendanceSummary');
+    const listEl = document.getElementById('profileAttendanceList');
+    if (!summaryEl || !listEl) return;
+    try {
+        const snapshot = await getDocs(query(collection(db, 'attendance_records'), where('studentCode', '==', studentCode)));
+        const records = [];
+        snapshot.forEach(record => records.push({ id: record.id, ...record.data() }));
+        records.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+        const counts = { present: 0, absent: 0, others: 0 };
+        records.forEach(record => {
+            const status = String(record.status || '').toLowerCase();
+            if (status === 'present') counts.present++;
+            else if (status === 'absent') counts.absent++;
+            else if (status === 'other' || status === 'others') counts.others++;
+        });
+        if (totalEl) totalEl.textContent = `${records.length} logged session${records.length === 1 ? '' : 's'}`;
+        summaryEl.innerHTML = [['Present', counts.present], ['Absent', counts.absent], ['Other', counts.others]].map(([label, count]) => `<div><strong>${count}</strong><span>${label}</span></div>`).join('');
+        listEl.innerHTML = records.map(record => {
+            const rawStatus = String(record.status || '').toLowerCase();
+            const statusClass = rawStatus === 'present' ? 'present' : rawStatus === 'absent' ? 'absent' : rawStatus === 'other' || rawStatus === 'others' ? 'other' : 'pending';
+            const statusLabel = statusClass === 'other' ? 'Other' : statusClass.charAt(0).toUpperCase() + statusClass.slice(1);
+            const detail = [record.studentClass || '', record.subject || ''].filter(Boolean).join(' · ') || 'Class or subject not recorded';
+            const reason = String(record.reason || '').trim();
+            return `<article class="profile-attendance-record"><div class="profile-attendance-record-top"><strong>${escapeHtml(record.date || 'Date not recorded')}</strong><span class="profile-attendance-status ${statusClass}">${statusLabel}</span></div><p>${escapeHtml(detail)}</p>${reason ? `<p>Reason: ${escapeHtml(reason)}</p>` : ''}</article>`;
+        }).join('') || '<p style="margin: 0; color: var(--text-gray); font-size: 13px;">No attendance records available yet.</p>';
+    } catch (error) {
+        console.warn('Could not load profile attendance', error);
+        if (totalEl) totalEl.textContent = 'Unavailable';
+        listEl.innerHTML = '<p style="margin: 0; color: var(--text-gray); font-size: 13px;">Attendance details are unavailable right now.</p>';
+    }
+}
+
 // --- THEME SYNC ---
 const themeToggleBtn = document.getElementById('themeToggleBtn');
 const mainThemeText = document.getElementById('mainThemeText');
@@ -496,6 +530,8 @@ async function loadStudentProfile() {
             avatarImg.classList.add('hidden');
             avatarFallback.classList.remove('hidden');
         }
+
+        loadProfileAttendance(studentCode);
 
         // 4. Fetch Total Behavior Points
         try {

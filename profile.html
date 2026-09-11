@@ -629,6 +629,26 @@
             transform: none;
         }
 
+        .profile-attendance-section { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--border-color, #dbe3ef); text-align: left; }
+        .profile-attendance-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+        .profile-attendance-heading h3 { margin: 0; font-size: 17px; color: var(--text-main, #0f172a); }
+        .profile-attendance-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+        .profile-attendance-summary div { padding: 10px 8px; border-radius: 10px; background: var(--input-bg, #f8fafc); text-align: center; }
+        .profile-attendance-summary strong, .profile-attendance-summary span { display: block; }
+        .profile-attendance-summary strong { font-size: 19px; }
+        .profile-attendance-summary span { font-size: 11px; color: var(--text-gray, #64748b); }
+        .profile-attendance-list { display: grid; gap: 8px; max-height: 260px; overflow-y: auto; }
+        .profile-attendance-record { padding: 11px 12px; border: 1px solid var(--border-color, #dbe3ef); border-radius: 10px; background: var(--card-bg, #fff); }
+        .profile-attendance-record-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .profile-attendance-record strong { font-size: 13px; color: var(--text-main, #0f172a); }
+        .profile-attendance-record p { margin: 5px 0 0; font-size: 12px; color: var(--text-gray, #64748b); }
+        .profile-attendance-status { padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+        .profile-attendance-status.present { color: #047857; background: #d1fae5; }
+        .profile-attendance-status.absent { color: #b91c1c; background: #fee2e2; }
+        .profile-attendance-status.other { color: #92400e; background: #fef3c7; }
+        .profile-attendance-status.pending { color: #475569; background: #e2e8f0; }
+        @media (max-width: 600px) { .profile-attendance-summary { grid-template-columns: repeat(3, 1fr); } }
+
         @media (max-width: 600px) {
             .profile-hero-card .stats-cards-grid {
                 grid-template-columns: 1fr;
@@ -1040,6 +1060,16 @@
                         </div>
                     </a>
                 </div>
+                <section class="profile-attendance-section" aria-labelledby="profileAttendanceTitle">
+                    <div class="profile-attendance-heading">
+                        <h3 id="profileAttendanceTitle">Attendance Details</h3>
+                        <span id="profileAttendanceTotal" style="font-size: 12px; color: var(--text-gray);">Loading...</span>
+                    </div>
+                    <div id="profileAttendanceSummary" class="profile-attendance-summary"></div>
+                    <div id="profileAttendanceList" class="profile-attendance-list">
+                        <p style="margin: 0; color: var(--text-gray); font-size: 13px;">Loading attendance records...</p>
+                    </div>
+                </section>
                 </div>
 
             </div>

@@ -6517,14 +6517,14 @@ async function loadClassRoster() {
     try {
         document.getElementById('directScoreContainer').classList.remove('hidden');
         const tbody = document.querySelector('#directScoreTable tbody');
-        tbody.innerHTML = "<tr><td colspan='3' style='text-align:center;'>Loading students and scores...</td></tr>";
+        tbody.innerHTML = "<tr><td colspan='2' style='text-align:center;'>Loading students and scores...</td></tr>";
 
         // 1. Fetch all students in the class
         const studentsQuery = query(collection(db, "students"), where("studentClass", "==", selectedClass));
         const studentsSnap = await getDocs(studentsQuery);
 
         if (studentsSnap.empty) {
-            tbody.innerHTML = "<tr><td colspan='3' style='text-align:center; color: red;'>No students found in this class.</td></tr>";
+            tbody.innerHTML = "<tr><td colspan='2' style='text-align:center; color: red;'>No students found in this class.</td></tr>";
             return;
         }
 
@@ -6564,7 +6564,6 @@ async function loadClassRoster() {
 
             tbody.innerHTML += `
                 <tr>
-                    <td><strong>${studentCode}</strong></td>
                     <td>${data.studentName}</td>
                     <td>
                         <input type="number" 

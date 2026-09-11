@@ -68,8 +68,10 @@ let initialElementStates = new Map();
 let autoSaveTimer = null;
 let hasUnsavedChanges = false;
 let gridStyle = 'dots'; // 'dots' | 'lines' | 'blank' | 'isometric' | 'paper'
-let isometricGridSize = 60; // Default isometric grid diamond width in px
-let isometricGridAngle = 0; // Rotation angle in degrees (-90 to 90)
+let normalGridSize = 24; // Normal square-grid spacing in world units
+let isometricGridSize = 20; // Default isometric grid spacing in px
+let isometricGridAngle1 = 30; // First isometric line family angle
+let isometricGridAngle2 = -30; // Second isometric line family angle
 let isMagnetSnapping = true; // Snap cursor to background grid and element vertices/corners/edges
 let activeMagnetSnap = null; // Active magnet snap point for visual HUD indicator { x, y, snapType }
 let editingElementId = null; // ID of element currently undergoing in-place inline text editing
@@ -707,7 +709,7 @@ window.createNewBoard = async function (templateName = 'Blank Board') {
         targetClass: 'All',
         isShared: false,
         elements: newElements,
-        settings: { gridStyle: 'dots', isometricGridSize: 60, isometricGridAngle: 0, isMagnetSnapping: true, zoom: 1, panX: 0, panY: 0 },
+        settings: { gridStyle: 'dots', normalGridSize: 24, isometricGridSize: 20, isometricGridAngle1: 30, isometricGridAngle2: -30, isMagnetSnapping: true, zoom: 1, panX: 0, panY: 0 },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
     };
@@ -951,8 +953,13 @@ function openBoardWorkspace(boardData) {
         zoom: (isNaN(savedZoom) || savedZoom <= 0) ? 1 : Math.max(0.2, Math.min(3, savedZoom))
     };
     gridStyle = (boardData.settings && boardData.settings.gridStyle) || 'dots';
-    isometricGridSize = (boardData.settings && Number(boardData.settings.isometricGridSize)) || 60;
-    isometricGridAngle = (boardData.settings && Number(boardData.settings.isometricGridAngle)) || 0;
+    normalGridSize = (boardData.settings && Number(boardData.settings.normalGridSize)) || 24;
+    isometricGridSize = (boardData.settings && Number(boardData.settings.isometricGridSize)) || 20;
+    const savedAngle1 = boardData.settings && Number(boardData.settings.isometricGridAngle1);
+    const savedAngle2 = boardData.settings && Number(boardData.settings.isometricGridAngle2);
+    const legacyAngle = boardData.settings && Number(boardData.settings.isometricGridAngle);
+    isometricGridAngle1 = Math.max(-90, Math.min(90, Number.isFinite(savedAngle1) ? savedAngle1 : (Number.isFinite(legacyAngle) ? 30 + legacyAngle : 30)));
+    isometricGridAngle2 = Math.max(-90, Math.min(90, Number.isFinite(savedAngle2) ? savedAngle2 : (Number.isFinite(legacyAngle) ? -30 + legacyAngle : -30)));
     isMagnetSnapping = (boardData.settings && boardData.settings.isMagnetSnapping !== undefined) ? Boolean(boardData.settings.isMagnetSnapping) : true;
     const btnMagnet = document.getElementById('btnSnapMagnet');
     if (btnMagnet) {
@@ -1230,6 +1237,15 @@ function updateGridClass() {
     canvasEl.classList.remove('grid-dots', 'grid-isometric', 'grid-paper', 'grid-lines');
     if (gridLayer) {
         gridLayer.classList.remove('grid-dots', 'grid-isometric', 'grid-paper', 'grid-lines');
+        // Keep the layer aligned to the surface for regular backgrounds. Isometric
+        // patterns can be rotated through 90°; give that layer extra bleed so the
+        // rotated tile is not clipped by the surface bounds.
+        const isIso = gridStyle === 'isometric';
+        gridLayer.style.top = isIso ? '-100%' : '0';
+        gridLayer.style.left = isIso ? '-100%' : '0';
+        gridLayer.style.width = isIso ? '300%' : '100%';
+        gridLayer.style.height = isIso ? '300%' : '100%';
+        gridLayer.style.transformOrigin = isIso ? 'center center' : 'top left';
     }
 
     if (gridStyle === 'dots') {
@@ -1245,7 +1261,7 @@ function updateGridClass() {
     else if (gridStyle === 'isometric') {
         canvasEl.classList.add('grid-isometric');
         if (gridLayer) gridLayer.classList.add('grid-isometric');
-        updateIsometricBackground(isometricGridSize, isometricGridAngle);
+        updateIsometricBackground(isometricGridSize, isometricGridAngle1, isometricGridAngle2);
     }
     else if (gridStyle === 'paper') {
         canvasEl.classList.add('grid-paper');
@@ -1262,7 +1278,7 @@ function updateGridClass() {
         if (gridLayer) {
             gridLayer.classList.add('grid-lines');
             gridLayer.style.backgroundImage = '';
-            gridLayer.style.backgroundSize = '';
+            gridLayer.style.backgroundSize = `${normalGridSize}px ${normalGridSize}px`;
             gridLayer.style.backgroundRepeat = '';
             gridLayer.style.transform = 'none';
         }
@@ -1283,29 +1299,55 @@ function updateGridClass() {
     if (isoControl) {
         isoControl.style.display = (gridStyle === 'isometric') ? 'flex' : 'none';
     }
+    const normalControl = document.getElementById('normalGridSizeControl');
+    if (normalControl) {
+        normalControl.style.display = (gridStyle === 'lines' || gridStyle === 'grid') ? 'flex' : 'none';
+    }
+    const normalSlider = document.getElementById('normalGridSizeSlider');
+    if (normalSlider && Number(normalSlider.value) !== normalGridSize) normalSlider.value = normalGridSize;
+    const normalLabel = document.getElementById('normalGridSizeLabel');
+    if (normalLabel) normalLabel.innerText = `${normalGridSize}px`;
+    document.querySelectorAll('.normal-grid-preset-btn').forEach(btn => {
+        btn.classList.toggle('active', Number(btn.getAttribute('data-grid-size')) === normalGridSize);
+    });
 
     document.querySelectorAll('.bg-option-item').forEach(item => {
         const bg = item.getAttribute('data-bg');
         item.classList.toggle('active', bg === gridStyle || (bg === 'lines' && gridStyle === 'grid'));
     });
+    updateGridViewport();
 }
 
-function updateIsometricBackground(size, angle) {
+function updateIsometricBackground(size, angle1, angle2) {
     if (size !== undefined && size !== null) {
-        isometricGridSize = Math.max(15, Math.min(200, size || 60));
+        isometricGridSize = Math.max(10, Math.min(200, size || 20));
     }
-    if (angle !== undefined && angle !== null) {
-        isometricGridAngle = Number(angle) || 0;
-    }
+    if (angle1 !== undefined && angle1 !== null) isometricGridAngle1 = Math.max(-90, Math.min(90, Number(angle1) || 0));
+    if (angle2 !== undefined && angle2 !== null) isometricGridAngle2 = Math.max(-90, Math.min(90, Number(angle2) || 0));
     const W = isometricGridSize;
-    const H = parseFloat((W * Math.sqrt(3)).toFixed(3));
-    const halfW = parseFloat((W / 2).toFixed(3));
-    const halfH = parseFloat((H / 2).toFixed(3));
+    // Use a tile whose dimensions preserve the ±30° line phases at each edge.
+    const H = parseFloat((W * 2 / Math.sqrt(3)).toFixed(3));
+    const tileW = W * 2;
 
-    const pathD = `M0,0 L${W},${H} M0,${halfH} L${halfW},${H} M${halfW},0 L${W},${halfH} M0,${H} L${W},0 M0,${halfH} L${halfW},0 M${halfW},${H} L${W},${halfH} M0,0 L0,${H} M${halfW},0 L${halfW},${H} M${W},0 L${W},${H}`;
+    const extent = Math.max(W, H) * 4;
+    const linePath = (angle) => {
+        const rad = angle * Math.PI / 180;
+        const dx = Math.cos(rad), dy = Math.sin(rad);
+        const nx = -dy, ny = dx;
+        // Using the size as the normal distance keeps both line families
+        // phase-aligned when the SVG tile repeats across its W × H bounds.
+        const spacing = W;
+        const paths = [];
+        for (let c = -extent; c <= extent; c += spacing) {
+            const px = nx * c, py = ny * c;
+            paths.push(`M${(px - dx * extent).toFixed(2)},${(py - dy * extent).toFixed(2)} L${(px + dx * extent).toFixed(2)},${(py + dy * extent).toFixed(2)}`);
+        }
+        return paths.join(' ');
+    };
+    const pathD = `${linePath(isometricGridAngle1)} ${linePath(isometricGridAngle2)}`;
 
-    const svgLight = `<svg xmlns='http://www.w3.org/2000/svg' width='${W}' height='${H}' viewBox='0 0 ${W} ${H}'><path d='${pathD}' stroke='rgba(8, 145, 178, 0.45)' stroke-width='0.8' fill='none'/></svg>`;
-    const svgDark = `<svg xmlns='http://www.w3.org/2000/svg' width='${W}' height='${H}' viewBox='0 0 ${W} ${H}'><path d='${pathD}' stroke='rgba(56, 189, 248, 0.4)' stroke-width='0.8' fill='none'/></svg>`;
+    const svgLight = `<svg xmlns='http://www.w3.org/2000/svg' width='${tileW}' height='${H}' viewBox='0 0 ${tileW} ${H}'><path d='${pathD}' stroke='rgba(100, 116, 139, 0.48)' stroke-width='0.8' fill='none'/></svg>`;
+    const svgDark = `<svg xmlns='http://www.w3.org/2000/svg' width='${tileW}' height='${H}' viewBox='0 0 ${tileW} ${H}'><path d='${pathD}' stroke='rgba(148, 163, 184, 0.42)' stroke-width='0.8' fill='none'/></svg>`;
 
     const surface = document.getElementById('boardCanvasSurface');
     const gridLayer = document.getElementById('boardGridLayer');
@@ -1314,7 +1356,7 @@ function updateIsometricBackground(size, angle) {
     const bgUrl = `url("data:image/svg+xml,${encodeURIComponent(activeSvg)}")`;
 
     if (surface) {
-        surface.style.setProperty('--isometric-w', `${W}px`);
+        surface.style.setProperty('--isometric-w', `${tileW}px`);
         surface.style.setProperty('--isometric-h', `${H}px`);
         surface.style.setProperty('--isometric-svg-light', `url("data:image/svg+xml,${encodeURIComponent(svgLight)}")`);
         surface.style.setProperty('--isometric-svg-dark', `url("data:image/svg+xml,${encodeURIComponent(svgDark)}")`);
@@ -1322,9 +1364,9 @@ function updateIsometricBackground(size, angle) {
 
     if (gridLayer) {
         gridLayer.style.backgroundImage = bgUrl;
-        gridLayer.style.backgroundSize = `${W}px ${H}px`;
+        gridLayer.style.backgroundSize = `${tileW}px ${H}px`;
         gridLayer.style.backgroundRepeat = 'repeat';
-        gridLayer.style.transform = `rotate(${isometricGridAngle}deg)`;
+        gridLayer.style.transform = 'none';
     }
 
     const label = document.getElementById('isometricSizeLabel');
@@ -1337,20 +1379,44 @@ function updateIsometricBackground(size, angle) {
         btn.classList.toggle('active', pSize === W);
     });
 
-    const angleLabel = document.getElementById('isometricAngleLabel');
-    if (angleLabel) angleLabel.innerText = `${isometricGridAngle}°`;
-    const angleSlider = document.getElementById('isoAngleSlider');
-    if (angleSlider && Number(angleSlider.value) !== isometricGridAngle) angleSlider.value = isometricGridAngle;
-
-    document.querySelectorAll('.iso-angle-preset-btn').forEach(btn => {
-        const pAngle = Number(btn.getAttribute('data-iso-angle'));
-        btn.classList.toggle('active', pAngle === isometricGridAngle);
-    });
+    const angle1Label = document.getElementById('isometricAngle1Label');
+    const angle2Label = document.getElementById('isometricAngle2Label');
+    if (angle1Label && document.activeElement !== angle1Label) angle1Label.value = isometricGridAngle1;
+    if (angle2Label && document.activeElement !== angle2Label) angle2Label.value = isometricGridAngle2;
+    const angle1Slider = document.getElementById('isoAngle1Slider');
+    const angle2Slider = document.getElementById('isoAngle2Slider');
+    if (angle1Slider && Number(angle1Slider.value) !== isometricGridAngle1) angle1Slider.value = isometricGridAngle1;
+    if (angle2Slider && Number(angle2Slider.value) !== isometricGridAngle2) angle2Slider.value = isometricGridAngle2;
 }
 
 function updateZoomDisplay() {
     const zoomVal = document.getElementById('boardZoomValue');
     if (zoomVal) zoomVal.innerText = `${Math.round(camera.zoom * 100)}%`;
+    updateGridViewport();
+}
+
+function updateGridViewport() {
+    const gridLayer = document.getElementById('boardGridLayer');
+    if (!gridLayer) return;
+    const z = Math.max(0.2, camera.zoom || 1);
+    if (gridStyle === 'lines' || gridStyle === 'grid') {
+        const step = Math.max(10, normalGridSize || 24) * z;
+        gridLayer.style.backgroundSize = `${step}px ${step}px`;
+        gridLayer.style.backgroundPosition = `${camera.x}px ${camera.y}px`;
+    } else if (gridStyle === 'isometric') {
+        const width = (isometricGridSize || 20) * 2 * z;
+        const height = (isometricGridSize || 20) * 2 / Math.sqrt(3) * z;
+        gridLayer.style.backgroundSize = `${width}px ${height}px`;
+        // The layer is oversized and positioned at -100%. Put the unrotated
+        // lattice origin at the camera origin before the layer is rotated; this
+        // keeps the visible grid and world-space snapping in the same phase.
+        const surface = document.getElementById('boardCanvasSurface');
+        const widthPx = surface?.clientWidth || window.innerWidth;
+        const heightPx = surface?.clientHeight || (window.innerHeight - 56);
+        gridLayer.style.backgroundPosition = `${widthPx + camera.x}px ${heightPx + camera.y}px`;
+    } else {
+        gridLayer.style.backgroundPosition = '';
+    }
 }
 
 function renderCanvas() {
@@ -1585,6 +1651,15 @@ function renderPathElement(ctx, el) {
     if ((el.strokeWidth === undefined || el.strokeWidth > 0) && el.strokeColor && el.strokeColor !== 'transparent') {
         ctx.stroke();
     }
+    if (el.text && editingElementId !== el.id) {
+        ctx.fillStyle = el.textColor || '#0f172a';
+        const isBold = el.isBold ? 'bold ' : '';
+        const isItalic = el.isItalic ? 'italic ' : '';
+        const fontSize = el.fontSize || 15;
+        const fontFamily = el.fontFamily || "'Inter', sans-serif";
+        ctx.font = `${isBold}${isItalic}${fontSize}px ${fontFamily}`;
+        renderElementText(ctx, el.text, el.x, el.y, el.width || 120, el.height || 80, fontSize, fontSize * 1.35, el.textAlign || 'center', el.textVAlign || 'middle', { top: 10, right: 12, bottom: 10, left: 12 });
+    }
     ctx.restore();
 }
 
@@ -1801,6 +1876,55 @@ function computePathBounds(points) {
         width: Math.max(10, Math.round(maxX - minX)),
         height: Math.max(10, Math.round(maxY - minY))
     };
+}
+
+function getShapeEditableVertices(shape) {
+    const x = shape.x || 0, y = shape.y || 0;
+    const w = shape.width || 120, h = shape.height || 80;
+    const cx = x + w / 2, cy = y + h / 2;
+    switch (shape.shapeType) {
+        case 'diamond': return [{ x: cx, y }, { x: x + w, y: cy }, { x: cx, y: y + h }, { x, y: cy }];
+        case 'triangle': return [{ x: cx, y }, { x: x + w, y: y + h }, { x, y: y + h }];
+        case 'hexagon': {
+            const inset = w * 0.22;
+            return [{ x: x + inset, y }, { x: x + w - inset, y }, { x: x + w, y: cy }, { x: x + w - inset, y: y + h }, { x: x + inset, y: y + h }, { x, y: cy }];
+        }
+        case 'star': {
+            const pts = [];
+            for (let i = 0; i < 10; i++) {
+                const r = i % 2 === 0 ? Math.min(w, h) / 2 : Math.min(w, h) / 4;
+                const a = -Math.PI / 2 + i * Math.PI / 5;
+                pts.push({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r });
+            }
+            return pts;
+        }
+        case 'circle': {
+            const pts = [];
+            for (let i = 0; i < 16; i++) {
+                const a = i * Math.PI * 2 / 16;
+                pts.push({ x: cx + Math.cos(a) * w / 2, y: cy + Math.sin(a) * h / 2 });
+            }
+            return pts;
+        }
+        default: return [{ x, y }, { x: x + w, y }, { x: x + w, y: y + h }, { x, y: y + h }];
+    }
+}
+
+function convertShapeToEditablePath(shape) {
+    if (!shape || shape.type !== 'shape') return shape;
+    const path = {
+        ...shape,
+        type: 'path',
+        closed: true,
+        points: getShapeEditableVertices(shape).map(p => ({ ...p, handleIn: null, handleOut: null })),
+        sourceShapeType: shape.shapeType
+    };
+    const bounds = computePathBounds(path.points);
+    path.x = bounds.minX;
+    path.y = bounds.minY;
+    path.width = bounds.width;
+    path.height = bounds.height;
+    return path;
 }
 
 function finalizeActivePenPath() {
@@ -2201,17 +2325,46 @@ function getShapeMagnetPoints(shape) {
 }
 
 function findNearestMagnetPoint(wx, wy, snapRadius = 24) {
+    const candidates = [];
     for (let i = elements.length - 1; i >= 0; i--) {
         const el = elements[i];
-        if (el.type !== 'shape' && el.type !== 'sticky' && el.type !== 'image' && el.type !== 'text') continue;
-        const magnets = getShapeMagnetPoints(el);
-        for (const m of magnets) {
-            if (Math.hypot(wx - m.x, wy - m.y) <= snapRadius) {
-                return m;
+        if (el.type === 'path' && Array.isArray(el.points)) {
+            for (const point of el.points) {
+                const dist = Math.hypot(wx - point.x, wy - point.y);
+                if (dist <= snapRadius) candidates.push({ id: 'vertex', elementId: el.id, x: point.x, y: point.y, snapType: 'vertex', dist });
             }
+            continue;
         }
+        if (el.type === 'line' || el.type === 'arrow') {
+            const ep = getLineEndpoints(el);
+            const endpoints = [{ id: 'start', x: ep.x1, y: ep.y1 }, { id: 'end', x: ep.x2, y: ep.y2 }];
+            endpoints.forEach(point => {
+                const dist = Math.hypot(wx - point.x, wy - point.y);
+                if (dist <= snapRadius) candidates.push({ ...point, elementId: el.id, snapType: 'vertex', dist });
+            });
+            const mid = { x: (ep.x1 + ep.x2) / 2, y: (ep.y1 + ep.y2) / 2 };
+            const midDist = Math.hypot(wx - mid.x, wy - mid.y);
+            if (midDist <= snapRadius) candidates.push({ ...mid, elementId: el.id, snapType: 'midpoint', dist: midDist });
+            continue;
+        }
+        if (el.type !== 'shape' && el.type !== 'sticky' && el.type !== 'image' && el.type !== 'text') continue;
+        const magnets = [...getShapeMagnetPoints(el), ...(el.type === 'shape' ? getShapeEditableVertices(el).map((point, index) => ({ ...point, id: `vertex-${index}`, shapeId: el.id })) : [])];
+        magnets.forEach(m => {
+            const dist = Math.hypot(wx - m.x, wy - m.y);
+            if (dist <= snapRadius) candidates.push({ ...m, dist, snapType: m.snapType || 'vertex' });
+        });
     }
-    return null;
+    candidates.sort((a, b) => a.dist - b.dist);
+    if (!candidates.length) return null;
+    const { dist, ...nearest } = candidates[0];
+    return nearest;
+}
+
+function findNearestLineMagnetPoint(wx, wy, snapRadius = 24) {
+    const elementMagnet = findNearestMagnetPoint(wx, wy, snapRadius);
+    if (elementMagnet) return elementMagnet;
+    const gridMagnet = getMagnetSnapPoint(wx, wy);
+    return gridMagnet.isSnapped ? { ...gridMagnet, id: null, shapeId: null } : null;
 }
 
 function getClosestPointOnSegment(px, py, x1, y1, x2, y2) {
@@ -2324,62 +2477,36 @@ function getMagnetSnapPoint(rawX, rawY) {
 
     // 3. Check Background Grid Vertices & Intersections
     if (gridStyle === 'isometric') {
-        const rad = (isometricGridAngle || 0) * Math.PI / 180;
-        const cos = Math.cos(-rad);
-        const sin = Math.sin(-rad);
-        const localX = rawX * cos - rawY * sin;
-        const localY = rawX * sin + rawY * cos;
-
-        const W = isometricGridSize || 60;
-        const H = W * Math.sqrt(3);
-        const halfW = W / 2;
-        const halfH = H / 2;
-
-        const u = Math.round(localX / halfW);
-        const v = Math.round(localY / halfH);
-
-        for (let du = -2; du <= 2; du++) {
-            for (let dv = -2; dv <= 2; dv++) {
-                const uC = u + du;
-                const vC = v + dv;
-                if ((Math.abs(uC) + Math.abs(vC)) % 2 !== 0) continue;
-
-                const localGx = uC * halfW;
-                const localGy = vC * halfH;
-
-                const cosBack = Math.cos(rad);
-                const sinBack = Math.sin(rad);
-                const gx = localGx * cosBack - localGy * sinBack;
-                const gy = localGx * sinBack + localGy * cosBack;
-
-                const d = Math.hypot(rawX - gx, rawY - gy);
-                if (d <= snapRadius) {
-                    candidates.push({ x: gx, y: gy, dist: d, snapType: 'grid' });
+        const W = isometricGridSize || 20;
+        const spacing = W;
+        const a1 = (isometricGridAngle1 || 30) * Math.PI / 180;
+        const a2 = (isometricGridAngle2 || -30) * Math.PI / 180;
+        const n1 = { x: -Math.sin(a1), y: Math.cos(a1) };
+        const n2 = { x: -Math.sin(a2), y: Math.cos(a2) };
+        const det = n1.x * n2.y - n1.y * n2.x;
+        if (Math.abs(det) > 0.001) {
+            const estimate1 = (n1.x * rawX + n1.y * rawY) / spacing;
+            const estimate2 = (n2.x * rawX + n2.y * rawY) / spacing;
+            const k = Math.round(estimate1);
+            const l = Math.round(estimate2);
+            for (let dk = -2; dk <= 2; dk++) {
+                for (let dl = -2; dl <= 2; dl++) {
+                    const c1 = (k + dk) * spacing;
+                    const c2 = (l + dl) * spacing;
+                    const gx = (c1 * n2.y - n1.y * c2) / det;
+                    const gy = (n1.x * c2 - c1 * n2.x) / det;
+                    const d = Math.hypot(rawX - gx, rawY - gy);
+                    if (d <= snapRadius) candidates.push({ x: gx, y: gy, dist: d, snapType: 'grid' });
                 }
             }
         }
     } else if (gridStyle === 'lines' || gridStyle === 'grid') {
-        const gridStep = 24;
+        const gridStep = Math.max(10, normalGridSize || 24);
         const gx = Math.round(rawX / gridStep) * gridStep;
         const gy = Math.round(rawY / gridStep) * gridStep;
         const d = Math.hypot(rawX - gx, rawY - gy);
         if (d <= snapRadius) {
             candidates.push({ x: gx, y: gy, dist: d, snapType: 'grid' });
-        }
-    } else if (gridStyle === 'dots') {
-        const dotStep = 20;
-        const gx = Math.round(rawX / dotStep) * dotStep;
-        const gy = Math.round(rawY / dotStep) * dotStep;
-        const d = Math.hypot(rawX - gx, rawY - gy);
-        if (d <= snapRadius) {
-            candidates.push({ x: gx, y: gy, dist: d, snapType: 'grid' });
-        }
-    } else if (gridStyle === 'paper') {
-        const lineStep = 28;
-        const gy = Math.round(rawY / lineStep) * lineStep;
-        const d = Math.abs(rawY - gy);
-        if (d <= snapRadius) {
-            candidates.push({ x: rawX, y: gy, dist: d, snapType: 'grid' });
         }
     }
 
@@ -2831,7 +2958,7 @@ function setupCanvasEventListeners() {
 
         const pt = screenToWorld(e.clientX, e.clientY);
         const hit = findHitElement(pt.x, pt.y);
-        if (hit && (hit.type === 'sticky' || hit.type === 'text' || hit.type === 'shape')) {
+        if (hit && (hit.type === 'sticky' || hit.type === 'text' || hit.type === 'shape' || (hit.type === 'path' && hit.sourceShapeType))) {
             openInPlaceTextEditor(hit);
         }
     });
@@ -2980,57 +3107,63 @@ function setupCanvasEventListeners() {
             if (sz) {
                 gridStyle = 'isometric';
                 updateGridClass();
-                updateIsometricBackground(sz, isometricGridAngle);
+                updateIsometricBackground(sz, isometricGridAngle1, isometricGridAngle2);
                 scheduleAutoSave();
             }
         });
     });
 
-    // Isometric Grid Angle Controls
-    const isoAngleSlider = document.getElementById('isoAngleSlider');
-    isoAngleSlider?.addEventListener('input', (e) => {
-        const val = Number(e.target.value);
+    // Isometric Grid Angle 1 / Angle 2 Controls
+    const applyIsoAngle = (value, which) => {
+        if (!Number.isFinite(value)) return;
         gridStyle = 'isometric';
+        if (which === 1) isometricGridAngle1 = Math.max(-90, Math.min(90, value));
+        else isometricGridAngle2 = Math.max(-90, Math.min(90, value));
         updateGridClass();
-        updateIsometricBackground(isometricGridSize, val);
+        updateIsometricBackground(isometricGridSize, isometricGridAngle1, isometricGridAngle2);
+        scheduleAutoSave();
+    };
+    const bindIsoAngleInput = (id, which) => {
+        const control = document.getElementById(id);
+        control?.addEventListener('input', (e) => applyIsoAngle(Number(e.target.value), which));
+        control?.addEventListener('change', (e) => applyIsoAngle(Number(e.target.value), which));
+    };
+    bindIsoAngleInput('isoAngle1Slider', 1);
+    bindIsoAngleInput('isoAngle2Slider', 2);
+    bindIsoAngleInput('isometricAngle1Label', 1);
+    bindIsoAngleInput('isometricAngle2Label', 2);
+
+    // Normal square-grid spacing controls
+    const normalGridSlider = document.getElementById('normalGridSizeSlider');
+    normalGridSlider?.addEventListener('input', (e) => {
+        normalGridSize = Math.max(10, Math.min(120, Number(e.target.value) || 24));
+        gridStyle = 'lines';
+        updateGridClass();
         scheduleAutoSave();
     });
 
-    document.getElementById('btnIsoAngleDown')?.addEventListener('click', (e) => {
+    document.getElementById('btnNormalGridSizeDown')?.addEventListener('click', (e) => {
         e.stopPropagation();
-        gridStyle = 'isometric';
-        let newAngle = isometricGridAngle - 15;
-        if (newAngle < -90) newAngle = -90;
+        normalGridSize = Math.max(10, normalGridSize - 2);
+        gridStyle = 'lines';
         updateGridClass();
-        updateIsometricBackground(isometricGridSize, newAngle);
         scheduleAutoSave();
     });
 
-    document.getElementById('btnIsoAngleUp')?.addEventListener('click', (e) => {
+    document.getElementById('btnNormalGridSizeUp')?.addEventListener('click', (e) => {
         e.stopPropagation();
-        gridStyle = 'isometric';
-        let newAngle = isometricGridAngle + 15;
-        if (newAngle > 90) newAngle = 90;
+        normalGridSize = Math.min(120, normalGridSize + 2);
+        gridStyle = 'lines';
         updateGridClass();
-        updateIsometricBackground(isometricGridSize, newAngle);
         scheduleAutoSave();
     });
 
-    document.getElementById('btnIsoAngleReset')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        gridStyle = 'isometric';
-        updateGridClass();
-        updateIsometricBackground(isometricGridSize, 0);
-        scheduleAutoSave();
-    });
-
-    document.querySelectorAll('.iso-angle-preset-btn').forEach(btn => {
+    document.querySelectorAll('.normal-grid-preset-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            const angle = Number(btn.getAttribute('data-iso-angle'));
-            gridStyle = 'isometric';
+            normalGridSize = Number(btn.getAttribute('data-grid-size')) || 24;
+            gridStyle = 'lines';
             updateGridClass();
-            updateIsometricBackground(isometricGridSize, angle);
             scheduleAutoSave();
         });
     });
@@ -3323,6 +3456,40 @@ function setupCanvasEventListeners() {
         renderCanvas();
     });
 
+    const applySelectedFontSize = (size) => {
+        const nextSize = Math.max(10, Math.min(250, Math.round(size)));
+        if (!Number.isFinite(nextSize)) return null;
+        pushUndoState();
+        selectedElementIds.forEach(id => {
+            const el = elements.find(item => item.id === id);
+            if (!el) return;
+            el.fontSize = nextSize;
+            if (el.type === 'text') updateTextElementBounds(el);
+            const activeEditor = document.getElementById('boardInPlaceEditor');
+            if (activeEditor && editingElementId === el.id) {
+                activeEditor.style.setProperty('font-size', `${el.fontSize * camera.zoom}px`, 'important');
+            }
+        });
+        scheduleAutoSave();
+        renderCanvas();
+        updateFormattingBar();
+        return nextSize;
+    };
+
+    const fontSizeInput = document.getElementById('fmtSizeVal');
+    fontSizeInput?.addEventListener('change', (e) => {
+        const appliedSize = applySelectedFontSize(Number(e.target.value));
+        if (appliedSize !== null) e.target.value = appliedSize;
+    });
+    fontSizeInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const appliedSize = applySelectedFontSize(Number(e.currentTarget.value));
+            if (appliedSize !== null) e.currentTarget.value = appliedSize;
+            e.currentTarget.blur();
+        }
+    });
+
     document.getElementById('fmtSizeDown')?.addEventListener('click', () => {
         pushUndoState();
         selectedElementIds.forEach(id => {
@@ -3346,7 +3513,7 @@ function setupCanvasEventListeners() {
         selectedElementIds.forEach(id => {
             const el = elements.find(item => item.id === id);
             if (el) {
-                el.fontSize = Math.min(72, (el.fontSize || 16) + 2);
+                el.fontSize = Math.min(250, (el.fontSize || 16) + 2);
                 if (el.type === 'text') updateTextElementBounds(el);
                 const activeEditor = document.getElementById('boardInPlaceEditor');
                 if (activeEditor && editingElementId === el.id) {
@@ -4155,6 +4322,20 @@ function setWhiteboardTool(tool) {
         btn.classList.toggle('active', btn.getAttribute('data-tool') === tool);
     });
 
+    if (tool === 'anchor' && selectedElementIds.size > 0) {
+        const selectedShapes = [...selectedElementIds]
+            .map(id => elements.find(item => item.id === id))
+            .filter(el => el && el.type === 'shape');
+        if (selectedShapes.length) {
+            pushUndoState();
+            selectedShapes.forEach(shape => {
+                const idx = elements.findIndex(item => item.id === shape.id);
+                if (idx >= 0) elements[idx] = convertShapeToEditablePath(shape);
+            });
+            scheduleAutoSave();
+        }
+    }
+
     const surface = document.getElementById('boardCanvasSurface');
     if (surface) {
         surface.classList.toggle('mode-pan', tool === 'pan');
@@ -4465,10 +4646,18 @@ function onPointerDown(e) {
 
         // 4. Click path body to select it for anchor editing
         const hitPathEl = findHitElement(pt.x, pt.y);
-        if (hitPathEl && hitPathEl.type === 'path') {
-            selectedAnchorPathId = hitPathEl.id;
+        if (hitPathEl && (hitPathEl.type === 'path' || hitPathEl.type === 'shape')) {
+            let editablePath = hitPathEl;
+            if (hitPathEl.type === 'shape') {
+                pushUndoState();
+                editablePath = convertShapeToEditablePath(hitPathEl);
+                const shapeIndex = elements.findIndex(item => item.id === hitPathEl.id);
+                if (shapeIndex >= 0) elements[shapeIndex] = editablePath;
+                scheduleAutoSave();
+            }
+            selectedAnchorPathId = editablePath.id;
             selectedElementIds.clear();
-            selectedElementIds.add(hitPathEl.id);
+            selectedElementIds.add(editablePath.id);
             renderCanvas();
             return;
         }
@@ -4481,9 +4670,9 @@ function onPointerDown(e) {
     }
 
     if (activeTool === 'line' || activeTool === 'arrow') {
-        const magnet = findNearestMagnetPoint(pt.x, pt.y, 28);
+        const magnet = findNearestLineMagnetPoint(pt.x, pt.y, 28);
         isConnectingLine = true;
-        startBinding = magnet ? { shapeId: magnet.shapeId, anchor: magnet.id } : null;
+        startBinding = magnet?.shapeId ? { shapeId: magnet.shapeId, anchor: magnet.id } : null;
         endBinding = null;
         const startX = magnet ? magnet.x : pt.x;
         const startY = magnet ? magnet.y : pt.y;
@@ -4713,6 +4902,10 @@ function onPointerMove(e) {
         camera.x += e.clientX - dragStart.x;
         camera.y += e.clientY - dragStart.y;
         dragStart = { x: e.clientX, y: e.clientY };
+        // The grid is a camera overlay too. Keep its phase in lockstep with the
+        // camera while panning so shapes do not appear to drift away from the
+        // snap points they were created on.
+        updateGridViewport();
         renderCanvas();
         return;
     }
@@ -4775,9 +4968,9 @@ function onPointerMove(e) {
     }
 
     if (isConnectingLine) {
-        const magnet = findNearestMagnetPoint(pt.x, pt.y, 28);
+        const magnet = findNearestLineMagnetPoint(pt.x, pt.y, 28);
         hoveredMagnet = magnet;
-        endBinding = magnet ? { shapeId: magnet.shapeId, anchor: magnet.id } : null;
+        endBinding = magnet?.shapeId ? { shapeId: magnet.shapeId, anchor: magnet.id } : null;
 
         let targetX = magnet ? magnet.x : pt.x;
         let targetY = magnet ? magnet.y : pt.y;
@@ -4795,7 +4988,7 @@ function onPointerMove(e) {
 
     // Magnet hover when line/arrow tool is active
     if (!isConnectingLine && (activeTool === 'line' || activeTool === 'arrow')) {
-        const magnet = findNearestMagnetPoint(pt.x, pt.y, 28);
+        const magnet = findNearestLineMagnetPoint(pt.x, pt.y, 28);
         if (magnet !== hoveredMagnet) {
             hoveredMagnet = magnet;
             renderCanvas();
@@ -4960,7 +5153,7 @@ function onPointerMove(e) {
 
             // Line / Arrow endpoint resizing with magnet snapping and shift-straight snapping!
             if (el.type === 'line' || el.type === 'arrow') {
-                const magnet = findNearestMagnetPoint(pt.x, pt.y, 28);
+                const magnet = findNearestLineMagnetPoint(pt.x, pt.y, 28);
                 hoveredMagnet = magnet;
                 let targetX = magnet ? magnet.x : pt.x;
                 let targetY = magnet ? magnet.y : pt.y;
@@ -5209,6 +5402,7 @@ function onPointerUp(e) {
     if (isRightClickPanning) {
         isRightClickPanning = false;
         isPanning = false;
+        if (!currentBoard?.isReadOnly) scheduleAutoSave();
         setWhiteboardTool(previousToolBeforeRightClick || (currentBoard?.isReadOnly ? 'pan' : 'select'));
         const surf = document.getElementById('boardCanvasSurface');
         if (surf) surf.style.cursor = currentBoard?.isReadOnly ? 'grab' : '';
@@ -5223,7 +5417,10 @@ function onPointerUp(e) {
         return;
     }
 
-    if (isPanning) isPanning = false;
+    if (isPanning) {
+        isPanning = false;
+        if (!currentBoard?.isReadOnly) scheduleAutoSave();
+    }
 
     if (isErasing) {
         isErasing = false;
@@ -5722,6 +5919,7 @@ function openInPlaceTextEditor(el) {
     textarea.addEventListener('input', () => {
         el.text = textarea.value;
         adjustTextareaHeight();
+        updateFormattingBar();
     });
 
     textarea.addEventListener('blur', () => {
@@ -5794,9 +5992,21 @@ function updateFormattingBar() {
         boundsW = Math.max(40, bounds.width);
         boundsH = Math.max(40, bounds.height);
     }
-    const screenCenterX = (boundsX + boundsW / 2) * camera.zoom + camera.x;
-    const screenTopY = boundsY * camera.zoom + camera.y;
-    const screenBottomY = (boundsY + boundsH) * camera.zoom + camera.y;
+    // Canvas coordinates start below the workspace header; toolbar coordinates
+    // start at its positioned parent. Convert between them before placement.
+    const surfaceRect = document.getElementById('boardCanvasSurface').getBoundingClientRect();
+    const parentRect = bar.offsetParent.getBoundingClientRect();
+    const offsetX = surfaceRect.left - parentRect.left;
+    const offsetY = surfaceRect.top - parentRect.top;
+    const screenCenterX = offsetX + (boundsX + boundsW / 2) * camera.zoom + camera.x;
+    let screenTopY = offsetY + boundsY * camera.zoom + camera.y;
+    let screenBottomY = offsetY + (boundsY + boundsH) * camera.zoom + camera.y;
+    const editor = document.getElementById('boardInPlaceEditor');
+    if (editor && editingElementId === selectedEl.id) {
+        const editorRect = editor.getBoundingClientRect();
+        screenTopY = Math.min(screenTopY, editorRect.top - parentRect.top);
+        screenBottomY = Math.max(screenBottomY, editorRect.bottom - parentRect.top);
+    }
 
     // Detect actual toolbar dimensions
     const barW = bar.offsetWidth || 540;
@@ -5807,16 +6017,39 @@ function updateFormattingBar() {
     const maxRightMargin = window.innerWidth - 16;
     const minCenterX = minLeftMargin + barW / 2;
     const maxCenterX = Math.max(minCenterX, maxRightMargin - barW / 2);
-    const clampedX = Math.max(minCenterX, Math.min(maxCenterX, screenCenterX));
-
-    // Vertical placement: place ABOVE element if there is room; otherwise flip BELOW element
-    let targetY;
-    if (screenTopY - barH - 14 >= 64) {
-        targetY = screenTopY - barH - 14;
-    } else {
-        targetY = screenBottomY + 14;
-    }
-    const clampedY = Math.max(64, Math.min(window.innerHeight - barH - 20, targetY));
+    // Choose a position that does not cover the selected element. Large or
+    // centrally placed elements often have no room above them, so also try the
+    // sides before falling back to the least-overlapping clamped position.
+    const elementLeft = offsetX + boundsX * camera.zoom + camera.x;
+    const elementRight = offsetX + (boundsX + boundsW) * camera.zoom + camera.x;
+    const elementTop = screenTopY;
+    const elementBottom = screenBottomY;
+    const minTop = 64;
+    const maxTop = Math.max(minTop, window.innerHeight - barH - 20);
+    const clampTop = y => Math.max(minTop, Math.min(maxTop, y));
+    const clampCenter = x => Math.max(minCenterX, Math.min(maxCenterX, x));
+    const overlaps = (centerX, top) => {
+        const left = centerX - barW / 2;
+        const right = centerX + barW / 2;
+        return !(right <= elementLeft - 8 || left >= elementRight + 8 || top + barH <= elementTop - 8 || top >= elementBottom + 8);
+    };
+    const overlapArea = (centerX, top) => {
+        const left = centerX - barW / 2;
+        const right = centerX + barW / 2;
+        const overlapW = Math.max(0, Math.min(right, elementRight) - Math.max(left, elementLeft));
+        const overlapH = Math.max(0, Math.min(top + barH, elementBottom) - Math.max(top, elementTop));
+        return overlapW * overlapH;
+    };
+    const candidates = [
+        { x: screenCenterX, y: screenBottomY + 14 },
+        { x: screenCenterX, y: screenTopY - barH - 14 },
+        { x: elementLeft - barW / 2 - 14, y: (elementTop + elementBottom - barH) / 2 },
+        { x: elementRight + barW / 2 + 14, y: (elementTop + elementBottom - barH) / 2 }
+    ].map(candidate => ({ x: clampCenter(candidate.x), y: clampTop(candidate.y) }));
+    const placement = candidates.find(candidate => !overlaps(candidate.x, candidate.y))
+        || candidates.slice().sort((a, b) => overlapArea(a.x, a.y) - overlapArea(b.x, b.y))[0];
+    const clampedX = placement.x;
+    const clampedY = placement.y;
 
     bar.style.left = `${Math.round(clampedX)}px`;
     bar.style.top = `${Math.round(clampedY)}px`;
@@ -5848,7 +6081,9 @@ function updateFormattingBar() {
     // Sync Font Size
     const sizeVal = document.getElementById('fmtSizeVal');
     if (sizeVal) {
-        sizeVal.innerText = `${selectedEl.fontSize || (selectedEl.type === 'sticky' ? 16 : (selectedEl.type === 'shape' ? 15 : 20))}px`;
+        if (document.activeElement !== sizeVal) {
+            sizeVal.value = selectedEl.fontSize || (selectedEl.type === 'sticky' ? 16 : (selectedEl.type === 'shape' ? 15 : 20));
+        }
     }
 
     // Sync Bold & Italic
@@ -5966,7 +6201,7 @@ async function saveCurrentBoardDirectly() {
         await updateDoc(doc(db, "boards", currentBoardId), {
             title: (currentBoard && currentBoard.title) || 'Untitled Board',
             elements: elements,
-            settings: { gridStyle, isometricGridSize, isometricGridAngle, isMagnetSnapping, zoom: camera.zoom, panX: camera.x, panY: camera.y },
+            settings: { gridStyle, normalGridSize, isometricGridSize, isometricGridAngle1, isometricGridAngle2, isMagnetSnapping, zoom: camera.zoom, panX: camera.x, panY: camera.y },
             updatedAt: new Date().toISOString()
         });
         hasUnsavedChanges = false;
