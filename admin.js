@@ -44,7 +44,9 @@ async function getOrFetchStudents(force = false) {
 
 let cachedQuizzesList = null;
 let quizzesFetchPromise = null;
+
 async function getOrFetchQuizzes(force = false) {
+    if (force === true) { cachedQuizzesList = null; quizzesFetchPromise = null; }
     const isForce = force === true;
     if (!isForce && cachedQuizzesList) return cachedQuizzesList;
     if (quizzesFetchPromise) return quizzesFetchPromise;
@@ -114,7 +116,9 @@ function invalidateStudentsCache() {
 }
 function invalidateQuizzesCache() {
     cachedQuizzesList = null;
+    quizzesFetchPromise = null;
     cachedSystemQuizzesList = null;
+    sysQuizzesFetchPromise = null;
 }
 function invalidateUsersCache() {
     cachedUsersList = null;
@@ -138,6 +142,24 @@ onAuthStateChanged(auth, async (user) => {
     const welcomeTitle = document.getElementById('welcomeTitle');
 
     if (user) {
+        // Enforce 1-hour session expiration if "Remember me" was not checked
+        try {
+            const meta = JSON.parse(localStorage.getItem('portalSessionMeta') || 'null');
+            if (meta && !meta.rememberMe) {
+                const elapsed = Date.now() - (Number(meta.lastActive) || 0);
+                if (elapsed > 60 * 60 * 1000) {
+                    console.warn("[Security] Teacher session expired (> 1 hour without Remember Me). Logging out.");
+                    await logoutAdmin();
+                    return;
+                }
+            }
+            if (window.portalSession?.touch) {
+                window.portalSession.touch(true);
+            }
+        } catch (e) {
+            console.warn("Session check warning:", e);
+        }
+
         try {
             // 1. Fetch User Role & Subject FIRST so queries know what permissions to apply
             const userDoc = await getDoc(doc(db, "users", user.uid));
@@ -289,6 +311,12 @@ onAuthStateChanged(auth, async (user) => {
 
 async function logoutAdmin() {
     try {
+        localStorage.removeItem('portalSessionMeta');
+        localStorage.removeItem('portalRememberedStudent');
+        localStorage.removeItem('loggedInStudentCode');
+        localStorage.removeItem('studentLoggedIn');
+        sessionStorage.removeItem('studentLoggedInSession');
+        sessionStorage.removeItem('studentTimelineSession');
         await signOut(auth);
     } catch (e) {
         console.warn("SignOut error:", e);
@@ -3743,7 +3771,8 @@ window.closeQuizBuilder = function () {
     hideRichTextPopup();
     document.getElementById('quiz-builder-view').classList.add('hidden');
     document.getElementById('quiz-landing-view').classList.remove('hidden');
-    loadQuizzesTable(); // Refresh the table when going back
+    invalidateQuizzesCache();
+    loadQuizzesTable(true); // Refresh the table when going back
 }
 
 // Dynamically update the header title as you type the quiz name
@@ -3764,7 +3793,8 @@ async function toggleQuizStatus(id, currentStatus) {
         await updateDoc(doc(db, "quizzes", id), {
             status: newStatus
         });
-        loadQuizzesTable();
+        invalidateQuizzesCache();
+        await loadQuizzesTable(true);
     } catch (e) {
         alert("Error toggling quiz status: " + e.message);
     }
@@ -3827,6 +3857,10 @@ async function loadQuizzesTable(forceRefresh = false) {
                         <div class="kebab-menu">
                             <button class="kebab-btn" onclick="toggleMenu(event, 'quiz-${quiz.id}')">⋮</button>
                             <div id="menu-quiz-${quiz.id}" class="dropdown-menu">
+                                <button class="dropdown-item" style="color: #ef4444; font-weight: 700; display: flex; align-items: center; gap: 6px;" onclick="openLiveQuizMaster('${quiz.id}', '${safeTitle}')">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="2"></circle><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"></path><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"></path></svg>
+                                    Start Live Quiz
+                                </button>
                                 <button class="dropdown-item" onclick="viewQuizResults('${safeTitle}', '${quiz.id}')">View Results</button>
                                 <button class="dropdown-item" onclick="toggleQuizStatus('${quiz.id}', '${status}')">${toggleLabel}</button>
                                 <button class="dropdown-item" onclick="editQuiz('${quiz.id}')">Edit Quiz</button>
@@ -4105,13 +4139,434 @@ async function deleteQuiz(id, title = '') {
 
         await Promise.all(deletePromises);
         alert(`Quiz${titleMsg} and all ${deletedSubmissions} student submission(s) have been permanently deleted!`);
-        loadQuizzesTable();
+        invalidateQuizzesCache();
+        await loadQuizzesTable(true);
     } catch (e) {
         console.error("Error deleting quiz:", e);
         alert("Error deleting quiz: " + e.message);
     }
 }
 window.deleteQuiz = deleteQuiz;
+
+
+// ==========================================
+// LIVE QUIZ COMMAND CENTER & MONITORING
+// ==========================================
+let activeLiveQuizSession = null;
+let liveQuizUnsubscribeSession = null;
+let liveQuizUnsubscribeParticipants = null;
+let liveQuizTimerInterval = null;
+let liveParticipantsMap = {};
+
+window.openLiveQuizMaster = async function(quizId, quizTitle) {
+    const modal = document.getElementById("liveQuizControlModal");
+    if (!modal) return;
+
+    // Reset previous listeners
+    if (liveQuizUnsubscribeSession) liveQuizUnsubscribeSession();
+    if (liveQuizUnsubscribeParticipants) liveQuizUnsubscribeParticipants();
+    if (liveQuizTimerInterval) clearInterval(liveQuizTimerInterval);
+
+    liveParticipantsMap = {};
+    activeLiveQuizSession = { quizId, quizTitle };
+
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+
+    document.getElementById("liveQuizModalTitle").innerText = quizTitle || "Live Quiz Control Room";
+    document.getElementById("liveQuizModalMeta").innerText = "Loading quiz configuration...";
+    document.getElementById("liveParticipantsTbody").innerHTML = `
+        <tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 36px;">Connecting to Live Session...</td></tr>
+    `;
+    document.getElementById("liveAntiCheatLog").innerHTML = `
+        <div style="text-align: center; color: #991b1b; font-size: 12px; padding: 24px 10px; opacity: 0.8;">
+            No suspicious behavior detected yet. Tab switches and window blurs will appear here instantly.
+        </div>
+    `;
+    document.getElementById("liveStatConnectedCount").innerText = "0";
+    document.getElementById("liveStatInfractionsCount").innerText = "0";
+    document.getElementById("liveStudentCountLabel").innerText = "0";
+
+    try {
+        // 1. Fetch Quiz Data
+        const qDocSnap = await getDoc(doc(db, "quizzes", quizId));
+        if (!qDocSnap.exists()) {
+            alert("Quiz not found in database.");
+            closeLiveQuizModal();
+            return;
+        }
+        const qData = qDocSnap.data();
+        activeLiveQuizSession.quizData = qData;
+
+        // Auto-activate quiz so students can discover it in their dashboard
+        if (qData.status !== 'active') {
+            await updateDoc(doc(db, "quizzes", quizId), {
+                status: 'active',
+                updatedAt: new Date().toISOString()
+            });
+            cachedQuizzesList = null;
+            loadQuizzesTable(true);
+        }
+
+        const itemsCount = (qData.items || qData.questions || []).length;
+        document.getElementById("liveQuizModalMeta").innerText = `Target: ${qData.targetClass || 'All Classes'} | Subject: ${qData.subject || 'General'} | ${itemsCount} Questions`;
+
+        // 2. Initialize or fetch live session document in Firestore: live_quizzes/{quizId}
+        const liveDocRef = doc(db, "live_quizzes", quizId);
+        const liveSnap = await getDoc(liveDocRef);
+
+        if (!liveSnap.exists()) {
+            await setDoc(liveDocRef, {
+                quizId: quizId,
+                title: qData.title || quizTitle,
+                subject: qData.subject || 'General',
+                targetClass: qData.targetClass || 'All',
+                status: 'waiting', // waiting | in_progress | ended
+                durationMinutes: 30,
+                createdAt: new Date().toISOString(),
+                teacherEmail: auth.currentUser?.email || 'teacher'
+            });
+        } else if (liveSnap.data()?.status === 'ended') {
+            // Re-open session into waiting lobby state
+            await updateDoc(liveDocRef, {
+                status: 'waiting',
+                startedAt: null,
+                endsAt: null,
+                reopenedAt: new Date().toISOString()
+            });
+        }
+
+        // 3. Listen in real-time to the live session state
+        liveQuizUnsubscribeSession = onSnapshot(liveDocRef, (docSnap) => {
+            if (!docSnap.exists()) return;
+            const data = docSnap.data();
+            activeLiveQuizSession.liveData = data;
+            renderLiveQuizHeaderState(data);
+        }, (err) => {
+            console.error("Live session state snapshot error:", err);
+        });
+
+        // 4. Listen in real-time to participants subcollection: live_quizzes/{quizId}/participants
+        const participantsRef = collection(db, "live_quizzes", quizId, "participants");
+        liveQuizUnsubscribeParticipants = onSnapshot(participantsRef, (querySnap) => {
+            updateParticipantsFromSnapshot(querySnap);
+        }, (err) => {
+            console.error("Live participants snapshot error:", err);
+            const tbody = document.getElementById("liveParticipantsTbody");
+            if (tbody) {
+                tbody.innerHTML = `
+                    <tr><td colspan="5" style="text-align: center; color: #ef4444; padding: 24px;">
+                        Unable to connect to participants feed: ${escapeHtml(err.message)}
+                    </td></tr>
+                `;
+            }
+        });
+
+    } catch (err) {
+        console.error("Error opening live quiz control room:", err);
+        alert("Failed to initialize live quiz: " + err.message);
+    }
+};
+
+function updateParticipantsFromSnapshot(querySnap) {
+    liveParticipantsMap = {};
+    let totalInfractions = 0;
+    let totalConnected = 0;
+    const allInfractions = [];
+
+    querySnap.forEach(pDoc => {
+        const p = { id: pDoc.id, ...pDoc.data() };
+        liveParticipantsMap[pDoc.id] = p;
+        if (p.connected !== false) totalConnected++;
+        const warns = p.warnings || [];
+        totalInfractions += warns.length;
+        warns.forEach(w => {
+            allInfractions.push({
+                studentName: p.studentName || pDoc.id,
+                studentClass: p.studentClass || '',
+                ...w
+            });
+        });
+    });
+
+    const connEl = document.getElementById("liveStatConnectedCount");
+    const infEl = document.getElementById("liveStatInfractionsCount");
+    const countEl = document.getElementById("liveStudentCountLabel");
+    if (connEl) connEl.innerText = totalConnected;
+    if (infEl) infEl.innerText = totalInfractions;
+    if (countEl) countEl.innerText = querySnap.size;
+
+    renderLiveParticipantsTable();
+    renderLiveAntiCheatLog(allInfractions);
+}
+
+window.refreshLiveParticipantsList = async function() {
+    if (!activeLiveQuizSession?.quizId) return;
+    try {
+        const participantsRef = collection(db, "live_quizzes", activeLiveQuizSession.quizId, "participants");
+        const snap = await getDocs(participantsRef);
+        updateParticipantsFromSnapshot(snap);
+    } catch (e) {
+        console.error("Manual refresh of participants failed:", e);
+        alert("Refresh failed: " + e.message);
+    }
+};
+
+window.closeLiveQuizModal = function() {
+    const modal = document.getElementById("liveQuizControlModal");
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+    }
+    if (liveQuizUnsubscribeSession) liveQuizUnsubscribeSession();
+    if (liveQuizUnsubscribeParticipants) liveQuizUnsubscribeParticipants();
+    if (liveQuizTimerInterval) clearInterval(liveQuizTimerInterval);
+};
+
+function renderLiveQuizHeaderState(data) {
+    const status = data.status || 'waiting';
+    const statusBadge = document.getElementById("liveQuizStatusBadge");
+    const startBtn = document.getElementById("btnStartLiveQuizMaster");
+    const endBtn = document.getElementById("btnEndLiveQuizMaster");
+    const durationInput = document.getElementById("liveQuizDurationInput");
+    const timerDisplay = document.getElementById("liveQuizCountdownDisplay");
+
+    if (durationInput && data.durationMinutes) {
+        durationInput.value = data.durationMinutes;
+    }
+
+    if (liveQuizTimerInterval) clearInterval(liveQuizTimerInterval);
+
+    if (status === 'waiting') {
+        statusBadge.innerText = "Waiting for Students";
+        statusBadge.style.background = "#e0f2fe";
+        statusBadge.style.color = "#0284c7";
+        startBtn.style.display = "inline-flex";
+        startBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg><span>Start Live Quiz for All</span>`;
+        startBtn.disabled = false;
+        endBtn.style.display = "none";
+        durationInput.disabled = false;
+        timerDisplay.innerText = `${data.durationMinutes || 30}:00`;
+    } else if (status === 'in_progress') {
+        statusBadge.innerText = "Live In Progress";
+        statusBadge.style.background = "#ecfdf5";
+        statusBadge.style.color = "#059669";
+        startBtn.style.display = "none";
+        endBtn.style.display = "inline-flex";
+        durationInput.disabled = true;
+
+        // Run synchronized timer
+        const endsAt = data.endsAt ? new Date(data.endsAt).getTime() : 0;
+        const updateTimer = () => {
+            const now = Date.now();
+            const diff = Math.max(0, Math.floor((endsAt - now) / 1000));
+            const mins = String(Math.floor(diff / 60)).padStart(2, '0');
+            const secs = String(diff % 60).padStart(2, '0');
+            timerDisplay.innerText = `${mins}:${secs}`;
+            if (diff <= 0) {
+                timerDisplay.innerText = "Time Expired";
+                clearInterval(liveQuizTimerInterval);
+            }
+        };
+        updateTimer();
+        liveQuizTimerInterval = setInterval(updateTimer, 1000);
+
+    } else if (status === 'ended') {
+        statusBadge.innerText = "Quiz Ended";
+        statusBadge.style.background = "#f1f5f9";
+        statusBadge.style.color = "#64748b";
+        startBtn.style.display = "inline-flex";
+        startBtn.innerHTML = `<span>Restart / Re-open</span>`;
+        startBtn.disabled = false;
+        endBtn.style.display = "none";
+        durationInput.disabled = false;
+        timerDisplay.innerText = "00:00";
+    }
+}
+
+window.triggerStartLiveQuizMaster = async function() {
+    if (!activeLiveQuizSession?.quizId) return;
+    const durationInput = document.getElementById("liveQuizDurationInput");
+    const durationMinutes = parseInt(durationInput?.value, 10) || 30;
+
+    if (!confirm(`Start the Live Quiz now for ${durationMinutes} minutes?\n\nAll connected students will immediately begin simultaneously.`)) {
+        return;
+    }
+
+    try {
+        const now = Date.now();
+        const endsAt = new Date(now + durationMinutes * 60 * 1000).toISOString();
+
+        await updateDoc(doc(db, "live_quizzes", activeLiveQuizSession.quizId), {
+            status: 'in_progress',
+            durationMinutes: durationMinutes,
+            startedAt: new Date(now).toISOString(),
+            endsAt: endsAt
+        });
+    } catch (err) {
+        console.error("Error starting live quiz:", err);
+        alert("Failed to start live quiz: " + err.message);
+    }
+};
+
+window.triggerEndLiveQuizMaster = async function() {
+    if (!activeLiveQuizSession?.quizId) return;
+    if (!confirm("End the Live Quiz session now? All students' quizzes will lock.")) return;
+
+    try {
+        await updateDoc(doc(db, "live_quizzes", activeLiveQuizSession.quizId), {
+            status: 'ended',
+            endedAt: new Date().toISOString()
+        });
+    } catch (err) {
+        console.error("Error ending live quiz:", err);
+        alert("Failed to end live quiz: " + err.message);
+    }
+};
+
+function renderLiveParticipantsTable() {
+    const tbody = document.getElementById("liveParticipantsTbody");
+    if (!tbody) return;
+
+    const participants = Object.values(liveParticipantsMap);
+    if (participants.length === 0) {
+        tbody.innerHTML = `
+            <tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 36px;">
+                Waiting for students to connect to this live quiz...
+            </td></tr>
+        `;
+        return;
+    }
+
+    // Sort by infractions desc, then name
+    participants.sort((a, b) => {
+        const aWarns = (a.warnings || []).length;
+        const bWarns = (b.warnings || []).length;
+        if (bWarns !== aWarns) return bWarns - aWarns;
+        return (a.studentName || '').localeCompare(b.studentName || '');
+    });
+
+    const totalQuestions = (activeLiveQuizSession.quizData?.items || activeLiveQuizSession.quizData?.questions || []).length || 1;
+
+    tbody.innerHTML = participants.map(p => {
+        const isOnline = p.connected !== false;
+        const statusDot = isOnline 
+            ? `<span style="display: inline-flex; align-items: center; gap: 6px; color: #059669; font-weight: 700; font-size: 12px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></span> Online</span>`
+            : `<span style="display: inline-flex; align-items: center; gap: 6px; color: #94a3b8; font-weight: 600; font-size: 12px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1;"></span> Offline</span>`;
+
+        const answeredCount = Object.keys(p.answers || {}).length;
+        const pct = Math.min(100, Math.round((answeredCount / totalQuestions) * 100));
+
+        const warns = (p.warnings || []).length;
+        const antiCheatBadge = warns > 0
+            ? `<span style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; background: #fee2e2; color: #dc2626; font-weight: 700; font-size: 11.5px;">⚠️ ${warns} flag${warns === 1 ? '' : 's'}</span>`
+            : `<span style="color: #059669; font-size: 12px; font-weight: 600;">✓ Clean</span>`;
+
+        const safeCode = (p.studentCode || p.id || '').replace(/'/g, "\\'");
+
+        return `
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 12px 14px;">
+                    <div style="font-weight: 700; color: #0f172a;">${escapeHtml(p.studentName || 'Student')}</div>
+                    <div style="font-size: 11.5px; color: #64748b;">${escapeHtml(p.studentClass || '-')} • ${escapeHtml(p.studentCode || p.id)}</div>
+                </td>
+                <td style="padding: 12px 14px;">${statusDot}</td>
+                <td style="padding: 12px 14px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="flex: 1; min-width: 70px; height: 6px; background: #e2e8f0; border-radius: 999px; overflow: hidden;">
+                            <div style="width: ${pct}%; height: 100%; background: ${p.submitted ? '#10b981' : '#3b82f6'}; border-radius: 999px;"></div>
+                        </div>
+                        <span style="font-size: 11.5px; font-weight: 700; color: #475569;">${answeredCount}/${totalQuestions}</span>
+                    </div>
+                </td>
+                <td style="padding: 12px 14px;">${antiCheatBadge}</td>
+                <td style="padding: 12px 14px; text-align: right;">
+                    <button type="button" onclick="inspectStudentLiveAnswers('${safeCode}')" style="background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">
+                        Inspect
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderLiveAntiCheatLog(allInfractions) {
+    const feed = document.getElementById("liveAntiCheatLog");
+    if (!feed) return;
+
+    if (!allInfractions || allInfractions.length === 0) {
+        feed.innerHTML = `
+            <div style="text-align: center; color: #991b1b; font-size: 12px; padding: 24px 10px; opacity: 0.8;">
+                No suspicious behavior detected yet. Tab switches and window blurs will appear here instantly.
+            </div>
+        `;
+        return;
+    }
+
+    // Sort newest infraction first
+    allInfractions.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+    feed.innerHTML = allInfractions.map(inf => {
+        const timeStr = inf.timestamp ? new Date(inf.timestamp).toLocaleTimeString() : '';
+        return `
+            <div style="background: #ffffff; border-left: 3px solid #ef4444; padding: 8px 12px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); font-size: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
+                    <strong style="color: #991b1b;">${escapeHtml(inf.studentName)}</strong>
+                    <span style="color: #64748b; font-size: 11px;">${timeStr}</span>
+                </div>
+                <div style="color: #475569;">${escapeHtml(inf.details || inf.type || 'Switched tab or lost window focus')}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+window.inspectStudentLiveAnswers = function(studentCode) {
+    const p = liveParticipantsMap[studentCode];
+    if (!p) return alert("Student not found in active session.");
+
+    const modal = document.getElementById("liveQuizAnswersModal");
+    if (!modal) return;
+
+    const items = activeLiveQuizSession?.quizData?.items || activeLiveQuizSession?.quizData?.questions || [];
+    const studentAnswers = p.answers || {};
+
+    document.getElementById("liveAnswersStudentName").innerText = `${p.studentName || 'Student'} - Live Answers`;
+    document.getElementById("liveAnswersStudentMeta").innerText = `Code: ${p.studentCode || studentCode} | Class: ${p.studentClass || '-'} | Answered: ${Object.keys(studentAnswers).length}/${items.length}`;
+
+    const container = document.getElementById("liveAnswersContainer");
+    if (items.length === 0) {
+        container.innerHTML = `<p style="text-align:center; color:#64748b;">No questions in this quiz.</p>`;
+    } else {
+        container.innerHTML = items.map((item, idx) => {
+            const ans = studentAnswers[idx];
+            const hasAnswer = ans !== undefined && ans !== null && ans.value !== undefined && ans.value !== '';
+            const ansVal = hasAnswer ? (ans.text || ans.value) : '<em style="color:#94a3b8;">No response yet</em>';
+
+            return `
+                <div style="border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; background: ${hasAnswer ? '#f8fafc' : '#ffffff'};">
+                    <div style="font-weight: 700; color: #0f172a; font-size: 13.5px; margin-bottom: 6px;">
+                        Q${idx + 1}: ${escapeHtml(item.prompt || item.question || item.text || 'Question')}
+                    </div>
+                    <div style="font-size: 12.5px; padding: 8px 12px; border-radius: 6px; background: #ffffff; border: 1px solid #cbd5e1; color: ${hasAnswer ? '#0f172a' : '#64748b'};">
+                        <strong style="font-size: 11px; text-transform: uppercase; color: #64748b; display: block; margin-bottom: 2px;">Student Live Response:</strong>
+                        ${hasAnswer ? escapeHtml(String(ansVal)) : ansVal}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+};
+
+window.closeLiveAnswersModal = function() {
+    const modal = document.getElementById("liveQuizAnswersModal");
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+    }
+};
 
 // 6. Delete Past Quiz (Clears quiz_results, exam_scores, and quizzes by title)
 async function deletePastQuiz(quizTitle) {
@@ -7548,7 +8003,8 @@ async function saveQuiz() {
         closeQuizBuilder();
         document.getElementById('quizBlocksContainer').innerHTML = "";
         document.getElementById('quizTitle').value = "";
-        loadQuizzesTable();
+        invalidateQuizzesCache();
+        await loadQuizzesTable(true);
     } catch (e) {
         alert("Error saving quiz: " + e.message);
     }
@@ -11274,3 +11730,530 @@ document.getElementById('attStudentWatchlistTable')?.addEventListener('click', e
     }).join('') || '<p>No attendance records available for this student.</p>';
     studentAttendanceDialog.showModal();
 });
+
+// ==========================================
+// QUIZ DOCUMENT AUTO-IMPORT & PARSER (DOCX, PDF, DOC, TXT)
+// ==========================================
+
+let parsedQuizDocumentData = null;
+
+// 1. Trigger File Selection
+window.triggerQuizDocUpload = function () {
+    const fileInput = document.getElementById('quizDocxFileInput');
+    if (fileInput) {
+        fileInput.value = ''; // reset so same file can be re-selected if needed
+        fileInput.click();
+    }
+};
+
+// 2. Handle File Input Change
+window.handleQuizDocFileSelect = async function (event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const modal = document.getElementById('quizDocImportModal');
+    const metaEl = document.getElementById('quizDocImportMeta');
+    const previewList = document.getElementById('docQuestionsPreviewList');
+    const confirmBtn = document.getElementById('btnConfirmInsertParsedQuiz');
+
+    if (modal) modal.style.display = 'flex';
+    if (metaEl) metaEl.textContent = `Reading ${file.name} (${(file.size / 1024).toFixed(1)} KB)...`;
+    if (previewList) previewList.innerHTML = `<div style="text-align: center; padding: 25px; color: #64748b;"><i style="display:inline-block; width: 20px; height: 20px; border: 2px solid #cbd5e1; border-top-color: #673ab7; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 8px;"></i><p>Extracting text and analyzing question structures...</p></div>`;
+    if (confirmBtn) confirmBtn.disabled = true;
+
+    try {
+        let rawText = '';
+        const fileNameLower = file.name.toLowerCase();
+
+        if (fileNameLower.endsWith('.docx')) {
+            rawText = await extractTextFromDocx(file);
+        } else if (fileNameLower.endsWith('.pdf')) {
+            rawText = await extractTextFromPdf(file);
+        } else if (fileNameLower.endsWith('.txt') || fileNameLower.endsWith('.doc')) {
+            // Text or basic doc text fallback
+            rawText = await extractTextFromPlainText(file);
+        } else {
+            throw new Error("Unsupported file format. Please upload a .docx, .pdf, or .txt file.");
+        }
+
+        if (!rawText || !rawText.trim()) {
+            throw new Error("No readable text could be extracted from this document. It may be scanned or empty.");
+        }
+
+        // Analyze and parse text into questions
+        parsedQuizDocumentData = analyzeAndParseQuizDocument(rawText, file.name);
+
+        renderParsedQuizPreview(parsedQuizDocumentData, file.name);
+        if (confirmBtn) confirmBtn.disabled = false;
+    } catch (err) {
+        console.error("Quiz Document Import Error:", err);
+        if (metaEl) metaEl.textContent = `Error reading file: ${err.message}`;
+        if (previewList) {
+            previewList.innerHTML = `<div style="padding: 20px; text-align: center; color: #ef4444; background: #fef2f2; border-radius: 8px; border: 1px solid #fca5a5;"><strong>Analysis Failed</strong><p style="margin: 6px 0 0; font-size: 13px;">${escapeHtml(err.message)}</p></div>`;
+        }
+    }
+};
+
+// 3. Extract text from .docx using Mammoth.js
+async function extractTextFromDocx(file) {
+    if (typeof mammoth === 'undefined') {
+        throw new Error("Mammoth.js library is not loaded. Please ensure you are connected to the internet.");
+    }
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+    return result.value || '';
+}
+
+// 4. Extract text from .pdf using PDF.js
+async function extractTextFromPdf(file) {
+    if (typeof pdfjsLib === 'undefined') {
+        throw new Error("PDF.js library is not loaded. Please ensure you are connected to the internet.");
+    }
+    const arrayBuffer = await file.arrayBuffer();
+    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+    const pdf = await loadingTask.promise;
+
+    let fullText = '';
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        let lastY = null;
+        let pageText = '';
+
+        for (const item of textContent.items) {
+            if (lastY !== null && Math.abs(item.transform[5] - lastY) > 5) {
+                pageText += '\n';
+            }
+            pageText += item.str + ' ';
+            lastY = item.transform[5];
+        }
+        fullText += pageText + '\n\n';
+    }
+    return fullText;
+}
+
+// 5. Extract text from plain text or .doc fallback
+function extractTextFromPlainText(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result || '');
+        reader.onerror = () => reject(new Error("Failed to read text file"));
+        reader.readAsText(file);
+    });
+}
+
+// 6. Intelligent Quiz Parsing Heuristic Engine
+function analyzeAndParseQuizDocument(rawText, fileName) {
+    const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+    // Heuristic Quiz Title: Check first 3 lines or use file name without extension
+    let detectedTitle = fileName.replace(/\.[^/.]+$/, "").replace(/[-_]/g, ' ');
+    if (lines.length > 0) {
+        const firstLine = lines[0];
+        if (firstLine.length > 3 && firstLine.length < 90 && !firstLine.match(/^\d+[\.\)]/i) && !firstLine.match(/^(name|class|date|student):/i)) {
+            detectedTitle = firstLine;
+        }
+    }
+
+    // Question number pattern: e.g. "1.", "1)", "Question 1:", "Q1.", "[1]"
+    const questionNumberRegex = /^(?:Question\s*|Q\s*)?(\d{1,3})[\.\)\:\-]\s*(.*)$/i;
+
+    // MCQ option pattern: e.g. "A.", "A)", "(A)", "[A]", "a."
+    const optionRegex = /^(?:\(?([A-Ea-e])[\.\)]|\[([A-Ea-e])\])\s*(.+)$/;
+
+    // Inline option pattern: e.g. "A. Cat B. Dog C. Fish D. Bird"
+    const inlineOptionRegex = /(?:^|\s+)([A-Ea-e])[\.\)]\s+([^\n\r]+?)(?=(?:\s+[A-Ea-e][\.\)]\s+|$))/g;
+
+    // Answer Key marker: e.g. "Answer: B", "Ans: B", "Key: B", "Answer Key"
+    const answerMarkerRegex = /^(?:Answer|Ans|Key|Correct(?:\s*Answer)?)\s*[:\-\.]\s*([A-Ea-e0-9\w\s,]+)/i;
+
+    // Passage marker: e.g. "Read the following passage...", "Passage 1:", "Reading Comprehension"
+    const passageMarkerRegex = /^(?:Read (?:the )?(?:following|text|passage|story)|Passage\s*(?:\d+)?\:|Reading Comprehension)/i;
+
+    const items = [];
+    let currentItem = null;
+    let globalAnswerKeys = {}; // maps question number (1-based) to answer string
+
+    // Phase 1: Pre-scan for trailing Answer Key section at the bottom (e.g., "Answer Key: 1. A 2. B 3. C")
+    let inAnswerKeySection = false;
+    const cleanedLines = [];
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.match(/^Answer Key/i) || line.match(/^Kunci Jawaban/i)) {
+            inAnswerKeySection = true;
+            continue;
+        }
+        if (inAnswerKeySection) {
+            // Parse patterns like "1. A", "1:B", "1.A, 2.B"
+            const matches = line.matchAll(/(\d{1,3})\s*[\.\:\-]?\s*([A-Ea-e])/g);
+            for (const match of matches) {
+                globalAnswerKeys[parseInt(match[1], 10)] = match[2].toUpperCase();
+            }
+        } else {
+            cleanedLines.push(line);
+        }
+    }
+
+    // Phase 2: Process document lines sequentially
+    for (let i = 0; i < cleanedLines.length; i++) {
+        const line = cleanedLines[i];
+
+        // 1. Check for Passage / Section Header
+        if (passageMarkerRegex.test(line) && !currentItem?.isPassageCollecting) {
+            if (currentItem) items.push(finalizeParsedItem(currentItem, items.length + 1, globalAnswerKeys));
+            currentItem = {
+                type: 'passage',
+                title: line,
+                textLines: [],
+                isPassageCollecting: true
+            };
+            continue;
+        }
+
+        // If currently collecting passage text
+        if (currentItem?.isPassageCollecting) {
+            // Passage ends when a numbered question is encountered
+            if (questionNumberRegex.test(line)) {
+                currentItem.isPassageCollecting = false;
+                items.push(finalizeParsedItem(currentItem, items.length + 1, globalAnswerKeys));
+                currentItem = null;
+                // fall through to process question
+            } else {
+                currentItem.textLines.push(line);
+                continue;
+            }
+        }
+
+        // 2. Check for Single Line Inline Answer Key (e.g. "Ans: B" or "Answer: Paris")
+        const answerMatch = line.match(answerMarkerRegex);
+        if (answerMatch && currentItem) {
+            currentItem.explicitAnswer = answerMatch[1].trim();
+            continue;
+        }
+
+        // 3. Check for New Question Number
+        const qMatch = line.match(questionNumberRegex);
+        if (qMatch) {
+            // Commit previous question
+            if (currentItem) {
+                items.push(finalizeParsedItem(currentItem, items.length + 1, globalAnswerKeys));
+            }
+            const qNum = parseInt(qMatch[1], 10);
+            const qPrompt = qMatch[2].trim();
+            currentItem = {
+                num: qNum,
+                prompt: qPrompt,
+                options: [],
+                type: 'mcq', // default candidate, can be converted to fill or essay
+                lines: []
+            };
+            continue;
+        }
+
+        // 4. Check for MCQ Options (A, B, C, D)
+        const optMatch = line.match(optionRegex);
+        if (optMatch && currentItem) {
+            const letter = (optMatch[1] || optMatch[2]).toUpperCase();
+            const optText = optMatch[3].trim();
+            currentItem.options.push({ letter, text: optText });
+            continue;
+        }
+
+        // 5. Check for Multiple Options on a single line (e.g. "A. Apple   B. Banana   C. Cherry   D. Date")
+        if (currentItem && (line.includes('A.') || line.includes('A)') || line.includes('a.'))) {
+            const inlineMatches = [...line.matchAll(inlineOptionRegex)];
+            if (inlineMatches.length >= 2) {
+                inlineMatches.forEach(m => {
+                    currentItem.options.push({
+                        letter: m[1].toUpperCase(),
+                        text: m[2].trim()
+                    });
+                });
+                continue;
+            }
+        }
+
+        // 6. Otherwise, append line to the active question prompt or description
+        if (currentItem) {
+            if (currentItem.options.length === 0) {
+                currentItem.prompt = (currentItem.prompt ? currentItem.prompt + ' ' : '') + line;
+            } else {
+                // Continuation of last option
+                const lastOpt = currentItem.options[currentItem.options.length - 1];
+                lastOpt.text += ' ' + line;
+            }
+        }
+    }
+
+    // Finalize last pending item
+    if (currentItem) {
+        items.push(finalizeParsedItem(currentItem, items.length + 1, globalAnswerKeys));
+    }
+
+    return {
+        title: detectedTitle,
+        items: items
+    };
+}
+
+// Helper: Finalize question classification and correct answer
+function finalizeParsedItem(rawItem, fallbackIndex, globalAnswerKeys) {
+    if (rawItem.type === 'passage') {
+        return {
+            type: 'passage',
+            prompt: rawItem.title || 'Reading Passage',
+            description: (rawItem.textLines || []).join('\n\n'),
+            points: 0
+        };
+    }
+
+    const qNum = rawItem.num || fallbackIndex;
+    let type = 'mcq';
+    let options = (rawItem.options || []).map(o => o.text);
+    let correct = 0;
+    let answers = [];
+
+    // Determine correct answer from explicitAnswer or globalAnswerKeys
+    let foundKeyLetter = '';
+    if (rawItem.explicitAnswer) {
+        foundKeyLetter = rawItem.explicitAnswer.trim().toUpperCase().charAt(0);
+    } else if (globalAnswerKeys[qNum]) {
+        foundKeyLetter = globalAnswerKeys[qNum].trim().toUpperCase().charAt(0);
+    }
+
+    if (rawItem.options && rawItem.options.length >= 2) {
+        type = 'mcq';
+        // Map letter (A, B, C, D) to option index (0, 1, 2, 3)
+        if (foundKeyLetter) {
+            const letterCode = foundKeyLetter.charCodeAt(0) - 65; // 'A' -> 0, 'B' -> 1
+            if (letterCode >= 0 && letterCode < options.length) {
+                correct = letterCode;
+            }
+        }
+    } else {
+        // No options found: is it Fill-in-the-blank or Essay?
+        const prompt = rawItem.prompt || '';
+        if (prompt.includes('___') || prompt.includes('....') || prompt.match(/\([_\s]{3,}\)/)) {
+            type = 'fill';
+            if (rawItem.explicitAnswer) {
+                answers = [rawItem.explicitAnswer];
+            }
+        } else {
+            type = 'essay';
+        }
+    }
+
+    return {
+        type: type,
+        prompt: rawItem.prompt || `Question ${qNum}`,
+        options: options.length > 0 ? options : ['Option 1', 'Option 2', 'Option 3', 'Option 4'],
+        correct: correct,
+        answers: answers,
+        points: 1
+    };
+}
+
+// 7. Render Preview inside Modal
+function renderParsedQuizPreview(parsedQuiz, fileName) {
+    const metaEl = document.getElementById('quizDocImportMeta');
+    const titleInput = document.getElementById('docParsedQuizTitle');
+    const previewList = document.getElementById('docQuestionsPreviewList');
+    const previewCountBadge = document.getElementById('docPreviewCountBadge');
+
+    if (titleInput) titleInput.value = parsedQuiz.title || "Uploaded Quiz";
+
+    let countMcq = 0, countFill = 0, countEssay = 0, countPassage = 0;
+    parsedQuiz.items.forEach(item => {
+        if (item.type === 'mcq') countMcq++;
+        else if (item.type === 'fill') countFill++;
+        else if (item.type === 'essay') countEssay++;
+        else if (item.type === 'passage') countPassage++;
+    });
+
+    const totalQuestions = parsedQuiz.items.length;
+    document.getElementById('docStatTotal').textContent = totalQuestions;
+    document.getElementById('docStatMcq').textContent = countMcq;
+    document.getElementById('docStatFill').textContent = countFill;
+    document.getElementById('docStatEssay').textContent = countEssay;
+    document.getElementById('docStatPassage').textContent = countPassage;
+
+    if (metaEl) {
+        metaEl.textContent = `Analyzed ${fileName} · Found ${totalQuestions} items`;
+    }
+    if (previewCountBadge) {
+        previewCountBadge.textContent = `${totalQuestions} items parsed`;
+    }
+
+    if (!previewList) return;
+    previewList.innerHTML = '';
+
+    if (parsedQuiz.items.length === 0) {
+        previewList.innerHTML = `<div style="padding: 20px; text-align: center; color: #64748b;">No questions detected. Please verify your document uses standard numbering (e.g. 1. Question... A. Option).</div>`;
+        return;
+    }
+
+    parsedQuiz.items.forEach((item, idx) => {
+        const card = document.createElement('div');
+        card.className = 'doc-preview-card';
+
+        let badgeClass = 'badge-mcq';
+        let badgeLabel = 'Multiple Choice';
+        if (item.type === 'fill') { badgeClass = 'badge-fill'; badgeLabel = 'Fill in Blank'; }
+        else if (item.type === 'essay') { badgeClass = 'badge-essay'; badgeLabel = 'Essay'; }
+        else if (item.type === 'passage') { badgeClass = 'badge-passage'; badgeLabel = 'Reading Passage'; }
+
+        let detailsHtml = '';
+        if (item.type === 'mcq') {
+            const letterLabels = ['A', 'B', 'C', 'D', 'E', 'F'];
+            detailsHtml = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px; margin-top: 4px; font-size: 12.5px;">
+                    ${item.options.map((opt, i) => `
+                        <div style="padding: 4px 8px; border-radius: 4px; ${i === item.correct ? 'background: #dcfce7; font-weight: 700; color: #166534; border: 1px solid #86efac;' : 'background: #f8fafc; color: #475569;'}">
+                            ${letterLabels[i] || i + 1}. ${escapeHtml(opt)} ${i === item.correct ? '✓ (Correct)' : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } else if (item.type === 'fill') {
+            detailsHtml = `<div style="font-size: 12.5px; color: #1e40af; margin-top: 2px;">Accepted Answers: <strong>${escapeHtml(item.answers?.join(', ') || 'Teacher to verify')}</strong></div>`;
+        } else if (item.type === 'passage') {
+            detailsHtml = `<div style="font-size: 12px; color: #64748b; margin-top: 2px; max-height: 48px; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(item.description || '').substring(0, 150)}...</div>`;
+        }
+
+        card.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-weight: 800; font-size: 13px; color: #334155;">#${idx + 1}</span>
+                    <span class="badge ${badgeClass}">${badgeLabel}</span>
+                </div>
+                <span style="font-size: 12px; color: #94a3b8; font-weight: 600;">1 pt</span>
+            </div>
+            <div style="font-size: 13.5px; font-weight: 600; color: #0f172a; line-height: 1.4;">${escapeHtml(item.prompt)}</div>
+            ${detailsHtml}
+        `;
+        previewList.appendChild(card);
+    });
+}
+
+// 8. Close Modal
+window.closeQuizDocImportModal = function () {
+    const modal = document.getElementById('quizDocImportModal');
+    if (modal) modal.style.display = 'none';
+};
+
+// 9. Confirm and Insert Parsed Quiz into Interactive Builder
+window.confirmInsertParsedQuiz = function () {
+    if (!parsedQuizDocumentData || !parsedQuizDocumentData.items || parsedQuizDocumentData.items.length === 0) {
+        alert("No parsed questions to insert.");
+        return;
+    }
+
+    const titleInput = document.getElementById('docParsedQuizTitle');
+    const defaultPointsInput = document.getElementById('docDefaultPoints');
+    const modeRadio = document.querySelector('input[name="docImportMode"]:checked');
+
+    const finalTitle = titleInput?.value.trim() || parsedQuizDocumentData.title || "Imported Quiz";
+    const defaultPoints = parseInt(defaultPointsInput?.value, 10) || 1;
+    const mode = modeRadio ? modeRadio.value : 'replace';
+
+    // Set Quiz Titles
+    const quizTitleInput = document.getElementById('quizTitle');
+    const mainTitleDiv = document.getElementById('gform-main-title');
+    const displayQuizTitle = document.getElementById('displayQuizTitle');
+
+    if (mode === 'replace' || !quizTitleInput?.value || quizTitleInput.value === 'Untitled Quiz') {
+        if (quizTitleInput) quizTitleInput.value = finalTitle;
+        if (mainTitleDiv) mainTitleDiv.innerText = finalTitle;
+        if (displayQuizTitle) displayQuizTitle.innerText = finalTitle;
+    }
+
+    const container = document.getElementById('quizBlocksContainer');
+    if (!container) return;
+
+    if (mode === 'replace') {
+        container.innerHTML = '';
+    }
+
+    let firstCreatedBlock = null;
+
+    parsedQuizDocumentData.items.forEach((item, index) => {
+        const type = item.type || 'mcq';
+        const block = addBlock(type);
+        if (!firstCreatedBlock) firstCreatedBlock = block;
+
+        const points = item.points || defaultPoints;
+
+        if (type === 'passage') {
+            const promptNode = block.querySelector('.blk-prompt');
+            const descNode = block.querySelector('.blk-desc');
+            if (promptNode) promptNode.innerText = item.prompt || 'Reading Passage';
+            if (descNode) descNode.innerText = item.description || '';
+
+        } else if (type === 'mcq') {
+            const promptNode = block.querySelector('.blk-prompt');
+            if (promptNode) promptNode.innerText = item.prompt || '';
+
+            const pointsInput = block.querySelector('.blk-points');
+            if (pointsInput) pointsInput.value = points;
+
+            // Populate options
+            const optionsContainer = block.querySelector('.options-container');
+            if (optionsContainer && item.options && item.options.length > 0) {
+                optionsContainer.innerHTML = '';
+                const blockId = block.dataset.blockId || ('block_' + index);
+
+                item.options.forEach((optText, i) => {
+                    const newRow = document.createElement('div');
+                    newRow.className = 'gform-opt-row';
+                    const isChecked = item.correct === i ? 'checked' : '';
+                    newRow.innerHTML = `
+                        <input type="radio" name="${blockId}_correct" value="${i}" onchange="this.closest('.quiz-block').querySelector('.blk-correct').value = this.value" ${isChecked} title="Mark as correct answer">
+                        <input type="text" class="gform-opt-input blk-opt${i}" placeholder="Option ${i + 1}" value="${escapeHtml(optText)}" required>
+                        <button class="icon-btn delete" type="button" title="Remove Option" onclick="this.closest('.gform-opt-row').remove(); window.reindexMCQOptions(this.closest('.quiz-block'))">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    `;
+                    optionsContainer.appendChild(newRow);
+                });
+            }
+
+            const correctInput = block.querySelector('.blk-correct');
+            if (correctInput) correctInput.value = item.correct ?? 0;
+
+        } else if (type === 'fill') {
+            const promptNode = block.querySelector('.blk-prompt');
+            if (promptNode) promptNode.innerText = item.prompt || '';
+
+            const pointsInput = block.querySelector('.blk-points');
+            if (pointsInput) pointsInput.value = points;
+
+            const answerInput = block.querySelector('.blk-answer');
+            if (answerInput && item.answers && item.answers.length > 0) {
+                answerInput.value = item.answers.join(', ');
+            }
+
+        } else if (type === 'essay') {
+            const promptNode = block.querySelector('.blk-prompt');
+            if (promptNode) promptNode.innerText = item.prompt || '';
+
+            const pointsInput = block.querySelector('.blk-points');
+            if (pointsInput) pointsInput.value = points;
+        }
+    });
+
+    closeQuizDocImportModal();
+
+    if (firstCreatedBlock) {
+        activateCard(firstCreatedBlock);
+        firstCreatedBlock.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // Display subtle toast notification
+    if (typeof showActionNotification === 'function') {
+        showActionNotification(`Imported ${parsedQuizDocumentData.items.length} questions successfully!`, 'success');
+    } else {
+        alert(`Successfully imported ${parsedQuizDocumentData.items.length} questions into the quiz builder!`);
+    }
+};
+

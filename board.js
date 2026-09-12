@@ -656,7 +656,7 @@ function setupHubEventListeners() {
             localStorage.removeItem('studentCode');
             sessionStorage.removeItem('studentLoggedInSession');
             localStorage.removeItem('studentLoggedInSession');
-            sessionStorage.removeItem('studentTimelineSession');
+            localStorage.removeItem('portalSessionMeta'); localStorage.removeItem('portalRememberedStudent'); sessionStorage.removeItem('studentTimelineSession');
             localStorage.removeItem('studentTimelineSession');
             window.location.href = 'index.html';
         }

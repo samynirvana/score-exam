@@ -1,4 +1,4 @@
-import { doc, getDoc, getDocs, collection, addDoc, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { doc, getDoc, getDocs, collection, addDoc, deleteDoc, updateDoc, setDoc, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { db } from "./firebase.js";
 import { escapeHtml, triggerCelebration, attachRippleEffect } from "./utils.js";
 
@@ -31,7 +31,7 @@ themeToggleBtn?.addEventListener('click', () => {
 });
 
 document.getElementById('studentLogoutBtn')?.addEventListener('click', () => {
-    sessionStorage.removeItem('studentLoggedInSession');
+    localStorage.removeItem('portalSessionMeta'); localStorage.removeItem('portalRememberedStudent'); sessionStorage.removeItem('studentLoggedInSession');
     sessionStorage.removeItem('studentTimelineSession');
     window.location.href = 'index.html';
 });
@@ -142,8 +142,15 @@ async function initStudentQuizDashboard(code) {
             return;
         }
 
-        const data = snap.data();
-        currentStudent = { code, ...data };
+        const data = snap.data() || {};
+        const normalizedCode = String(code || data.studentCode || data.code || '').trim().toUpperCase();
+        currentStudent = { 
+            ...data,
+            code: normalizedCode,
+            studentCode: normalizedCode,
+            studentName: data.studentName || data.name || 'Student',
+            studentClass: data.studentClass || data.class || 'Unassigned'
+        };
 
         // Check sessionStorage cache for photo if not in current doc
         let cachedPhoto = '';
@@ -640,8 +647,18 @@ document.getElementById('studentQuizModal')?.addEventListener('click', (e) => {
     }
 });
 
-// --- START SELECTED QUIZ ---
-function startQuizById(quizId) {
+// ==========================================
+// LIVE QUIZ STUDENT ENGINE & ANTI-CHEAT
+// ==========================================
+let activeLiveSessionUnsubscribe = null;
+let activeLiveQuizData = null;
+let liveStudentAnswers = {};
+let liveWarningCount = 0;
+let liveStudentTimerInterval = null;
+let livePresenceInterval = null;
+
+// --- START SELECTED QUIZ (SUPPORTS LIVE QUIZ & REGULAR QUIZ) ---
+async function startQuizById(quizId) {
     if (!quizId || !availableQuizzesMap[quizId]) {
         alert("Please choose a valid quiz.");
         return;
@@ -655,18 +672,365 @@ function startQuizById(quizId) {
 
     activeQuiz = targetQuiz;
 
-    // Hide modals and dashboard, show assessment form
+    // Check if there is an active Live Quiz session for this quiz
+    try {
+        const liveDocRef = doc(db, "live_quizzes", quizId);
+        const liveSnap = await getDoc(liveDocRef);
+
+        if (liveSnap.exists()) {
+            const liveData = liveSnap.data();
+            // If live session is waiting or in progress, join live flow
+            if (liveData.status === 'waiting' || liveData.status === 'in_progress') {
+                joinLiveQuizSession(quizId, targetQuiz, liveData);
+                return;
+            }
+        }
+    } catch (err) {
+        console.warn("Error checking live quiz session, defaulting to normal quiz:", err);
+    }
+
+    // Standard Non-Live Quiz Flow
     document.getElementById('studentQuizModal')?.classList.add('hidden');
     document.getElementById('quizDashboardSection')?.classList.add('hidden');
+    document.getElementById('liveQuizStudentHeaderBar')?.classList.add('hidden');
     document.getElementById('takeQuizSection')?.classList.remove('hidden');
 
     renderQuizForm(activeQuiz);
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+// Join Live Quiz Waiting Room or In-Progress Live Quiz
+async function joinLiveQuizSession(quizId, targetQuiz, initialLiveData) {
+    document.getElementById('studentQuizModal')?.classList.add('hidden');
+    document.getElementById('quizDashboardSection')?.classList.add('hidden');
+
+    activeLiveQuizData = initialLiveData;
+    liveStudentAnswers = {};
+    liveWarningCount = 0;
+
+    // Register presence in live_quizzes/{quizId}/participants/{studentCode}
+    const resolvedStudentCode = String(currentStudent?.code || currentStudent?.studentCode || currentStudent?.id || '').trim().toUpperCase();
+    if (!resolvedStudentCode) {
+        console.error("No valid studentCode found on currentStudent:", currentStudent);
+        return;
+    }
+
+    const participantRef = doc(db, "live_quizzes", quizId, "participants", resolvedStudentCode);
+    const studentDisplayName = currentStudent.studentName || currentStudent.name || 'Student';
+    const studentDisplayClass = currentStudent.studentClass || currentStudent.class || '-';
+    
+    // Check if resuming existing answers
+    try {
+        const pSnap = await getDoc(participantRef);
+        if (pSnap.exists()) {
+            const existingData = pSnap.data();
+            liveStudentAnswers = existingData.answers || {};
+            liveWarningCount = (existingData.warnings || []).length;
+        }
+
+        await setDoc(participantRef, {
+            studentCode: resolvedStudentCode,
+            studentName: studentDisplayName,
+            studentClass: studentDisplayClass,
+            connected: true,
+            lastPing: Date.now(),
+            answers: liveStudentAnswers,
+            warnings: pSnap.exists() ? (pSnap.data().warnings || []) : [],
+            submitted: false
+        }, { merge: true });
+        console.log(`[LiveQuiz] Successfully registered presence for student: ${resolvedStudentCode} in quiz: ${quizId}`);
+    } catch (e) {
+        console.error("Error setting participant presence:", e);
+        showAntiCheatToast("⚠️ Live presence note: " + (e.message || "Failed to register presence with teacher."));
+    }
+
+    // Heartbeat presence every 10 seconds with full identity so connection never drops
+    if (livePresenceInterval) clearInterval(livePresenceInterval);
+    livePresenceInterval = setInterval(async () => {
+        try {
+            await setDoc(participantRef, {
+                studentCode: resolvedStudentCode,
+                studentName: studentDisplayName,
+                studentClass: studentDisplayClass,
+                connected: true,
+                lastPing: Date.now()
+            }, { merge: true });
+        } catch (e) {
+            console.warn("[LiveQuiz] Heartbeat failed:", e);
+        }
+    }, 10000);
+
+    // Update connection status when closing or hiding window
+    const handleExitPresence = () => {
+        try {
+            setDoc(participantRef, {
+                connected: false,
+                lastPing: Date.now()
+            }, { merge: true });
+        } catch (e) {}
+    };
+    window.addEventListener('beforeunload', handleExitPresence, { once: true });
+
+    // If waiting, show Waiting Room
+    if (initialLiveData.status === 'waiting') {
+        const waitingModal = document.getElementById('liveQuizWaitingModal');
+        document.getElementById('liveWaitingTitle').innerText = targetQuiz.title || "Live Assessment";
+        document.getElementById('liveWaitingSubject').innerText = `Subject: ${targetQuiz.subject || 'General'}`;
+        document.getElementById('liveStartingCountdownBox')?.classList.add('hidden');
+        waitingModal.classList.remove('hidden');
+    } else if (initialLiveData.status === 'in_progress') {
+        startLiveQuizTaking(targetQuiz, initialLiveData);
+    }
+
+    // Subscribe to real-time changes of live_quizzes/{quizId}
+    if (activeLiveSessionUnsubscribe) activeLiveSessionUnsubscribe();
+    activeLiveSessionUnsubscribe = onSnapshot(doc(db, "live_quizzes", quizId), (docSnap) => {
+        if (!docSnap.exists()) return;
+        const liveState = docSnap.data();
+        activeLiveQuizData = liveState;
+
+        if (liveState.status === 'in_progress') {
+            const waitingModal = document.getElementById('liveQuizWaitingModal');
+            if (waitingModal && !waitingModal.classList.contains('hidden')) {
+                // Play countdown animation then unlock
+                const countdownBox = document.getElementById('liveStartingCountdownBox');
+                const countdownNum = document.getElementById('liveStartingCountdownNumber');
+                if (countdownBox && countdownNum) {
+                    countdownBox.classList.remove('hidden');
+                    let count = 3;
+                    countdownNum.innerText = count;
+                    const cInterval = setInterval(() => {
+                        count--;
+                        if (count > 0) {
+                            countdownNum.innerText = count;
+                        } else {
+                            clearInterval(cInterval);
+                            waitingModal.classList.add('hidden');
+                            startLiveQuizTaking(targetQuiz, liveState);
+                        }
+                    }, 800);
+                } else {
+                    waitingModal.classList.add('hidden');
+                    startLiveQuizTaking(targetQuiz, liveState);
+                }
+            } else {
+                updateStudentLiveTimer(liveState.endsAt);
+            }
+        } else if (liveState.status === 'ended') {
+            alert("The teacher has ended this Live Quiz session. Your assessment will now submit.");
+            document.getElementById('submitQuizBtn')?.click();
+        }
+    });
+}
+
+function startLiveQuizTaking(quiz, liveState) {
+    document.getElementById('takeQuizSection')?.classList.remove('hidden');
+    const headerBar = document.getElementById('liveQuizStudentHeaderBar');
+    if (headerBar) headerBar.classList.remove('hidden');
+
+    // Anti-cheat warning badge
+    const badge = document.getElementById('studentWarningBadge');
+    const countEl = document.getElementById('studentWarningCount');
+    if (badge && countEl) {
+        countEl.innerText = liveWarningCount;
+        badge.style.display = liveWarningCount > 0 ? 'inline-flex' : 'none';
+    }
+
+    // Setup Timer
+    updateStudentLiveTimer(liveState.endsAt);
+
+    // Render questions and restore any saved draft answers
+    renderQuizForm(quiz);
+    restoreLiveDraftAnswers();
+
+    // Attach Anti-Cheat listeners
+    setupAntiCheatEngine(quiz.id);
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function updateStudentLiveTimer(endsAtStr) {
+    const timerDisplay = document.getElementById('studentLiveTimerDisplay');
+    if (!timerDisplay) return;
+
+    if (liveStudentTimerInterval) clearInterval(liveStudentTimerInterval);
+
+    const endsAt = endsAtStr ? new Date(endsAtStr).getTime() : 0;
+    const tick = () => {
+        const now = Date.now();
+        const diff = Math.max(0, Math.floor((endsAt - now) / 1000));
+        const mins = String(Math.floor(diff / 60)).padStart(2, '0');
+        const secs = String(diff % 60).padStart(2, '0');
+        timerDisplay.innerText = `${mins}:${secs}`;
+        if (diff <= 0) {
+            timerDisplay.innerText = "00:00";
+            clearInterval(liveStudentTimerInterval);
+            alert("Time is up! Submitting your answers now.");
+            document.getElementById('submitQuizBtn')?.click();
+        }
+    };
+    tick();
+    liveStudentTimerInterval = setInterval(tick, 1000);
+}
+
+// Restore Draft Answers from liveStudentAnswers or localStorage
+function restoreLiveDraftAnswers() {
+    const form = document.getElementById('quizForm');
+    if (!form || !liveStudentAnswers) return;
+
+    Object.keys(liveStudentAnswers).forEach(idx => {
+        const itemAns = liveStudentAnswers[idx];
+        if (!itemAns) return;
+
+        // MCQ radio
+        const radio = form.querySelector(`input[name="item_${idx}"][value="${itemAns.value}"]`);
+        if (radio) radio.checked = true;
+
+        // Fill / Essay
+        const textInput = form.querySelector(`textarea[name="item_${idx}"], input[name="item_${idx}"]`);
+        if (textInput && itemAns.value !== undefined) {
+            textInput.value = itemAns.value;
+            if (window.autoResizeInput) window.autoResizeInput(textInput);
+        }
+
+        // Matching dropdowns
+        if (itemAns.matches && typeof itemAns.matches === 'object') {
+            Object.keys(itemAns.matches).forEach(lIdx => {
+                const select = form.querySelector(`select[name="item_${idx}_${lIdx}"]`);
+                if (select) select.value = itemAns.matches[lIdx];
+            });
+        }
+    });
+}
+
+// Autosave an answer change to Firestore participant record
+async function syncLiveAnswer(itemIdx, answerObj) {
+    if (!activeQuiz || !currentStudent || !activeLiveQuizData) return;
+    liveStudentAnswers[itemIdx] = answerObj;
+
+    try {
+        const studentCode = String(currentStudent.code || currentStudent.studentCode || currentStudent.id || '').trim().toUpperCase();
+        if (!studentCode) return;
+        const pRef = doc(db, "live_quizzes", activeQuiz.id, "participants", studentCode);
+        await updateDoc(pRef, {
+            answers: liveStudentAnswers,
+            lastUpdated: Date.now()
+        });
+    } catch (e) {
+        console.warn("Could not sync live answer:", e);
+    }
+}
+
+// --- ANTI-CHEAT MONITORING ENGINE ---
+let antiCheatAttached = false;
+function setupAntiCheatEngine(quizId) {
+    if (antiCheatAttached) return;
+    antiCheatAttached = true;
+
+    const recordInfraction = async (type, details) => {
+        if (!activeQuiz || !currentStudent) return;
+        liveWarningCount++;
+
+        const badge = document.getElementById('studentWarningBadge');
+        const countEl = document.getElementById('studentWarningCount');
+        if (badge && countEl) {
+            countEl.innerText = liveWarningCount;
+            badge.style.display = 'inline-flex';
+        }
+
+        // Alert student
+        showAntiCheatToast(`⚠️ Warning: Leaving the quiz tab is recorded and visible to your teacher!`);
+
+        // Send to Firestore
+        try {
+            const studentCode = String(currentStudent.code || currentStudent.studentCode || currentStudent.id || '').trim().toUpperCase();
+            if (!studentCode) return;
+            const pRef = doc(db, "live_quizzes", quizId, "participants", studentCode);
+            const snap = await getDoc(pRef);
+            const currentWarns = snap.exists() ? (snap.data().warnings || []) : [];
+            currentWarns.push({
+                type: type,
+                details: details,
+                timestamp: Date.now()
+            });
+
+            await updateDoc(pRef, {
+                warnings: currentWarns
+            });
+        } catch (e) {
+            console.warn("Error logging anti-cheat event:", e);
+        }
+    };
+
+    // 1. Tab switch or window minimized
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden && activeQuiz && document.getElementById('takeQuizSection') && !document.getElementById('takeQuizSection').classList.contains('hidden')) {
+            recordInfraction('tab_switch', 'Switched to another tab or minimized window');
+        }
+    });
+
+    // 2. Window blur (click outside browser / split screen)
+    window.addEventListener('blur', () => {
+        if (activeQuiz && document.getElementById('takeQuizSection') && !document.getElementById('takeQuizSection').classList.contains('hidden')) {
+            recordInfraction('window_blur', 'Window lost focus (clicked outside browser)');
+        }
+    });
+}
+
+function showAntiCheatToast(msg) {
+    let toast = document.getElementById('antiCheatStudentToast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'antiCheatStudentToast';
+        toast.style.cssText = 'position:fixed; top:20px; right:20px; background:#ef4444; color:#fff; padding:12px 20px; border-radius:10px; font-weight:700; font-size:13px; z-index:9999; box-shadow:0 10px 25px rgba(239,68,68,0.4); display:none; transition:all 0.3s ease;';
+        document.body.appendChild(toast);
+    }
+    toast.innerText = msg;
+    toast.style.display = 'block';
+    setTimeout(() => {
+        if (toast) toast.style.display = 'none';
+    }, 4000);
+}
+
+// Exit Waiting Room Handler
+document.getElementById('exitLiveWaitingBtn')?.addEventListener('click', async () => {
+    document.getElementById('liveQuizWaitingModal')?.classList.add('hidden');
+    document.getElementById('quizDashboardSection')?.classList.remove('hidden');
+
+    if (activeQuiz && currentStudent) {
+        const studentCode = String(currentStudent.code || currentStudent.studentCode || currentStudent.id || '').trim().toUpperCase();
+        if (studentCode) {
+            try {
+                await setDoc(doc(db, "live_quizzes", activeQuiz.id, "participants", studentCode), {
+                    connected: false
+                }, { merge: true });
+            } catch (e) {}
+        }
+    }
+
+    if (activeLiveSessionUnsubscribe) activeLiveSessionUnsubscribe();
+    if (livePresenceInterval) clearInterval(livePresenceInterval);
+    activeQuiz = null;
+});
+
 // Cancel / Exit Active Quiz
-document.getElementById('cancelQuizBtn')?.addEventListener('click', () => {
-    if (confirm("Are you sure you want to exit? Your answers for this assessment will not be saved.")) {
+document.getElementById('cancelQuizBtn')?.addEventListener('click', async () => {
+    if (confirm("Are you sure you want to exit? Your answers will be submitted.")) {
+        if (activeQuiz && currentStudent && activeLiveQuizData) {
+            const studentCode = String(currentStudent.code || currentStudent.studentCode || currentStudent.id || '').trim().toUpperCase();
+            if (studentCode) {
+                try {
+                    await setDoc(doc(db, "live_quizzes", activeQuiz.id, "participants", studentCode), {
+                        connected: false
+                    }, { merge: true });
+                } catch (e) {}
+            }
+        }
+        if (activeLiveSessionUnsubscribe) activeLiveSessionUnsubscribe();
+        if (livePresenceInterval) clearInterval(livePresenceInterval);
+        if (liveStudentTimerInterval) clearInterval(liveStudentTimerInterval);
+
+        document.getElementById('liveQuizStudentHeaderBar')?.classList.add('hidden');
         document.getElementById('takeQuizSection')?.classList.add('hidden');
         document.getElementById('quizDashboardSection')?.classList.remove('hidden');
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -809,6 +1173,40 @@ function renderQuizForm(quiz) {
         }
 
         form.appendChild(div);
+
+        // Attach Real-Time Answer Autosync Listeners
+        if (item.type === 'mcq' || (!item.type && item.question)) {
+            div.querySelectorAll(`input[name="item_${idx}"]`).forEach(radio => {
+                radio.addEventListener('change', () => {
+                    const chosenIdx = parseInt(radio.value, 10);
+                    const chosenText = (item.options && item.options[chosenIdx]) || '';
+                    syncLiveAnswer(idx, { value: chosenIdx, text: chosenText });
+                });
+            });
+        } else if (item.type === 'fill' || item.type === 'essay') {
+            const input = div.querySelector(`[name="item_${idx}"]`);
+            if (input) {
+                let debounceSync = null;
+                input.addEventListener('input', () => {
+                    clearTimeout(debounceSync);
+                    debounceSync = setTimeout(() => {
+                        syncLiveAnswer(idx, { value: input.value.trim(), text: input.value.trim() });
+                    }, 400);
+                });
+            }
+        } else if (item.type === 'matching') {
+            div.querySelectorAll(`select[name^="item_${idx}_"]`).forEach(select => {
+                select.addEventListener('change', () => {
+                    const matches = {};
+                    (item.lefts || []).forEach((left, lIdx) => {
+                        const sel = form.querySelector(`select[name="item_${idx}_${lIdx}"]`);
+                        if (sel && sel.value) matches[lIdx] = sel.value;
+                    });
+                    const summary = Object.keys(matches).map(k => `${(item.lefts || [])[k]} → ${matches[k]}`).join(', ');
+                    syncLiveAnswer(idx, { matches: matches, text: summary });
+                });
+            });
+        }
     });
 
     document.getElementById('takeQuizSection').classList.remove('hidden');
@@ -906,6 +1304,27 @@ document.getElementById('submitQuizBtn')?.addEventListener('click', async (e) =>
             responses: studentResponses,
             submittedAt: new Date().toISOString()
         });
+
+        // If this was a live quiz session, update the participant doc in Firestore
+        if (activeLiveQuizData && activeQuiz.id) {
+            try {
+                const studentCode = String(currentStudent.code || currentStudent.studentCode || currentStudent.id || '').trim().toUpperCase();
+                if (studentCode) {
+                    await setDoc(doc(db, "live_quizzes", activeQuiz.id, "participants", studentCode), {
+                        submitted: true,
+                        score: score,
+                        submittedAt: new Date().toISOString()
+                    }, { merge: true });
+                }
+            } catch (e) {
+                console.warn("Could not update live participant submitted state:", e);
+            }
+        }
+
+        if (activeLiveSessionUnsubscribe) activeLiveSessionUnsubscribe();
+        if (livePresenceInterval) clearInterval(livePresenceInterval);
+        if (liveStudentTimerInterval) clearInterval(liveStudentTimerInterval);
+        document.getElementById('liveQuizStudentHeaderBar')?.classList.add('hidden');
 
         document.getElementById('takeQuizSection').classList.add('hidden');
         document.getElementById('scoreSummary').innerText = `You scored ${score} out of ${autoGradableCount} points!`;

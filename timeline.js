@@ -272,9 +272,7 @@ onAuthStateChanged(auth, async (user) => {
 
 async function initTimelineSession() {
     const savedSession = sessionStorage.getItem('studentLoggedInSession') 
-        || sessionStorage.getItem('studentTimelineSession')
-        || localStorage.getItem('studentLoggedInSession')
-        || localStorage.getItem('studentTimelineSession');
+        || sessionStorage.getItem('studentTimelineSession');
 
     if (savedSession) {
         try {
@@ -334,9 +332,7 @@ async function initTimelineSession() {
                 }
                 sessionStorage.setItem('studentTimelineSession', JSON.stringify(currentUser));
                 sessionStorage.setItem('studentLoggedInSession', JSON.stringify(currentUser));
-                localStorage.setItem('studentTimelineSession', JSON.stringify(currentUser));
-                localStorage.setItem('studentLoggedInSession', JSON.stringify(currentUser));
-                await showTimelineApp();
+                                await showTimelineApp();
                 return;
             }
         } catch (err) {
@@ -397,10 +393,7 @@ document.getElementById('loginBtn')?.addEventListener('click', async () => {
                 }
                 sessionStorage.setItem('studentTimelineSession', JSON.stringify(currentUser));
                 sessionStorage.setItem('studentLoggedInSession', JSON.stringify(currentUser));
-                localStorage.setItem('studentTimelineSession', JSON.stringify(currentUser));
-                localStorage.setItem('studentLoggedInSession', JSON.stringify(currentUser));
-                localStorage.setItem('loggedInStudentCode', code);
-                showTimelineApp();
+                                                showTimelineApp();
             } else {
                 alert("Student code not found in the directory.");
             }

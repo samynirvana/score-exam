@@ -4,6 +4,14 @@
 <head>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Document Extraction Libraries for Quiz Auto-Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        if (window.pdfjsLib) {
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+        }
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -13,9 +21,7 @@
     <title>Teacher Admin Dashboard</title>
     <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/1o_7O1hdx1SJOXfoFw9ZKxpl4zSOD_VYd">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="admin.css?v=429">
 </head>
 
@@ -2715,7 +2721,16 @@
                                 <button class="gform-tab active">Questions</button>
                                 <!-- Removed Responses and Settings tabs -->
                             </div>
-                            <div class="gform-header-right">
+                            <div class="gform-header-right" style="display: flex; align-items: center; gap: 10px;">
+                                <input type="file" id="quizDocxFileInput" accept=".docx,.pdf,.doc,.txt" style="display: none;" onchange="handleQuizDocFileSelect(event)">
+                                <button type="button" id="btnUploadQuizDoc" onclick="triggerQuizDocUpload()" class="gform-upload-btn" title="Auto-generate quiz questions from DOCX, PDF, or DOC">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="17 8 12 3 7 8"></polyline>
+                                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                                    </svg>
+                                    <span>Upload Quiz (DOCX/PDF)</span>
+                                </button>
                                 <button id="saveQuizBtn" class="gform-publish-btn">Publish</button>
                             </div>
                         </div>
@@ -4049,6 +4064,201 @@
                             style="font-size: 13px; font-weight: 700; color: var(--text-dark, #0f172a);">English,
                             ICT</span>
                     </div>
+                            <option value="">-- Select Subject --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label
+                        style="font-size: 12.5px; font-weight: 700; color: var(--text-dark); display: block; margin-bottom: 4px;">Target
+                        Class</label>
+                    <div class="multi-select-dropdown" id="editOfflineQuizClassDropdown"
+                        style="width: 100%; margin: 0;">
+                        <div class="multi-select-trigger"
+                            onclick="toggleMultiSelectDropdown('editOfflineQuizClassDropdown')">
+                            <span class="multi-select-label" id="editOfflineQuizClassLabel">-- Select Target Class
+                                --</span>
+                            <svg class="dropdown-arrow-icon" viewBox="0 0 24 24" width="16" height="16" fill="none"
+                                stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </div>
+                        <div class="multi-select-options" id="editOfflineQuizClassOptions">
+                            <!-- Injected dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" onclick="closeEditOfflineQuizModal()"
+                    style="background: #f1f5f9; color: var(--text-dark); border: 1px solid #cbd5e1; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-weight: 600;">Cancel</button>
+                <button type="button" id="saveEditOfflineQuizBtn" onclick="saveEditOfflineQuiz()"
+                    style="background: var(--primary-blue); color: white; border: none; padding: 10px 22px; border-radius: 8px; cursor: pointer; font-weight: 700;">Save
+                    Changes</button>
+            </div>
+        </div>
+    </div>
+    <!-- TEACHER / ADMIN EDIT PROFILE MODAL -->
+    <div id="teacherProfileModal" class="hidden" onclick="if(event.target === this) closeTeacherProfileModal()"
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.65); z-index: 2500; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(5px); padding: 16px; box-sizing: border-box;">
+        <div class="teacher-modal-card">
+            <!-- Close button -->
+            <button type="button" class="teacher-modal-close-btn" onclick="closeTeacherProfileModal()"
+                aria-label="Close modal">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px;">
+                <div
+                    style="width: 36px; height: 36px; border-radius: 10px; background: rgba(30, 94, 255, 0.1); color: var(--primary-blue, #1e5eff); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                </div>
+                <h3 style="margin: 0; font-size: 19px; font-weight: 800; color: var(--text-dark, #0f172a);">Edit Profile
+                </h3>
+            </div>
+            <p style="margin: 0 0 18px 0; font-size: 12.5px; color: var(--text-gray, #64748b);">
+                Update your personal details, email, password, and profile picture
+            </p>
+
+            <!-- Alert notification box inside modal -->
+            <div id="teacherProfileAlert" class="hidden"
+                style="margin-bottom: 16px; padding: 10px 14px; border-radius: 10px; font-size: 12.5px; line-height: 1.4;">
+            </div>
+
+            <!-- Profile Photo Section -->
+            <div class="profile-photo-card"
+                style="display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; padding: 16px; background: var(--bg-hover, #f8fafc); border-radius: 16px; border: 1px dashed var(--border-color, #cbd5e1);">
+                <div style="position: relative; width: 88px; height: 88px; margin-bottom: 12px;">
+                    <div id="teacherModalAvatarPreview"
+                        onclick="document.getElementById('teacherPhotoFileInput').click()"
+                        style="width: 88px; height: 88px; border-radius: 50%; background: #1e5eff; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 34px; font-weight: 800; overflow: hidden; box-shadow: 0 4px 14px rgba(30, 94, 255, 0.25); border: 3px solid #ffffff; cursor: pointer;"
+                        title="Click to upload photo">
+                        T
+                    </div>
+                    <input type="file" id="teacherPhotoFileInput" accept="image/jpeg,image/png,image/webp"
+                        style="display: none !important; position: absolute !important; opacity: 0 !important; width: 0 !important; height: 0 !important; pointer-events: none !important;">
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center; justify-content: center;">
+                    <span role="button" class="teacher-photo-action-btn"
+                        onclick="document.getElementById('teacherPhotoFileInput').click()"
+                        style="display: inline-flex; align-items: center; gap: 6px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        Upload Photo
+                    </span>
+                    <span role="button" id="teacherPhotoRemoveBtn" class="teacher-photo-remove-btn"
+                        onclick="removeTeacherPhotoPreview()" style="display: none; align-items: center; gap: 5px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                            </path>
+                        </svg>
+                        Remove Photo
+                    </span>
+                </div>
+                <div style="font-size: 11px; color: var(--text-gray, #64748b); text-align: center; margin-top: 8px;">
+                    Saved in student photos folder (<strong>picdb</strong>) as <span id="teacherPhotoDriveFilenameHint"
+                        style="font-family: monospace; color: var(--primary-blue, #1e5eff); font-weight: 600;">teacher@mks.sch.id.jpg</span>
+                </div>
+            </div>
+
+            <!-- Form Fields -->
+            <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 22px;">
+                <!-- Full / Display Name -->
+                <div>
+                    <label for="teacherEditName"
+                        style="font-size: 12.5px; font-weight: 700; color: var(--text-dark, #0f172a); display: block; margin-bottom: 5px;">
+                        Full Name / Display Name <span style="color: #ef4444;">*</span>
+                    </label>
+                    <input type="text" id="teacherEditName" placeholder="e.g. Syam Muhammad">
+                </div>
+
+                <!-- Email Address -->
+                <div>
+                    <label for="teacherEditEmail"
+                        style="font-size: 12.5px; font-weight: 700; color: var(--text-dark, #0f172a); display: block; margin-bottom: 5px;">
+                        Email Address (Login Account) <span style="color: #ef4444;">*</span>
+                    </label>
+                    <input type="email" id="teacherEditEmail" placeholder="teacher@mks.sch.id">
+                    <span style="font-size: 11px; color: var(--text-gray, #64748b); margin-top: 4px; display: block;">
+                        Used to sign in and name your photo in Google Drive.
+                    </span>
+                </div>
+
+                <!-- Password Section -->
+                <div class="password-section-card"
+                    style="padding: 14px; background: var(--bg-hover, #f8fafc); border-radius: 12px; border: 1px solid var(--border-color, #e2e8f0);">
+                    <div
+                        style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                        <label
+                            style="font-size: 12.5px; font-weight: 700; color: var(--text-dark, #0f172a); margin: 0;">
+                            Change Password
+                        </label>
+                        <span style="font-size: 11px; color: var(--text-gray, #64748b); font-weight: 500;">Leave blank
+                            to keep unchanged</span>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <div style="position: relative; width: 100%;">
+                            <input type="password" id="teacherEditPassword"
+                                placeholder="New Password (min 6 characters)">
+                            <span role="button" class="password-eye-btn"
+                                onclick="togglePasswordVisibility('teacherEditPassword', this)"
+                                title="Toggle password visibility">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </span>
+                        </div>
+                        <div style="position: relative; width: 100%;">
+                            <input type="password" id="teacherEditPasswordConfirm" placeholder="Confirm New Password">
+                            <span role="button" class="password-eye-btn"
+                                onclick="togglePasswordVisibility('teacherEditPasswordConfirm', this)"
+                                title="Toggle password visibility">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Assigned Role & Department Badges (Read-Only context) -->
+                <div
+                    style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: rgba(30,94,255,0.05); border-radius: 10px; border: 1px solid rgba(30,94,255,0.15);">
+                    <div style="display: flex; flex-direction: column;">
+                        <span
+                            style="font-size: 11px; font-weight: 600; color: var(--text-gray, #64748b); text-transform: uppercase; letter-spacing: 0.5px;">Account
+                            Role</span>
+                        <span id="teacherModalRoleBadge"
+                            style="font-size: 13px; font-weight: 700; color: var(--primary-blue, #1e5eff);">Teacher</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; text-align: right;">
+                        <span
+                            style="font-size: 11px; font-weight: 600; color: var(--text-gray, #64748b); text-transform: uppercase; letter-spacing: 0.5px;">Subject(s)</span>
+                        <span id="teacherModalSubjectBadge"
+                            style="font-size: 13px; font-weight: 700; color: var(--text-dark, #0f172a);">English,
+                            ICT</span>
+                    </div>
                 </div>
             </div>
 
@@ -4064,6 +4274,267 @@
                         <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>
                     <span>Save Changes</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LIVE QUIZ COMMAND CENTER & MONITORING MODAL -->
+    <div id="liveQuizControlModal" class="hidden" onclick="if(event.target === this) closeLiveQuizModal()"
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.75); z-index: 2600; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(6px); padding: 16px; box-sizing: border-box;">
+        <div style="background: var(--card-bg, #ffffff); border-radius: 20px; width: 100%; max-width: 1080px; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border: 1px solid rgba(226, 232, 240, 0.8);">
+            
+            <!-- Modal Header -->
+            <div style="padding: 20px 24px; border-bottom: 1px solid var(--border-color, #e2e8f0); display: flex; align-items: center; justify-content: space-between; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #ffffff;">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); display: flex; align-items: center; justify-content: center; color: #f87171; position: relative;">
+                        <span style="position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: #ef4444; animation: pulse 1.5s infinite;"></span>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"></path>
+                            <path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"></path>
+                            <circle cx="12" cy="12" r="2"></circle>
+                            <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"></path>
+                            <path d="M19.1 4.9C23 8.8 23 15.2 19.1 19.1"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <h2 id="liveQuizModalTitle" style="margin: 0; font-size: 20px; font-weight: 800; color: #ffffff; letter-spacing: -0.3px;">Live Quiz Control Room</h2>
+                            <span id="liveQuizStatusBadge" style="padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; text-transform: uppercase; background: #e0f2fe; color: #0284c7; letter-spacing: 0.5px;">Waiting</span>
+                        </div>
+                        <p id="liveQuizModalMeta" style="margin: 4px 0 0 0; font-size: 13px; color: #94a3b8;">Target: Class | Subject | 0 Questions</p>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button type="button" onclick="closeLiveQuizModal()" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); color: #cbd5e1; width: 36px; height: 36px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
+                        ✕
+                    </button>
+                </div>
+            </div>
+
+            <!-- Control & Setup Bar -->
+            <div style="padding: 16px 24px; background: var(--bg-hover, #f8fafc); border-bottom: 1px solid var(--border-color, #e2e8f0); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px;">
+                <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label for="liveQuizDurationInput" style="font-size: 13px; font-weight: 700; color: var(--text-dark, #0f172a);">Quiz Duration:</label>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <input type="number" id="liveQuizDurationInput" min="1" max="180" value="30" style="width: 80px; height: 40px; padding: 0 10px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 14px; font-weight: 700; text-align: center;">
+                            <span style="font-size: 13px; font-weight: 600; color: var(--text-gray, #64748b);">minutes</span>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button type="button" id="btnStartLiveQuizMaster" onclick="triggerStartLiveQuizMaster()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; border: none; padding: 10px 20px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                            <span>Start Live Quiz for All</span>
+                        </button>
+                        <button type="button" id="btnEndLiveQuizMaster" onclick="triggerEndLiveQuizMaster()" style="background: #ef4444; color: #ffffff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; display: none; align-items: center; gap: 6px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+                            <span>End Live Quiz</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Timer & Stats Counters -->
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <div style="display: flex; align-items: center; gap: 10px; background: #ffffff; padding: 6px 14px; border-radius: 12px; border: 1.5px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                        <span style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase;">Remaining:</span>
+                        <span id="liveQuizCountdownDisplay" style="font-family: monospace; font-size: 18px; font-weight: 800; color: #1e5eff;">--:--</span>
+                    </div>
+
+                    <div style="display: flex; gap: 12px;">
+                        <div style="text-align: center;">
+                            <div id="liveStatConnectedCount" style="font-size: 18px; font-weight: 800; color: #0f172a;">0</div>
+                            <div style="font-size: 11px; font-weight: 600; color: #64748b;">Connected</div>
+                        </div>
+                        <div style="width: 1px; height: 28px; background: #cbd5e1; align-self: center;"></div>
+                        <div style="text-align: center;">
+                            <div id="liveStatInfractionsCount" style="font-size: 18px; font-weight: 800; color: #ef4444;">0</div>
+                            <div style="font-size: 11px; font-weight: 600; color: #64748b;">Anti-Cheat Flags</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Body View: Students Grid & Anti-Cheat Feed -->
+            <div style="flex: 1; overflow-y: auto; padding: 24px; display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+                <!-- Left: Students Monitoring Table -->
+                <div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                        <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text-dark, #0f172a);">
+                            Students in Session (<span id="liveStudentCountLabel">0</span>)
+                        </h4>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 12px; color: #64748b;">Auto-updates in real-time</span>
+                            <button type="button" onclick="refreshLiveParticipantsList()" style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 10px; font-size: 11.5px; font-weight: 600; color: #475569; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                                ↻ Refresh
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #ffffff;">
+                        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+                            <thead style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; color: #475569;">
+                                <tr>
+                                    <th style="padding: 10px 14px;">Student</th>
+                                    <th style="padding: 10px 14px;">Status</th>
+                                    <th style="padding: 10px 14px;">Progress</th>
+                                    <th style="padding: 10px 14px;">Anti-Cheat</th>
+                                    <th style="padding: 10px 14px; text-align: right;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="liveParticipantsTbody">
+                                <tr>
+                                    <td colspan="5" style="text-align: center; color: #94a3b8; padding: 36px;">
+                                        Waiting for students to connect to this live quiz...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Right: Anti-Cheat Activity & Infractions Log -->
+                <div style="display: flex; flex-direction: column;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                        <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: #ef4444; display: flex; align-items: center; gap: 6px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                            Live Anti-Cheat Feed
+                        </h4>
+                        <span id="antiCheatBadge" style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: #fef2f2; color: #ef4444;">Active Protection</span>
+                    </div>
+
+                    <div id="liveAntiCheatLog" style="flex: 1; min-height: 280px; max-height: 480px; overflow-y: auto; border: 1px solid #fecaca; background: #fff5f5; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+                        <div style="text-align: center; color: #991b1b; font-size: 12px; padding: 24px 10px; opacity: 0.8;">
+                            No suspicious behavior detected yet. Tab switches, blurs, and leaves will appear here instantly.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div style="padding: 12px 24px; border-top: 1px solid #e2e8f0; background: #ffffff; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 12px; color: #64748b;">
+                    💡 <em>Tip: Even if students disconnect or refresh, their answers are continuously synced and restored.</em>
+                </span>
+                <button type="button" onclick="closeLiveQuizModal()" style="background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                    Hide Control Room
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- STUDENT LIVE ANSWERS INSPECTOR MODAL -->
+    <div id="liveQuizAnswersModal" class="hidden" onclick="if(event.target === this) closeLiveAnswersModal()"
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.7); z-index: 2700; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(4px); padding: 16px; box-sizing: border-box;">
+        <div style="background: #ffffff; border-radius: 16px; width: 100%; max-width: 780px; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.2);">
+            <div style="padding: 18px 24px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; background: #f8fafc;">
+                <div>
+                    <h3 id="liveAnswersStudentName" style="margin: 0; font-size: 18px; font-weight: 800; color: #0f172a;">Live Student Answers</h3>
+                    <p id="liveAnswersStudentMeta" style="margin: 3px 0 0 0; font-size: 12.5px; color: #64748b;">Student Code: - | Class: - | Answered: 0/0</p>
+                </div>
+                <button type="button" onclick="closeLiveAnswersModal()" style="background: transparent; border: none; font-size: 20px; color: #64748b; cursor: pointer;">✕</button>
+            </div>
+            <div id="liveAnswersContainer" style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+                <p style="text-align: center; color: #94a3b8;">Loading student responses...</p>
+            </div>
+            <div style="padding: 12px 24px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end;">
+                <button type="button" onclick="closeLiveAnswersModal()" style="background: #1e5eff; color: #ffffff; border: none; padding: 8px 18px; border-radius: 8px; font-weight: 600; cursor: pointer;">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quiz Document Import & Auto-Generate Modal -->
+    <div id="quizDocImportModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); z-index: 10005; align-items: center; justify-content: center; padding: 20px;">
+        <div style="background: var(--card-bg, #ffffff); border-radius: 16px; width: 100%; max-width: 820px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border: 1px solid var(--border-color, #e2e8f0);">
+            <!-- Modal Header -->
+            <div style="padding: 20px 24px; border-bottom: 1px solid var(--border-color, #e2e8f0); display: flex; align-items: center; justify-content: space-between; background: var(--header-bg, #f8fafc);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(103, 58, 183, 0.12); color: #673ab7; display: flex; align-items: center; justify-content: center;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 style="margin: 0; font-size: 18px; font-weight: 800; color: var(--text-dark, #0f172a);">Document Quiz Analysis</h3>
+                        <p id="quizDocImportMeta" style="margin: 3px 0 0 0; font-size: 13px; color: var(--text-muted, #64748b);">Analyzing file content...</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeQuizDocImportModal()" style="background: transparent; border: none; font-size: 22px; color: #94a3b8; cursor: pointer; padding: 4px; line-height: 1;">✕</button>
+            </div>
+
+            <!-- Modal Content / Body -->
+            <div id="quizDocImportBody" style="flex: 1; overflow-y: auto; padding: 22px 26px; display: flex; flex-direction: column; gap: 18px;">
+                <!-- Summary Stats Card -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
+                    <div style="background: #f1f5f9; padding: 12px 16px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b;">Total Questions</div>
+                        <div id="docStatTotal" style="font-size: 22px; font-weight: 800; color: #0f172a; margin-top: 4px;">0</div>
+                    </div>
+                    <div style="background: rgba(16, 185, 129, 0.08); padding: 12px 16px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #059669;">Multiple Choice</div>
+                        <div id="docStatMcq" style="font-size: 22px; font-weight: 800; color: #059669; margin-top: 4px;">0</div>
+                    </div>
+                    <div style="background: rgba(59, 130, 246, 0.08); padding: 12px 16px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #2563eb;">Fill in Blank</div>
+                        <div id="docStatFill" style="font-size: 22px; font-weight: 800; color: #2563eb; margin-top: 4px;">0</div>
+                    </div>
+                    <div style="background: rgba(245, 158, 11, 0.08); padding: 12px 16px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #d97706;">Essay / Open</div>
+                        <div id="docStatEssay" style="font-size: 22px; font-weight: 800; color: #d97706; margin-top: 4px;">0</div>
+                    </div>
+                    <div style="background: rgba(139, 92, 246, 0.08); padding: 12px 16px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #7c3aed;">Passages / Texts</div>
+                        <div id="docStatPassage" style="font-size: 22px; font-weight: 800; color: #7c3aed; margin-top: 4px;">0</div>
+                    </div>
+                </div>
+
+                <!-- Detected Quiz Title -->
+                <div>
+                    <label style="display: block; font-size: 13px; font-weight: 700; color: var(--text-dark, #0f172a); margin-bottom: 6px;">Detected Quiz Title</label>
+                    <input type="text" id="docParsedQuizTitle" style="width: 100%; box-sizing: border-box; padding: 10px 14px; border-radius: 8px; border: 1.5px solid var(--border-color, #cbd5e1); font-size: 14px; font-weight: 600;">
+                </div>
+
+                <!-- Options Row: Default Points & Insert Mode -->
+                <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: center; background: #f8fafc; padding: 12px 16px; border-radius: 10px; border: 1px solid #e2e8f0;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="font-size: 13px; font-weight: 600; color: #334155;">Default Points/Question:</label>
+                        <input type="number" id="docDefaultPoints" value="1" min="1" max="100" style="width: 60px; padding: 6px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 700; text-align: center;">
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px; margin-left: auto;">
+                        <label style="font-size: 13px; font-weight: 600; color: #334155; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <input type="radio" name="docImportMode" value="replace" checked> Replace Current Quiz
+                        </label>
+                        <label style="font-size: 13px; font-weight: 600; color: #334155; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <input type="radio" name="docImportMode" value="append"> Append to End
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Extracted Questions Preview List -->
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 13px; font-weight: 700; color: var(--text-dark, #0f172a);">Preview of Detected Questions</span>
+                        <span id="docPreviewCountBadge" style="font-size: 12px; color: #64748b;">Showing all items</span>
+                    </div>
+                    <div id="docQuestionsPreviewList" style="max-height: 280px; overflow-y: auto; border: 1px solid var(--border-color, #e2e8f0); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 8px; background: var(--bg-main, #ffffff);">
+                        <!-- Dynamic preview items injected here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer Actions -->
+            <div style="padding: 16px 24px; border-top: 1px solid var(--border-color, #e2e8f0); display: flex; justify-content: flex-end; gap: 12px; background: var(--header-bg, #f8fafc);">
+                <button type="button" onclick="closeQuizDocImportModal()" style="padding: 9px 18px; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #ffffff; color: #475569; font-weight: 600; cursor: pointer;">Cancel</button>
+                <button type="button" id="btnConfirmInsertParsedQuiz" onclick="confirmInsertParsedQuiz()" style="padding: 9px 22px; border-radius: 8px; border: none; background: #673ab7; color: #ffffff; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(103, 58, 183, 0.3);">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span>Insert Questions into Quiz Builder</span>
                 </button>
             </div>
         </div>
@@ -4084,8 +4555,8 @@
         <div id="studentAttendanceRecords" class="student-att-records"></div>
     </dialog>
 
-    <script src="studentNav.js?v=422"></script>
-    <script type="module" src="admin.js?v=424"></script>
+    <script src="studentNav.js?v=432"></script>
+    <script type="module" src="admin.js?v=432"></script>
 </body>
 
 </html>

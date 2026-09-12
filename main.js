@@ -5,21 +5,54 @@ import { escapeHtml } from "./utils.js";
 
 // Restore the existing student session format without retaining password input.
 const rememberedStudentKey = 'portalRememberedStudent';
-try {
-    const remembered = JSON.parse(localStorage.getItem(rememberedStudentKey) || 'null');
-    if (remembered && typeof remembered.code === 'string' && remembered.code) {
-        if (!sessionStorage.getItem('studentLoggedInSession')) {
-            sessionStorage.setItem('studentLoggedInSession', JSON.stringify(remembered));
-            sessionStorage.setItem('studentTimelineSession', JSON.stringify({ ...remembered, type: 'student' }));
+const sessionMetaKey = 'portalSessionMeta';
+const SESSION_MAX_IDLE_MS = 60 * 60 * 1000;
+
+const checkLocalSessionExpired = () => {
+    try {
+        const meta = JSON.parse(localStorage.getItem(sessionMetaKey) || 'null');
+        if (meta && !meta.rememberMe) {
+            const elapsed = Date.now() - (Number(meta.lastActive) || 0);
+            if (elapsed > SESSION_MAX_IDLE_MS) {
+                localStorage.removeItem(rememberedStudentKey);
+                localStorage.removeItem(sessionMetaKey);
+                localStorage.removeItem('loggedInStudentCode');
+                localStorage.removeItem('studentLoggedIn');
+                localStorage.removeItem('studentTimelineSession');
+                localStorage.removeItem('studentLoggedInSession');
+                sessionStorage.removeItem('studentLoggedInSession');
+                sessionStorage.removeItem('studentTimelineSession');
+                return true;
+            }
         }
+    } catch {}
+    return false;
+};
+
+const isExpired = checkLocalSessionExpired();
+
+if (!isExpired) {
+    try {
+        const remembered = JSON.parse(localStorage.getItem(rememberedStudentKey) || 'null');
+        if (remembered && typeof remembered.code === 'string' && remembered.code) {
+            if (!sessionStorage.getItem('studentLoggedInSession')) {
+                sessionStorage.setItem('studentLoggedInSession', JSON.stringify(remembered));
+                sessionStorage.setItem('studentTimelineSession', JSON.stringify({ ...remembered, type: 'student' }));
+            }
+        }
+    } catch {
+        localStorage.removeItem(rememberedStudentKey);
     }
-} catch {
-    localStorage.removeItem(rememberedStudentKey);
 }
 
-// Auto-route authenticated teachers/admins directly to admin dashboard
-onAuthStateChanged(auth, (user) => {
+// Auto-route authenticated teachers/admins directly to admin dashboard if not expired
+onAuthStateChanged(auth, async (user) => {
     if (user && !sessionStorage.getItem('studentLoggedInSession')) {
+        if (checkLocalSessionExpired()) {
+            const { signOut } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js");
+            await signOut(auth);
+            return;
+        }
         window.location.replace("admin.html");
     }
 });
@@ -151,6 +184,15 @@ async function handleStudentLogin() {
             await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
             await signInWithEmailAndPassword(auth, rawUser, rawPass);
             localStorage.removeItem(rememberedStudentKey);
+            if (window.portalSession?.recordLogin) {
+                window.portalSession.recordLogin(rememberMe, 'staff');
+            } else {
+                localStorage.setItem('portalSessionMeta', JSON.stringify({
+                    rememberMe: Boolean(rememberMe),
+                    lastActive: Date.now(),
+                    role: 'staff'
+                }));
+            }
             window.location.href = "admin.html";
             return;
         } catch (err) {
@@ -215,6 +257,16 @@ async function handleStudentLogin() {
             localStorage.removeItem(rememberedStudentKey);
         }
 
+        if (window.portalSession?.recordLogin) {
+            window.portalSession.recordLogin(rememberMe, 'student');
+        } else {
+            localStorage.setItem('portalSessionMeta', JSON.stringify({
+                rememberMe: Boolean(rememberMe),
+                lastActive: Date.now(),
+                role: 'student'
+            }));
+        }
+
         // Save session in sessionStorage so it persists across page navigation (Quiz, Timeline, etc.)
         sessionStorage.setItem('studentLoggedInSession', JSON.stringify(currentLoggedInStudent));
         sessionStorage.setItem('studentTimelineSession', JSON.stringify({
@@ -244,10 +296,20 @@ async function handleStudentLogin() {
 }
 
 // Student Logout Handler
-document.getElementById('studentLogoutBtn')?.addEventListener('click', () => {
-    localStorage.removeItem(rememberedStudentKey);
-    sessionStorage.removeItem('studentLoggedInSession');
-    sessionStorage.removeItem('studentTimelineSession');
+document.getElementById('studentLogoutBtn')?.addEventListener('click', async () => {
+    if (window.portalSession?.clearSessions) {
+        await window.portalSession.clearSessions(true);
+    } else {
+        localStorage.removeItem(rememberedStudentKey);
+        localStorage.removeItem('portalSessionMeta');
+        localStorage.removeItem('loggedInStudentCode');
+        localStorage.removeItem('studentLoggedIn');
+        localStorage.removeItem('studentCode');
+        localStorage.removeItem('studentTimelineSession');
+        localStorage.removeItem('studentLoggedInSession');
+        sessionStorage.removeItem('studentLoggedInSession');
+        sessionStorage.removeItem('studentTimelineSession');
+    }
     location.reload();
 });
 

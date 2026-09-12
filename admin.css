@@ -1941,7 +1941,76 @@ body.dark-theme .quick-action-item:hover {
     font-size: 14px;
     border: none;
     cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
 }
+
+.gform-publish-btn:hover {
+    background: #5e35b1;
+}
+
+.gform-upload-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #f3e8ff;
+    color: #6b21a8;
+    border: 1.5px solid #d8b4fe;
+    border-radius: 6px;
+    padding: 7px 16px;
+    font-size: 13.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.gform-upload-btn:hover {
+    background: #e9d5ff;
+    border-color: #c084fc;
+    color: #581c87;
+    box-shadow: 0 2px 8px rgba(107, 33, 168, 0.15);
+}
+
+.gform-upload-btn:active {
+    transform: translateY(1px);
+}
+
+body.dark-theme .gform-upload-btn {
+    background: rgba(168, 85, 247, 0.15);
+    border-color: rgba(168, 85, 247, 0.4);
+    color: #d8b4fe;
+}
+
+body.dark-theme .gform-upload-btn:hover {
+    background: rgba(168, 85, 247, 0.25);
+    border-color: #c084fc;
+    color: #f3e8ff;
+}
+
+.doc-preview-card {
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color, #e2e8f0);
+    background: var(--card-bg, #ffffff);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.doc-preview-card .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    width: fit-content;
+}
+
+.badge-mcq { background: #dcfce7; color: #15803d; }
+.badge-fill { background: #dbeafe; color: #1d4ed8; }
+.badge-essay { background: #fef3c7; color: #b45309; }
+.badge-passage { background: #ede9fe; color: #6d28d9; }
+.badge-header { background: #f1f5f9; color: #475569; }
 
 .save-status {
     color: #70757a;

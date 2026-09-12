@@ -1390,8 +1390,75 @@
                 </div>
             </div>
 
+            <!-- LIVE QUIZ WAITING ROOM MODAL -->
+            <div id="liveQuizWaitingModal" class="modal-overlay hidden" style="background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); z-index: 2500;">
+                <div class="modal-card" style="max-width: 520px; text-align: center; padding: 36px 28px; border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);">
+                    <div style="width: 76px; height: 76px; border-radius: 50%; background: linear-gradient(135deg, #1e5eff 0%, #3b82f6 100%); color: #ffffff; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto; box-shadow: 0 10px 25px rgba(30, 94, 255, 0.35); position: relative;">
+                        <span style="position: absolute; width: 100%; height: 100%; border-radius: 50%; border: 2px solid #3b82f6; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite; opacity: 0.6;"></span>
+                        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"></path>
+                            <path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"></path>
+                            <circle cx="12" cy="12" r="2"></circle>
+                            <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"></path>
+                            <path d="M19.1 4.9C23 8.8 23 15.2 19.1 19.1"></path>
+                        </svg>
+                    </div>
+
+                    <span style="display: inline-block; padding: 4px 14px; border-radius: 999px; background: #e0f2fe; color: #0284c7; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">
+                        Live Quiz Lobby
+                    </span>
+
+                    <h2 id="liveWaitingTitle" style="margin: 0 0 6px 0; font-size: 22px; font-weight: 800; color: var(--text-dark, #0f172a);">
+                        Waiting for Teacher to Start
+                    </h2>
+                    <p id="liveWaitingSubject" style="margin: 0 0 20px 0; font-size: 14px; color: var(--text-gray, #64748b);">
+                        Subject: General
+                    </p>
+
+                    <div style="background: var(--bg-hover, #f8fafc); border: 1.5px dashed #cbd5e1; border-radius: 16px; padding: 18px; margin-bottom: 24px;">
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; color: #1e5eff; font-weight: 700; font-size: 14px; margin-bottom: 6px;">
+                            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981; animation: pulse 1.5s infinite;"></span>
+                            <span>You are connected to the live session</span>
+                        </div>
+                        <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.5;">
+                            All students will begin the quiz simultaneously when your teacher starts the timer. Please do not close or leave this page.
+                        </p>
+                    </div>
+
+                    <!-- Countdown overlay (when teacher clicks start) -->
+                    <div id="liveStartingCountdownBox" class="hidden" style="margin-bottom: 20px;">
+                        <div style="font-size: 13px; font-weight: 700; color: #10b981; text-transform: uppercase; letter-spacing: 1px;">Starting in</div>
+                        <div id="liveStartingCountdownNumber" style="font-size: 48px; font-weight: 900; color: #10b981; line-height: 1; margin: 6px 0;">3</div>
+                    </div>
+
+                    <button type="button" id="exitLiveWaitingBtn" style="background: transparent; border: 1px solid #cbd5e1; color: #64748b; padding: 10px 22px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer;">
+                        Exit Waiting Room
+                    </button>
+                </div>
+            </div>
+
             <!-- STEP 5: TAKING QUIZ SECTION -->
             <div id="takeQuizSection" class="hidden" style="margin-top: 20px;">
+                <!-- Live Anti-Cheat & Synchronized Timer Bar -->
+                <div id="liveQuizStudentHeaderBar" class="hidden" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #ffffff; padding: 14px 20px; border-radius: 14px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.1);">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #10b981; animation: pulse 1.5s infinite;"></span>
+                        <strong style="font-size: 14px; letter-spacing: -0.2px;">LIVE ASSESSMENT ACTIVE</strong>
+                        <span style="font-size: 11px; padding: 2px 8px; border-radius: 999px; background: rgba(239, 68, 68, 0.2); color: #f87171; font-weight: 700; border: 1px solid rgba(239, 68, 68, 0.4);">
+                            Anti-Cheat Monitored
+                        </span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                        <div id="studentWarningBadge" style="display: none; align-items: center; gap: 5px; color: #ef4444; font-size: 12px; font-weight: 700; background: #fee2e2; padding: 4px 10px; border-radius: 999px;">
+                            <span>⚠️ Tab switches: <span id="studentWarningCount">0</span></span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); padding: 4px 12px; border-radius: 8px;">
+                            <span style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 700;">Time Left:</span>
+                            <span id="studentLiveTimerDisplay" style="font-family: monospace; font-size: 17px; font-weight: 800; color: #38bdf8;">--:--</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="hero-point-card" style="margin-bottom: 24px; padding: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
                     <div>
                         <span class="hero-label">Active Assessment</span>
@@ -1434,8 +1501,8 @@
         </main>
     </div>
 
-    <script type="module" src="quiz.js?v=386"></script>
-    <script type="module" src="studentNav.js?v=376"></script>
+    <script type="module" src="quiz.js?v=428"></script>
+    <script type="module" src="studentNav.js?v=428"></script>
 </body>
 
 </html>

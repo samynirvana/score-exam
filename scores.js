@@ -38,7 +38,7 @@ themeToggleBtn?.addEventListener('click', () => {
 // --- LOGOUT HANDLER ---
 document.getElementById('studentLogoutBtn')?.addEventListener('click', () => {
     if (unsubscribeScoresListener) unsubscribeScoresListener();
-    sessionStorage.removeItem('studentLoggedInSession');
+    localStorage.removeItem('portalSessionMeta'); localStorage.removeItem('portalRememberedStudent'); sessionStorage.removeItem('studentLoggedInSession');
     sessionStorage.removeItem('studentTimelineSession');
     localStorage.removeItem('loggedInStudentCode');
     window.location.href = "index.html";

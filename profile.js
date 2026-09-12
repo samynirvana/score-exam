@@ -67,7 +67,7 @@ themeToggleBtn?.addEventListener('click', () => {
 // --- LOGOUT HANDLER ---
 const logoutBtn = document.getElementById('studentLogoutBtn');
 logoutBtn?.addEventListener('click', () => {
-    sessionStorage.removeItem('studentLoggedInSession');
+    localStorage.removeItem('portalSessionMeta'); localStorage.removeItem('portalRememberedStudent'); sessionStorage.removeItem('studentLoggedInSession');
     sessionStorage.removeItem('studentTimelineSession');
     localStorage.removeItem('loggedInStudentCode');
     window.location.href = 'index.html';

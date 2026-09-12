@@ -1,9 +1,120 @@
-// Clear remembered login before any portal logout handler navigates away.
-document.addEventListener('click', (event) => {
-    if (event.target.closest?.('#studentLogoutBtn, #mobileKebabLogoutBtn, #logoutBtn')) {
+// --- PORTAL SESSION & AUTO-EXPIRATION MANAGEMENT ---
+const APP_SESSION_META_KEY = 'portalSessionMeta';
+const SESSION_MAX_IDLE_MS = 60 * 60 * 1000; // 1 hour for non-remembered logins
+
+const getAppSessionMeta = () => {
+    try {
+        return JSON.parse(localStorage.getItem(APP_SESSION_META_KEY) || 'null');
+    } catch {
+        return null;
+    }
+};
+
+const recordAppSessionLogin = (rememberMe, role = 'student') => {
+    try {
+        localStorage.setItem(APP_SESSION_META_KEY, JSON.stringify({
+            rememberMe: Boolean(rememberMe),
+            lastActive: Date.now(),
+            role: role
+        }));
+    } catch (e) {
+        console.warn('Failed to save session metadata:', e);
+    }
+};
+
+let lastTouchTime = 0;
+const touchAppSession = (force = false) => {
+    const now = Date.now();
+    if (!force && (now - lastTouchTime < 60 * 1000)) return; // Throttle to once a minute
+    lastTouchTime = now;
+    const meta = getAppSessionMeta();
+    if (meta) {
+        meta.lastActive = now;
+        try {
+            localStorage.setItem(APP_SESSION_META_KEY, JSON.stringify(meta));
+        } catch (e) {}
+    }
+};
+
+const clearAllPortalSessions = async (signOutAuth = true) => {
+    try {
         localStorage.removeItem('portalRememberedStudent');
+        localStorage.removeItem('loggedInStudentCode');
+        localStorage.removeItem('studentLoggedIn');
+        localStorage.removeItem('studentCode');
+        localStorage.removeItem('studentTimelineSession');
+        localStorage.removeItem('studentLoggedInSession');
+        localStorage.removeItem(APP_SESSION_META_KEY);
+        sessionStorage.removeItem('studentLoggedInSession');
+        sessionStorage.removeItem('studentTimelineSession');
+
+        if (signOutAuth) {
+            try {
+                const { auth } = await import('./firebase.js');
+                const { signOut } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
+                if (auth && auth.currentUser) {
+                    await signOut(auth);
+                }
+            } catch (e) {}
+        }
+    } catch (e) {
+        console.warn('Error clearing portal sessions:', e);
+    }
+};
+
+const checkSessionValidity = async () => {
+    const meta = getAppSessionMeta();
+    const currentPath = window.location.pathname.split('/').pop() || 'index.html';
+    const isLoginPage = currentPath === 'index.html' || currentPath === '';
+
+    if (meta && !meta.rememberMe) {
+        const elapsed = Date.now() - (Number(meta.lastActive) || 0);
+        if (elapsed > SESSION_MAX_IDLE_MS) {
+            console.warn(`[Security] Session expired (> 1 hour inactive without Remember Me). Elapsed: ${Math.round(elapsed / 60000)}m. Logging out.`);
+            await clearAllPortalSessions(true);
+            if (!isLoginPage && currentPath !== 'maintenance.html') {
+                window.location.replace('index.html');
+            }
+            return false;
+        }
+    }
+
+    // Still valid, update activity
+    if (meta) {
+        touchAppSession(false);
+    }
+    return true;
+};
+
+// Expose globally for pages needing direct access
+window.portalSession = {
+    getMeta: getAppSessionMeta,
+    recordLogin: recordAppSessionLogin,
+    touch: touchAppSession,
+    clearSessions: clearAllPortalSessions,
+    checkValidity: checkSessionValidity,
+    SESSION_MAX_IDLE_MS
+};
+
+// Activity listeners to keep session alive during active browsing
+['click', 'keydown', 'touchstart', 'scroll'].forEach(evtType => {
+    window.addEventListener(evtType, () => touchAppSession(false), { passive: true });
+});
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        checkSessionValidity();
+    }
+});
+
+// Clear remembered login & session meta on explicit user logout button clicks
+document.addEventListener('click', (event) => {
+    if (event.target.closest?.('#studentLogoutBtn, #mobileKebabLogoutBtn, #logoutBtn, #btnLogout')) {
+        clearAllPortalSessions(true);
     }
 }, true);
+
+// Run session validity check on initial script load
+checkSessionValidity();
 
 // studentNav.js - Global Mobile Kebab Menu Navigation Handler
 const initMobileNav = () => {
@@ -144,8 +255,9 @@ const initMobileNav = () => {
 
     // Sync Logout
     if (kebabLogoutBtn) {
-        kebabLogoutBtn.addEventListener('click', (e) => {
+        kebabLogoutBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
+            await clearAllPortalSessions(true);
             const adminLogoutBtn = document.getElementById('logoutBtn');
             const studentLogoutBtn = document.getElementById('studentLogoutBtn');
             if (adminLogoutBtn) {
@@ -153,9 +265,6 @@ const initMobileNav = () => {
             } else if (studentLogoutBtn) {
                 studentLogoutBtn.click();
             } else {
-                localStorage.removeItem('loggedInStudentCode');
-                localStorage.removeItem('studentLoggedIn');
-                sessionStorage.removeItem('studentLoggedInSession');
                 window.location.href = 'index.html';
             }
         });
@@ -211,4 +320,3 @@ if (document.readyState === 'loading') {
     initMobileNav();
     checkGlobalMaintenanceMode();
 }
-
