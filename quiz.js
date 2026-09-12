@@ -653,6 +653,7 @@ document.getElementById('studentQuizModal')?.addEventListener('click', (e) => {
 let activeLiveSessionUnsubscribe = null;
 let activeLiveQuizData = null;
 let liveStudentAnswers = {};
+let liveAnswerSyncTimeout = null;
 let liveWarningCount = 0;
 let liveStudentTimerInterval = null;
 let livePresenceInterval = null;
@@ -744,7 +745,7 @@ async function joinLiveQuizSession(quizId, targetQuiz, initialLiveData) {
         showAntiCheatToast("⚠️ Live presence note: " + (e.message || "Failed to register presence with teacher."));
     }
 
-    // Heartbeat presence every 10 seconds with full identity so connection never drops
+    // Heartbeat presence every 20 seconds with full identity so connection stays alive with minimal writes
     if (livePresenceInterval) clearInterval(livePresenceInterval);
     livePresenceInterval = setInterval(async () => {
         try {
@@ -753,12 +754,13 @@ async function joinLiveQuizSession(quizId, targetQuiz, initialLiveData) {
                 studentName: studentDisplayName,
                 studentClass: studentDisplayClass,
                 connected: true,
+                answers: liveStudentAnswers || {},
                 lastPing: Date.now()
             }, { merge: true });
         } catch (e) {
             console.warn("[LiveQuiz] Heartbeat failed:", e);
         }
-    }, 10000);
+    }, 20000);
 
     // Update connection status when closing or hiding window
     const handleExitPresence = () => {
@@ -903,17 +905,39 @@ function restoreLiveDraftAnswers() {
     });
 }
 
-// Autosave an answer change to Firestore participant record
-async function syncLiveAnswer(itemIdx, answerObj) {
+// Debounced autosave for live answers to optimize Firestore writes
+async function syncLiveAnswer(itemIdx, answerObj, immediate = false) {
     if (!activeQuiz || !currentStudent || !activeLiveQuizData) return;
     liveStudentAnswers[itemIdx] = answerObj;
+
+    if (liveAnswerSyncTimeout) {
+        clearTimeout(liveAnswerSyncTimeout);
+        liveAnswerSyncTimeout = null;
+    }
+
+    if (immediate) {
+        await flushPendingLiveAnswerSync();
+    } else {
+        // Debounce live answer writes by 1.5 seconds so rapid clicks/typing don't spam Firestore
+        liveAnswerSyncTimeout = setTimeout(async () => {
+            await flushPendingLiveAnswerSync();
+        }, 1500);
+    }
+}
+
+async function flushPendingLiveAnswerSync() {
+    if (liveAnswerSyncTimeout) {
+        clearTimeout(liveAnswerSyncTimeout);
+        liveAnswerSyncTimeout = null;
+    }
+    if (!activeQuiz || !currentStudent || !activeLiveQuizData) return;
 
     try {
         const studentCode = String(currentStudent.code || currentStudent.studentCode || currentStudent.id || '').trim().toUpperCase();
         if (!studentCode) return;
         const pRef = doc(db, "live_quizzes", activeQuiz.id, "participants", studentCode);
         await updateDoc(pRef, {
-            answers: liveStudentAnswers,
+            answers: liveStudentAnswers || {},
             lastUpdated: Date.now()
         });
     } catch (e) {
@@ -1010,6 +1034,7 @@ document.getElementById('exitLiveWaitingBtn')?.addEventListener('click', async (
 
     if (activeLiveSessionUnsubscribe) activeLiveSessionUnsubscribe();
     if (livePresenceInterval) clearInterval(livePresenceInterval);
+    if (liveAnswerSyncTimeout) clearTimeout(liveAnswerSyncTimeout);
     activeQuiz = null;
 });
 
@@ -1029,6 +1054,7 @@ document.getElementById('cancelQuizBtn')?.addEventListener('click', async () => 
         if (activeLiveSessionUnsubscribe) activeLiveSessionUnsubscribe();
         if (livePresenceInterval) clearInterval(livePresenceInterval);
         if (liveStudentTimerInterval) clearInterval(liveStudentTimerInterval);
+        if (liveAnswerSyncTimeout) clearTimeout(liveAnswerSyncTimeout);
 
         document.getElementById('liveQuizStudentHeaderBar')?.classList.add('hidden');
         document.getElementById('takeQuizSection')?.classList.add('hidden');
@@ -1180,18 +1206,20 @@ function renderQuizForm(quiz) {
                 radio.addEventListener('change', () => {
                     const chosenIdx = parseInt(radio.value, 10);
                     const chosenText = (item.options && item.options[chosenIdx]) || '';
-                    syncLiveAnswer(idx, { value: chosenIdx, text: chosenText });
+                    syncLiveAnswer(idx, { value: chosenIdx, text: chosenText }, false);
                 });
             });
         } else if (item.type === 'fill' || item.type === 'essay') {
             const input = div.querySelector(`[name="item_${idx}"]`);
             if (input) {
-                let debounceSync = null;
                 input.addEventListener('input', () => {
-                    clearTimeout(debounceSync);
-                    debounceSync = setTimeout(() => {
-                        syncLiveAnswer(idx, { value: input.value.trim(), text: input.value.trim() });
-                    }, 400);
+                    syncLiveAnswer(idx, { value: input.value.trim(), text: input.value.trim() }, false);
+                });
+                // When student finishes typing and advances/clicks outside, immediately flush pending answers
+                input.addEventListener('blur', () => {
+                    if (liveAnswerSyncTimeout) {
+                        flushPendingLiveAnswerSync();
+                    }
                 });
             }
         } else if (item.type === 'matching') {
@@ -1203,7 +1231,12 @@ function renderQuizForm(quiz) {
                         if (sel && sel.value) matches[lIdx] = sel.value;
                     });
                     const summary = Object.keys(matches).map(k => `${(item.lefts || [])[k]} → ${matches[k]}`).join(', ');
-                    syncLiveAnswer(idx, { matches: matches, text: summary });
+                    syncLiveAnswer(idx, { matches: matches, text: summary }, false);
+                });
+                select.addEventListener('blur', () => {
+                    if (liveAnswerSyncTimeout) {
+                        flushPendingLiveAnswerSync();
+                    }
                 });
             });
         }
@@ -1324,6 +1357,7 @@ document.getElementById('submitQuizBtn')?.addEventListener('click', async (e) =>
         if (activeLiveSessionUnsubscribe) activeLiveSessionUnsubscribe();
         if (livePresenceInterval) clearInterval(livePresenceInterval);
         if (liveStudentTimerInterval) clearInterval(liveStudentTimerInterval);
+        if (liveAnswerSyncTimeout) clearTimeout(liveAnswerSyncTimeout);
         document.getElementById('liveQuizStudentHeaderBar')?.classList.add('hidden');
 
         document.getElementById('takeQuizSection').classList.add('hidden');
