@@ -1635,40 +1635,19 @@ function renderOriginPointOverlay(ctx, el) {
     if (!el) return;
     const origin = getElementOrigin(el);
     const zoom = camera.zoom;
-    const r = 7 / zoom;
-    const crossR = 15 / zoom;
+    const r = 5.5 / zoom;
 
     ctx.save();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
-    ctx.shadowBlur = 4 / zoom;
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+    ctx.shadowBlur = 3 / zoom;
 
-    // Outer ring
+    // Simple red circle with crisp white outline
     ctx.beginPath();
     ctx.arc(origin.x, origin.y, r, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#ef4444';
     ctx.fill();
-    ctx.strokeStyle = '#f43f5e';
-    ctx.lineWidth = 2 / zoom;
-    ctx.stroke();
-
-    // Center bullseye dot
-    ctx.beginPath();
-    ctx.arc(origin.x, origin.y, 2.5 / zoom, 0, Math.PI * 2);
-    ctx.fillStyle = '#f43f5e';
-    ctx.fill();
-
-    // 4 Crosshair ticks
-    ctx.beginPath();
-    ctx.moveTo(origin.x - crossR, origin.y);
-    ctx.lineTo(origin.x - r - 2 / zoom, origin.y);
-    ctx.moveTo(origin.x + r + 2 / zoom, origin.y);
-    ctx.lineTo(origin.x + crossR, origin.y);
-    ctx.moveTo(origin.x, origin.y - crossR);
-    ctx.lineTo(origin.x, origin.y - r - 2 / zoom);
-    ctx.moveTo(origin.x, origin.y + r + 2 / zoom);
-    ctx.lineTo(origin.x, origin.y + crossR);
-    ctx.strokeStyle = '#f43f5e';
-    ctx.lineWidth = 2 / zoom;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5 / zoom;
     ctx.stroke();
 
     ctx.restore();
@@ -1786,7 +1765,7 @@ function renderPathElement(ctx, el) {
         const fontSize = el.fontSize || 15;
         const fontFamily = el.fontFamily || "'Inter', sans-serif";
         ctx.font = `${isBold}${isItalic}${fontSize}px ${fontFamily}`;
-        renderElementText(ctx, el.text, el.x, el.y, el.width || 120, el.height || 80, fontSize, fontSize * 1.35, el.textAlign || 'center', el.textVAlign || 'middle', { top: 10, right: 12, bottom: 10, left: 12 });
+        renderElementText(ctx, el.text, el.x, el.y, el.width || 120, el.height || 80, fontSize, fontSize * 1.35, el.textAlign || 'center', el.textVAlign || 'middle', { top: 10, right: 12, bottom: 10, left: 12 }, Boolean(el.isUnderline));
     }
     ctx.restore();
 }
@@ -2187,7 +2166,7 @@ function renderRichText(ctx, el) {
     const textVAlign = el.textVAlign || 'top';
     const w = el.width || 260;
     const h = el.height || 44;
-    renderElementText(ctx, el.text || '', el.x, el.y, w, h, fontSize, fontSize * 1.35, textAlign, textVAlign, { top: 0, right: 0, bottom: 0, left: 0 });
+    renderElementText(ctx, el.text || '', el.x, el.y, w, h, fontSize, fontSize * 1.35, textAlign, textVAlign, { top: 0, right: 0, bottom: 0, left: 0 }, Boolean(el.isUnderline));
 }
 
 function renderStickyNote(ctx, el) {
@@ -2347,7 +2326,7 @@ function renderShape(ctx, el) {
         ctx.font = `${isBold}${isItalic}${fontSize}px ${fontFamily}`;
         const textAlign = el.textAlign || 'center';
         const textVAlign = el.textVAlign || 'middle';
-        renderElementText(ctx, el.text, el.x, el.y, w, h, fontSize, fontSize * 1.35, textAlign, textVAlign, { top: 10, right: 12, bottom: 10, left: 12 });
+        renderElementText(ctx, el.text, el.x, el.y, w, h, fontSize, fontSize * 1.35, textAlign, textVAlign, { top: 10, right: 12, bottom: 10, left: 12 }, Boolean(el.isUnderline));
     }
 }
 
@@ -3757,6 +3736,23 @@ function setupCanvasEventListeners() {
                 const activeEditor = document.getElementById('boardInPlaceEditor');
                 if (activeEditor && editingElementId === el.id) {
                     activeEditor.style.setProperty('font-style', el.isItalic ? 'italic' : 'normal', 'important');
+                }
+            }
+        });
+        scheduleAutoSave();
+        renderCanvas();
+        updateFormattingBar();
+    });
+
+    document.getElementById('fmtUnderline')?.addEventListener('click', () => {
+        pushUndoState();
+        selectedElementIds.forEach(id => {
+            const el = elements.find(item => item.id === id);
+            if (el) {
+                el.isUnderline = !el.isUnderline;
+                const activeEditor = document.getElementById('boardInPlaceEditor');
+                if (activeEditor && editingElementId === el.id) {
+                    activeEditor.style.setProperty('text-decoration', el.isUnderline ? 'underline' : 'none', 'important');
                 }
             }
         });
@@ -6121,6 +6117,7 @@ function openInPlaceTextEditor(el) {
         isBold = !!el.isBold;
         isItalic = !!el.isItalic;
     }
+    const isUnderline = !!el.isUnderline;
 
     // Ensure the font is actively loaded in the document
     ensureFontLoaded(fontFamily);
@@ -6139,6 +6136,7 @@ function openInPlaceTextEditor(el) {
     textarea.style.setProperty('font-family', fontFamily, 'important');
     textarea.style.setProperty('font-weight', isBold ? '700' : '400', 'important');
     textarea.style.setProperty('font-style', isItalic ? 'italic' : 'normal', 'important');
+    textarea.style.setProperty('text-decoration', isUnderline ? 'underline' : 'none', 'important');
     textarea.style.setProperty('text-align', textAlign, 'important');
     textarea.style.setProperty('line-height', '1.35', 'important');
     textarea.style.setProperty('color', color, 'important');
@@ -6367,6 +6365,8 @@ function updateFormattingBar() {
     if (boldBtn) boldBtn.style.display = isTextElement ? '' : 'none';
     const italicBtn = document.getElementById('fmtItalic');
     if (italicBtn) italicBtn.style.display = isTextElement ? '' : 'none';
+    const underlineBtn = document.getElementById('fmtUnderline');
+    if (underlineBtn) underlineBtn.style.display = isTextElement ? '' : 'none';
     const hAlignGroup = document.getElementById('fmtHAlignGroup');
     if (hAlignGroup) hAlignGroup.style.display = isTextElement ? '' : 'none';
     const vAlignGroup = document.getElementById('fmtVAlignGroup');
@@ -6385,9 +6385,10 @@ function updateFormattingBar() {
         }
     }
 
-    // Sync Bold & Italic
+    // Sync Bold, Italic & Underline
     document.getElementById('fmtBold')?.classList.toggle('active', Boolean(selectedEl.isBold));
     document.getElementById('fmtItalic')?.classList.toggle('active', Boolean(selectedEl.isItalic));
+    document.getElementById('fmtUnderline')?.classList.toggle('active', Boolean(selectedEl.isUnderline));
 
     // Sync Horizontal Text Alignment
     const align = selectedEl.textAlign || (selectedEl.type === 'shape' ? 'center' : 'left');
@@ -6629,6 +6630,9 @@ function setupKeyboardShortcuts() {
         } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'i') {
             e.preventDefault();
             document.getElementById('fmtItalic')?.click();
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'u') {
+            e.preventDefault();
+            document.getElementById('fmtUnderline')?.click();
         } else if (e.key === 'Delete' || e.key === 'Backspace') {
             if (activeTool === 'anchor' && selectedAnchorPathId && selectedAnchorIndex !== null) {
                 const targetPath = elements.find(item => item.id === selectedAnchorPathId);
@@ -6728,7 +6732,7 @@ function roundRect(ctx, x, y, width, height, radius = 8, fill = true, stroke = f
     if (stroke) ctx.stroke();
 }
 
-function renderElementText(ctx, text, boxX, boxY, boxW, boxH, fontSize, lineHeight, textAlign = 'left', textVAlign = 'top', padding = { top: 0, right: 0, bottom: 0, left: 0 }) {
+function renderElementText(ctx, text, boxX, boxY, boxW, boxH, fontSize, lineHeight, textAlign = 'left', textVAlign = 'top', padding = { top: 0, right: 0, bottom: 0, left: 0 }, isUnderline = false) {
     if (!text) return;
     const padTop = padding.top !== undefined ? padding.top : 0;
     const padBottom = padding.bottom !== undefined ? padding.bottom : 0;
@@ -6784,7 +6788,20 @@ function renderElementText(ctx, text, boxX, boxY, boxW, boxH, fontSize, lineHeig
             drawX = boxX + padLeft;
         }
 
-        ctx.fillText(line, drawX, startY + i * lineHeight);
+        const baselineY = startY + i * lineHeight;
+        ctx.fillText(line, drawX, baselineY);
+
+        if (isUnderline && line.trim().length > 0) {
+            ctx.save();
+            ctx.strokeStyle = ctx.fillStyle;
+            ctx.lineWidth = Math.max(1, Math.round(fontSize / 14));
+            const underlineY = baselineY + Math.max(2, Math.round(fontSize * 0.12));
+            ctx.beginPath();
+            ctx.moveTo(drawX, underlineY);
+            ctx.lineTo(drawX + lineMetrics.width, underlineY);
+            ctx.stroke();
+            ctx.restore();
+        }
     }
     ctx.restore();
 }
@@ -7314,6 +7331,16 @@ function setupPropertiesPanelInputs() {
         updatePropertiesPanel();
         updateFormattingBar();
     });
+    document.getElementById('btnPropShapeUnderline')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (!el) return;
+        pushUndoState();
+        el.isUnderline = !el.isUnderline;
+        renderCanvas();
+        scheduleAutoSave();
+        updatePropertiesPanel();
+        updateFormattingBar();
+    });
 
     // Shape Text Alignment
     document.getElementById('btnPropShapeAlignLeft')?.addEventListener('click', () => {
@@ -7460,6 +7487,17 @@ function setupPropertiesPanelInputs() {
         updatePropertiesPanel();
         updateFormattingBar();
     });
+    document.getElementById('btnPropTextUnderline')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (!el) return;
+        pushUndoState();
+        el.isUnderline = !el.isUnderline;
+        if (el.type === 'text') updateTextElementBounds(el);
+        renderCanvas();
+        scheduleAutoSave();
+        updatePropertiesPanel();
+        updateFormattingBar();
+    });
 
     document.getElementById('btnPropTextAlignLeft')?.addEventListener('click', () => {
         const el = getSingleSelectedElement();
@@ -7493,6 +7531,17 @@ function setupPropertiesPanelInputs() {
             updatePropertiesPanel();
             updateFormattingBar();
         }
+    });
+
+    // Text Size Preset Pills (Header: 100, Title: 70, Subtitle: 50)
+    document.querySelectorAll('.btn-text-size-preset').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const sz = parseInt(btn.dataset.size, 10);
+            if (sz) {
+                setTextFontSize(sz);
+                updatePropertiesPanel();
+            }
+        });
     });
 
     // 10. Sticky Note Inputs
@@ -7970,6 +8019,7 @@ function updatePropertiesPanel() {
 
         document.getElementById('btnPropShapeBold')?.classList.toggle('active', Boolean(el.isBold));
         document.getElementById('btnPropShapeItalic')?.classList.toggle('active', Boolean(el.isItalic));
+        document.getElementById('btnPropShapeUnderline')?.classList.toggle('active', Boolean(el.isUnderline));
 
         const hAlign = el.textAlign || 'center';
         document.getElementById('btnPropShapeAlignLeft')?.classList.toggle('active', hAlign === 'left');
@@ -8018,11 +8068,19 @@ function updatePropertiesPanel() {
 
         document.getElementById('btnPropTextBold')?.classList.toggle('active', Boolean(el.isBold));
         document.getElementById('btnPropTextItalic')?.classList.toggle('active', Boolean(el.isItalic));
+        document.getElementById('btnPropTextUnderline')?.classList.toggle('active', Boolean(el.isUnderline));
 
         const align = el.textAlign || 'left';
         document.getElementById('btnPropTextAlignLeft')?.classList.toggle('active', align === 'left');
         document.getElementById('btnPropTextAlignCenter')?.classList.toggle('active', align === 'center');
         document.getElementById('btnPropTextAlignRight')?.classList.toggle('active', align === 'right');
+
+        // Text Size Preset Pills active state
+        const currentFontSize = el.fontSize || 20;
+        document.querySelectorAll('.btn-text-size-preset').forEach(btn => {
+            const sz = parseInt(btn.dataset.size, 10);
+            btn.classList.toggle('active', sz === currentFontSize);
+        });
     }
 
     // --- TYPE: STICKY NOTE ---

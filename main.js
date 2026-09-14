@@ -2,6 +2,7 @@ import { collection, query, where, getDocs, doc, getDoc, onSnapshot, setDoc } fr
 import { signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { db, auth } from "./firebase.js";
 import { escapeHtml } from "./utils.js";
+import { getDailyQuote } from "./dailyQuotes.js";
 
 // Restore the existing student session format without retaining password input.
 const rememberedStudentKey = 'portalRememberedStudent';
@@ -632,23 +633,39 @@ export function updateGreetingBannerVideo() {
     }
 }
 
+export function updateLoginDailyQuote() {
+    const quoteTextEl = document.getElementById('loginDailyQuoteText');
+    const quoteAuthorEl = document.getElementById('loginDailyQuoteAuthor');
+    if (!quoteTextEl && !quoteAuthorEl) return;
+
+    const todayQuote = getDailyQuote();
+    if (quoteTextEl && todayQuote.quote) {
+        quoteTextEl.textContent = `"${todayQuote.quote}"`;
+    }
+    if (quoteAuthorEl && todayQuote.author) {
+        quoteAuthorEl.textContent = `— ${todayQuote.author}`;
+    }
+}
+
 export function updateLoginVisualDayNight() {
     const visualImg = document.getElementById('loginVisualCampusImg');
-    if (!visualImg) return;
+    if (visualImg) {
+        const hour = new Date().getHours();
+        const isDay = (hour >= 6 && hour < 18);
+        const localImg = isDay ? 'day_building.jpg' : 'night_building.jpg';
+        const driveImg = isDay
+            ? 'https://lh3.googleusercontent.com/d/1ozoUmpJTsMTSvykTQr-WNQ3K19D1_NGb'
+            : 'https://lh3.googleusercontent.com/d/12BaqYdue8roO0CCfwajIEcCkIkTZe5pR';
 
-    const hour = new Date().getHours();
-    const isDay = (hour >= 6 && hour < 18);
-    const localImg = isDay ? 'day_building.jpg' : 'night_building.jpg';
-    const driveImg = isDay
-        ? 'https://lh3.googleusercontent.com/d/1ozoUmpJTsMTSvykTQr-WNQ3K19D1_NGb'
-        : 'https://lh3.googleusercontent.com/d/12BaqYdue8roO0CCfwajIEcCkIkTZe5pR';
+        // Set image with fallback
+        visualImg.src = localImg;
+        visualImg.onerror = () => {
+            visualImg.onerror = null;
+            visualImg.src = driveImg;
+        };
+    }
 
-    // Set image with fallback
-    visualImg.src = localImg;
-    visualImg.onerror = () => {
-        visualImg.onerror = null;
-        visualImg.src = driveImg;
-    };
+    updateLoginDailyQuote();
 }
 
 export function isTodayBirthday(birthDate) {

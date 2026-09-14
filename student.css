@@ -2269,16 +2269,33 @@ body.dark-mode .desktop-user-actions svg.theme-icon-moon {
     text-shadow: 0 2px 14px rgba(0, 0, 0, 0.75);
 }
 
+.login-visual-quote-box {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
 .login-visual-school-tagline {
     font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif;
     font-size: 15px;
     font-weight: 400;
+    font-style: italic;
     opacity: 0.95;
     margin: 0;
     line-height: 1.6;
-    color: #e2e8f0;
+    color: #f1f5f9;
     letter-spacing: -0.1px;
-    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.75);
+}
+
+.login-visual-quote-author {
+    font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    color: #cbd5e1;
+    opacity: 0.9;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
 }
 
 .login-card-form-col {
@@ -2414,6 +2431,10 @@ body.dark-mode .desktop-user-actions svg.theme-icon-moon {
 
     .login-visual-school-tagline {
         font-size: 12.5px;
+    }
+
+    .login-visual-quote-author {
+        font-size: 11px;
     }
 
     .login-card-form-col {

@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="style.css?v=418">
     <link rel="stylesheet" href="admin.css?v=420">
     <link rel="stylesheet" href="student.css?v=420">
-    <link rel="stylesheet" href="board.css?v=425">
+    <link rel="stylesheet" href="board.css?v=427">
 </head>
 
 <body>
@@ -726,9 +726,10 @@
 
                 <div class="fmt-divider"></div>
 
-                <!-- Bold & Italic -->
+                <!-- Bold, Italic & Underline -->
                 <button id="fmtBold" class="fmt-btn" title="Bold (Ctrl+B)"><b>B</b></button>
                 <button id="fmtItalic" class="fmt-btn" title="Italic (Ctrl+I)"><i>I</i></button>
+                <button id="fmtUnderline" class="fmt-btn" title="Underline (Ctrl+U)"><u>U</u></button>
 
                 <!-- Horizontal Text Alignment -->
                 <div id="fmtHAlignGroup" class="fmt-btn-group" title="Horizontal Alignment (Left, Center, Right)">
@@ -1133,10 +1134,10 @@
                             </div>
                         </div>
 
-                        <!-- Origin Point (Pivot) -->
+                        <!-- Origin -->
                         <div class="prop-control-group" id="propGroupOrigin" style="margin-top: 10px;">
                             <div class="prop-sublabel-row">
-                                <span>ORIGIN POINT (PIVOT)</span>
+                                <span>ORIGIN</span>
                                 <button type="button" id="btnPropResetOrigin" class="prop-pill-btn" title="Reset origin to center of shape" style="padding: 2px 8px; font-size: 11px;">⟲ Center</button>
                             </div>
                             <div class="prop-row-grid-2" style="margin-top: 4px;">
@@ -1246,6 +1247,7 @@
                                 <div class="prop-btn-group">
                                     <button type="button" id="btnPropShapeBold" class="prop-fmt-btn" title="Bold"><b>B</b></button>
                                     <button type="button" id="btnPropShapeItalic" class="prop-fmt-btn" title="Italic"><i>I</i></button>
+                                    <button type="button" id="btnPropShapeUnderline" class="prop-fmt-btn" title="Underline"><u>U</u></button>
                                 </div>
                             </label>
                         </div>
@@ -1334,6 +1336,7 @@
                                 <div class="prop-btn-group">
                                     <button type="button" id="btnPropTextBold" class="prop-fmt-btn" title="Bold"><b>B</b></button>
                                     <button type="button" id="btnPropTextItalic" class="prop-fmt-btn" title="Italic"><i>I</i></button>
+                                    <button type="button" id="btnPropTextUnderline" class="prop-fmt-btn" title="Underline"><u>U</u></button>
                                 </div>
                             </label>
                         </div>
@@ -1356,6 +1359,18 @@
                                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="10" x2="7" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="21" y1="18" x2="7" y2="18"></line></svg>
                                     <span>Right</span>
                                 </button>
+                            </div>
+                        </div>
+
+                        <!-- Text Size Presets -->
+                        <div class="prop-field-group" style="margin-top: 10px;">
+                            <div class="prop-sublabel-row">
+                                <span>SIZE PRESETS</span>
+                            </div>
+                            <div class="prop-preset-pills">
+                                <button type="button" class="prop-pill-btn btn-text-size-preset" data-size="100" title="Header (100px)">Header</button>
+                                <button type="button" class="prop-pill-btn btn-text-size-preset" data-size="70" title="Title (70px)">Title</button>
+                                <button type="button" class="prop-pill-btn btn-text-size-preset" data-size="50" title="Subtitle (50px)">Subtitle</button>
                             </div>
                         </div>
                     </div>
@@ -1632,7 +1647,7 @@
     </div>
 
     <!-- Scripts -->
-    <script type="module" src="board.js?v=425"></script>
+    <script type="module" src="board.js?v=427"></script>
     <script src="studentNav.js?v=420"></script>
 </body>
 

@@ -2853,11 +2853,27 @@ body.dark-theme .prop-textarea {
     box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 
+/* Hide browser default number input arrows/spinners to avoid clipping */
+.prop-input-mini::-webkit-outer-spin-button,
+.prop-input-mini::-webkit-inner-spin-button,
+.prop-input-stepped::-webkit-outer-spin-button,
+.prop-input-stepped::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.prop-input-mini,
+.prop-input-stepped {
+    -moz-appearance: textfield;
+}
+
 .prop-input-mini {
-    width: 48px;
-    font-size: 11.5px;
-    padding: 3px 5px;
-    border-radius: 5px;
+    width: 58px;
+    min-width: 54px;
+    box-sizing: border-box;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 6px;
+    border-radius: 6px;
     border: 1px solid var(--border-color, #cbd5e1);
     background: #ffffff;
     color: var(--text-dark, #0f172a);
@@ -2897,6 +2913,8 @@ body.dark-theme .prop-input-mini {
     background: #ffffff;
     overflow: hidden;
     height: 30px;
+    min-width: 82px;
+    width: 100%;
 }
 
 body.dark-theme .prop-mini-stepper {
@@ -2905,15 +2923,18 @@ body.dark-theme .prop-mini-stepper {
 }
 
 .prop-input-stepped {
-    width: 42px;
+    flex: 1;
+    min-width: 32px;
+    width: 100%;
+    box-sizing: border-box;
     border: none;
     background: transparent;
     text-align: center;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 12.5px;
+    font-weight: 700;
     color: var(--text-dark, #0f172a);
     outline: none;
-    padding: 0;
+    padding: 0 2px;
 }
 
 body.dark-theme .prop-input-stepped {
@@ -2921,8 +2942,9 @@ body.dark-theme .prop-input-stepped {
 }
 
 .prop-stepper-btn {
-    width: 26px;
-    height: 26px;
+    width: 25px;
+    height: 100%;
+    flex-shrink: 0;
     border: none;
     background: transparent;
     color: var(--text-gray, #64748b);
@@ -2933,7 +2955,7 @@ body.dark-theme .prop-input-stepped {
     justify-content: center;
     cursor: pointer;
     transition: background 0.12s ease;
-    border-radius: 6px;
+    border-radius: 0;
     padding: 0;
 }
 
@@ -2995,6 +3017,19 @@ body.dark-theme .prop-pill-btn {
 .prop-pill-btn:hover {
     border-color: #2563eb;
     color: #2563eb;
+}
+
+.prop-pill-btn.active {
+    background: #eff6ff;
+    border-color: #3b82f6;
+    color: #2563eb;
+    font-weight: 700;
+}
+
+body.dark-theme .prop-pill-btn.active {
+    background: rgba(37, 99, 235, 0.25);
+    border-color: #3b82f6;
+    color: #60a5fa;
 }
 
 /* Color Swatches Grid */
@@ -3115,7 +3150,9 @@ body.dark-theme .prop-style-toggle.active {
 }
 
 .prop-btn-group {
-    display: flex;
+    display: inline-flex;
+    width: fit-content;
+    max-width: 100%;
     border: 1px solid var(--border-color, #cbd5e1);
     border-radius: 7px;
     overflow: hidden;
