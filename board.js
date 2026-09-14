@@ -1249,15 +1249,11 @@ function updateGridClass() {
     canvasEl.classList.remove('grid-dots', 'grid-isometric', 'grid-paper', 'grid-lines');
     if (gridLayer) {
         gridLayer.classList.remove('grid-dots', 'grid-isometric', 'grid-paper', 'grid-lines');
-        // Keep the layer aligned to the surface for regular backgrounds. Isometric
-        // patterns can be rotated through 90°; give that layer extra bleed so the
-        // rotated tile is not clipped by the surface bounds.
-        const isIso = gridStyle === 'isometric';
-        gridLayer.style.top = isIso ? '-100%' : '0';
-        gridLayer.style.left = isIso ? '-100%' : '0';
-        gridLayer.style.width = isIso ? '300%' : '100%';
-        gridLayer.style.height = isIso ? '300%' : '100%';
-        gridLayer.style.transformOrigin = isIso ? 'center center' : 'top left';
+        gridLayer.style.top = '0';
+        gridLayer.style.left = '0';
+        gridLayer.style.width = '100%';
+        gridLayer.style.height = '100%';
+        gridLayer.style.transformOrigin = 'top left';
     }
 
     if (gridStyle === 'dots') {
@@ -1338,7 +1334,8 @@ function updateIsometricBackground(size, angle1, angle2) {
     if (angle2 !== undefined && angle2 !== null) isometricGridAngle2 = Math.max(-90, Math.min(90, Number(angle2) || 0));
     const W = isometricGridSize;
     // Use a tile whose dimensions preserve the ±30° line phases at each edge.
-    const H = parseFloat((W * 2 / Math.sqrt(3)).toFixed(3));
+    const H = W * 2 / Math.sqrt(3);
+    const H_fmt = parseFloat(H.toFixed(4));
     const tileW = W * 2;
 
     const extent = Math.max(W, H) * 4;
@@ -1346,11 +1343,13 @@ function updateIsometricBackground(size, angle1, angle2) {
         const rad = angle * Math.PI / 180;
         const dx = Math.cos(rad), dy = Math.sin(rad);
         const nx = -dy, ny = dx;
-        // Using the size as the normal distance keeps both line families
-        // phase-aligned when the SVG tile repeats across its W × H bounds.
+        // Using exact multiples of spacing starting from 0 keeps both line families
+        // phase-aligned with world coordinates (0, 0) and the tile boundaries.
         const spacing = W;
         const paths = [];
-        for (let c = -extent; c <= extent; c += spacing) {
+        const maxSteps = Math.ceil(extent / spacing) + 2;
+        for (let i = -maxSteps; i <= maxSteps; i++) {
+            const c = i * spacing;
             const px = nx * c, py = ny * c;
             paths.push(`M${(px - dx * extent).toFixed(2)},${(py - dy * extent).toFixed(2)} L${(px + dx * extent).toFixed(2)},${(py + dy * extent).toFixed(2)}`);
         }
@@ -1358,8 +1357,8 @@ function updateIsometricBackground(size, angle1, angle2) {
     };
     const pathD = `${linePath(isometricGridAngle1)} ${linePath(isometricGridAngle2)}`;
 
-    const svgLight = `<svg xmlns='http://www.w3.org/2000/svg' width='${tileW}' height='${H}' viewBox='0 0 ${tileW} ${H}'><path d='${pathD}' stroke='rgba(100, 116, 139, 0.48)' stroke-width='0.8' fill='none'/></svg>`;
-    const svgDark = `<svg xmlns='http://www.w3.org/2000/svg' width='${tileW}' height='${H}' viewBox='0 0 ${tileW} ${H}'><path d='${pathD}' stroke='rgba(148, 163, 184, 0.42)' stroke-width='0.8' fill='none'/></svg>`;
+    const svgLight = `<svg xmlns='http://www.w3.org/2000/svg' width='${tileW}' height='${H_fmt}' viewBox='0 0 ${tileW} ${H_fmt}'><path d='${pathD}' stroke='rgba(100, 116, 139, 0.48)' stroke-width='0.8' fill='none'/></svg>`;
+    const svgDark = `<svg xmlns='http://www.w3.org/2000/svg' width='${tileW}' height='${H_fmt}' viewBox='0 0 ${tileW} ${H_fmt}'><path d='${pathD}' stroke='rgba(148, 163, 184, 0.42)' stroke-width='0.8' fill='none'/></svg>`;
 
     const surface = document.getElementById('boardCanvasSurface');
     const gridLayer = document.getElementById('boardGridLayer');
@@ -1369,14 +1368,14 @@ function updateIsometricBackground(size, angle1, angle2) {
 
     if (surface) {
         surface.style.setProperty('--isometric-w', `${tileW}px`);
-        surface.style.setProperty('--isometric-h', `${H}px`);
+        surface.style.setProperty('--isometric-h', `${H_fmt}px`);
         surface.style.setProperty('--isometric-svg-light', `url("data:image/svg+xml,${encodeURIComponent(svgLight)}")`);
         surface.style.setProperty('--isometric-svg-dark', `url("data:image/svg+xml,${encodeURIComponent(svgDark)}")`);
     }
 
     if (gridLayer) {
         gridLayer.style.backgroundImage = bgUrl;
-        gridLayer.style.backgroundSize = `${tileW}px ${H}px`;
+        gridLayer.style.backgroundSize = `${tileW}px ${H_fmt}px`;
         gridLayer.style.backgroundRepeat = 'repeat';
         gridLayer.style.transform = 'none';
     }
@@ -1399,6 +1398,8 @@ function updateIsometricBackground(size, angle1, angle2) {
     const angle2Slider = document.getElementById('isoAngle2Slider');
     if (angle1Slider && Number(angle1Slider.value) !== isometricGridAngle1) angle1Slider.value = isometricGridAngle1;
     if (angle2Slider && Number(angle2Slider.value) !== isometricGridAngle2) angle2Slider.value = isometricGridAngle2;
+
+    updateGridViewport();
 }
 
 function updateZoomDisplay() {
@@ -1419,13 +1420,7 @@ function updateGridViewport() {
         const width = (isometricGridSize || 20) * 2 * z;
         const height = (isometricGridSize || 20) * 2 / Math.sqrt(3) * z;
         gridLayer.style.backgroundSize = `${width}px ${height}px`;
-        // The layer is oversized and positioned at -100%. Put the unrotated
-        // lattice origin at the camera origin before the layer is rotated; this
-        // keeps the visible grid and world-space snapping in the same phase.
-        const surface = document.getElementById('boardCanvasSurface');
-        const widthPx = surface?.clientWidth || window.innerWidth;
-        const heightPx = surface?.clientHeight || (window.innerHeight - 56);
-        gridLayer.style.backgroundPosition = `${widthPx + camera.x}px ${heightPx + camera.y}px`;
+        gridLayer.style.backgroundPosition = `${camera.x}px ${camera.y}px`;
     } else {
         gridLayer.style.backgroundPosition = '';
     }
