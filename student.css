@@ -2180,24 +2180,300 @@ body.dark-mode .desktop-user-actions svg.theme-icon-moon {
 }
 
 /* ======================================================
-   DASHBOARD LAYOUT: BANNER & CONTENT SAME SIZE
+   FULL-PAGE SPLIT-SCREEN STUDENT LOGIN (DAY / NIGHT)
    ====================================================== */
-.main-wrapper .student-greeting-banner,
-.student-greeting-banner {
-    width: 100% !important;
-    max-width: 100% !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    box-sizing: border-box !important;
+.student-login-fullscreen-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 99999;
+    display: flex;
+    align-items: stretch;
+    justify-content: stretch;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box;
+    overflow: hidden;
+    background: var(--body-bg, #0b1528);
 }
 
-.main-wrapper .dashboard-grid,
-.dashboard-grid {
-    width: 100% !important;
-    max-width: 100% !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    box-sizing: border-box !important;
+.student-split-login-card {
+    display: flex;
+    flex-direction: row;
+    width: 100vw;
+    height: 100vh;
+    max-width: 100vw !important;
+    min-height: 100vh !important;
+    background: var(--card-bg, #ffffff);
+    border: none !important;
+    border-radius: 0 !important;
+    overflow: hidden;
+    box-shadow: none !important;
+    box-sizing: border-box;
+    position: relative;
+    margin: 0 !important;
 }
+
+.login-card-visual-col {
+    flex: 1 1 56%;
+    position: relative;
+    overflow: hidden;
+    height: 100vh;
+    background: #0b192e;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 48px 52px;
+    box-sizing: border-box;
+}
+
+.login-visual-img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    transition: opacity 0.5s ease-in-out, transform 1.2s ease;
+}
+
+.student-split-login-card:hover .login-visual-img {
+    transform: scale(1.02);
+}
+
+.login-visual-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(11, 25, 46, 0.25) 0%, rgba(11, 25, 46, 0.4) 40%, rgba(11, 25, 46, 0.88) 100%);
+    pointer-events: none;
+    z-index: 2;
+}
+
+.login-visual-content {
+    position: relative;
+    z-index: 3;
+    color: #ffffff;
+    max-width: 600px;
+}
+
+.login-visual-school-name {
+    font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif;
+    font-size: 34px;
+    font-weight: 800;
+    line-height: 1.15;
+    margin: 0 0 10px 0;
+    letter-spacing: -0.8px;
+    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.75);
+}
+
+.login-visual-school-tagline {
+    font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif;
+    font-size: 15px;
+    font-weight: 400;
+    opacity: 0.95;
+    margin: 0;
+    line-height: 1.6;
+    color: #e2e8f0;
+    letter-spacing: -0.1px;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+}
+
+.login-card-form-col {
+    flex: 0 0 44%;
+    max-width: 580px;
+    min-width: 380px;
+    padding: 60px 56px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background: var(--card-bg, #ffffff);
+    box-sizing: border-box;
+    box-shadow: -10px 0 35px rgba(0, 0, 0, 0.1);
+    z-index: 5;
+    position: relative;
+    overflow-y: auto;
+    font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif;
+}
+
+.login-form-brand-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 38px;
+    width: 100%;
+}
+
+.login-form-brand-logo {
+    height: 52px;
+    width: auto;
+    max-width: 280px;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto;
+}
+
+.login-form-group {
+    text-align: left;
+    margin-bottom: 22px;
+}
+
+.login-form-group label {
+    display: block;
+    font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text-dark, #0f172a);
+    margin-bottom: 8px;
+    letter-spacing: -0.1px;
+}
+
+.login-form-group input {
+    width: 100%;
+    height: 52px;
+    padding: 0 18px;
+    border-radius: 14px;
+    border: 1.5px solid var(--border-color, #e2e8f0);
+    background: var(--input-bg, #f8fafc);
+    color: var(--text-dark, #0f172a);
+    font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif;
+    font-size: 14.5px;
+    font-weight: 500;
+    letter-spacing: -0.1px;
+    box-sizing: border-box;
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.login-form-group input::placeholder {
+    color: var(--text-muted, #94a3b8);
+    font-weight: 400;
+}
+
+.login-form-group input:focus {
+    outline: none;
+    border-color: #1e5eff;
+    background: #ffffff;
+    box-shadow: 0 0 0 4px rgba(30, 94, 255, 0.16);
+    transform: translateY(-1px);
+}
+
+.login-form-btn-submit {
+    width: 100%;
+    height: 52px;
+    background: linear-gradient(135deg, #1e5eff 0%, #0d47a1 100%);
+    color: #ffffff;
+    border: none;
+    border-radius: 14px;
+    font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif;
+    font-size: 15.5px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(30, 94, 255, 0.38);
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.login-form-btn-submit:hover {
+    background: linear-gradient(135deg, #2b6bf8 0%, #1555c4 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(30, 94, 255, 0.48);
+}
+
+.login-form-btn-submit:active {
+    transform: translateY(0);
+}
+
+/* Responsive adjustment for Mobile/Tablet */
+@media (max-width: 900px) {
+    .student-split-login-card {
+        flex-direction: column;
+        overflow-y: auto;
+    }
+
+    .login-card-visual-col {
+        flex: none;
+        height: 240px;
+        min-height: 240px;
+        padding: 20px 24px;
+        justify-content: flex-end;
+    }
+
+    .login-visual-content {
+        padding: 0;
+    }
+
+    .login-visual-school-name {
+        font-size: 22px;
+    }
+
+    .login-visual-school-tagline {
+        font-size: 12.5px;
+    }
+
+    .login-card-form-col {
+        flex: 1 1 auto;
+        max-width: 100%;
+        min-width: 100%;
+        padding: 32px 24px;
+        box-shadow: none;
+    }
+}
+
+/* ======================================================
+   UNIFIED STUDENT DASHBOARD CARD (SEAMLESS WRAPPER)
+   ====================================================== */
+.unified-student-dashboard-card {
+    background: var(--card-bg, #ffffff);
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05);
+    box-sizing: border-box;
+    width: 100%;
+    margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.unified-student-dashboard-card .quick-cards-row {
+    margin-bottom: 0 !important;
+}
+
+.unified-student-dashboard-card .hero-point-card {
+    margin-bottom: 16px !important;
+    border-radius: 18px !important;
+}
+
+.unified-student-dashboard-card .student-history-embedded-section {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+}
+
+.unified-student-dashboard-card .student-history-embedded-section h3 {
+    font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-dark, #0f172a);
+}
+
+@media (max-width: 768px) {
+    .unified-student-dashboard-card {
+        padding: 18px;
+        border-radius: 20px;
+        gap: 14px;
+    }
+}
+
+
 
 

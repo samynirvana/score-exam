@@ -22,7 +22,7 @@
     <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/1o_7O1hdx1SJOXfoFw9ZKxpl4zSOD_VYd">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="admin.css?v=429">
+    <link rel="stylesheet" href="admin.css?v=431">
 </head>
 
 <body>
@@ -591,11 +591,10 @@
                             happening today.</p>
                     </div>
                     <div class="school-building-img-wrapper">
-                        <video autoplay loop muted playsinline class="school-building-video">
-                            <source src="Background.mp4" type="video/mp4">
-                            <source
-                                src="https://drive.usercontent.google.com/download?id=1nzwskEqY_WMN_E1i_LHY4f33btUBXQru&export=download"
-                                type="video/mp4">
+                        <video autoplay loop muted playsinline class="school-building-video" id="greetingBannerVideo">
+                            <source src="Day.mp4" type="video/mp4">
+                            <source src="https://drive.usercontent.google.com/download?id=1s8HaspAJnJ4OknN1woyVkHxnR9ZgsUMB" type="video/mp4">
+                            <source src="https://drive.google.com/uc?id=1s8HaspAJnJ4OknN1woyVkHxnR9ZgsUMB&export=download" type="video/mp4">
                         </video>
                     </div>
                 </div>
@@ -2607,7 +2606,6 @@
                                         <tr>
                                             <th>Date</th>
                                             <th>Title</th>
-                                            <th>Target Class</th>
                                             <th>Status</th>
                                             <th>Actions</th>
                                         </tr>
@@ -3829,6 +3827,60 @@
                         Changes</button>
                 </div>
             </div>
+
+            <!-- Modal for Notice Details -->
+            <div id="noticeDetailsModal" class="hidden"
+                style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); z-index:1200; display:flex; justify-content:center; align-items:center; backdrop-filter: blur(4px);">
+                <div class="box"
+                    style="width: 90%; max-width: 500px; position: relative; text-align: left; padding: 26px; border-radius: 18px; box-shadow: 0 16px 40px rgba(0,0,0,0.25);">
+                    <button onclick="closeNoticeDetailsModal()"
+                        style="position:absolute; right:16px; top:16px; width:32px !important; height:32px !important; padding:0 !important; background:rgba(0,0,0,0.06); color:var(--text-gray); border-radius:50%; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:14px;">✕</button>
+
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 18px;">
+                        <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(30, 94, 255, 0.1); color: var(--primary-blue); display: flex; align-items: center; justify-content: center;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
+                        </div>
+                        <h3 style="margin: 0; font-size: 19px; color: var(--text-dark);">Notice Details</h3>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px;">
+                        <div style="background: var(--input-bg, #f8fafc); border: 1px solid var(--border-color, #e2e8f0); border-radius: 12px; padding: 14px 16px;">
+                            <span style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-gray, #64748b); margin-bottom: 4px;">Notice Title / Name</span>
+                            <div id="noticeDetailTitle" style="font-size: 15px; font-weight: 700; color: var(--text-dark, #0f172a); line-height: 1.4;">-</div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <div style="background: var(--input-bg, #f8fafc); border: 1px solid var(--border-color, #e2e8f0); border-radius: 12px; padding: 12px 14px;">
+                                <span style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-gray, #64748b); margin-bottom: 4px;">Posted Date</span>
+                                <div id="noticeDetailDate" style="font-size: 13.5px; font-weight: 600; color: var(--text-dark, #0f172a);">-</div>
+                            </div>
+                            <div style="background: var(--input-bg, #f8fafc); border: 1px solid var(--border-color, #e2e8f0); border-radius: 12px; padding: 12px 14px;">
+                                <span style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-gray, #64748b); margin-bottom: 4px;">Status</span>
+                                <div id="noticeDetailStatus" style="display: inline-block;">-</div>
+                            </div>
+                        </div>
+
+                        <div style="background: var(--input-bg, #f8fafc); border: 1px solid var(--border-color, #e2e8f0); border-radius: 12px; padding: 14px 16px;">
+                            <span style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-gray, #64748b); margin-bottom: 4px;">Target Class(es)</span>
+                            <div id="noticeDetailTargetClass" style="font-size: 13.5px; font-weight: 600; color: var(--primary-blue, #2563eb);">-</div>
+                        </div>
+
+                        <div id="noticeDetailContentWrap" style="background: var(--input-bg, #f8fafc); border: 1px solid var(--border-color, #e2e8f0); border-radius: 12px; padding: 14px 16px;">
+                            <span style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-gray, #64748b); margin-bottom: 6px;">Notice Details / Description</span>
+                            <div id="noticeDetailContent" style="font-size: 13.5px; color: var(--text-dark, #0f172a); line-height: 1.5; white-space: pre-wrap; word-break: break-word; max-height: 180px; overflow-y: auto;">-</div>
+                        </div>
+                    </div>
+
+                    <button type="button" onclick="closeNoticeDetailsModal()"
+                        style="background: var(--primary-blue); color: white; width: 100%; padding: 11px; font-weight: 700; border-radius: 10px; border: none; cursor: pointer; font-size: 13.5px;">Close</button>
+                </div>
+            </div>
     </div> <!-- end .admin-main-container -->
 
     <!-- EDIT OFFLINE EXAM / QUIZ MODAL -->
@@ -4556,7 +4608,7 @@
     </dialog>
 
     <script src="studentNav.js?v=432"></script>
-    <script type="module" src="admin.js?v=432"></script>
+    <script type="module" src="admin.js?v=435"></script>
 </body>
 
 </html>

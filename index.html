@@ -10,54 +10,66 @@
     <meta http-equiv="Expires" content="0">
     <title>MITRA KASIH SCHOOL - Student Portal</title>
     <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/1o_7O1hdx1SJOXfoFw9ZKxpl4zSOD_VYd">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=379">
     <link rel="stylesheet" href="admin.css?v=388">
-    <link rel="stylesheet" href="student.css?v=380">
+    <link rel="stylesheet" href="student.css?v=389">
 </head>
 
 <body>
 
-    <div id="studentLoginOverlay" class="modal-overlay"
-        style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; background: rgba(6, 24, 56, 0.85); backdrop-filter: blur(8px); z-index: 99999; display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;">
-        <div class="login-card"
-            style="background: var(--card-bg, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: 20px; width: 100%; max-width: 400px; padding: 24px 20px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); text-align: center; box-sizing: border-box; margin: 0 auto;">
-            <div
-                style="background: #ffffff; width: 72px; height: 72px; border-radius: 18px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; padding: 6px; box-shadow: 0 4px 14px rgba(0,0,0,0.06); border: 1px solid var(--border-color, #e2e8f0);">
-                <img src="https://lh3.googleusercontent.com/d/1o_7O1hdx1SJOXfoFw9ZKxpl4zSOD_VYd" alt="Mitra Kasih Logo"
-                    style="width: 100%; height: 100%; object-fit: contain;">
-            </div>
-            <h2 style="margin: 0 0 20px 0; font-size: 23px; font-weight: 800; color: var(--text-dark, #0f172a);">Mitra Kasih Portal</h2>
+    <div id="studentLoginOverlay" class="student-login-fullscreen-overlay">
+        <div class="student-split-login-card">
+            
+            <!-- LEFT COLUMN: DYNAMIC DAY/NIGHT CAMPUS IMAGE & BRANDING -->
+            <div class="login-card-visual-col">
+                <img id="loginVisualCampusImg" class="login-visual-img" src="day_building.jpg" alt="Mitra Kasih Campus">
+                <div class="login-visual-overlay"></div>
 
-            <div style="text-align: left; margin-bottom: 16px;">
-                <label
-                    style="font-size: 13px; font-weight: 600; color: var(--text-dark); display: block; margin-bottom: 6px;">Username
-                    / Student Code / Email</label>
-                <input type="text" id="loginStudentUsername" placeholder="Code (e.g. BLXVC) or Email"
-                    style="width: 100%; height: 46px;">
+                <div class="login-visual-content">
+                    <h3 class="login-visual-school-name">SMP MITRA KASIH</h3>
+                    <p class="login-visual-school-tagline">Learn Today, A Brighter Tomorrow. Welcome to your online student learning portal.</p>
+                </div>
             </div>
 
-            <div style="text-align: left; margin-bottom: 24px;">
-                <label
-                    style="font-size: 13px; font-weight: 600; color: var(--text-dark); display: block; margin-bottom: 6px;">Password</label>
-                <input type="password" id="loginStudentPassword" placeholder="Code or Account Password"
-                    style="width: 100%; height: 46px;">
+            <!-- RIGHT COLUMN: LOGIN CREDENTIALS FORM -->
+            <div class="login-card-form-col">
+                <div class="login-form-brand-row">
+                    <img src="mks_logo.png" 
+                         onerror="this.onerror=null; this.src='https://lh3.googleusercontent.com/d/1ge2ndYnSE0CLQl_iqqRhcLGlxD0A-Bum';" 
+                         alt="Sekolah Mitra Kasih" 
+                         class="login-form-brand-logo">
+                </div>
+
+                <div class="login-form-group">
+                    <label for="loginStudentUsername">Username</label>
+                    <input type="text" id="loginStudentUsername" placeholder="Enter username or student code" autocomplete="username">
+                </div>
+
+                <div class="login-form-group">
+                    <label for="loginStudentPassword">Password</label>
+                    <input type="password" id="loginStudentPassword" placeholder="Code or Account Password" autocomplete="current-password">
+                </div>
+
+                <label for="loginRememberMe" style="display: flex; align-items: center; gap: 9px; margin: -2px 0 24px 0; text-align: left; font-size: 13.5px; font-weight: 500; font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif; color: var(--text-dark, #334155); cursor: pointer; user-select: none;">
+                    <input type="checkbox" id="loginRememberMe" style="width: 17px; height: 17px; min-height: 0; margin: 0; padding: 0; accent-color: #1e5eff; flex-shrink: 0; border-radius: 4px; cursor: pointer;">
+                    <span>Remember my login</span>
+                </label>
+
+                <button id="studentLoginBtn" class="login-form-btn-submit" type="button">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                        <polyline points="10 17 15 12 10 7"></polyline>
+                        <line x1="15" y1="12" x2="3" y2="12"></line>
+                    </svg>
+                    <span>Log In to Portal</span>
+                </button>
+
+                <!-- ERROR MESSAGE -->
+                <div id="loginErrorMessage" class="error-box hidden" style="margin-top: 14px;">
+                    Invalid credentials. Please check your username and password.
+                </div>
             </div>
-
-            <label for="loginRememberMe" style="display: flex; align-items: center; justify-content: center; gap: 8px; margin: -8px 0 20px; text-align: left; font-size: 13px; color: var(--text-dark, #0f172a); cursor: pointer;">
-                <input type="checkbox" id="loginRememberMe" style="width: 16px; height: 16px; min-height: 0; margin: 0; padding: 0; accent-color: #1e5eff; flex-shrink: 0;">
-                <span>Remember me</span>
-            </label>
-
-            <button id="studentLoginBtn"
-                style="width: 100%; height: 48px; background: #1e5eff; color: #ffffff; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; transition: background 0.2s;">Log
-                In to Portal</button>
-
-            <!-- ERROR MESSAGE -->
-            <div id="loginErrorMessage" class="error-box hidden" style="margin-top: 16px;">
-                Invalid credentials. Please check your username and password.
-            </div>
-
 
         </div>
     </div>
@@ -305,11 +317,10 @@
                     <p class="greeting-subtitle">Here’s what’s happening today.</p>
                 </div>
                 <div class="school-building-img-wrapper">
-                    <video autoplay loop muted playsinline class="school-building-video">
-                        <source src="Background.mp4" type="video/mp4">
-                        <source
-                            src="https://drive.usercontent.google.com/download?id=1nzwskEqY_WMN_E1i_LHY4f33btUBXQru&export=download"
-                            type="video/mp4">
+                    <video autoplay loop muted playsinline class="school-building-video" id="greetingBannerVideo">
+                        <source src="Day.mp4" type="video/mp4">
+                        <source src="https://drive.usercontent.google.com/download?id=1s8HaspAJnJ4OknN1woyVkHxnR9ZgsUMB" type="video/mp4">
+                        <source src="https://drive.google.com/uc?id=1s8HaspAJnJ4OknN1woyVkHxnR9ZgsUMB&export=download" type="video/mp4">
                     </video>
                 </div>
             </div>
@@ -391,93 +402,97 @@
                         </div>
                     </div>
 
-                    <!-- QUICK CARDS (2-COLUMN GRID) -->
-                    <div class="quick-cards-row">
-                        <!-- Take Online Quiz Card -->
-                        <a href="quiz.html" class="quick-card-box blue-card">
-                            <div class="quick-card-icon-box blue-icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                    <polyline points="14 2 14 8 20 8"></polyline>
-                                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                                    <polyline points="10 9 9 9 8 9"></polyline>
-                                </svg>
-                            </div>
-                            <div>
-                                <h3 class="quick-card-title blue-title" style="margin: 0;">Quiz</h3>
-                            </div>
-                            <svg class="quick-card-arrow blue-arrow" viewBox="0 0 24 24" width="20" height="20"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <line x1="5" y1="12" x2="19" y2="12"></line>
-                                <polyline points="12 5 19 12 12 19"></polyline>
-                            </svg>
-                        </a>
+                    <!-- UNIFIED DASHBOARD CARD (QUICK ACTIONS, PROFILE & HISTORY) -->
+                    <div class="unified-student-dashboard-card">
 
-                        <!-- Classroom Timeline Card -->
-                        <a href="timeline.html" class="quick-card-box green-card">
-                            <div class="quick-card-icon-box green-icon">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                                </svg>
-                            </div>
-                            <div>
-                                <h3 class="quick-card-title green-title" style="margin: 0;">Go to Timeline</h3>
-                            </div>
-                            <svg class="quick-card-arrow green-arrow" viewBox="0 0 24 24" width="20" height="20"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <line x1="5" y1="12" x2="19" y2="12"></line>
-                                <polyline points="12 5 19 12 12 19"></polyline>
-                            </svg>
-                        </a>
-                    </div>
-
-                    <!-- UNIFIED PROFILE & SCORES CONTAINER -->
-                    <div id="profileResultCard" class="hidden">
-
-                        <!-- MY PROFILE SECTION -->
-                        <div id="myProfileCard" style="margin-bottom: 0;">
-                            <!-- HERO BEHAVIOR BANNER -->
-                            <div class="hero-point-card" style="margin-bottom: 20px;">
-                                <div>
-                                    <span class="hero-label">Student Profile</span>
-                                    <h2 id="studentNameDisplay" class="student-name-heading">Student Name</h2>
-                                    <span id="studentClassDisplay" class="student-class-badge">Classroom</span>
+                        <!-- QUICK CARDS (2-COLUMN GRID) -->
+                        <div class="quick-cards-row">
+                            <!-- Take Online Quiz Card -->
+                            <a href="quiz.html" class="quick-card-box blue-card">
+                                <div class="quick-card-icon-box blue-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                                        <polyline points="10 9 9 9 8 9"></polyline>
+                                    </svg>
                                 </div>
-
                                 <div>
-                                    <span
-                                        style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.85; display: block; font-weight: 600; margin-bottom: 4px;">Total
-                                        Behavior Points</span>
-                                    <div id="heroTotalPoints" class="hero-point-badge">+0</div>
+                                    <h3 class="quick-card-title blue-title" style="margin: 0;">Quiz</h3>
                                 </div>
-                            </div>
+                                <svg class="quick-card-arrow blue-arrow" viewBox="0 0 24 24" width="20" height="20"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    <polyline points="12 5 19 12 12 19"></polyline>
+                                </svg>
+                            </a>
 
-                            <!-- BEHAVIOR POINT HISTORY (MODERN ACTIVITY FEED) -->
-                            <div class="box" style="margin-bottom: 0;">
-                                <div
-                                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <!-- Classroom Timeline Card -->
+                            <a href="timeline.html" class="quick-card-box green-card">
+                                <div class="quick-card-icon-box green-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="quick-card-title green-title" style="margin: 0;">Go to Timeline</h3>
+                                </div>
+                                <svg class="quick-card-arrow green-arrow" viewBox="0 0 24 24" width="20" height="20"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    <polyline points="12 5 19 12 12 19"></polyline>
+                                </svg>
+                            </a>
+                        </div>
+
+                        <!-- UNIFIED PROFILE & SCORES CONTAINER -->
+                        <div id="profileResultCard" class="hidden">
+
+                            <!-- MY PROFILE SECTION -->
+                            <div id="myProfileCard" style="margin-bottom: 0;">
+                                <!-- HERO BEHAVIOR BANNER -->
+                                <div class="hero-point-card">
                                     <div>
-                                        <h3
-                                            style="margin: 0; font-size: 17px; font-weight: 800; color: var(--text-dark);">
-                                            History</h3>
+                                        <span class="hero-label">Student Profile</span>
+                                        <h2 id="studentNameDisplay" class="student-name-heading">Student Name</h2>
+                                        <span id="studentClassDisplay" class="student-class-badge">Classroom</span>
+                                    </div>
+
+                                    <div>
+                                        <span
+                                            style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.85; display: block; font-weight: 600; margin-bottom: 4px;">Total
+                                            Behavior Points</span>
+                                        <div id="heroTotalPoints" class="hero-point-badge">+0</div>
                                     </div>
                                 </div>
 
-                                <div id="behaviorActivityFeed"
-                                    style="max-height: 340px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px;">
-                                    <!-- JS will inject modern activity cards here -->
+                                <!-- BEHAVIOR POINT HISTORY (MODERN ACTIVITY FEED) -->
+                                <div class="student-history-embedded-section">
+                                    <div
+                                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                                        <div>
+                                            <h3
+                                                style="margin: 0; font-size: 17px; font-weight: 800; color: var(--text-dark);">
+                                                History</h3>
+                                        </div>
+                                    </div>
+
+                                    <div id="behaviorActivityFeed"
+                                        style="max-height: 340px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px;">
+                                        <!-- JS will inject modern activity cards here -->
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
+                        </div>
                     </div>
                 </div>
 
@@ -518,7 +533,7 @@
         </main>
     </div>
 
-    <script type="module" src="main.js?v=385"></script>
+    <script type="module" src="main.js?v=387"></script>
     <script type="module" src="studentNav.js?v=384"></script>
 </body>
 

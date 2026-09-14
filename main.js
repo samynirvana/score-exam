@@ -598,13 +598,57 @@ function loadNewsTicker() {
 function getTimeBasedGreeting(displayName) {
     const hour = new Date().getHours();
     let timeGreeting = "Good morning";
-    if (hour >= 12 && hour < 17) {
+    if (hour >= 12 && hour < 18) {
         timeGreeting = "Good afternoon";
-    } else if (hour >= 17 || hour < 5) {
+    } else if (hour >= 18 || hour < 6) {
         timeGreeting = "Good evening";
     }
     const namePart = displayName ? displayName.trim().split(' ')[0] : 'Student';
     return `${timeGreeting}, ${namePart} 👋`;
+}
+
+export function updateGreetingBannerVideo() {
+    const videoEl = document.getElementById('greetingBannerVideo') || document.querySelector('.school-building-video');
+    if (!videoEl) return;
+    const hour = new Date().getHours();
+    const isDay = (hour >= 6 && hour < 18);
+    const localSrc = isDay ? 'Day.mp4' : 'Night.mp4';
+    const driveDirect = isDay
+        ? 'https://drive.usercontent.google.com/download?id=1s8HaspAJnJ4OknN1woyVkHxnR9ZgsUMB'
+        : 'https://drive.usercontent.google.com/download?id=1mRP5cbvnYeKA-dAkL6b6W-Ba7H96UDeW';
+    const driveUc = isDay
+        ? 'https://drive.google.com/uc?id=1s8HaspAJnJ4OknN1woyVkHxnR9ZgsUMB&export=download'
+        : 'https://drive.google.com/uc?id=1mRP5cbvnYeKA-dAkL6b6W-Ba7H96UDeW&export=download';
+
+    const currentSources = Array.from(videoEl.querySelectorAll('source')).map(s => s.getAttribute('src'));
+    if (currentSources[0] !== localSrc) {
+        videoEl.innerHTML = `
+            <source src="${localSrc}" type="video/mp4">
+            <source src="${driveDirect}" type="video/mp4">
+            <source src="${driveUc}" type="video/mp4">
+        `;
+        videoEl.load();
+        videoEl.play().catch(() => {});
+    }
+}
+
+export function updateLoginVisualDayNight() {
+    const visualImg = document.getElementById('loginVisualCampusImg');
+    if (!visualImg) return;
+
+    const hour = new Date().getHours();
+    const isDay = (hour >= 6 && hour < 18);
+    const localImg = isDay ? 'day_building.jpg' : 'night_building.jpg';
+    const driveImg = isDay
+        ? 'https://lh3.googleusercontent.com/d/1ozoUmpJTsMTSvykTQr-WNQ3K19D1_NGb'
+        : 'https://lh3.googleusercontent.com/d/12BaqYdue8roO0CCfwajIEcCkIkTZe5pR';
+
+    // Set image with fallback
+    visualImg.src = localImg;
+    visualImg.onerror = () => {
+        visualImg.onerror = null;
+        visualImg.src = driveImg;
+    };
 }
 
 export function isTodayBirthday(birthDate) {
@@ -749,9 +793,11 @@ function updateGreetingBanner(displayName, birthDate) {
             bannerEl.classList.remove('birthday-active');
         }
     }
+    updateGreetingBannerVideo();
 }
 
 // Initialize on load
+updateLoginVisualDayNight();
 updateGreetingBanner();
 checkStudentSession();
 loadNewsTicker();

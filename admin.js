@@ -225,10 +225,37 @@ onAuthStateChanged(auth, async (user) => {
 
             const getGreetingPrefix = () => {
                 const hour = new Date().getHours();
-                if (hour >= 12 && hour < 17) return "Good afternoon";
-                if (hour >= 17 || hour < 5) return "Good evening";
-                return "Good morning";
+                if (hour >= 6 && hour < 12) return "Good morning";
+                if (hour >= 12 && hour < 18) return "Good afternoon";
+                return "Good evening";
             };
+
+            const updateGreetingBannerVideo = () => {
+                const videoEl = document.getElementById('greetingBannerVideo') || document.querySelector('.school-building-video');
+                if (!videoEl) return;
+                const hour = new Date().getHours();
+                const isDay = (hour >= 6 && hour < 18);
+                const localSrc = isDay ? 'Day.mp4' : 'Night.mp4';
+                const driveDirect = isDay
+                    ? 'https://drive.usercontent.google.com/download?id=1s8HaspAJnJ4OknN1woyVkHxnR9ZgsUMB'
+                    : 'https://drive.usercontent.google.com/download?id=1mRP5cbvnYeKA-dAkL6b6W-Ba7H96UDeW';
+                const driveUc = isDay
+                    ? 'https://drive.google.com/uc?id=1s8HaspAJnJ4OknN1woyVkHxnR9ZgsUMB&export=download'
+                    : 'https://drive.google.com/uc?id=1mRP5cbvnYeKA-dAkL6b6W-Ba7H96UDeW&export=download';
+
+                // Check if current source already matches to avoid unnecessary reload
+                const currentSources = Array.from(videoEl.querySelectorAll('source')).map(s => s.getAttribute('src'));
+                if (currentSources[0] !== localSrc) {
+                    videoEl.innerHTML = `
+                        <source src="${localSrc}" type="video/mp4">
+                        <source src="${driveDirect}" type="video/mp4">
+                        <source src="${driveUc}" type="video/mp4">
+                    `;
+                    videoEl.load();
+                    videoEl.play().catch(() => {});
+                }
+            };
+            updateGreetingBannerVideo();
 
             const firstName = displayName ? displayName.split(' ')[0] : (formattedName ? formattedName.split(' ')[0] : (userRole === "admin" ? "Admin" : "Teacher"));
 
@@ -2869,6 +2896,53 @@ async function resetStudentPoints(studentCode) {
 
 // --- NEWS & NOTICE MANAGEMENT LOGIC ---
 let currentEditNewsId = null;
+let allLoadedNotices = [];
+
+window.openNoticeDetailsModal = function (docId) {
+    const notice = allLoadedNotices.find(n => n.id === docId);
+    if (!notice) return;
+
+    const modal = document.getElementById('noticeDetailsModal');
+    if (!modal) return;
+
+    const dateObj = new Date(notice.timestamp);
+    const dateStr = !isNaN(dateObj.getTime())
+        ? `${dateObj.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })} ${dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+        : '-';
+
+    const targetArr = Array.isArray(notice.targetClasses) ? notice.targetClasses : ['all'];
+    const targetDisplay = targetArr.includes('all') ? 'All Classes' : targetArr.join(', ');
+    const status = (notice.status || 'active').toUpperCase();
+
+    const titleEl = document.getElementById('noticeDetailTitle');
+    const dateEl = document.getElementById('noticeDetailDate');
+    const statusEl = document.getElementById('noticeDetailStatus');
+    const targetEl = document.getElementById('noticeDetailTargetClass');
+    const contentEl = document.getElementById('noticeDetailContent');
+
+    if (titleEl) titleEl.innerText = notice.title || '(No Title)';
+    if (dateEl) dateEl.innerText = dateStr;
+    if (statusEl) {
+        const badgeBg = status === 'ACTIVE' ? '#ecfdf5' : '#f1f5f9';
+        const badgeText = status === 'ACTIVE' ? '#10b981' : '#64748b';
+        statusEl.innerHTML = `<span style="padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; background: ${badgeBg}; color: ${badgeText};">${status}</span>`;
+    }
+    if (targetEl) targetEl.innerText = targetDisplay;
+    if (contentEl) {
+        contentEl.innerText = notice.content || '(No description provided)';
+    }
+
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+};
+
+window.closeNoticeDetailsModal = function () {
+    const modal = document.getElementById('noticeDetailsModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+    }
+};
 
 window.onNewsClassCheckboxChange = function (changedInput) {
     const optionsContainer = document.getElementById('newsClassOptions');
@@ -3041,6 +3115,7 @@ async function loadNewsTable() {
 
         // Sort by newest first
         newsList.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        allLoadedNotices = newsList;
 
         let activeCount = 0;
 
@@ -3065,14 +3140,14 @@ async function loadNewsTable() {
                 const badgeText = status === 'active' ? '#10b981' : '#64748b';
 
                 manageTbody.innerHTML += `<tr>
-                    <td>${dateStr}</td>
+                    <td><span style="font-size: 12.5px; color: var(--text-gray);">${dateStr}</span></td>
                     <td><strong>${news.title}</strong></td>
-                    <td><span style="font-size: 12px; font-weight: 600; color: var(--primary-blue);">${targetDisplay}</span></td>
-                    <td><span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; background: ${badgeBg}; color: ${badgeText};">${status.toUpperCase()}</span></td>
+                    <td><span style="padding: 4px 8px; border-radius: 4px; font-size: 11.5px; font-weight: bold; background: ${badgeBg}; color: ${badgeText};">${status.toUpperCase()}</span></td>
                     <td>
                         <div class="kebab-menu">
                             <button class="kebab-btn" onclick="toggleMenu(event, 'news-${news.id}')">⋮</button>
                             <div id="menu-news-${news.id}" class="dropdown-menu">
+                                <button class="dropdown-item" onclick="openNoticeDetailsModal('${news.id}')">Notice Details</button>
                                 <button class="dropdown-item" onclick="editNewsUpdate('${news.id}', '${safeTitle}', '${safeContent}', '${encodedTarget}')">Edit Notice</button>
                                 <button class="dropdown-item" onclick="toggleArchiveNews('${news.id}', '${status}')">${status === 'active' ? 'Archive' : 'Unarchive'}</button>
                                 <button class="dropdown-item danger" onclick="deleteNewsUpdate('${news.id}')">Delete Notice</button>
@@ -10884,8 +10959,8 @@ window.saveTeacherProfile = async function() {
         if (welcomeTitleEl) {
             const hour = new Date().getHours();
             let greeting = "Good morning";
-            if (hour >= 12 && hour < 17) greeting = "Good afternoon";
-            else if (hour >= 17 || hour < 5) greeting = "Good evening";
+            if (hour >= 12 && hour < 18) greeting = "Good afternoon";
+            else if (hour >= 18 || hour < 6) greeting = "Good evening";
             welcomeTitleEl.innerText = `${greeting}, ${firstName} 👋`;
         }
 
