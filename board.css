@@ -2547,7 +2547,7 @@ body.dark-theme .student-shared-group-title {
     position: absolute;
     right: 18px;
     top: 68px;
-    width: 310px;
+    width: 324px;
     min-width: 260px;
     max-width: 520px;
     max-height: calc(100vh - 86px);
@@ -2555,8 +2555,8 @@ body.dark-theme .student-shared-group-title {
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
     border: 1px solid var(--toolbar-border-light, #e2e8f0);
-    border-radius: 16px;
-    box-shadow: 0 16px 40px -6px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.6) inset;
+    border-radius: 14px;
+    box-shadow: 0 18px 44px -12px rgba(15, 23, 42, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.72) inset;
     z-index: 95;
     display: flex;
     flex-direction: column;
@@ -2613,12 +2613,12 @@ body.dark-theme .board-properties-panel {
 
 /* Header */
 .board-prop-header {
-    padding: 10px 14px 10px 16px;
+    padding: 11px 14px 11px 18px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     border-bottom: 1px solid var(--toolbar-border-light, #f1f5f9);
-    background: rgba(255, 255, 255, 0.4);
+    background: linear-gradient(135deg, rgba(239, 246, 255, 0.9), rgba(255, 255, 255, 0.55));
     flex-shrink: 0;
 }
 
@@ -2719,10 +2719,10 @@ body.dark-theme .board-prop-icon-btn:hover {
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 12px 14px 16px 14px;
+    padding: 12px 14px 18px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
 }
 
 /* Slim Custom Scrollbar */
@@ -2742,10 +2742,10 @@ body.dark-theme .board-prop-icon-btn:hover {
 
 /* Section */
 .prop-section {
-    background: rgba(255, 255, 255, 0.6);
-    border: 1px solid rgba(226, 232, 240, 0.7);
-    border-radius: 12px;
-    padding: 11px 12px;
+    background: rgba(248, 250, 252, 0.82);
+    border: 1px solid rgba(203, 213, 225, 0.72);
+    border-radius: 10px;
+    padding: 12px;
     transition: background 0.15s ease;
 }
 
@@ -2764,7 +2764,7 @@ body.dark-theme .prop-section {
     letter-spacing: 0.05em;
     text-transform: uppercase;
     color: var(--text-gray, #64748b);
-    margin-bottom: 8px;
+    margin-bottom: 10px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -2806,7 +2806,7 @@ body.dark-theme .prop-val-badge {
 .prop-row-grid-2 {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: 10px;
 }
 
 .prop-field-label {
@@ -2815,7 +2815,7 @@ body.dark-theme .prop-val-badge {
     color: var(--text-gray, #64748b);
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 5px;
 }
 
 body.dark-theme .prop-field-label {
@@ -2829,10 +2829,10 @@ body.dark-theme .prop-field-label {
     box-sizing: border-box;
     font-family: var(--board-font-family);
     font-size: 12.5px;
-    padding: 6px 8px;
-    border-radius: 8px;
-    border: 1px solid var(--border-color, #cbd5e1);
-    background: #ffffff;
+    padding: 7px 9px;
+    border-radius: 7px;
+    border: 1px solid #cbd5e1;
+    background: rgba(255, 255, 255, 0.96);
     color: var(--text-dark, #0f172a);
     outline: none;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;

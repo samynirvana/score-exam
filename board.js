@@ -1544,7 +1544,8 @@ function renderCanvas() {
     }
 
     // Render Selection Outlines & Bounding Boxes
-    if (selectedElementIds.size > 0 && activeTool !== 'anchor') {
+    // Keep pen paths discoverable and resizable while their anchors are being edited.
+    if (selectedElementIds.size > 0) {
         renderSelectionBoxes(ctx);
     }
 
@@ -4774,6 +4775,15 @@ function onPointerDown(e) {
             return;
         }
 
+        // The resize box stays available in anchor mode. Grabbing a corner
+        // hands off to Select, which uses the same safe path-scaling flow.
+        const resizeHandle = findResizeHandleHit(pt.x, pt.y);
+        if (resizeHandle && resizeHandle.element?.type === 'path') {
+            setWhiteboardTool('select');
+            onPointerDown(e);
+            return;
+        }
+
         // 1. Check if clicking on an active curve handle (handleIn or handleOut)
         const handleHit = findAnchorHandleHit(pt.x, pt.y);
         if (handleHit) {
@@ -7016,10 +7026,34 @@ function setupPropertiesPanelInputs() {
         const el = getSingleSelectedElement();
         if (!el) return;
         pushUndoState();
-        if (inpX && inpX.value !== '') el.x = parseFloat(inpX.value) || 0;
-        if (inpY && inpY.value !== '') el.y = parseFloat(inpY.value) || 0;
-        if (inpW && inpW.value !== '') el.width = Math.max(5, parseFloat(inpW.value) || 10);
-        if (inpH && inpH.value !== '') el.height = Math.max(5, parseFloat(inpH.value) || 10);
+        const nextX = inpX && inpX.value !== '' ? parseFloat(inpX.value) || 0 : el.x;
+        const nextY = inpY && inpY.value !== '' ? parseFloat(inpY.value) || 0 : el.y;
+        const nextW = inpW && inpW.value !== '' ? Math.max(5, parseFloat(inpW.value) || 10) : el.width;
+        const nextH = inpH && inpH.value !== '' ? Math.max(5, parseFloat(inpH.value) || 10) : el.height;
+
+        // Path geometry is drawn from points, so numeric transform edits must
+        // scale the points, their Bezier handles, and any custom pivot as well.
+        if (el.type === 'path' && Array.isArray(el.points) && el.points.length) {
+            const bounds = getElementBoundingBox(el);
+            const scaleX = nextW / Math.max(bounds.width, 1);
+            const scaleY = nextH / Math.max(bounds.height, 1);
+            const mapPoint = (point) => ({
+                x: Math.round(nextX + (point.x - bounds.x) * scaleX),
+                y: Math.round(nextY + (point.y - bounds.y) * scaleY)
+            });
+            el.points = el.points.map(point => ({
+                ...point,
+                ...mapPoint(point),
+                handleIn: point.handleIn ? mapPoint(point.handleIn) : null,
+                handleOut: point.handleOut ? mapPoint(point.handleOut) : null
+            }));
+            if (el.origin) el.origin = mapPoint(el.origin);
+        }
+
+        el.x = nextX;
+        el.y = nextY;
+        el.width = nextW;
+        el.height = nextH;
         renderCanvas();
         scheduleAutoSave();
         updateFormattingBar();
