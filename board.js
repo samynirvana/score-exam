@@ -44,6 +44,8 @@ let selectedAnchorPathId = null; // ID of path element being edited with anchor 
 let selectedAnchorIndex = null; // Index of active anchor point
 let activeDragHandle = null; // null | 'anchor' | 'handleIn' | 'handleOut'
 let isDraggingAnchor = false;
+let isDraggingOrigin = false;
+let activeOriginElement = null;
 let camera = { x: 0, y: 0, zoom: 1 };
 let isDragging = false;
 let isPanning = false;
@@ -75,6 +77,7 @@ let isometricGridAngle2 = -30; // Second isometric line family angle
 let isMagnetSnapping = true; // Snap cursor to background grid and element vertices/corners/edges
 let activeMagnetSnap = null; // Active magnet snap point for visual HUD indicator { x, y, snapType }
 let editingElementId = null; // ID of element currently undergoing in-place inline text editing
+let isFloatingBarEnabled = localStorage.getItem('board_floating_bar_enabled') !== 'false'; // Toggle on-canvas floating toolbar
 
 // Sticky color presets
 const STICKY_COLORS = [
@@ -93,6 +96,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupHubEventListeners();
     setupCanvasEventListeners();
     setupKeyboardShortcuts();
+    initPropertiesPanel();
 });
 
 async function initAuthAndUser() {
@@ -967,6 +971,14 @@ function openBoardWorkspace(boardData) {
         btnMagnet.classList.toggle('active', isMagnetSnapping);
     }
 
+    const btnToggleFloating = document.getElementById('btnToggleFloatingBar');
+    if (btnToggleFloating) {
+        btnToggleFloating.classList.toggle('active', isFloatingBarEnabled);
+        btnToggleFloating.title = isFloatingBarEnabled
+            ? 'Floating Menu: Enabled (Click to Disable)'
+            : 'Floating Menu: Disabled (Click to Enable)';
+    }
+
     undoStack = [];
     redoStack = [];
     selectedElementIds.clear();
@@ -1539,6 +1551,15 @@ function renderCanvas() {
     // Render Anchor Point Editing Overlays (nodes, curve handles)
     renderAnchorEditingOverlays(ctx);
 
+    // Render Origin Point (Pivot) Overlay when single element selected
+    if (selectedElementIds.size === 1) {
+        const selectedId = Array.from(selectedElementIds)[0];
+        const selectedEl = elements.find(item => item.id === selectedId);
+        if (selectedEl && (activeTool === 'anchor' || activeTool === 'select' || selectedEl.origin)) {
+            renderOriginPointOverlay(ctx, selectedEl);
+        }
+    }
+
     // Render Box / Marquee Selection rectangle
     if (isBoxSelecting) {
         const bx = Math.min(boxSelectStart.x, boxSelectCurrent.x);
@@ -1560,6 +1581,111 @@ function renderCanvas() {
     updateFormattingBar();
 }
 
+function getElementOrigin(el) {
+    if (!el) return { x: 0, y: 0 };
+    if (el.origin && typeof el.origin.x === 'number' && typeof el.origin.y === 'number') {
+        return { x: el.origin.x, y: el.origin.y };
+    }
+    if (el.type === 'line' || el.type === 'arrow') {
+        const ep = getLineEndpoints(el);
+        return {
+            x: Math.round((ep.x1 + ep.x2) / 2),
+            y: Math.round((ep.y1 + ep.y2) / 2)
+        };
+    }
+    const b = (el.type === 'path' && el.points && el.points.length > 0)
+        ? computePathBounds(el.points)
+        : getElementBoundingBox(el);
+    return {
+        x: Math.round(b.x + b.width / 2),
+        y: Math.round(b.y + b.height / 2)
+    };
+}
+
+function localToWorldPoint(x, y, el) {
+    if (!el || !el.rotation) return { x, y };
+    const origin = getElementOrigin(el);
+    const rad = (el.rotation * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const dx = x - origin.x;
+    const dy = y - origin.y;
+    return {
+        x: Math.round((origin.x + dx * cos - dy * sin) * 100) / 100,
+        y: Math.round((origin.y + dx * sin + dy * cos) * 100) / 100
+    };
+}
+
+function worldToLocalPoint(wx, wy, el) {
+    if (!el || !el.rotation) return { x: wx, y: wy };
+    const origin = getElementOrigin(el);
+    const rad = (-el.rotation * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const dx = wx - origin.x;
+    const dy = wy - origin.y;
+    return {
+        x: Math.round((origin.x + dx * cos - dy * sin) * 100) / 100,
+        y: Math.round((origin.y + dx * sin + dy * cos) * 100) / 100
+    };
+}
+
+function renderOriginPointOverlay(ctx, el) {
+    if (!el) return;
+    const origin = getElementOrigin(el);
+    const zoom = camera.zoom;
+    const r = 7 / zoom;
+    const crossR = 15 / zoom;
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+    ctx.shadowBlur = 4 / zoom;
+
+    // Outer ring
+    ctx.beginPath();
+    ctx.arc(origin.x, origin.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    ctx.strokeStyle = '#f43f5e';
+    ctx.lineWidth = 2 / zoom;
+    ctx.stroke();
+
+    // Center bullseye dot
+    ctx.beginPath();
+    ctx.arc(origin.x, origin.y, 2.5 / zoom, 0, Math.PI * 2);
+    ctx.fillStyle = '#f43f5e';
+    ctx.fill();
+
+    // 4 Crosshair ticks
+    ctx.beginPath();
+    ctx.moveTo(origin.x - crossR, origin.y);
+    ctx.lineTo(origin.x - r - 2 / zoom, origin.y);
+    ctx.moveTo(origin.x + r + 2 / zoom, origin.y);
+    ctx.lineTo(origin.x + crossR, origin.y);
+    ctx.moveTo(origin.x, origin.y - crossR);
+    ctx.lineTo(origin.x, origin.y - r - 2 / zoom);
+    ctx.moveTo(origin.x, origin.y + r + 2 / zoom);
+    ctx.lineTo(origin.x, origin.y + crossR);
+    ctx.strokeStyle = '#f43f5e';
+    ctx.lineWidth = 2 / zoom;
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+function findOriginPointHit(wx, wy) {
+    if (selectedElementIds.size !== 1) return null;
+    const id = Array.from(selectedElementIds)[0];
+    const el = elements.find(item => item.id === id);
+    if (!el) return null;
+    const origin = getElementOrigin(el);
+    const hitRadius = 18 / camera.zoom;
+    if (Math.hypot(wx - origin.x, wy - origin.y) <= hitRadius) {
+        return { element: el, origin };
+    }
+    return null;
+}
+
 function renderElement(ctx, el) {
     ctx.save();
     const elX = el.x || 0;
@@ -1568,9 +1694,10 @@ function renderElement(ctx, el) {
     const elH = el.height || 0;
 
     if (el.rotation) {
-        ctx.translate(elX + elW / 2, elY + elH / 2);
+        const origin = getElementOrigin(el);
+        ctx.translate(origin.x, origin.y);
         ctx.rotate((el.rotation * Math.PI) / 180);
-        ctx.translate(-(elX + elW / 2), -(elY + elH / 2));
+        ctx.translate(-origin.x, -origin.y);
     }
 
     ctx.globalAlpha = el.opacity !== undefined ? el.opacity : 1;
@@ -1728,6 +1855,13 @@ function renderAnchorEditingOverlays(ctx) {
         if (!isElSelected && !isAnchorTool) return;
 
         ctx.save();
+        const origin = getElementOrigin(el);
+        if (el.rotation) {
+            ctx.translate(origin.x, origin.y);
+            ctx.rotate((el.rotation * Math.PI) / 180);
+            ctx.translate(-origin.x, -origin.y);
+        }
+
         // 1. Draw subtle guide outline
         ctx.strokeStyle = isElSelected ? 'rgba(30, 94, 255, 0.65)' : 'rgba(100, 116, 139, 0.4)';
         ctx.lineWidth = 1.5 / camera.zoom;
@@ -1912,12 +2046,14 @@ function getShapeEditableVertices(shape) {
 
 function convertShapeToEditablePath(shape) {
     if (!shape || shape.type !== 'shape') return shape;
+    const origin = getElementOrigin(shape);
     const path = {
         ...shape,
         type: 'path',
         closed: true,
         points: getShapeEditableVertices(shape).map(p => ({ ...p, handleIn: null, handleOut: null })),
-        sourceShapeType: shape.shapeType
+        sourceShapeType: shape.shapeType,
+        origin: shape.origin ? { ...shape.origin } : { ...origin }
     };
     const bounds = computePathBounds(path.points);
     path.x = bounds.minX;
@@ -2186,8 +2322,10 @@ function renderShape(ctx, el) {
             break;
     }
 
+    if (el.strokeStyle === 'dashed') ctx.setLineDash([6, 6]);
     if (el.fillColor && el.fillColor !== 'transparent') ctx.fill();
     if (el.strokeColor && el.strokeColor !== 'transparent' && el.strokeWidth > 0) ctx.stroke();
+    if (el.strokeStyle === 'dashed') ctx.setLineDash([]);
 
     // Extra Cylinder top rim
     if (el.shapeType === 'cylinder') {
@@ -2559,12 +2697,16 @@ function renderLineOrArrow(ctx, el) {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
+    if (el.strokeStyle === 'dashed') ctx.setLineDash([6, 6]);
+
     ctx.beginPath();
     ctx.moveTo(ep.x1, ep.y1);
     ctx.lineTo(ep.x2, ep.y2);
     ctx.stroke();
 
-    if (el.type === 'arrow') {
+    if (el.strokeStyle === 'dashed') ctx.setLineDash([]);
+
+    if (el.type === 'arrow' || el.arrowHead === 'end') {
         drawArrowHead(ctx, ep.x1, ep.y1, ep.x2, ep.y2, 12 + (el.strokeWidth || 2.5) * 1.5);
     }
     ctx.restore();
@@ -2714,16 +2856,30 @@ function getResizeHandles(el) {
         ];
     }
     const pad = 6;
-    const x = el.x - pad;
-    const y = el.y - pad;
-    const w = (el.width || 120) + pad * 2;
-    const h = (el.height || 80) + pad * 2;
-    return [
+    const b = (el.type === 'path' && el.points && el.points.length > 0)
+        ? computePathBounds(el.points)
+        : getElementBoundingBox(el);
+    const x = b.x - pad;
+    const y = b.y - pad;
+    const w = (b.width || 120) + pad * 2;
+    const h = (b.height || 80) + pad * 2;
+    const rawHandles = [
         { handle: 'nw', x: x, y: y, cursor: 'nwse-resize' },
         { handle: 'ne', x: x + w, y: y, cursor: 'nesw-resize' },
         { handle: 'se', x: x + w, y: y + h, cursor: 'nwse-resize' },
         { handle: 'sw', x: x, y: y + h, cursor: 'nesw-resize' }
     ];
+
+    if (!el.rotation) return rawHandles;
+
+    return rawHandles.map(hItem => {
+        const wpt = localToWorldPoint(hItem.x, hItem.y, el);
+        return {
+            ...hItem,
+            x: wpt.x,
+            y: wpt.y
+        };
+    });
 }
 
 function findResizeHandleHit(wx, wy) {
@@ -2822,24 +2978,40 @@ function renderSelectionBoxes(ctx) {
         }
 
         const pad = 6;
-        const b = getElementBoundingBox(el);
+        const b = (el.type === 'path' && el.points && el.points.length > 0)
+            ? computePathBounds(el.points)
+            : getElementBoundingBox(el);
         const x = b.x - pad;
         const y = b.y - pad;
         const w = b.width + pad * 2;
         const h = b.height + pad * 2;
 
+        const origin = getElementOrigin(el);
+
+        ctx.save();
+        if (el.rotation) {
+            ctx.translate(origin.x, origin.y);
+            ctx.rotate((el.rotation * Math.PI) / 180);
+            ctx.translate(-origin.x, -origin.y);
+        }
+
         ctx.strokeStyle = '#2563eb';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([4, 4]);
+        ctx.lineWidth = 1.5 / camera.zoom;
+        ctx.setLineDash([4 / camera.zoom, 4 / camera.zoom]);
         ctx.strokeRect(x, y, w, h);
         ctx.setLineDash([]);
 
         if (el.type !== 'draw') {
             // Render 4 corner handles (vertices for resizing)
-            const handles = getResizeHandles(el);
+            const localCornerHandles = [
+                { x: x, y: y },
+                { x: x + w, y: y },
+                { x: x + w, y: y + h },
+                { x: x, y: y + h }
+            ];
             const handleSize = 9 / camera.zoom;
 
-            handles.forEach(pt => {
+            localCornerHandles.forEach(pt => {
                 ctx.fillStyle = '#ffffff';
                 ctx.fillRect(pt.x - handleSize / 2, pt.y - handleSize / 2, handleSize, handleSize);
                 ctx.strokeStyle = '#1e5eff';
@@ -2847,6 +3019,7 @@ function renderSelectionBoxes(ctx) {
                 ctx.strokeRect(pt.x - handleSize / 2, pt.y - handleSize / 2, handleSize, handleSize);
             });
         }
+        ctx.restore();
         return;
     }
 
@@ -3179,6 +3352,35 @@ function setupCanvasEventListeners() {
         }
         renderCanvas();
     });
+
+    // Toggle Floating Toolbar Button (Top menu)
+    window.toggleFloatingBar = function (enable = null) {
+        if (enable !== null) {
+            isFloatingBarEnabled = Boolean(enable);
+        } else {
+            isFloatingBarEnabled = !isFloatingBarEnabled;
+        }
+        localStorage.setItem('board_floating_bar_enabled', isFloatingBarEnabled ? 'true' : 'false');
+        const btn = document.getElementById('btnToggleFloatingBar');
+        if (btn) {
+            btn.classList.toggle('active', isFloatingBarEnabled);
+            btn.title = isFloatingBarEnabled
+                ? 'Floating Menu: Enabled (Click to Disable)'
+                : 'Floating Menu: Disabled (Click to Enable)';
+        }
+        updateFormattingBar();
+    };
+
+    const btnToggleFloating = document.getElementById('btnToggleFloatingBar');
+    if (btnToggleFloating) {
+        btnToggleFloating.classList.toggle('active', isFloatingBarEnabled);
+        btnToggleFloating.title = isFloatingBarEnabled
+            ? 'Floating Menu: Enabled (Click to Disable)'
+            : 'Floating Menu: Disabled (Click to Enable)';
+        btnToggleFloating.addEventListener('click', () => {
+            window.toggleFloatingBar();
+        });
+    }
 
     document.addEventListener('click', (e) => {
         if (canvasBgDropdown && !canvasBgDropdown.classList.contains('hidden')) {
@@ -4552,8 +4754,26 @@ function onPointerDown(e) {
         }
     }
 
-    // Anchor Point Tools: Edit Anchor Point, Add Anchor Point, Delete Anchor Point
+    // Anchor Point Tools: Edit Anchor Point, Add Anchor Point, Delete Anchor Point, Move Origin Point
     if (activeTool === 'anchor') {
+        // 0. Check if clicking on the origin point of the selected element
+        const originHit = findOriginPointHit(pt.x, pt.y);
+        if (originHit) {
+            pushUndoState();
+            if (e.detail === 2) {
+                // Double click resets origin back to default center
+                delete originHit.element.origin;
+                renderCanvas();
+                scheduleAutoSave();
+                updatePropertiesPanel();
+                return;
+            }
+            isDraggingOrigin = true;
+            activeOriginElement = originHit.element;
+            renderCanvas();
+            return;
+        }
+
         // 1. Check if clicking on an active curve handle (handleIn or handleOut)
         const handleHit = findAnchorHandleHit(pt.x, pt.y);
         if (handleHit) {
@@ -4766,16 +4986,19 @@ function onPointerDown(e) {
         selectedElementIds.forEach(id => {
             const el = elements.find(item => item.id === id);
             if (el) {
+                const originState = el.origin ? { x: el.origin.x, y: el.origin.y } : null;
                 if (el.type === 'draw') {
                     initialElementStates.set(id, {
                         x: el.x || 0,
                         y: el.y || 0,
+                        origin: originState,
                         points: el.points ? el.points.map(p => ({ x: p.x, y: p.y })) : []
                     });
                 } else if (el.type === 'path') {
                     initialElementStates.set(id, {
                         x: el.x || 0,
                         y: el.y || 0,
+                        origin: originState,
                         points: el.points ? el.points.map(p => ({
                             x: p.x,
                             y: p.y,
@@ -4788,13 +5011,14 @@ function onPointerDown(e) {
                     initialElementStates.set(id, {
                         x: el.x || 0,
                         y: el.y || 0,
+                        origin: originState,
                         x1: ep.x1,
                         y1: ep.y1,
                         x2: ep.x2,
                         y2: ep.y2
                     });
                 } else {
-                    initialElementStates.set(id, { x: el.x, y: el.y });
+                    initialElementStates.set(id, { x: el.x, y: el.y, origin: originState });
                 }
             }
         });
@@ -4925,6 +5149,49 @@ function onPointerMove(e) {
         return;
     }
 
+    if (isDraggingOrigin && activeOriginElement) {
+        const snap = isMagnetSnapping ? getMagnetSnapPoint(pt.x, pt.y) : { x: pt.x, y: pt.y, isSnapped: false };
+        activeMagnetSnap = snap.isSnapped ? snap : null;
+        const targetPt = snap.isSnapped ? { x: snap.x, y: snap.y } : { x: pt.x, y: pt.y };
+
+        const oldOrigin = getElementOrigin(activeOriginElement);
+        const newOrigin = { x: targetPt.x, y: targetPt.y };
+
+        if (activeOriginElement.rotation) {
+            const rad = (-activeOriginElement.rotation * Math.PI) / 180;
+            const cos = Math.cos(rad);
+            const sin = Math.sin(rad);
+            const dox = newOrigin.x - oldOrigin.x;
+            const doy = newOrigin.y - oldOrigin.y;
+            const rDox = dox * cos - doy * sin;
+            const rDoy = dox * sin + doy * cos;
+            const deltaX = dox - rDox;
+            const deltaY = doy - rDoy;
+
+            if (activeOriginElement.type === 'path' && activeOriginElement.points) {
+                activeOriginElement.points.forEach(p => {
+                    p.x += deltaX;
+                    p.y += deltaY;
+                    if (p.handleIn) { p.handleIn.x += deltaX; p.handleIn.y += deltaY; }
+                    if (p.handleOut) { p.handleOut.x += deltaX; p.handleOut.y += deltaY; }
+                });
+                const b = computePathBounds(activeOriginElement.points);
+                activeOriginElement.x = b.minX;
+                activeOriginElement.y = b.minY;
+                activeOriginElement.width = b.width;
+                activeOriginElement.height = b.height;
+            } else {
+                activeOriginElement.x = (activeOriginElement.x || 0) + deltaX;
+                activeOriginElement.y = (activeOriginElement.y || 0) + deltaY;
+            }
+        }
+
+        activeOriginElement.origin = newOrigin;
+        renderCanvas();
+        updatePropertiesPanel();
+        return;
+    }
+
     if (activeTool === 'anchor' && isDraggingAnchor && selectedAnchorPathId) {
         const snap = isMagnetSnapping ? getMagnetSnapPoint(pt.x, pt.y) : { x: pt.x, y: pt.y, isSnapped: false };
         activeMagnetSnap = snap.isSnapped ? snap : null;
@@ -4932,23 +5199,24 @@ function onPointerMove(e) {
 
         const el = elements.find(item => item.id === selectedAnchorPathId);
         if (el && el.points && selectedAnchorIndex !== null && el.points[selectedAnchorIndex]) {
+            const localTarget = worldToLocalPoint(targetPt.x, targetPt.y, el);
             const p = el.points[selectedAnchorIndex];
             if (activeDragHandle === 'anchor') {
-                const dx = targetPt.x - p.x;
-                const dy = targetPt.y - p.y;
-                p.x = targetPt.x;
-                p.y = targetPt.y;
+                const dx = localTarget.x - p.x;
+                const dy = localTarget.y - p.y;
+                p.x = localTarget.x;
+                p.y = localTarget.y;
                 if (p.handleIn) { p.handleIn.x += dx; p.handleIn.y += dy; }
                 if (p.handleOut) { p.handleOut.x += dx; p.handleOut.y += dy; }
             } else if (activeDragHandle === 'handleOut') {
-                p.handleOut = { x: targetPt.x, y: targetPt.y };
-                const angle = Math.atan2(p.y - targetPt.y, p.x - targetPt.x);
-                const inLen = p.handleIn ? Math.hypot(p.handleIn.x - p.x, p.handleIn.y - p.y) : Math.hypot(targetPt.x - p.x, targetPt.y - p.y);
+                p.handleOut = { x: localTarget.x, y: localTarget.y };
+                const angle = Math.atan2(p.y - localTarget.y, p.x - localTarget.x);
+                const inLen = p.handleIn ? Math.hypot(p.handleIn.x - p.x, p.handleIn.y - p.y) : Math.hypot(localTarget.x - p.x, localTarget.y - p.y);
                 p.handleIn = { x: p.x + Math.cos(angle) * inLen, y: p.y + Math.sin(angle) * inLen };
             } else if (activeDragHandle === 'handleIn') {
-                p.handleIn = { x: targetPt.x, y: targetPt.y };
-                const angle = Math.atan2(p.y - targetPt.y, p.x - targetPt.x);
-                const outLen = p.handleOut ? Math.hypot(p.handleOut.x - p.x, p.handleOut.y - p.y) : Math.hypot(targetPt.x - p.x, targetPt.y - p.y);
+                p.handleIn = { x: localTarget.x, y: localTarget.y };
+                const angle = Math.atan2(p.y - localTarget.y, p.x - localTarget.x);
+                const outLen = p.handleOut ? Math.hypot(p.handleOut.x - p.x, p.handleOut.y - p.y) : Math.hypot(localTarget.x - p.x, localTarget.y - p.y);
                 p.handleOut = { x: p.x + Math.cos(angle) * outLen, y: p.y + Math.sin(angle) * outLen };
             }
             const b = computePathBounds(el.points);
@@ -5339,15 +5607,28 @@ function onPointerMove(e) {
         return;
     }
 
-    // Hover cursor for vertex handles
-    if (!isDragging && activeTool === 'select') {
-        const hitHandle = findResizeHandleHit(pt.x, pt.y);
+    // Hover cursor for vertex handles and origin
+    if (!isDragging && !isDraggingAnchor && !isDraggingOrigin) {
         const surface = document.getElementById('boardCanvasSurface');
-        if (surface) {
-            if (hitHandle) {
-                surface.style.cursor = hitHandle.cursor;
-            } else if (!surface.classList.contains('mode-pan') && !surface.classList.contains('mode-draw')) {
-                surface.style.cursor = 'default';
+        if (surface && !surface.classList.contains('mode-pan') && !surface.classList.contains('mode-draw')) {
+            if (activeTool === 'anchor') {
+                const originHit = findOriginPointHit(pt.x, pt.y);
+                const handleHit = findAnchorHandleHit(pt.x, pt.y);
+                const anchorHit = findAnchorPointHit(pt.x, pt.y);
+                if (originHit) {
+                    surface.style.cursor = 'move';
+                } else if (handleHit || anchorHit) {
+                    surface.style.cursor = 'pointer';
+                } else {
+                    surface.style.cursor = 'default';
+                }
+            } else if (activeTool === 'select') {
+                const hitHandle = findResizeHandleHit(pt.x, pt.y);
+                if (hitHandle) {
+                    surface.style.cursor = hitHandle.cursor;
+                } else {
+                    surface.style.cursor = 'default';
+                }
             }
         }
     }
@@ -5392,6 +5673,9 @@ function onPointerMove(e) {
                     el.x = init.x + dx;
                     el.y = init.y + dy;
                 }
+                if (init.origin) {
+                    el.origin = { x: init.origin.x + dx, y: init.origin.y + dy };
+                }
             }
         });
         renderCanvas();
@@ -5424,6 +5708,16 @@ function onPointerUp(e) {
 
     if (isErasing) {
         isErasing = false;
+    }
+
+    if (isDraggingOrigin) {
+        isDraggingOrigin = false;
+        activeOriginElement = null;
+        pushUndoState();
+        scheduleAutoSave();
+        renderCanvas();
+        updatePropertiesPanel();
+        return;
     }
 
     if (isDraggingAnchor) {
@@ -5516,6 +5810,7 @@ function onPointerUp(e) {
     if (isDragging) {
         isDragging = false;
         scheduleAutoSave();
+        updatePropertiesPanel();
     }
 }
 
@@ -5576,12 +5871,13 @@ function findAnchorHandleHit(wx, wy) {
         for (const id of selectedElementIds) {
             const el = elements.find(item => item.id === id);
             if (el && el.type === 'path' && el.points) {
+                const local = worldToLocalPoint(wx, wy, el);
                 for (let i = 0; i < el.points.length; i++) {
                     const p = el.points[i];
-                    if (p.handleIn && Math.hypot(wx - p.handleIn.x, wy - p.handleIn.y) <= hitRadius) {
+                    if (p.handleIn && Math.hypot(local.x - p.handleIn.x, local.y - p.handleIn.y) <= hitRadius) {
                         return { handleType: 'handleIn', path: el, pointIndex: i, point: p };
                     }
-                    if (p.handleOut && Math.hypot(wx - p.handleOut.x, wy - p.handleOut.y) <= hitRadius) {
+                    if (p.handleOut && Math.hypot(local.x - p.handleOut.x, local.y - p.handleOut.y) <= hitRadius) {
                         return { handleType: 'handleOut', path: el, pointIndex: i, point: p };
                     }
                 }
@@ -5596,9 +5892,10 @@ function findAnchorPointHit(wx, wy) {
     for (let eIdx = elements.length - 1; eIdx >= 0; eIdx--) {
         const el = elements[eIdx];
         if (el.type === 'path' && el.points) {
+            const local = worldToLocalPoint(wx, wy, el);
             for (let i = 0; i < el.points.length; i++) {
                 const p = el.points[i];
-                if (Math.hypot(wx - p.x, wy - p.y) <= hitRadius) {
+                if (Math.hypot(local.x - p.x, local.y - p.y) <= hitRadius) {
                     return { path: el, pointIndex: i, point: p };
                 }
             }
@@ -5611,6 +5908,7 @@ function findPathSegmentHit(wx, wy, tolerance = 14) {
     for (let eIdx = elements.length - 1; eIdx >= 0; eIdx--) {
         const el = elements[eIdx];
         if (el.type === 'path' && el.points && el.points.length >= 2) {
+            const local = worldToLocalPoint(wx, wy, el);
             const count = el.closed ? el.points.length : el.points.length - 1;
             for (let i = 0; i < count; i++) {
                 const p1 = el.points[i];
@@ -5623,8 +5921,8 @@ function findPathSegmentHit(wx, wy, tolerance = 14) {
                 for (let s = 1; s <= samples; s++) {
                     const t = s / samples;
                     const samplePt = getCubicBezierPoint(t, p1, cp1, cp2, p2);
-                    if (distToSegment(wx, wy, prevSample.x, prevSample.y, samplePt.x, samplePt.y) <= (tolerance / camera.zoom)) {
-                        return { path: el, insertIndex: i + 1, point: { x: wx, y: wy } };
+                    if (distToSegment(local.x, local.y, prevSample.x, prevSample.y, samplePt.x, samplePt.y) <= (tolerance / camera.zoom)) {
+                        return { path: el, insertIndex: i + 1, point: { x: local.x, y: local.y } };
                     }
                     prevSample = samplePt;
                 }
@@ -5687,8 +5985,9 @@ function findHitElement(wx, wy) {
             continue;
         }
         if (el.type === 'path') {
+            const local = worldToLocalPoint(wx, wy, el);
             const tol = Math.max(14, (el.strokeWidth || 3) * 2);
-            if (isPointNearPath(wx, wy, el, tol)) {
+            if (isPointNearPath(local.x, local.y, el, tol)) {
                 return el;
             }
             continue;
@@ -5703,20 +6002,8 @@ function findHitElement(wx, wy) {
         }
         const w = el.width || 120;
         const h = el.height || 80;
-        let testX = wx;
-        let testY = wy;
-        if (el.rotation) {
-            const cx = el.x + w / 2;
-            const cy = el.y + h / 2;
-            const rad = -(el.rotation * Math.PI) / 180;
-            const cos = Math.cos(rad);
-            const sin = Math.sin(rad);
-            const dx = wx - cx;
-            const dy = wy - cy;
-            testX = cx + (dx * cos - dy * sin);
-            testY = cy + (dx * sin + dy * cos);
-        }
-        if (testX >= el.x && testX <= el.x + w && testY >= el.y && testY <= el.y + h) {
+        const localPt = worldToLocalPoint(wx, wy, el);
+        if (localPt.x >= el.x && localPt.x <= el.x + w && localPt.y >= el.y && localPt.y <= el.y + h) {
             return el;
         }
     }
@@ -5948,9 +6235,10 @@ function updateFormattingBar() {
     const bar = document.getElementById('boardFormattingBar');
     if (!bar) return;
 
-    if (selectedElementIds.size === 0) {
+    if (!isFloatingBarEnabled || selectedElementIds.size === 0) {
         bar.classList.add('hidden');
         document.getElementById('fmtColorPopover')?.classList.add('hidden');
+        updatePropertiesPanel();
         return;
     }
 
@@ -5967,6 +6255,7 @@ function updateFormattingBar() {
     const selectedEl = elements.find(item => selectedElementIds.has(item.id));
     if (!selectedEl) {
         bar.classList.add('hidden');
+        updatePropertiesPanel();
         return;
     }
 
@@ -6140,6 +6429,8 @@ function updateFormattingBar() {
         const borderColor = selectedEl.strokeColor;
         borderInd.style.borderColor = (borderColor && borderColor !== 'transparent') ? borderColor : '#cbd5e1';
     }
+
+    updatePropertiesPanel();
 }
 
 // --- 7. UNDO / REDO & AUTO-SAVE ---
@@ -6546,3 +6837,1276 @@ function drawArrowHead(ctx, fromX, fromY, toX, toY, headLength = 10) {
     ctx.fill();
     ctx.restore();
 }
+
+// ==========================================================================
+// 8. PROPERTIES PANEL ENGINE & DYNAMIC CONTEXTUAL BINDINGS
+// ==========================================================================
+
+let isPropPanelInitialized = false;
+
+function initPropertiesPanel() {
+    if (isPropPanelInitialized) return;
+    isPropPanelInitialized = true;
+
+    const panel = document.getElementById('boardPropertiesPanel');
+    const handle = document.getElementById('boardPropertiesResizeHandle');
+    const workspace = document.getElementById('boardWorkspaceView');
+    const btnToggle = document.getElementById('btnToggleProperties');
+    const btnMin = document.getElementById('btnMinimizeProperties');
+    const btnClose = document.getElementById('btnCloseProperties');
+
+    // 1. Restore persistent width preference
+    const savedWidth = localStorage.getItem('board_prop_width');
+    if (savedWidth && panel) {
+        const parsedW = Math.max(260, Math.min(520, parseInt(savedWidth, 10)));
+        panel.style.width = `${parsedW}px`;
+        workspace?.style.setProperty('--board-prop-width', `${parsedW}px`);
+    } else if (workspace) {
+        workspace.style.setProperty('--board-prop-width', '310px');
+    }
+
+    // Default: workspace has property panel open
+    if (panel && !panel.classList.contains('hidden')) {
+        workspace?.classList.add('has-prop-panel');
+        btnToggle?.classList.add('active');
+    }
+
+    // 2. Toggle Button in topbar
+    btnToggle?.addEventListener('click', () => {
+        if (!panel) return;
+        const isHidden = panel.classList.toggle('hidden');
+        btnToggle.classList.toggle('active', !isHidden);
+        workspace?.classList.toggle('has-prop-panel', !isHidden && !panel.classList.contains('minimized'));
+        if (!isHidden) {
+            updatePropertiesPanel();
+        }
+    });
+
+    // 3. Minimize / Expand Button on panel header
+    btnMin?.addEventListener('click', () => {
+        if (!panel) return;
+        const isMin = panel.classList.toggle('minimized');
+        const minIcon = document.getElementById('propMinimizeIcon');
+        if (minIcon) {
+            minIcon.innerHTML = isMin
+                ? '<polyline points="15 18 9 12 15 6"></polyline>'
+                : '<polyline points="9 18 15 12 9 6"></polyline>';
+        }
+        workspace?.classList.toggle('has-prop-panel', !isMin && !panel.classList.contains('hidden'));
+    });
+
+    // 4. Close Button on panel header
+    btnClose?.addEventListener('click', () => {
+        if (!panel) return;
+        panel.classList.add('hidden');
+        btnToggle?.classList.remove('active');
+        workspace?.classList.remove('has-prop-panel');
+    });
+
+    // 5. Left Drag Resize Handle
+    if (handle && panel) {
+        let startX = 0;
+        let startWidth = 0;
+
+        const onResizeMove = (e) => {
+            const dx = startX - e.clientX;
+            const newW = Math.max(260, Math.min(520, startWidth + dx));
+            panel.style.width = `${newW}px`;
+            workspace?.style.setProperty('--board-prop-width', `${newW}px`);
+        };
+
+        const onResizeUp = () => {
+            handle.classList.remove('is-resizing');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            window.removeEventListener('pointermove', onResizeMove);
+            window.removeEventListener('pointerup', onResizeUp);
+            localStorage.setItem('board_prop_width', panel.offsetWidth);
+        };
+
+        handle.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            startX = e.clientX;
+            startWidth = panel.offsetWidth;
+            handle.classList.add('is-resizing');
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+            window.addEventListener('pointermove', onResizeMove);
+            window.addEventListener('pointerup', onResizeUp);
+        });
+    }
+
+    // 6. Setup Swatches and Event Handlers
+    setupPropertiesPanelInputs();
+    updatePropertiesPanel();
+}
+
+function getSelectedElementsList() {
+    return elements.filter(el => selectedElementIds.has(el.id));
+}
+
+function getSingleSelectedElement() {
+    if (selectedElementIds.size !== 1) return null;
+    const id = Array.from(selectedElementIds)[0];
+    return elements.find(el => el.id === id) || null;
+}
+
+function renderColorSwatches(containerId, palette, currentColor, onColorSelected) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = '';
+
+    palette.forEach(c => {
+        const swatch = document.createElement('div');
+        swatch.className = 'prop-color-swatch';
+        if (c === 'transparent') {
+            swatch.classList.add('prop-color-none');
+            swatch.title = 'No Color (Transparent)';
+            swatch.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" style="pointer-events: none;"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>';
+        } else {
+            swatch.style.background = c;
+            swatch.title = c;
+        }
+
+        if (currentColor && (currentColor.toLowerCase() === c.toLowerCase() || (c === 'transparent' && currentColor === 'transparent'))) {
+            swatch.classList.add('active');
+        }
+
+        swatch.addEventListener('click', (e) => {
+            e.stopPropagation();
+            onColorSelected(c);
+        });
+
+        container.appendChild(swatch);
+    });
+
+    // Add native color picker wrapper
+    const customWrapper = document.createElement('div');
+    customWrapper.className = 'prop-custom-color-wrapper';
+    customWrapper.title = 'Choose custom color';
+
+    const customDot = document.createElement('div');
+    customDot.className = 'prop-custom-color-dot';
+
+    const nativeInput = document.createElement('input');
+    nativeInput.type = 'color';
+    nativeInput.className = 'prop-native-picker';
+    nativeInput.value = (currentColor && currentColor !== 'transparent') ? currentColor : '#1e5eff';
+
+    nativeInput.addEventListener('input', (e) => {
+        onColorSelected(e.target.value);
+    });
+    nativeInput.addEventListener('change', (e) => {
+        onColorSelected(e.target.value);
+    });
+
+    customWrapper.appendChild(customDot);
+    customWrapper.appendChild(nativeInput);
+    container.appendChild(customWrapper);
+}
+
+function setupPropertiesPanelInputs() {
+    // 1. Transform / Position & Dimensions (X, Y, W, H)
+    const inpX = document.getElementById('propInputX');
+    const inpY = document.getElementById('propInputY');
+    const inpW = document.getElementById('propInputW');
+    const inpH = document.getElementById('propInputH');
+
+    const updateGeometry = () => {
+        const el = getSingleSelectedElement();
+        if (!el) return;
+        pushUndoState();
+        if (inpX && inpX.value !== '') el.x = parseFloat(inpX.value) || 0;
+        if (inpY && inpY.value !== '') el.y = parseFloat(inpY.value) || 0;
+        if (inpW && inpW.value !== '') el.width = Math.max(5, parseFloat(inpW.value) || 10);
+        if (inpH && inpH.value !== '') el.height = Math.max(5, parseFloat(inpH.value) || 10);
+        renderCanvas();
+        scheduleAutoSave();
+        updateFormattingBar();
+    };
+
+    [inpX, inpY, inpW, inpH].forEach(inp => {
+        inp?.addEventListener('change', updateGeometry);
+        inp?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                updateGeometry();
+                inp.blur();
+            }
+        });
+    });
+
+    // 2. Rotation slider, number input, 90deg button, presets
+    const rotSlider = document.getElementById('propSliderRotation');
+    const rotInput = document.getElementById('propInputRotation');
+    const btnRot90 = document.getElementById('btnPropRotate90');
+
+    const setRotation = (deg, pushState = true) => {
+        const el = getSingleSelectedElement();
+        if (!el) return;
+        if (pushState) pushUndoState();
+        el.rotation = deg;
+        if (rotSlider) rotSlider.value = deg;
+        if (rotInput) rotInput.value = deg;
+        renderCanvas();
+        scheduleAutoSave();
+    };
+
+    rotSlider?.addEventListener('input', (e) => {
+        setRotation(parseFloat(e.target.value) || 0, false);
+    });
+    rotSlider?.addEventListener('change', (e) => {
+        setRotation(parseFloat(e.target.value) || 0, true);
+    });
+    rotInput?.addEventListener('change', (e) => {
+        setRotation(parseFloat(e.target.value) || 0, true);
+    });
+
+    btnRot90?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (!el) return;
+        const nextRot = (((el.rotation || 0) + 90) % 360);
+        setRotation(nextRot, true);
+    });
+
+    document.querySelectorAll('.prop-pill-btn[data-rot]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const rot = parseFloat(btn.getAttribute('data-rot')) || 0;
+            setRotation(rot, true);
+        });
+    });
+
+    // 2b. Origin Point (Pivot) inputs
+    const inpOriginX = document.getElementById('propInputOriginX');
+    const inpOriginY = document.getElementById('propInputOriginY');
+    const btnResetOrigin = document.getElementById('btnPropResetOrigin');
+
+    const updateOriginFromInput = () => {
+        const el = getSingleSelectedElement();
+        if (!el) return;
+        const ox = parseFloat(inpOriginX?.value);
+        const oy = parseFloat(inpOriginY?.value);
+        if (!isNaN(ox) && !isNaN(oy)) {
+            pushUndoState();
+            el.origin = { x: ox, y: oy };
+            renderCanvas();
+            scheduleAutoSave();
+        }
+    };
+
+    inpOriginX?.addEventListener('change', updateOriginFromInput);
+    inpOriginY?.addEventListener('change', updateOriginFromInput);
+
+    btnResetOrigin?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (!el) return;
+        pushUndoState();
+        delete el.origin;
+        renderCanvas();
+        scheduleAutoSave();
+        updatePropertiesPanel();
+    });
+
+    // 3. Opacity slider
+    const opSlider = document.getElementById('propSliderOpacity');
+    const opBadge = document.getElementById('propLabelOpacity');
+
+    opSlider?.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10) / 100;
+        if (opBadge) opBadge.innerText = `${e.target.value}%`;
+        const list = getSelectedElementsList();
+        list.forEach(el => {
+            el.opacity = val;
+        });
+        renderCanvas();
+    });
+    opSlider?.addEventListener('change', () => {
+        pushUndoState();
+        scheduleAutoSave();
+    });
+
+    // 4. Shape Type Switcher
+    const shapeTypeSelect = document.getElementById('propSelectShapeType');
+    shapeTypeSelect?.addEventListener('change', (e) => {
+        const el = getSingleSelectedElement();
+        if (el && el.type === 'shape') {
+            pushUndoState();
+            el.shapeType = e.target.value;
+            renderCanvas();
+            scheduleAutoSave();
+            updatePropertiesPanel();
+        }
+    });
+
+    // 5. Shape Fill Transparent button
+    document.getElementById('btnPropFillTransparent')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el) {
+            pushUndoState();
+            el.fillColor = 'transparent';
+            renderCanvas();
+            scheduleAutoSave();
+            updatePropertiesPanel();
+            updateFormattingBar();
+        }
+    });
+
+    // 6. Shape Border Transparent button
+    document.getElementById('btnPropBorderTransparent')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el) {
+            pushUndoState();
+            el.strokeColor = 'transparent';
+            renderCanvas();
+            scheduleAutoSave();
+            updatePropertiesPanel();
+            updateFormattingBar();
+        }
+    });
+
+    // 7. Shape Border Thickness (Slider + Steppers)
+    const shapeBorderSlider = document.getElementById('propSliderShapeBorder');
+    const shapeBorderVal = document.getElementById('propShapeThicknessVal');
+
+    const setShapeBorderWidth = (w) => {
+        const el = getSingleSelectedElement();
+        if (!el) return;
+        pushUndoState();
+        el.strokeWidth = Math.max(0, Math.min(24, w));
+        if (shapeBorderSlider) shapeBorderSlider.value = el.strokeWidth;
+        if (shapeBorderVal) shapeBorderVal.innerText = `${el.strokeWidth}px`;
+        renderCanvas();
+        scheduleAutoSave();
+        updateFormattingBar();
+    };
+
+    shapeBorderSlider?.addEventListener('input', (e) => {
+        const w = parseInt(e.target.value, 10);
+        if (shapeBorderVal) shapeBorderVal.innerText = `${w}px`;
+        const el = getSingleSelectedElement();
+        if (el) {
+            el.strokeWidth = w;
+            renderCanvas();
+        }
+    });
+    shapeBorderSlider?.addEventListener('change', () => {
+        pushUndoState();
+        scheduleAutoSave();
+        updateFormattingBar();
+    });
+
+    document.getElementById('btnPropShapeBorderDown')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el) setShapeBorderWidth((el.strokeWidth !== undefined ? el.strokeWidth : 2) - 1);
+    });
+    document.getElementById('btnPropShapeBorderUp')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el) setShapeBorderWidth((el.strokeWidth !== undefined ? el.strokeWidth : 2) + 1);
+    });
+
+    // Shape Border Style (Solid / Dashed)
+    document.querySelectorAll('.prop-style-toggle[data-shape-stroke-style]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const style = btn.getAttribute('data-shape-stroke-style');
+            const el = getSingleSelectedElement();
+            if (el) {
+                pushUndoState();
+                el.strokeStyle = style;
+                renderCanvas();
+                scheduleAutoSave();
+                updatePropertiesPanel();
+            }
+        });
+    });
+
+    // 8. Text Inside Shape
+    const shapeTextInput = document.getElementById('propShapeTextInput');
+    shapeTextInput?.addEventListener('input', (e) => {
+        const el = getSingleSelectedElement();
+        if (el && el.type === 'shape') {
+            el.text = e.target.value;
+            renderCanvas();
+            scheduleAutoSave();
+        }
+    });
+    shapeTextInput?.addEventListener('change', () => {
+        pushUndoState();
+        scheduleAutoSave();
+    });
+
+    // Shape Text Font Size
+    const shapeFontSizeInput = document.getElementById('propShapeFontSize');
+    const setShapeFontSize = (sz) => {
+        const el = getSingleSelectedElement();
+        if (!el || el.type !== 'shape') return;
+        pushUndoState();
+        el.fontSize = Math.max(10, Math.min(200, sz));
+        if (shapeFontSizeInput) shapeFontSizeInput.value = el.fontSize;
+        renderCanvas();
+        scheduleAutoSave();
+        updateFormattingBar();
+    };
+
+    shapeFontSizeInput?.addEventListener('change', (e) => {
+        setShapeFontSize(parseInt(e.target.value, 10) || 15);
+    });
+    document.getElementById('btnPropShapeFontDown')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el) setShapeFontSize((el.fontSize || 15) - 2);
+    });
+    document.getElementById('btnPropShapeFontUp')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el) setShapeFontSize((el.fontSize || 15) + 2);
+    });
+
+    // Shape Text Bold & Italic
+    document.getElementById('btnPropShapeBold')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (!el) return;
+        pushUndoState();
+        el.isBold = !el.isBold;
+        renderCanvas();
+        scheduleAutoSave();
+        updatePropertiesPanel();
+        updateFormattingBar();
+    });
+    document.getElementById('btnPropShapeItalic')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (!el) return;
+        pushUndoState();
+        el.isItalic = !el.isItalic;
+        renderCanvas();
+        scheduleAutoSave();
+        updatePropertiesPanel();
+        updateFormattingBar();
+    });
+
+    // Shape Text Alignment
+    document.getElementById('btnPropShapeAlignLeft')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el) {
+            pushUndoState();
+            el.textAlign = 'left';
+            renderCanvas();
+            scheduleAutoSave();
+            updatePropertiesPanel();
+            updateFormattingBar();
+        }
+    });
+    document.getElementById('btnPropShapeAlignCenter')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el) {
+            pushUndoState();
+            el.textAlign = 'center';
+            renderCanvas();
+            scheduleAutoSave();
+            updatePropertiesPanel();
+            updateFormattingBar();
+        }
+    });
+    document.getElementById('btnPropShapeAlignRight')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el) {
+            pushUndoState();
+            el.textAlign = 'right';
+            renderCanvas();
+            scheduleAutoSave();
+            updatePropertiesPanel();
+            updateFormattingBar();
+        }
+    });
+    document.getElementById('btnPropShapeAlignTop')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el) {
+            pushUndoState();
+            el.textVAlign = 'top';
+            renderCanvas();
+            scheduleAutoSave();
+            updatePropertiesPanel();
+            updateFormattingBar();
+        }
+    });
+    document.getElementById('btnPropShapeAlignMiddle')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el) {
+            pushUndoState();
+            el.textVAlign = 'middle';
+            renderCanvas();
+            scheduleAutoSave();
+            updatePropertiesPanel();
+            updateFormattingBar();
+        }
+    });
+    document.getElementById('btnPropShapeAlignBottom')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el) {
+            pushUndoState();
+            el.textVAlign = 'bottom';
+            renderCanvas();
+            scheduleAutoSave();
+            updatePropertiesPanel();
+            updateFormattingBar();
+        }
+    });
+
+    // 9. Standalone Text Element
+    const textElemInput = document.getElementById('propTextInput');
+    textElemInput?.addEventListener('input', (e) => {
+        const el = getSingleSelectedElement();
+        if (el && el.type === 'text') {
+            el.text = e.target.value;
+            updateTextElementBounds(el);
+            renderCanvas();
+            scheduleAutoSave();
+        }
+    });
+    textElemInput?.addEventListener('change', () => {
+        pushUndoState();
+        scheduleAutoSave();
+    });
+
+    const textFontSelect = document.getElementById('propSelectFontFamily');
+    textFontSelect?.addEventListener('change', (e) => {
+        const el = getSingleSelectedElement();
+        if (el) {
+            pushUndoState();
+            el.fontFamily = e.target.value;
+            if (el.type === 'text') updateTextElementBounds(el);
+            renderCanvas();
+            scheduleAutoSave();
+            updatePropertiesPanel();
+            updateFormattingBar();
+        }
+    });
+
+    const textFontSizeInput = document.getElementById('propTextFontSize');
+    const setTextFontSize = (sz) => {
+        const el = getSingleSelectedElement();
+        if (!el) return;
+        pushUndoState();
+        el.fontSize = Math.max(10, Math.min(250, sz));
+        if (textFontSizeInput) textFontSizeInput.value = el.fontSize;
+        if (el.type === 'text') updateTextElementBounds(el);
+        renderCanvas();
+        scheduleAutoSave();
+        updateFormattingBar();
+    };
+
+    textFontSizeInput?.addEventListener('change', (e) => {
+        setTextFontSize(parseInt(e.target.value, 10) || 20);
+    });
+    document.getElementById('btnPropTextFontDown')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el) setTextFontSize((el.fontSize || 20) - 2);
+    });
+    document.getElementById('btnPropTextFontUp')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el) setTextFontSize((el.fontSize || 20) + 2);
+    });
+
+    document.getElementById('btnPropTextBold')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (!el) return;
+        pushUndoState();
+        el.isBold = !el.isBold;
+        if (el.type === 'text') updateTextElementBounds(el);
+        renderCanvas();
+        scheduleAutoSave();
+        updatePropertiesPanel();
+        updateFormattingBar();
+    });
+    document.getElementById('btnPropTextItalic')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (!el) return;
+        pushUndoState();
+        el.isItalic = !el.isItalic;
+        if (el.type === 'text') updateTextElementBounds(el);
+        renderCanvas();
+        scheduleAutoSave();
+        updatePropertiesPanel();
+        updateFormattingBar();
+    });
+
+    document.getElementById('btnPropTextAlignLeft')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el) {
+            pushUndoState();
+            el.textAlign = 'left';
+            renderCanvas();
+            scheduleAutoSave();
+            updatePropertiesPanel();
+            updateFormattingBar();
+        }
+    });
+    document.getElementById('btnPropTextAlignCenter')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el) {
+            pushUndoState();
+            el.textAlign = 'center';
+            renderCanvas();
+            scheduleAutoSave();
+            updatePropertiesPanel();
+            updateFormattingBar();
+        }
+    });
+    document.getElementById('btnPropTextAlignRight')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el) {
+            pushUndoState();
+            el.textAlign = 'right';
+            renderCanvas();
+            scheduleAutoSave();
+            updatePropertiesPanel();
+            updateFormattingBar();
+        }
+    });
+
+    // 10. Sticky Note Inputs
+    const stickyTextInput = document.getElementById('propStickyTextInput');
+    stickyTextInput?.addEventListener('input', (e) => {
+        const el = getSingleSelectedElement();
+        if (el && el.type === 'sticky') {
+            el.text = e.target.value;
+            renderCanvas();
+            scheduleAutoSave();
+        }
+    });
+    stickyTextInput?.addEventListener('change', () => {
+        pushUndoState();
+        scheduleAutoSave();
+    });
+
+    const stickyFontSizeInput = document.getElementById('propStickyFontSize');
+    stickyFontSizeInput?.addEventListener('change', (e) => {
+        const el = getSingleSelectedElement();
+        if (el && el.type === 'sticky') {
+            pushUndoState();
+            el.fontSize = Math.max(10, Math.min(100, parseInt(e.target.value, 10) || 16));
+            renderCanvas();
+            scheduleAutoSave();
+        }
+    });
+    document.getElementById('btnPropStickyFontDown')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el && el.type === 'sticky') {
+            pushUndoState();
+            el.fontSize = Math.max(10, (el.fontSize || 16) - 2);
+            if (stickyFontSizeInput) stickyFontSizeInput.value = el.fontSize;
+            renderCanvas();
+            scheduleAutoSave();
+        }
+    });
+    document.getElementById('btnPropStickyFontUp')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el && el.type === 'sticky') {
+            pushUndoState();
+            el.fontSize = Math.min(100, (el.fontSize || 16) + 2);
+            if (stickyFontSizeInput) stickyFontSizeInput.value = el.fontSize;
+            renderCanvas();
+            scheduleAutoSave();
+        }
+    });
+
+    document.getElementById('btnPropStickyAlignLeft')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el) { el.textAlign = 'left'; renderCanvas(); scheduleAutoSave(); updatePropertiesPanel(); }
+    });
+    document.getElementById('btnPropStickyAlignCenter')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el) { el.textAlign = 'center'; renderCanvas(); scheduleAutoSave(); updatePropertiesPanel(); }
+    });
+    document.getElementById('btnPropStickyAlignRight')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el) { el.textAlign = 'right'; renderCanvas(); scheduleAutoSave(); updatePropertiesPanel(); }
+    });
+
+    // 11. Line & Connector
+    const lineThicknessSlider = document.getElementById('propSliderLineThickness');
+    const lineThicknessVal = document.getElementById('propLineThicknessVal');
+    const setLineThickness = (w) => {
+        const el = getSingleSelectedElement();
+        if (!el) return;
+        pushUndoState();
+        el.strokeWidth = Math.max(1, Math.min(24, w));
+        if (lineThicknessSlider) lineThicknessSlider.value = el.strokeWidth;
+        if (lineThicknessVal) lineThicknessVal.innerText = `${el.strokeWidth}px`;
+        renderCanvas();
+        scheduleAutoSave();
+        updateFormattingBar();
+    };
+
+    lineThicknessSlider?.addEventListener('input', (e) => {
+        const w = parseFloat(e.target.value) || 2.5;
+        if (lineThicknessVal) lineThicknessVal.innerText = `${w}px`;
+        const el = getSingleSelectedElement();
+        if (el) { el.strokeWidth = w; renderCanvas(); }
+    });
+    lineThicknessSlider?.addEventListener('change', () => {
+        pushUndoState();
+        scheduleAutoSave();
+        updateFormattingBar();
+    });
+
+    document.getElementById('btnPropLineThicknessDown')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el) setLineThickness((el.strokeWidth !== undefined ? el.strokeWidth : 2.5) - 1);
+    });
+    document.getElementById('btnPropLineThicknessUp')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el) setLineThickness((el.strokeWidth !== undefined ? el.strokeWidth : 2.5) + 1);
+    });
+
+    document.querySelectorAll('.prop-style-toggle[data-line-stroke-style]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const style = btn.getAttribute('data-line-stroke-style');
+            const el = getSingleSelectedElement();
+            if (el) {
+                pushUndoState();
+                el.strokeStyle = style;
+                renderCanvas();
+                scheduleAutoSave();
+                updatePropertiesPanel();
+            }
+        });
+    });
+
+    document.querySelectorAll('.prop-style-toggle[data-arrow-end-type]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const arrowType = btn.getAttribute('data-arrow-end-type');
+            const el = getSingleSelectedElement();
+            if (el) {
+                pushUndoState();
+                if (arrowType === 'end') {
+                    el.type = 'arrow';
+                    el.arrowHead = 'end';
+                } else {
+                    el.type = 'line';
+                    el.arrowHead = 'none';
+                }
+                renderCanvas();
+                scheduleAutoSave();
+                updatePropertiesPanel();
+            }
+        });
+    });
+
+    // 12. Draw / Pen Stroke Size
+    const drawSizeSlider = document.getElementById('propSliderDrawSize');
+    const drawSizeVal = document.getElementById('propDrawSizeVal');
+    const setDrawSize = (sz) => {
+        const el = getSingleSelectedElement();
+        if (!el) return;
+        pushUndoState();
+        const finalSz = Math.max(1, Math.min(30, sz));
+        if (el.type === 'draw') el.size = finalSz;
+        else if (el.type === 'path') el.strokeWidth = finalSz;
+        if (drawSizeSlider) drawSizeSlider.value = finalSz;
+        if (drawSizeVal) drawSizeVal.innerText = `${finalSz}px`;
+        renderCanvas();
+        scheduleAutoSave();
+        updateFormattingBar();
+    };
+
+    drawSizeSlider?.addEventListener('input', (e) => {
+        const sz = parseInt(e.target.value, 10);
+        if (drawSizeVal) drawSizeVal.innerText = `${sz}px`;
+        const el = getSingleSelectedElement();
+        if (el) {
+            if (el.type === 'draw') el.size = sz;
+            else if (el.type === 'path') el.strokeWidth = sz;
+            renderCanvas();
+        }
+    });
+    drawSizeSlider?.addEventListener('change', () => {
+        pushUndoState();
+        scheduleAutoSave();
+        updateFormattingBar();
+    });
+
+    document.getElementById('btnPropDrawSizeDown')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el) setDrawSize((el.size || el.strokeWidth || 4) - 1);
+    });
+    document.getElementById('btnPropDrawSizeUp')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el) setDrawSize((el.size || el.strokeWidth || 4) + 1);
+    });
+
+    // 13. Image Aspect Ratio Reset
+    document.getElementById('btnPropResetImageAspect')?.addEventListener('click', () => {
+        const el = getSingleSelectedElement();
+        if (el && el.type === 'image' && el.originalWidth && el.originalHeight) {
+            pushUndoState();
+            el.height = Math.round(el.width * (el.originalHeight / el.originalWidth));
+            renderCanvas();
+            scheduleAutoSave();
+            updatePropertiesPanel();
+        }
+    });
+
+    // 14. Multi Selection Alignment Grid
+    document.querySelectorAll('.prop-align-action-btn[data-align-action]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const action = btn.getAttribute('data-align-action');
+            alignSelectedElements(action);
+        });
+    });
+
+    // 15. Magnet Snapping Button on Empty State
+    document.getElementById('btnPropToggleMagnet')?.addEventListener('click', () => {
+        isMagnetSnapping = !isMagnetSnapping;
+        const topbarMagnet = document.getElementById('btnSnapMagnet');
+        topbarMagnet?.classList.toggle('is-magnet-active', isMagnetSnapping);
+        const magnetBtn = document.getElementById('btnPropToggleMagnet');
+        magnetBtn?.classList.toggle('active', isMagnetSnapping);
+        const magnetLabel = document.getElementById('propMagnetStatusLabel');
+        if (magnetLabel) magnetLabel.innerText = isMagnetSnapping ? 'Magnet Snapping On' : 'Magnet Snapping Off';
+    });
+
+    // 16. Arrange & Actions
+    document.getElementById('btnPropBringFront')?.addEventListener('click', () => {
+        window.bringSelectedToFront();
+    });
+    document.getElementById('btnPropSendBack')?.addEventListener('click', () => {
+        window.sendSelectedToBack();
+    });
+    document.getElementById('btnPropDuplicate')?.addEventListener('click', () => {
+        window.duplicateSelectedElements();
+    });
+    document.getElementById('btnPropDelete')?.addEventListener('click', () => {
+        window.deleteSelectedElements();
+    });
+}
+
+function alignSelectedElements(action) {
+    if (selectedElementIds.size < 2) return;
+    const selected = getSelectedElementsList();
+    if (selected.length < 2) return;
+
+    pushUndoState();
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    selected.forEach(el => {
+        const w = el.width || 0;
+        const h = el.height || 0;
+        minX = Math.min(minX, el.x);
+        maxX = Math.max(maxX, el.x + w);
+        minY = Math.min(minY, el.y);
+        maxY = Math.max(maxY, el.y + h);
+    });
+
+    const midX = (minX + maxX) / 2;
+    const midY = (minY + maxY) / 2;
+
+    selected.forEach(el => {
+        const w = el.width || 0;
+        const h = el.height || 0;
+        switch (action) {
+            case 'left':
+                el.x = minX;
+                break;
+            case 'center':
+                el.x = midX - w / 2;
+                break;
+            case 'right':
+                el.x = maxX - w;
+                break;
+            case 'top':
+                el.y = minY;
+                break;
+            case 'middle':
+                el.y = midY - h / 2;
+                break;
+            case 'bottom':
+                el.y = maxY - h;
+                break;
+        }
+    });
+
+    renderCanvas();
+    scheduleAutoSave();
+    updatePropertiesPanel();
+}
+
+function updatePropertiesPanel() {
+    const panel = document.getElementById('boardPropertiesPanel');
+    if (!panel || panel.classList.contains('hidden')) return;
+
+    const count = selectedElementIds.size;
+    const headerTitle = document.getElementById('propHeaderTitle');
+    const headerBadge = document.getElementById('propHeaderBadge');
+    const headerIcon = document.getElementById('propHeaderIcon');
+
+    const secTransform = document.getElementById('propSectionTransform');
+    const secShape = document.getElementById('propSectionShape');
+    const secShapeText = document.getElementById('propSectionShapeText');
+    const secText = document.getElementById('propSectionText');
+    const secSticky = document.getElementById('propSectionSticky');
+    const secLine = document.getElementById('propSectionLine');
+    const secDraw = document.getElementById('propSectionDraw');
+    const secImage = document.getElementById('propSectionImage');
+    const secMulti = document.getElementById('propSectionMulti');
+    const secCanvas = document.getElementById('propSectionCanvas');
+    const secActions = document.getElementById('propSectionActions');
+
+    // Case 0: Empty Selection -> Canvas Settings
+    if (count === 0) {
+        if (headerTitle) headerTitle.innerText = 'Properties';
+        if (headerBadge) headerBadge.innerText = 'Canvas';
+        if (headerIcon) {
+            headerIcon.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>';
+        }
+
+        secTransform?.classList.add('hidden');
+        secShape?.classList.add('hidden');
+        secShapeText?.classList.add('hidden');
+        secText?.classList.add('hidden');
+        secSticky?.classList.add('hidden');
+        secLine?.classList.add('hidden');
+        secDraw?.classList.add('hidden');
+        secImage?.classList.add('hidden');
+        secMulti?.classList.add('hidden');
+        secActions?.classList.add('hidden');
+        secCanvas?.classList.remove('hidden');
+
+        // Update canvas statistics
+        const countBadge = document.getElementById('propCanvasElementCount');
+        if (countBadge) countBadge.innerText = String(elements.length);
+
+        const magnetBtn = document.getElementById('btnPropToggleMagnet');
+        magnetBtn?.classList.toggle('active', isMagnetSnapping);
+        const magnetLabel = document.getElementById('propMagnetStatusLabel');
+        if (magnetLabel) magnetLabel.innerText = isMagnetSnapping ? 'Magnet Snapping On' : 'Magnet Snapping Off';
+        return;
+    }
+
+    // Case > 1: Multi Selection
+    if (count > 1) {
+        if (headerTitle) headerTitle.innerText = 'Selection';
+        if (headerBadge) headerBadge.innerText = `${count} Items`;
+        if (headerIcon) {
+            headerIcon.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>';
+        }
+
+        secCanvas?.classList.add('hidden');
+        secShape?.classList.add('hidden');
+        secShapeText?.classList.add('hidden');
+        secText?.classList.add('hidden');
+        secSticky?.classList.add('hidden');
+        secLine?.classList.add('hidden');
+        secDraw?.classList.add('hidden');
+        secImage?.classList.add('hidden');
+
+        secTransform?.classList.remove('hidden');
+        secMulti?.classList.remove('hidden');
+        secActions?.classList.remove('hidden');
+
+        const multiText = document.getElementById('propMultiCountText');
+        if (multiText) multiText.innerText = `${count} elements currently selected`;
+
+        // Hide rotation and coordinates for heterogeneous multi-selection
+        const groupRot = document.getElementById('propGroupRotation');
+        if (groupRot) groupRot.style.display = 'none';
+        return;
+    }
+
+    // Case 1: Single Element Selected
+    const el = getSingleSelectedElement();
+    if (!el) return;
+
+    secCanvas?.classList.add('hidden');
+    secMulti?.classList.add('hidden');
+    secTransform?.classList.remove('hidden');
+    secActions?.classList.remove('hidden');
+
+    const groupRot = document.getElementById('propGroupRotation');
+    if (groupRot) groupRot.style.display = (el.type === 'line' || el.type === 'arrow') ? 'none' : '';
+
+    // 1. Sync Geometry Inputs (if not actively being typed by user)
+    const activeElem = document.activeElement;
+    const inpX = document.getElementById('propInputX');
+    const inpY = document.getElementById('propInputY');
+    const inpW = document.getElementById('propInputW');
+    const inpH = document.getElementById('propInputH');
+
+    if (inpX && activeElem !== inpX) inpX.value = Math.round(el.x || 0);
+    if (inpY && activeElem !== inpY) inpY.value = Math.round(el.y || 0);
+    if (inpW && activeElem !== inpW) inpW.value = Math.round(el.width || 0);
+    if (inpH && activeElem !== inpH) inpH.value = Math.round(el.height || 0);
+
+    // 2. Sync Rotation
+    const rotSlider = document.getElementById('propSliderRotation');
+    const rotInput = document.getElementById('propInputRotation');
+    const currentRot = Math.round(el.rotation || 0);
+    if (rotSlider && activeElem !== rotSlider) rotSlider.value = currentRot;
+    if (rotInput && activeElem !== rotInput) rotInput.value = currentRot;
+
+    // 2b. Sync Origin Point (Pivot)
+    const groupOrigin = document.getElementById('propGroupOrigin');
+    if (groupOrigin) groupOrigin.style.display = (el.type === 'line' || el.type === 'arrow' || el.type === 'draw') ? 'none' : '';
+
+    const origPt = getElementOrigin(el);
+    const inpOX = document.getElementById('propInputOriginX');
+    const inpOY = document.getElementById('propInputOriginY');
+    if (inpOX && activeElem !== inpOX) inpOX.value = Math.round(origPt.x);
+    if (inpOY && activeElem !== inpOY) inpOY.value = Math.round(origPt.y);
+
+    // 3. Sync Opacity
+    const opSlider = document.getElementById('propSliderOpacity');
+    const opBadge = document.getElementById('propLabelOpacity');
+    const currentOp = Math.round((el.opacity !== undefined ? el.opacity : 1) * 100);
+    if (opSlider && activeElem !== opSlider) opSlider.value = currentOp;
+    if (opBadge) opBadge.innerText = `${currentOp}%`;
+
+    // 4. Element Specific Sections
+    secShape?.classList.toggle('hidden', el.type !== 'shape');
+    secShapeText?.classList.toggle('hidden', el.type !== 'shape');
+    secText?.classList.toggle('hidden', el.type !== 'text');
+    secSticky?.classList.toggle('hidden', el.type !== 'sticky');
+    secLine?.classList.toggle('hidden', el.type !== 'line' && el.type !== 'arrow');
+    secDraw?.classList.toggle('hidden', el.type !== 'draw' && el.type !== 'path');
+    secImage?.classList.toggle('hidden', el.type !== 'image');
+
+    // --- TYPE: SHAPE ---
+    if (el.type === 'shape') {
+        if (headerTitle) headerTitle.innerText = 'Shape';
+        if (headerBadge) headerBadge.innerText = el.shapeType || 'Rectangle';
+        if (headerIcon) {
+            headerIcon.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>';
+        }
+
+        // Shape Type
+        const shapeSelect = document.getElementById('propSelectShapeType');
+        if (shapeSelect) shapeSelect.value = el.shapeType || 'rectangle';
+
+        // Fill Swatches
+        const fillPalette = ['transparent', '#ffffff', '#fef08a', '#fbcfe8', '#bbf7d0', '#bae6fd', '#e9d5ff', '#fed7aa', '#cbd5e1', '#1e293b'];
+        renderColorSwatches('propShapeFillSwatches', fillPalette, el.fillColor, (newColor) => {
+            pushUndoState();
+            el.fillColor = newColor;
+            renderCanvas();
+            scheduleAutoSave();
+            updatePropertiesPanel();
+            updateFormattingBar();
+        });
+
+        // Border Swatches
+        const borderPalette = ['transparent', '#0f172a', '#1e5eff', '#10b981', '#ef4444', '#8b5cf6', '#f59e0b', '#64748b', '#ffffff'];
+        renderColorSwatches('propShapeBorderSwatches', borderPalette, el.strokeColor, (newColor) => {
+            pushUndoState();
+            el.strokeColor = newColor;
+            renderCanvas();
+            scheduleAutoSave();
+            updatePropertiesPanel();
+            updateFormattingBar();
+        });
+
+        // Border Thickness & Style
+        const borderSlider = document.getElementById('propSliderShapeBorder');
+        const borderVal = document.getElementById('propShapeThicknessVal');
+        const strokeW = el.strokeWidth !== undefined ? el.strokeWidth : 2;
+        if (borderSlider && activeElem !== borderSlider) borderSlider.value = strokeW;
+        if (borderVal) borderVal.innerText = `${strokeW}px`;
+
+        document.querySelectorAll('.prop-style-toggle[data-shape-stroke-style]').forEach(btn => {
+            const st = btn.getAttribute('data-shape-stroke-style');
+            btn.classList.toggle('active', (el.strokeStyle || 'solid') === st);
+        });
+
+        // Text Inside Shape
+        const shapeTextInput = document.getElementById('propShapeTextInput');
+        if (shapeTextInput && activeElem !== shapeTextInput) {
+            shapeTextInput.value = el.text || '';
+        }
+
+        const textColorPalette = ['#0f172a', '#1e5eff', '#10b981', '#ef4444', '#8b5cf6', '#f59e0b', '#ffffff'];
+        renderColorSwatches('propShapeTextSwatches', textColorPalette, el.textColor || '#0f172a', (newColor) => {
+            pushUndoState();
+            el.textColor = newColor;
+            renderCanvas();
+            scheduleAutoSave();
+            updatePropertiesPanel();
+            updateFormattingBar();
+        });
+
+        const shapeFontSize = document.getElementById('propShapeFontSize');
+        if (shapeFontSize && activeElem !== shapeFontSize) {
+            shapeFontSize.value = el.fontSize || 15;
+        }
+
+        document.getElementById('btnPropShapeBold')?.classList.toggle('active', Boolean(el.isBold));
+        document.getElementById('btnPropShapeItalic')?.classList.toggle('active', Boolean(el.isItalic));
+
+        const hAlign = el.textAlign || 'center';
+        document.getElementById('btnPropShapeAlignLeft')?.classList.toggle('active', hAlign === 'left');
+        document.getElementById('btnPropShapeAlignCenter')?.classList.toggle('active', hAlign === 'center');
+        document.getElementById('btnPropShapeAlignRight')?.classList.toggle('active', hAlign === 'right');
+
+        const vAlign = el.textVAlign || 'middle';
+        document.getElementById('btnPropShapeAlignTop')?.classList.toggle('active', vAlign === 'top');
+        document.getElementById('btnPropShapeAlignMiddle')?.classList.toggle('active', vAlign === 'middle' || vAlign === 'center');
+        document.getElementById('btnPropShapeAlignBottom')?.classList.toggle('active', vAlign === 'bottom');
+    }
+
+    // --- TYPE: STANDALONE TEXT ---
+    else if (el.type === 'text') {
+        if (headerTitle) headerTitle.innerText = 'Text';
+        if (headerBadge) headerBadge.innerText = 'Typography';
+        if (headerIcon) {
+            headerIcon.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="12" y1="4" x2="12" y2="20"></line><line x1="8" y1="20" x2="16" y2="20"></line></svg>';
+        }
+
+        const textInput = document.getElementById('propTextInput');
+        if (textInput && activeElem !== textInput) {
+            textInput.value = el.text || '';
+        }
+
+        const fontSelect = document.getElementById('propSelectFontFamily');
+        if (fontSelect && el.fontFamily) {
+            fontSelect.value = el.fontFamily;
+        }
+
+        const textColorPalette = ['#0f172a', '#1e5eff', '#10b981', '#ef4444', '#8b5cf6', '#f59e0b', '#ffffff'];
+        renderColorSwatches('propTextColorSwatches', textColorPalette, el.color || el.textColor || '#0f172a', (newColor) => {
+            pushUndoState();
+            el.color = newColor;
+            el.textColor = newColor;
+            renderCanvas();
+            scheduleAutoSave();
+            updatePropertiesPanel();
+            updateFormattingBar();
+        });
+
+        const textFontSize = document.getElementById('propTextFontSize');
+        if (textFontSize && activeElem !== textFontSize) {
+            textFontSize.value = el.fontSize || 20;
+        }
+
+        document.getElementById('btnPropTextBold')?.classList.toggle('active', Boolean(el.isBold));
+        document.getElementById('btnPropTextItalic')?.classList.toggle('active', Boolean(el.isItalic));
+
+        const align = el.textAlign || 'left';
+        document.getElementById('btnPropTextAlignLeft')?.classList.toggle('active', align === 'left');
+        document.getElementById('btnPropTextAlignCenter')?.classList.toggle('active', align === 'center');
+        document.getElementById('btnPropTextAlignRight')?.classList.toggle('active', align === 'right');
+    }
+
+    // --- TYPE: STICKY NOTE ---
+    else if (el.type === 'sticky') {
+        if (headerTitle) headerTitle.innerText = 'Sticky Note';
+        if (headerBadge) headerBadge.innerText = 'Note';
+        if (headerIcon) {
+            headerIcon.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>';
+        }
+
+        const stickyTextInput = document.getElementById('propStickyTextInput');
+        if (stickyTextInput && activeElem !== stickyTextInput) {
+            stickyTextInput.value = el.text || '';
+        }
+
+        const stickyBgPalette = STICKY_COLORS.map(s => s.bg);
+        renderColorSwatches('propStickyColorSwatches', stickyBgPalette, el.color, (newColor) => {
+            pushUndoState();
+            el.color = newColor;
+            const match = STICKY_COLORS.find(s => s.bg.toLowerCase() === newColor.toLowerCase());
+            if (match) el.textColor = match.text;
+            renderCanvas();
+            scheduleAutoSave();
+            updatePropertiesPanel();
+            updateFormattingBar();
+        });
+
+        const textColorPalette = ['#0f172a', '#713f12', '#831843', '#14532d', '#0c4a6e', '#581c87', '#f8fafc'];
+        renderColorSwatches('propStickyTextColorSwatches', textColorPalette, el.textColor, (newColor) => {
+            pushUndoState();
+            el.textColor = newColor;
+            renderCanvas();
+            scheduleAutoSave();
+            updatePropertiesPanel();
+            updateFormattingBar();
+        });
+
+        const stickyFontSize = document.getElementById('propStickyFontSize');
+        if (stickyFontSize && activeElem !== stickyFontSize) {
+            stickyFontSize.value = el.fontSize || 16;
+        }
+
+        const align = el.textAlign || 'left';
+        document.getElementById('btnPropStickyAlignLeft')?.classList.toggle('active', align === 'left');
+        document.getElementById('btnPropStickyAlignCenter')?.classList.toggle('active', align === 'center');
+        document.getElementById('btnPropStickyAlignRight')?.classList.toggle('active', align === 'right');
+    }
+
+    // --- TYPE: LINE & ARROW ---
+    else if (el.type === 'line' || el.type === 'arrow') {
+        if (headerTitle) headerTitle.innerText = el.type === 'arrow' ? 'Arrow' : 'Line';
+        if (headerBadge) headerBadge.innerText = 'Vector';
+        if (headerIcon) {
+            headerIcon.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="19" x2="19" y2="5"></line><polyline points="9 5 19 5 19 15"></polyline></svg>';
+        }
+
+        const linePalette = ['#1e5eff', '#0f172a', '#10b981', '#ef4444', '#8b5cf6', '#f59e0b', '#ffffff'];
+        renderColorSwatches('propLineColorSwatches', linePalette, el.strokeColor, (newColor) => {
+            pushUndoState();
+            el.strokeColor = newColor;
+            renderCanvas();
+            scheduleAutoSave();
+            updatePropertiesPanel();
+            updateFormattingBar();
+        });
+
+        const lineSlider = document.getElementById('propSliderLineThickness');
+        const lineVal = document.getElementById('propLineThicknessVal');
+        const strokeW = el.strokeWidth !== undefined ? el.strokeWidth : 2.5;
+        if (lineSlider && activeElem !== lineSlider) lineSlider.value = strokeW;
+        if (lineVal) lineVal.innerText = `${strokeW}px`;
+
+        document.querySelectorAll('.prop-style-toggle[data-line-stroke-style]').forEach(btn => {
+            const st = btn.getAttribute('data-line-stroke-style');
+            btn.classList.toggle('active', (el.strokeStyle || 'solid') === st);
+        });
+
+        document.querySelectorAll('.prop-style-toggle[data-arrow-end-type]').forEach(btn => {
+            const at = btn.getAttribute('data-arrow-end-type');
+            const isArrow = el.type === 'arrow' || el.arrowHead === 'end';
+            btn.classList.toggle('active', (at === 'end' && isArrow) || (at === 'none' && !isArrow));
+        });
+    }
+
+    // --- TYPE: FREEHAND DRAW / PEN / PATH ---
+    else if (el.type === 'draw' || el.type === 'path') {
+        const isHighlighter = Boolean(el.isHighlighter);
+        if (headerTitle) headerTitle.innerText = isHighlighter ? 'Highlighter' : 'Pen Drawing';
+        if (headerBadge) headerBadge.innerText = el.type === 'path' ? 'Path' : 'Freehand';
+        if (headerIcon) {
+            headerIcon.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path></svg>';
+        }
+
+        const drawPalette = ['#1e293b', '#1e5eff', '#ef4444', '#10b981', '#8b5cf6', '#facc15', '#ffffff'];
+        renderColorSwatches('propDrawColorSwatches', drawPalette, el.color || el.strokeColor, (newColor) => {
+            pushUndoState();
+            if (el.type === 'draw') el.color = newColor;
+            else if (el.type === 'path') el.strokeColor = newColor;
+            renderCanvas();
+            scheduleAutoSave();
+            updatePropertiesPanel();
+            updateFormattingBar();
+        });
+
+        const drawSlider = document.getElementById('propSliderDrawSize');
+        const drawVal = document.getElementById('propDrawSizeVal');
+        const strokeW = el.size || el.strokeWidth || 4;
+        if (drawSlider && activeElem !== drawSlider) drawSlider.value = strokeW;
+        if (drawVal) drawVal.innerText = `${strokeW}px`;
+    }
+
+    // --- TYPE: IMAGE ---
+    else if (el.type === 'image') {
+        if (headerTitle) headerTitle.innerText = 'Image';
+        if (headerBadge) headerBadge.innerText = 'Bitmap';
+        if (headerIcon) {
+            headerIcon.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>';
+        }
+    }
+}
+
