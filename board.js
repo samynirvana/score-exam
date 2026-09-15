@@ -97,7 +97,53 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupCanvasEventListeners();
     setupKeyboardShortcuts();
     initPropertiesPanel();
+    setupTopbarOptionGroups();
 });
+
+function setupTopbarOptionGroups() {
+    const actions = document.querySelector('.board-topbar-actions');
+    if (!actions || actions.querySelector('.board-options-group')) return;
+    const groups = [
+        { title: 'Canvas Options', icon: '<rect x="3" y="3" width="18" height="18" rx="4" fill="#dbeafe" stroke="#2563eb"/><path d="M7 8h10M7 16h10" stroke="#8b5cf6"/><circle cx="10" cy="8" r="2" fill="#06b6d4"/><circle cx="15" cy="16" r="2" fill="#f59e0b"/>', items: [['btnCanvasBg', 'Canvas Background'], ['btnSnapMagnet', 'Magnetic Snapping'], ['btnToggleFloatingBar', 'Floating Tools'], ['btnToggleProperties', 'Properties Panel']] },
+        { title: 'File Options', icon: '<path d="M3 7V5a2 2 0 0 1 2-2h5l3 4h6a2 2 0 0 1 2 2v10H3Z" fill="#fef3c7" stroke="#f59e0b"/><path d="M3 9h18l-2 11H5Z" fill="#bfdbfe" stroke="#3b82f6"/><path d="M12 12v5m-2-2 2 2 2-2" stroke="#8b5cf6"/>', items: [['btnSaveBoard', 'Save'], ['btnExportPng', 'Download PNG'], ['btnShareBoardToggle', 'Share'], ['btnClearBoard', 'Clear Canvas']] }
+    ];
+    const close = group => {
+        group.open = false;
+        group.querySelector('summary').setAttribute('aria-expanded', 'false');
+        group.querySelector('#canvasBgDropdown')?.classList.add('hidden');
+    };
+    groups.forEach(config => {
+        const group = document.createElement('details');
+        group.className = 'board-options-group';
+        const trigger = document.createElement('summary');
+        trigger.className = 'board-options-trigger';
+        trigger.title = config.title;
+        trigger.setAttribute('aria-label', config.title);
+        trigger.setAttribute('aria-expanded', 'false');
+        trigger.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${config.icon}</svg><span>${config.title}</span><span aria-hidden="true">⌄</span>`;
+        const menu = document.createElement('div');
+        menu.className = 'board-options-menu';
+        config.items.forEach(([id, label]) => {
+            const button = document.getElementById(id);
+            if (!button) return;
+            const caption = document.createElement('span'); caption.textContent = label;
+            button.append(caption);
+            button.classList.add('board-options-item');
+            if (id === 'btnToggleFloatingBar') button.querySelector('svg')?.setAttribute('stroke', '#06b6d4');
+            if (id === 'btnToggleProperties') button.querySelector('svg')?.setAttribute('stroke', '#8b5cf6');
+            menu.append(id === 'btnCanvasBg' ? button.parentElement : button);
+            if (config.title === 'File Options') button.addEventListener('click', () => close(group));
+        });
+        group.append(trigger, menu); actions.append(group);
+        group.addEventListener('toggle', () => {
+            trigger.setAttribute('aria-expanded', String(group.open));
+            if (group.open) actions.querySelectorAll('.board-options-group').forEach(other => { if (other !== group) close(other); });
+        });
+        group.addEventListener('keydown', e => { if (e.key === 'Escape') { close(group); trigger.focus(); e.stopPropagation(); } });
+    });
+    actions.querySelectorAll(':scope > .board-topbar-divider').forEach(divider => divider.remove());
+    document.addEventListener('click', e => actions.querySelectorAll('.board-options-group[open]').forEach(group => { if (!group.contains(e.target)) close(group); }));
+}
 
 async function initAuthAndUser() {
     // 1. Check Firebase Auth first for Staff (Teacher / Admin)
@@ -1579,7 +1625,7 @@ function renderCanvas() {
 
 function getElementOrigin(el) {
     if (!el) return { x: 0, y: 0 };
-    if (el.origin && typeof el.origin.x === 'number' && typeof el.origin.y === 'number') {
+    if (el.origin && Number.isFinite(el.origin.x) && Number.isFinite(el.origin.y)) {
         return { x: el.origin.x, y: el.origin.y };
     }
     if (el.type === 'line' || el.type === 'arrow') {
@@ -1705,8 +1751,28 @@ function renderElement(ctx, el) {
     ctx.restore();
 }
 
-function drawPathShape(ctx, points, closed) {
+function roundedVectorPoints(points, radius, closed) {
+    if (!closed || !(radius > 0) || points.length < 3) return points;
+    return points.flatMap((p, i) => {
+        const prev = points[(i + points.length - 1) % points.length];
+        const next = points[(i + 1) % points.length];
+        // Preserve existing Bezier segments; round only straight-sided corners.
+        if (p.handleIn || p.handleOut || prev.handleOut || next.handleIn) return [p];
+        const a = Math.hypot(prev.x - p.x, prev.y - p.y);
+        const b = Math.hypot(next.x - p.x, next.y - p.y);
+        if (!a || !b) return [p];
+        const d = Math.min(radius, a / 2, b / 2);
+        const entry = { x: p.x + (prev.x - p.x) * d / a, y: p.y + (prev.y - p.y) * d / a };
+        const exit = { x: p.x + (next.x - p.x) * d / b, y: p.y + (next.y - p.y) * d / b };
+        entry.handleOut = { x: entry.x + (p.x - entry.x) * 2 / 3, y: entry.y + (p.y - entry.y) * 2 / 3 };
+        exit.handleIn = { x: exit.x + (p.x - exit.x) * 2 / 3, y: exit.y + (p.y - exit.y) * 2 / 3 };
+        return [entry, exit];
+    });
+}
+
+function drawPathShape(ctx, points, closed, radius = 0) {
     if (!points || points.length === 0) return;
+    points = roundedVectorPoints(points, radius, closed);
     ctx.beginPath();
     ctx.moveTo(points[0].x, points[0].y);
 
@@ -1737,6 +1803,13 @@ function drawPathShape(ctx, points, closed) {
     }
 }
 
+function applyBorderDash(ctx, el) {
+    const length = el.dashLength ?? Math.max(6, (el.strokeWidth || 2) * 3);
+    const gap = el.borderSpacing ?? 6;
+    ctx.setLineDash([length, gap]);
+    ctx.lineDashOffset = (el.dashRotation || 0) / 360 * (length + gap);
+}
+
 function renderPathElement(ctx, el) {
     if (!el.points || el.points.length < 2) return;
     ctx.save();
@@ -1744,7 +1817,8 @@ function renderPathElement(ctx, el) {
     ctx.lineWidth = el.strokeWidth !== undefined ? el.strokeWidth : 3;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    drawPathShape(ctx, el.points, el.closed);
+    if (el.strokeStyle === 'dashed') applyBorderDash(ctx, el);
+    drawPathShape(ctx, el.points, el.closed, el.cornerRadius);
 
     if (el.closed && el.fillColor && el.fillColor !== 'transparent') {
         ctx.fillStyle = el.fillColor;
@@ -1841,7 +1915,7 @@ function renderAnchorEditingOverlays(ctx) {
         ctx.strokeStyle = isElSelected ? 'rgba(30, 94, 255, 0.65)' : 'rgba(100, 116, 139, 0.4)';
         ctx.lineWidth = 1.5 / camera.zoom;
         ctx.setLineDash([4 / camera.zoom, 3 / camera.zoom]);
-        drawPathShape(ctx, el.points, el.closed);
+        drawPathShape(ctx, el.points, el.closed, el.cornerRadius);
         ctx.stroke();
         ctx.setLineDash([]);
 
@@ -1957,7 +2031,7 @@ function initDefaultHandles(pathEl, idx) {
 }
 
 function computePathBounds(points) {
-    if (!points || points.length === 0) return { minX: 0, minY: 0, maxX: 0, maxY: 0, width: 0, height: 0 };
+    if (!points || points.length === 0) return { x: 0, y: 0, minX: 0, minY: 0, maxX: 0, maxY: 0, width: 0, height: 0 };
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     points.forEach(p => {
         if (p.x < minX) minX = p.x;
@@ -1978,6 +2052,9 @@ function computePathBounds(points) {
         }
     });
     return {
+        // Match getElementBoundingBox for pivot, selection and resize consumers.
+        x: Math.round(minX),
+        y: Math.round(minY),
         minX: Math.round(minX),
         minY: Math.round(minY),
         maxX: Math.round(maxX),
@@ -2036,6 +2113,22 @@ function convertShapeToEditablePath(shape) {
     path.width = bounds.width;
     path.height = bounds.height;
     return path;
+}
+
+// Keep the original anchors and Bezier handles so the filled shape stays editable.
+function convertSelectedPathToShape() {
+    const el = getSingleSelectedElement();
+    if (currentBoard?.isReadOnly || !el || el.type !== 'path' || el.points?.length < 3 || !el.points) return;
+    if (el.closed && el.sourceShapeType === 'custom') return;
+    pushUndoState();
+    el.closed = true;
+    el.sourceShapeType = 'custom';
+    if (!el.fillColor || el.fillColor === 'transparent') el.fillColor = '#bae6fd';
+    setWhiteboardTool('select');
+    renderCanvas();
+    scheduleAutoSave();
+    updatePropertiesPanel();
+    updateFormattingBar();
 }
 
 function finalizeActivePenPath() {
@@ -2289,15 +2382,15 @@ function renderShape(ctx, el) {
             break;
         }
         case 'rounded-rect':
-            roundRect(ctx, el.x, el.y, w, h, 14, false, false);
+            roundRect(ctx, el.x, el.y, w, h, Math.max(0, Math.min(el.cornerRadius ?? 14, w / 2, h / 2)), false, false);
             break;
         case 'rectangle':
         default:
-            ctx.rect(el.x, el.y, w, h);
+            roundRect(ctx, el.x, el.y, w, h, Math.max(0, Math.min(el.cornerRadius ?? 0, w / 2, h / 2)), false, false);
             break;
     }
 
-    if (el.strokeStyle === 'dashed') ctx.setLineDash([6, 6]);
+    if (el.strokeStyle === 'dashed') applyBorderDash(ctx, el);
     if (el.fillColor && el.fillColor !== 'transparent') ctx.fill();
     if (el.strokeColor && el.strokeColor !== 'transparent' && el.strokeWidth > 0) ctx.stroke();
     if (el.strokeStyle === 'dashed') ctx.setLineDash([]);
@@ -2672,7 +2765,7 @@ function renderLineOrArrow(ctx, el) {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    if (el.strokeStyle === 'dashed') ctx.setLineDash([6, 6]);
+    if (el.strokeStyle === 'dashed') applyBorderDash(ctx, el);
 
     ctx.beginPath();
     ctx.moveTo(ep.x1, ep.y1);
@@ -4982,6 +5075,7 @@ function onPointerDown(e) {
             if (!e.shiftKey) selectedElementIds.clear();
             selectedElementIds.add(hitElement.id);
         }
+        expandGroupedSelection();
         isDragging = true;
         initialElementStates.clear();
         selectedElementIds.forEach(id => {
@@ -5603,6 +5697,7 @@ function onPointerMove(e) {
                     selectedElementIds.delete(el.id);
                 }
             });
+            expandGroupedSelection();
         }
         renderCanvas();
         return;
@@ -6529,6 +6624,24 @@ window.exportBoardAsPNG = function () {
 };
 
 // --- 9. ELEMENT OPERATIONS (DELETE, DUPLICATE, LAYERING) ---
+function expandGroupedSelection() {
+    const groups = new Set(elements.filter(el => selectedElementIds.has(el.id) && el.groupId).map(el => el.groupId));
+    elements.forEach(el => { if (el.groupId && groups.has(el.groupId)) selectedElementIds.add(el.id); });
+}
+
+function setSelectionGroup(ungroup = false) {
+    if (currentBoard?.isReadOnly) return;
+    expandGroupedSelection();
+    const selected = elements.filter(el => selectedElementIds.has(el.id));
+    if (ungroup ? !selected.some(el => el.groupId) : selected.length < 2) return;
+    pushUndoState();
+    const groupId = `group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    selected.forEach(el => { if (ungroup) delete el.groupId; else el.groupId = groupId; });
+    renderCanvas();
+    updatePropertiesPanel();
+    scheduleAutoSave();
+}
+
 window.deleteSelectedElements = function () {
     if (selectedElementIds.size === 0) return;
     pushUndoState();
@@ -6543,10 +6656,15 @@ window.duplicateSelectedElements = function () {
     if (selectedElementIds.size === 0) return;
     pushUndoState();
     const newSelected = new Set();
+    const clonedGroups = new Map();
     selectedElementIds.forEach(id => {
         const el = elements.find(item => item.id === id);
         if (el) {
             const clone = JSON.parse(JSON.stringify(el));
+            if (clone.groupId) {
+                if (!clonedGroups.has(clone.groupId)) clonedGroups.set(clone.groupId, `group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+                clone.groupId = clonedGroups.get(clone.groupId);
+            }
             clone.id = `el-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
             clone.x += 24;
             clone.y += 24;
@@ -7027,7 +7145,90 @@ function renderColorSwatches(containerId, palette, currentColor, onColorSelected
     container.appendChild(customWrapper);
 }
 
+function setupInspectorCategories() {
+    const content = document.getElementById('boardPropertiesContent');
+    if (!content || document.getElementById('propSectionAppearance')) return;
+    const transform = document.getElementById('propSectionTransform');
+    const shape = document.getElementById('propSectionShape');
+    const text = document.getElementById('propSectionShapeText');
+    const makeSection = (id, title) => {
+        const section = document.createElement('div');
+        section.id = id;
+        section.className = 'prop-section hidden';
+        const heading = document.createElement('div');
+        heading.className = 'prop-section-label inspector-category-title';
+        heading.textContent = title;
+        section.append(heading);
+        return section;
+    };
+    const heading = document.createElement('div');
+    heading.className = 'prop-section-label inspector-category-title';
+    heading.textContent = 'Properties';
+    transform.prepend(heading);
+    const appearance = makeSection('propSectionAppearance', 'Appearance');
+    const border = makeSection('propSectionBorder', 'Border');
+    transform.after(appearance);
+    appearance.after(border);
+    shape.querySelector('.prop-section-label').remove();
+    border.append(document.getElementById('propShapeBorderSwatches').parentElement);
+    border.append(document.getElementById('propSliderShapeBorder').closest('.prop-field-group'));
+    border.querySelectorAll('[data-shape-stroke-style]').forEach(btn => { btn.textContent = btn.dataset.shapeStrokeStyle === 'dashed' ? 'Dash' : 'Line'; });
+    const spacingLabel = document.createElement('label');
+    spacingLabel.className = 'prop-field-label';
+    spacingLabel.textContent = 'Border Spacing (px)';
+    const spacing = document.createElement('input');
+    spacing.id = 'propBorderSpacing';
+    spacing.type = 'number'; spacing.min = '0'; spacing.max = '100'; spacing.step = '1';
+    spacing.className = 'prop-input';
+    spacingLabel.append(spacing); border.append(spacingLabel);
+    [
+        { id: 'propDashLength', key: 'dashLength', label: 'Dash Length (px)', min: 1, max: 200 },
+        { id: 'propDashRotation', key: 'dashRotation', label: 'Dash Rotation (°)', min: 0, max: 360 }
+    ].forEach(control => {
+        const label = document.createElement('label');
+        label.className = 'prop-field-label';
+        label.textContent = control.label;
+        const input = document.createElement('input');
+        input.id = control.id; input.type = 'number'; input.className = 'prop-input';
+        input.min = control.min; input.max = control.max; input.step = 1;
+        if (control.key === 'dashRotation') input.title = 'Shift the dash pattern around the border; 360° is one full dash cycle.';
+        label.append(input); border.append(label);
+        input.addEventListener('change', () => {
+            const el = getSingleSelectedElement();
+            if (!el || currentBoard?.isReadOnly || !Number.isFinite(Number(input.value))) return;
+            pushUndoState();
+            el[control.key] = Math.max(control.min, Math.min(control.max, Number(input.value)));
+            input.value = el[control.key];
+            renderCanvas(); scheduleAutoSave();
+        });
+    });
+    spacing.addEventListener('change', () => {
+        const el = getSingleSelectedElement();
+        if (!el || currentBoard?.isReadOnly || !Number.isFinite(Number(spacing.value))) return;
+        pushUndoState();
+        el.borderSpacing = Math.max(0, Math.min(100, Number(spacing.value)));
+        spacing.value = el.borderSpacing;
+        renderCanvas(); scheduleAutoSave();
+    });
+    appearance.append(shape, document.getElementById('propGroupOpacity'));
+    text.querySelector('.prop-section-label').textContent = 'Text';
+    text.querySelector('.prop-section-label').classList.add('inspector-category-title');
+    const fontLabel = document.createElement('label');
+    fontLabel.className = 'prop-field-label'; fontLabel.textContent = 'Text Font';
+    const font = document.getElementById('propSelectFontFamily').cloneNode(true);
+    font.id = 'propShapeFontFamily';
+    fontLabel.append(font);
+    text.querySelector('textarea').after(fontLabel);
+    font.addEventListener('change', () => {
+        const el = getSingleSelectedElement();
+        if (!el || currentBoard?.isReadOnly) return;
+        pushUndoState(); el.fontFamily = font.value;
+        ensureFontLoaded(font.value); renderCanvas(); scheduleAutoSave(); updateFormattingBar();
+    });
+}
+
 function setupPropertiesPanelInputs() {
+    setupInspectorCategories();
     // 1. Transform / Position & Dimensions (X, Y, W, H)
     const inpX = document.getElementById('propInputX');
     const inpY = document.getElementById('propInputY');
@@ -7172,6 +7373,21 @@ function setupPropertiesPanelInputs() {
     });
 
     // 4. Shape Type Switcher
+    document.getElementById('btnPropGroup')?.addEventListener('click', () => setSelectionGroup());
+    document.getElementById('btnPropUngroup')?.addEventListener('click', () => setSelectionGroup(true));
+    document.getElementById('btnConvertPathToShape')?.addEventListener('click', convertSelectedPathToShape);
+    document.getElementById('btnPropConvertPathToShape')?.addEventListener('click', convertSelectedPathToShape);
+    document.getElementById('propCornerRadius')?.addEventListener('change', (event) => {
+        const el = getSingleSelectedElement();
+        if (currentBoard?.isReadOnly || !el || !((el.type === 'shape' && ['rectangle', 'rounded-rect'].includes(el.shapeType)) || (el.type === 'path' && el.closed))) return;
+        const value = Number(event.target.value);
+        if (!Number.isFinite(value)) return;
+        pushUndoState();
+        el.cornerRadius = Math.max(0, Math.min(value, (el.width || 120) / 2, (el.height || 80) / 2));
+        event.target.value = el.cornerRadius;
+        renderCanvas();
+        scheduleAutoSave();
+    });
     const shapeTypeSelect = document.getElementById('propSelectShapeType');
     shapeTypeSelect?.addEventListener('change', (e) => {
         const el = getSingleSelectedElement();
@@ -7269,7 +7485,7 @@ function setupPropertiesPanelInputs() {
     const shapeTextInput = document.getElementById('propShapeTextInput');
     shapeTextInput?.addEventListener('input', (e) => {
         const el = getSingleSelectedElement();
-        if (el && el.type === 'shape') {
+        if (el && (el.type === 'shape' || (el.type === 'path' && el.sourceShapeType === 'custom'))) {
             el.text = e.target.value;
             renderCanvas();
             scheduleAutoSave();
@@ -7284,7 +7500,7 @@ function setupPropertiesPanelInputs() {
     const shapeFontSizeInput = document.getElementById('propShapeFontSize');
     const setShapeFontSize = (sz) => {
         const el = getSingleSelectedElement();
-        if (!el || el.type !== 'shape') return;
+        if (!el || (el.type !== 'shape' && !(el.type === 'path' && el.sourceShapeType === 'custom'))) return;
         pushUndoState();
         el.fontSize = Math.max(10, Math.min(200, sz));
         if (shapeFontSizeInput) shapeFontSizeInput.value = el.fontSize;
@@ -7807,6 +8023,37 @@ function alignSelectedElements(action) {
 }
 
 function updatePropertiesPanel() {
+    const inspectorSelection = elements.filter(el => selectedElementIds.has(el.id));
+    const inspectorElement = inspectorSelection.length === 1 ? inspectorSelection[0] : null;
+    const inspectorShape = inspectorElement && (inspectorElement.type === 'shape' || (inspectorElement.type === 'path' && inspectorElement.closed && inspectorElement.sourceShapeType === 'custom'));
+    document.getElementById('propSectionAppearance')?.classList.toggle('hidden', !inspectorSelection.length);
+    document.getElementById('propSectionBorder')?.classList.toggle('hidden', !inspectorShape);
+    const spacingInput = document.getElementById('propBorderSpacing');
+    ['propDashLength', 'propDashRotation'].forEach(id => {
+        const input = document.getElementById(id);
+        if (!input || !inspectorElement) return;
+        input.disabled = inspectorElement.strokeStyle !== 'dashed';
+        if (document.activeElement !== input) input.value = id === 'propDashLength'
+            ? inspectorElement.dashLength ?? Math.max(6, (inspectorElement.strokeWidth || 2) * 3)
+            : inspectorElement.dashRotation || 0;
+    });
+    if (spacingInput && inspectorElement) {
+        if (document.activeElement !== spacingInput) spacingInput.value = inspectorElement.borderSpacing ?? 6;
+        spacingInput.disabled = inspectorElement.strokeStyle !== 'dashed';
+    }
+    const shapeFontInput = document.getElementById('propShapeFontFamily');
+    if (shapeFontInput && inspectorShape) shapeFontInput.value = inspectorElement.fontFamily || "'Inter', sans-serif";
+    const groupSelection = elements.filter(el => selectedElementIds.has(el.id));
+    const sameGroup = groupSelection.length > 1 && groupSelection[0].groupId && groupSelection.every(el => el.groupId === groupSelection[0].groupId);
+    const groupButton = document.getElementById('btnPropGroup');
+    const ungroupButton = document.getElementById('btnPropUngroup');
+    if (groupButton) groupButton.disabled = Boolean(currentBoard?.isReadOnly || groupSelection.length < 2 || sameGroup);
+    if (ungroupButton) ungroupButton.disabled = Boolean(currentBoard?.isReadOnly || !groupSelection.some(el => el.groupId));
+    const selectedPath = getSingleSelectedElement();
+    const canConvert = !currentBoard?.isReadOnly && selectedPath?.type === 'path' && selectedPath.points?.length >= 3 && !(selectedPath.closed && selectedPath.sourceShapeType === 'custom');
+    ['btnConvertPathToShape', 'btnPropConvertPathToShape'].forEach(id => {
+        document.getElementById(id)?.classList.toggle('hidden', !canConvert);
+    });
     const panel = document.getElementById('boardPropertiesPanel');
     if (!panel || panel.classList.contains('hidden')) return;
 
@@ -7860,7 +8107,7 @@ function updatePropertiesPanel() {
 
     // Case > 1: Multi Selection
     if (count > 1) {
-        if (headerTitle) headerTitle.innerText = 'Selection';
+        if (headerTitle) headerTitle.innerText = sameGroup ? 'Group' : 'Selection';
         if (headerBadge) headerBadge.innerText = `${count} Items`;
         if (headerIcon) {
             headerIcon.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>';
@@ -7937,25 +8184,34 @@ function updatePropertiesPanel() {
     if (opBadge) opBadge.innerText = `${currentOp}%`;
 
     // 4. Element Specific Sections
-    secShape?.classList.toggle('hidden', el.type !== 'shape');
-    secShapeText?.classList.toggle('hidden', el.type !== 'shape');
+    const isCustomShape = el.type === 'path' && el.closed && el.sourceShapeType === 'custom';
+    secShape?.classList.toggle('hidden', el.type !== 'shape' && !isCustomShape);
+    secShapeText?.classList.toggle('hidden', el.type !== 'shape' && !isCustomShape);
     secText?.classList.toggle('hidden', el.type !== 'text');
     secSticky?.classList.toggle('hidden', el.type !== 'sticky');
     secLine?.classList.toggle('hidden', el.type !== 'line' && el.type !== 'arrow');
-    secDraw?.classList.toggle('hidden', el.type !== 'draw' && el.type !== 'path');
+    secDraw?.classList.toggle('hidden', isCustomShape || (el.type !== 'draw' && el.type !== 'path'));
     secImage?.classList.toggle('hidden', el.type !== 'image');
 
     // --- TYPE: SHAPE ---
-    if (el.type === 'shape') {
+    if (el.type === 'shape' || isCustomShape) {
         if (headerTitle) headerTitle.innerText = 'Shape';
-        if (headerBadge) headerBadge.innerText = el.shapeType || 'Rectangle';
+        if (headerBadge) headerBadge.innerText = isCustomShape ? 'Custom Vector' : el.shapeType || 'Rectangle';
         if (headerIcon) {
             headerIcon.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>';
         }
 
         // Shape Type
         const shapeSelect = document.getElementById('propSelectShapeType');
+        shapeSelect?.parentElement.classList.toggle('hidden', isCustomShape);
         if (shapeSelect) shapeSelect.value = el.shapeType || 'rectangle';
+        const supportsRadius = isCustomShape || ['rectangle', 'rounded-rect'].includes(el.shapeType);
+        document.getElementById('propGroupCornerRadius')?.classList.toggle('hidden', !supportsRadius);
+        const radiusInput = document.getElementById('propCornerRadius');
+        if (radiusInput && activeElem !== radiusInput) {
+            radiusInput.max = Math.min(el.width || 120, el.height || 80) / 2;
+            radiusInput.value = Math.min(el.cornerRadius ?? (el.shapeType === 'rounded-rect' ? 14 : 0), Number(radiusInput.max));
+        }
 
         // Fill Swatches
         const fillPalette = ['transparent', '#ffffff', '#fef08a', '#fbcfe8', '#bbf7d0', '#bae6fd', '#e9d5ff', '#fed7aa', '#cbd5e1', '#1e293b'];

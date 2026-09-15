@@ -335,6 +335,9 @@
                         <span>Duplicate to Edit</span>
                     </button>
 
+                    <button id="btnConvertPathToShape" class="board-icon-btn hidden" title="Convert selected vector path to a filled shape" aria-label="Convert to Shape">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="1.8" aria-hidden="true"><path d="M4 18L12 4l8 14Z" fill="#dbeafe" stroke="#6366f1"/><circle cx="4" cy="18" r="2.4" fill="#06b6d4" stroke="#0891b2"/><circle cx="12" cy="4" r="2.4" fill="#fbbf24" stroke="#f59e0b"/><circle cx="20" cy="18" r="2.4" fill="#a78bfa" stroke="#7c3aed"/></svg>
+                    </button>
                     <!-- Undo -->
                     <button id="btnUndo" class="board-icon-btn" title="Undo (Ctrl+Z)" aria-label="Undo">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -1099,18 +1102,21 @@
                 <div id="boardPropertiesContent" class="board-prop-content">
                     <!-- SECTION: TRANSFORM / GEOMETRY (X, Y, W, H, Rotation, Opacity) -->
                     <div id="propSectionTransform" class="prop-section hidden">
-                        <div class="prop-section-label">TRANSFORM & POSITION</div>
+                        <div class="prop-section-label">POSITION</div>
                         <div class="prop-row-grid-2">
-                            <label class="prop-field-label">X
+                            <label class="prop-field-label">X Position
                                 <input type="number" id="propInputX" class="prop-input" />
                             </label>
-                            <label class="prop-field-label">Y
+                            <label class="prop-field-label">Y Position
                                 <input type="number" id="propInputY" class="prop-input" />
                             </label>
-                            <label class="prop-field-label">W
+                        </div>
+                        <div class="prop-section-label" style="margin-top: 14px;">TRANSFORM</div>
+                        <div class="prop-row-grid-2">
+                            <label class="prop-field-label">Width
                                 <input type="number" id="propInputW" class="prop-input" min="5" />
                             </label>
-                            <label class="prop-field-label">H
+                            <label class="prop-field-label">Height
                                 <input type="number" id="propInputH" class="prop-input" min="5" />
                             </label>
                         </div>
@@ -1141,15 +1147,12 @@
                                 <button type="button" id="btnPropResetOrigin" class="prop-pill-btn" title="Reset origin to center of shape" style="padding: 2px 8px; font-size: 11px;">⟲ Center</button>
                             </div>
                             <div class="prop-row-grid-2" style="margin-top: 4px;">
-                                <label class="prop-field-label">OX
-                                    <input type="number" id="propInputOriginX" class="prop-input" title="Origin X" />
+                                <label class="prop-field-label">X Origin
+                                    <input type="number" id="propInputOriginX" class="prop-input" title="X Origin" />
                                 </label>
-                                <label class="prop-field-label">OY
-                                    <input type="number" id="propInputOriginY" class="prop-input" title="Origin Y" />
+                                <label class="prop-field-label">Y Origin
+                                    <input type="number" id="propInputOriginY" class="prop-input" title="Y Origin" />
                                 </label>
-                            </div>
-                            <div style="font-size: 10.5px; color: var(--text-muted, #64748b); margin-top: 4px;">
-                                Drag ⌖ pivot circle with Direct Anchor cursor
                             </div>
                         </div>
 
@@ -1166,27 +1169,10 @@
                     <!-- SECTION: SHAPE SPECIFICS -->
                     <div id="propSectionShape" class="prop-section hidden">
                         <div class="prop-section-label">SHAPE SETTINGS</div>
-                        <!-- Shape Type Selector -->
-                        <div class="prop-field-group">
-                            <label class="prop-field-label">SHAPE TYPE</label>
-                            <select id="propSelectShapeType" class="prop-select">
-                                <option value="rectangle">Rectangle (Process)</option>
-                                <option value="rounded-rect">Rounded Rectangle</option>
-                                <option value="pill">Pill (Start / End)</option>
-                                <option value="circle">Circle (State)</option>
-                                <option value="diamond">Diamond (Decision)</option>
-                                <option value="parallelogram">Parallelogram (Input/Output)</option>
-                                <option value="cylinder">Cylinder (Database)</option>
-                                <option value="hexagon">Hexagon (Preparation)</option>
-                                <option value="document">Document</option>
-                                <option value="triangle">Triangle</option>
-                                <option value="star">Star</option>
-                                <option value="cloud">Cloud</option>
-                                <option value="bubble">Speech Bubble</option>
-                                <option value="block-arrow">Block Arrow</option>
-                            </select>
+                        <div id="propGroupCornerRadius" class="prop-field-group" style="margin-top: 10px;">
+                            <label for="propCornerRadius" class="prop-field-label">CORNER RADIUS (PX)</label>
+                            <input id="propCornerRadius" type="number" min="0" step="1" value="0" class="prop-input" />
                         </div>
-
                         <!-- Fill Color -->
                         <div class="prop-field-group" style="margin-top: 10px;">
                             <div class="prop-sublabel-row">
@@ -1450,6 +1436,7 @@
                     <!-- SECTION: DRAW / PEN / HIGHLIGHTER -->
                     <div id="propSectionDraw" class="prop-section hidden">
                         <div class="prop-section-label">DRAWING STROKE</div>
+                        <button type="button" id="btnPropConvertPathToShape" class="prop-btn-secondary hidden">Convert to Shape</button>
                         <div class="prop-field-group">
                             <div class="prop-sublabel-row">
                                 <span>STROKE COLOR</span>
@@ -1484,6 +1471,10 @@
                     <div id="propSectionMulti" class="prop-section hidden">
                         <div class="prop-section-label">MULTIPLE SELECTION</div>
                         <p class="prop-help-text" id="propMultiCountText">Select items</p>
+                        <div class="prop-row-grid-2">
+                            <button type="button" id="btnPropGroup" class="prop-btn-secondary">Group</button>
+                            <button type="button" id="btnPropUngroup" class="prop-btn-secondary">Ungroup</button>
+                        </div>
                         
                         <div class="prop-field-group" style="margin-top: 8px;">
                             <div class="prop-sublabel-row">
