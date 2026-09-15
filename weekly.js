@@ -2757,38 +2757,53 @@ document.getElementById('btnPrintPDF')?.addEventListener('click', async () => {
   frame.title = 'Weekly schedule print document';
   frame.style.cssText = 'position:fixed;left:-10000px;top:0;width:1120px;height:800px;border:0;';
   const clone = table.cloneNode(true);
-  // Copy visible table content, including merged cells and Friday's alternate times.
-  const originals = table.querySelectorAll('th,td');
-  clone.querySelectorAll('th,td').forEach((cell, index) => {
-    const style = getComputedStyle(originals[index]);
-    if (style.display === 'none') { cell.remove(); return; }
-    cell.removeAttribute('style');
-    cell.style.backgroundColor = style.backgroundColor;
-    cell.style.color = '#17233b';
+  // Preserve the rendered design, including nested subject badges, icons and colors.
+  const originals = [table, ...table.querySelectorAll('*')];
+  const copies = [clone, ...clone.querySelectorAll('*')];
+  const visualProperties = ['display','font-family','font-size','font-weight','font-style','line-height','letter-spacing','text-align','text-transform','text-decoration','white-space','vertical-align','color','background-color','background-image','border-top','border-right','border-bottom','border-left','border-radius','border-collapse','border-spacing','padding','margin','box-sizing','gap','align-items','justify-content','flex-direction'];
+  copies.forEach((element, index) => {
+    const original = originals[index];
+    const style = getComputedStyle(original);
+    element.removeAttribute('style');
+    visualProperties.forEach(property => element.style.setProperty(property, style.getPropertyValue(property)));
+    if (original.matches('th,td')) {
+      element.style.width = `${original.getBoundingClientRect().width}px`;
+      element.style.height = `${original.getBoundingClientRect().height}px`;
+    }
+    if (original.matches('svg,img')) {
+      element.style.width = style.width; element.style.height = style.height;
+    }
   });
-  clone.querySelectorAll('button,svg').forEach(el => el.remove());
+  clone.style.width = `${table.getBoundingClientRect().width}px`;
+  clone.querySelectorAll('button').forEach(el => el.remove());
   clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
-  const title = document.getElementById('printSchoolName')?.textContent || 'MITRA KASIH SCHOOL';
+  const header = document.getElementById('printHeaderBanner').cloneNode(true);
+  header.querySelectorAll('img').forEach(img => { img.src = new URL(img.getAttribute('src'), document.baseURI).href; });
   const subtitle = document.getElementById('printScheduleSubtitle').textContent;
-  const date = document.getElementById('classDateBadge').textContent.trim();
-  const day = document.getElementById('classDaySelect');
-  frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(subtitle)}</title><style>
+  const fontLinks = [...document.querySelectorAll('link[rel="stylesheet"]')].filter(link => link.href.includes('fonts.googleapis.com')).map(link => link.outerHTML).join('');
+  frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(subtitle)}</title>${fontLinks}<style>
     @page { size: A4 landscape; margin: 9mm; }
     * { box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-    body { margin:0; color:#17233b; font:10px Arial,sans-serif; }
-    header { text-align:center; padding:0 0 8px; margin-bottom:8px; border-bottom:2px solid #334155; }
-    h1 { font-size:17px; margin:0 0 4px; } p { margin:3px 0; }
-    table { width:100%; border-collapse:collapse; table-layout:fixed; }
-    th,td { border:1px solid #cbd5e1; padding:5px; text-align:center; vertical-align:middle; overflow-wrap:anywhere; }
-    th { background:#f1f5f9; font-size:10px; } th:first-child { width:12%; }
-    thead { display:table-header-group; } tr { break-inside:avoid; }
-    .day-name,.uniform-badge,.time-range,.period-label { display:block; }
-    .uniform-badge,.period-label { font-size:8px; font-weight:normal; margin-top:3px; }
-    .subject-name { font-weight:600; } a { color:inherit; text-decoration:none; }
-    .notes-box { white-space:pre-wrap; text-align:left; }
-  </style></head><body><header><h1>${escapeHtml(title)}</h1><p>${escapeHtml(subtitle)}</p><p>${escapeHtml(date)}${day.value !== 'ALL' ? ' · ' + escapeHtml(day.selectedOptions[0].textContent) : ''}</p></header>${clone.outerHTML}</body></html>`;
-  frame.onload = () => {
+    body { margin:0; color:#17233b; font:12px Inter,Arial,sans-serif; }
+    #printSheet { width:${table.getBoundingClientRect().width}px; }
+    .print-header-banner { display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #0f172a; padding-bottom:8px; margin-bottom:8px; }
+    .print-header-logo-side { flex:0 0 20%; text-align:center; }
+    .print-school-logo { width:100%; max-width:230px; height:58px; object-fit:contain; }
+    .print-header-center { flex:1; text-align:center; padding:0 12px; }
+    .print-school-name { font-size:21px; font-weight:800; margin-bottom:4px; }
+    .print-schedule-subtitle { font-size:14px; font-weight:700; }
+    table { table-layout:fixed; } th,td { position:static !important; }
+    tr { break-inside:avoid; } svg { vertical-align:middle; }
+  </style></head><body><main id="printSheet">${header.outerHTML}${clone.outerHTML}</main></body></html>`;
+  frame.onload = async () => {
     try {
+      const printDocument = frame.contentDocument;
+      await printDocument.fonts.ready;
+      await Promise.all([...printDocument.images].map(img => img.decode().catch(() => {})));
+      const sheet = printDocument.getElementById('printSheet');
+      // Uniform scaling fits the complete original table and header on A4 landscape.
+      const scale = Math.min(1, (279 * 96 / 25.4) / sheet.scrollWidth, (192 * 96 / 25.4) / sheet.scrollHeight);
+      sheet.style.zoom = String(scale);
       frame.contentWindow.focus();
       frame.contentWindow.print();
     } catch (error) {
