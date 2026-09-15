@@ -2358,7 +2358,97 @@ async function resetClassWeeklySchedule() {
   }
 }
 
+let weeklyResponsiveInitialized = false;
+document.querySelectorAll('.tab-content > .weekly-workspace-heading, #scheduleBuilderView > .builder-hero-card').forEach(banner => {
+  banner.classList.add('weekly-video-banner');
+  let weeklyBannerVideo = banner.querySelector('.weekly-banner-video');
+  if (!weeklyBannerVideo) {
+    weeklyBannerVideo = document.createElement('video');
+    weeklyBannerVideo.className = 'weekly-banner-video';
+    weeklyBannerVideo.loop = true;
+    weeklyBannerVideo.playsInline = true;
+    weeklyBannerVideo.preload = 'none';
+    weeklyBannerVideo.setAttribute('aria-hidden', 'true');
+    weeklyBannerVideo.tabIndex = -1;
+    weeklyBannerVideo.append(document.createElement('source'));
+    banner.prepend(weeklyBannerVideo);
+  }
+  const daytime = new Date().getHours() >= 6 && new Date().getHours() < 18;
+  weeklyBannerVideo.muted = true;
+  weeklyBannerVideo.poster = daytime ? 'day_building.jpg' : 'night_building.jpg';
+  weeklyBannerVideo.querySelector('source').src = daytime ? 'Day.mp4' : 'Night.mp4';
+  const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
+  const syncBannerPlayback = () => {
+    if (motionPreference.matches || document.hidden || !banner.closest('.tab-content').classList.contains('active')) weeklyBannerVideo.pause();
+    else weeklyBannerVideo.play().catch(() => {});
+  };
+  weeklyBannerVideo.autoplay = false;
+  motionPreference.addEventListener('change', syncBannerPlayback);
+  document.addEventListener('visibilitychange', syncBannerPlayback);
+  new MutationObserver(syncBannerPlayback).observe(banner.closest('.tab-content'), {attributes:true, attributeFilter:['class']});
+  syncBannerPlayback();
+});
+const weeklyNav = document.querySelector('.nav-tabs');
+if (weeklyNav) {
+  const shortLabels = { btnClassView: 'Classes', btnTeacherView: 'Teacher Entry', btnTeacherSchedulesView: 'Teacher Schedules', btnRewardView: 'Rewards', btnMeetingView: 'Meetings', btnScheduleBuilderView: 'Schedule Builder', btnAdminView: 'Admin' };
+  Object.entries(shortLabels).forEach(([id, label]) => {
+    const button = document.getElementById(id);
+    const caption = button?.querySelector('span:last-child');
+    if (caption && !caption.classList.contains('tab-icon')) { button.title = caption.textContent.trim(); caption.textContent = label; }
+  });
+  const shell = document.createElement('div'); shell.className = 'weekly-nav-shell';
+  weeklyNav.before(shell); shell.append(weeklyNav);
+  [-1, 1].forEach(direction => {
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'weekly-nav-arrow';
+    button.textContent = direction < 0 ? '‹' : '›'; button.setAttribute('aria-label', direction < 0 ? 'Scroll navigation left' : 'Scroll navigation right');
+    button.onclick = () => weeklyNav.scrollBy({left: direction * 220, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'});
+    if (direction < 0) shell.prepend(button); else shell.append(button);
+    const sync = () => { button.disabled = direction < 0 ? weeklyNav.scrollLeft <= 1 : weeklyNav.scrollLeft + weeklyNav.clientWidth >= weeklyNav.scrollWidth - 1; };
+    weeklyNav.addEventListener('scroll', sync, {passive:true}); new ResizeObserver(sync).observe(weeklyNav); sync();
+  });
+}
+function syncWeeklyWorkspace() {
+  const week = document.getElementById('classWeekSelect');
+  const day = document.getElementById('classDaySelect');
+  if (!week || !day) return;
+  const days = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
+  if (!weeklyResponsiveInitialized && week.options.length) {
+    weeklyResponsiveInitialized = true;
+    if (matchMedia('(max-width: 700px)').matches && !isClassEditMode) day.value = days[Math.min(4, Math.max(0, new Date().getDay() - 1))];
+  }
+  const year = document.getElementById('classYearSelect').value;
+  const theme = document.getElementById('classThemeSelect').value;
+  const weeks = academicCalendar[year]?.[theme] || {};
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const currentWeek = [...week.options].find(option => { const dates = weeks[option.value]; return dates?.startDate <= today && dates?.endDate >= today; });
+  document.getElementById('weeklyWorkspaceTitle').textContent = `${document.getElementById('classSelectView').value || 'Class'} · Weekly Schedule`;
+  document.getElementById('weeklyWorkspaceSubtitle').textContent = [theme, week.value, weeks[week.value]?.startDate ? formatModernDateRange(weeks[week.value].startDate, weeks[week.value].endDate) : ''].filter(Boolean).join(' · ');
+  const previous = document.getElementById('weeklyPrevious'), next = document.getElementById('weeklyNext'), todayBtn = document.getElementById('weeklyToday');
+  previous.disabled = isClassEditMode || week.selectedIndex <= 0;
+  next.disabled = isClassEditMode || week.selectedIndex < 0 || week.selectedIndex >= week.options.length - 1;
+  todayBtn.disabled = isClassEditMode || !currentWeek;
+  todayBtn.title = currentWeek ? 'Show this week' : 'This week is outside the selected theme';
+  const changeWeek = index => {
+    week.selectedIndex = index; week.dispatchEvent(new Event('change', {bubbles:true}));
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) document.getElementById('printableArea').animate([{opacity:.65}, {opacity:1}], {duration:180});
+  };
+  previous.onclick = () => changeWeek(week.selectedIndex - 1);
+  next.onclick = () => changeWeek(week.selectedIndex + 1);
+  todayBtn.onclick = () => { if (currentWeek) changeWeek(currentWeek.index); };
+  ['Day', 'Week'].forEach(mode => {
+    const button = document.getElementById(`weekly${mode}View`);
+    button.disabled = isClassEditMode;
+    button.setAttribute('aria-pressed', String(mode === 'Day' ? day.value !== 'ALL' : day.value === 'ALL'));
+    button.onclick = () => { day.value = mode === 'Week' ? 'ALL' : days[Math.min(4, Math.max(0, now.getDay()-1))]; day.dispatchEvent(new Event('change', {bubbles:true})); };
+  });
+  requestAnimationFrame(() => document.querySelectorAll('#printableArea th.col-day').forEach((header, index) => {
+    header.classList.toggle('weekly-is-today', Boolean(currentWeek && currentWeek.value === week.value && days[index] === days[now.getDay()-1]));
+  }));
+}
+
 function renderClassSchedule() {
+  syncWeeklyWorkspace();
   const selectElem = document.getElementById('classSelectView');
   if (!selectElem) return;
   const selectedClass = selectElem.value;
@@ -2646,10 +2736,70 @@ function updateClassPrintHeader(selectedClass) {
   }
 }
 
-document.getElementById('btnPrintPDF')?.addEventListener('click', () => {
+document.getElementById('btnPrintPDF')?.addEventListener('click', async () => {
+  if (isClassEditMode) {
+    alert('Please save or cancel your schedule edits before printing.');
+    return;
+  }
   const selectedClass = document.getElementById('classSelectView')?.value;
+  const table = document.querySelector('#printableArea .schedule-table');
+  if (!selectedClass || !table?.tBodies[0]?.rows.length) {
+    alert('Please select a class and wait for its schedule to load before printing.');
+    return;
+  }
   updateClassPrintHeader(selectedClass);
-  window.print();
+  const button = document.getElementById('btnPrintPDF');
+  button.disabled = true;
+  button.setAttribute('aria-busy', 'true');
+  document.getElementById('weeklyPrintFrame')?.remove();
+  const frame = document.createElement('iframe');
+  frame.id = 'weeklyPrintFrame';
+  frame.title = 'Weekly schedule print document';
+  frame.style.cssText = 'position:fixed;left:-10000px;top:0;width:1120px;height:800px;border:0;';
+  const clone = table.cloneNode(true);
+  // Copy visible table content, including merged cells and Friday's alternate times.
+  const originals = table.querySelectorAll('th,td');
+  clone.querySelectorAll('th,td').forEach((cell, index) => {
+    const style = getComputedStyle(originals[index]);
+    if (style.display === 'none') { cell.remove(); return; }
+    cell.removeAttribute('style');
+    cell.style.backgroundColor = style.backgroundColor;
+    cell.style.color = '#17233b';
+  });
+  clone.querySelectorAll('button,svg').forEach(el => el.remove());
+  clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+  const title = document.getElementById('printSchoolName')?.textContent || 'MITRA KASIH SCHOOL';
+  const subtitle = document.getElementById('printScheduleSubtitle').textContent;
+  const date = document.getElementById('classDateBadge').textContent.trim();
+  const day = document.getElementById('classDaySelect');
+  frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(subtitle)}</title><style>
+    @page { size: A4 landscape; margin: 9mm; }
+    * { box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    body { margin:0; color:#17233b; font:10px Arial,sans-serif; }
+    header { text-align:center; padding:0 0 8px; margin-bottom:8px; border-bottom:2px solid #334155; }
+    h1 { font-size:17px; margin:0 0 4px; } p { margin:3px 0; }
+    table { width:100%; border-collapse:collapse; table-layout:fixed; }
+    th,td { border:1px solid #cbd5e1; padding:5px; text-align:center; vertical-align:middle; overflow-wrap:anywhere; }
+    th { background:#f1f5f9; font-size:10px; } th:first-child { width:12%; }
+    thead { display:table-header-group; } tr { break-inside:avoid; }
+    .day-name,.uniform-badge,.time-range,.period-label { display:block; }
+    .uniform-badge,.period-label { font-size:8px; font-weight:normal; margin-top:3px; }
+    .subject-name { font-weight:600; } a { color:inherit; text-decoration:none; }
+    .notes-box { white-space:pre-wrap; text-align:left; }
+  </style></head><body><header><h1>${escapeHtml(title)}</h1><p>${escapeHtml(subtitle)}</p><p>${escapeHtml(date)}${day.value !== 'ALL' ? ' · ' + escapeHtml(day.selectedOptions[0].textContent) : ''}</p></header>${clone.outerHTML}</body></html>`;
+  frame.onload = () => {
+    try {
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+    } catch (error) {
+      console.error('Schedule print failed:', error);
+      alert('The print dialog could not open. Please open this page in Chrome or Edge and try again.');
+    } finally {
+      button.disabled = false;
+      button.removeAttribute('aria-busy');
+    }
+  };
+  document.body.append(frame);
 });
 
 document.getElementById('btnDownloadExcel')?.addEventListener('click', exportWeeklyToExcel);
@@ -8589,4 +8739,4 @@ async function applyGeneratedScheduleToMaster() {
     }
   }
 }
-
+

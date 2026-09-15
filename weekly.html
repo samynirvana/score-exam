@@ -237,6 +237,16 @@
 
     <!-- Student Class View -->
     <div id="classView" class="tab-content active">
+      <div class="weekly-workspace-heading weekly-video-banner">
+        <video id="weeklyBannerVideo" class="weekly-banner-video" autoplay loop muted playsinline preload="metadata" poster="day_building.jpg" aria-hidden="true" tabindex="-1"><source src="Day.mp4" type="video/mp4"></video>
+        <div><span class="weekly-eyebrow">YOUR WEEK AT A GLANCE</span><h1 id="weeklyWorkspaceTitle">Weekly Schedule</h1><p id="weeklyWorkspaceSubtitle" aria-live="polite">Choose a class and week to explore the timetable.</p></div>
+        <div class="weekly-navigation" aria-label="Schedule navigation">
+          <button type="button" id="weeklyPrevious" aria-label="Previous week">‹</button>
+          <button type="button" id="weeklyToday">This Week</button>
+          <button type="button" id="weeklyNext" aria-label="Next week">›</button>
+          <div class="weekly-view-switch" aria-label="Timetable view"><button type="button" id="weeklyDayView" aria-pressed="false">Day</button><button type="button" id="weeklyWeekView" aria-pressed="true">Week</button></div>
+        </div>
+      </div>
       <!-- Modern Control Filter Bar -->
       <div class="filter-bar">
         <div class="filter-controls-group">
@@ -402,7 +412,8 @@
     </div>
 
     <!-- Teacher View -->
-    <div id="teacherView" class="tab-content">
+    <div id="teacherView" class="tab-content weekly-secondary-workspace">
+      <div class="weekly-workspace-heading"><div><span class="weekly-eyebrow">PLAN YOUR TEACHING WEEK</span><h1 class="weekly-view-title">Teacher Entry</h1><p class="weekly-view-description">Review your timetable and prepare lesson materials for the selected week.</p></div></div>
       <div class="filter-bar">
         <div class="filter-controls-group">
           <div class="filter-item">
@@ -573,7 +584,8 @@
 
     <!-- All-In-One Teacher Schedules View -->
     <!-- All-In-One Teacher Schedules Hub -->
-    <div id="teacherSchedulesView" class="tab-content">
+    <div id="teacherSchedulesView" class="tab-content weekly-secondary-workspace">
+      <div class="weekly-workspace-heading"><div><span class="weekly-eyebrow">COORDINATE THE SCHOOL DAY</span><h1 class="weekly-view-title">Teacher Schedules</h1><p class="weekly-view-description">Manage shared duties, rotations, and custom schedule tables.</p></div></div>
 
       <!-- Schedule Table Selector Tabs / Pills Bar (Centered & Draggable) -->
       <div class="schedule-tables-selector-bar">
@@ -728,7 +740,8 @@
     </div>
 
     <!-- Character & Skill Reward View -->
-    <div id="rewardView" class="tab-content">
+    <div id="rewardView" class="tab-content weekly-secondary-workspace">
+      <div class="weekly-workspace-heading"><div><span class="weekly-eyebrow">CELEBRATE STUDENT GROWTH</span><h1 class="weekly-view-title">Character &amp; Skill Rewards</h1><p class="weekly-view-description">Recognize progress and review achievements by theme and class.</p></div></div>
       <!-- Filter Controls Bar -->
       <div class="filter-bar">
         <div class="filter-controls-group">
@@ -1040,7 +1053,8 @@
     </div>
 
     <!-- Meeting & Coordination View -->
-    <div id="meetingView" class="tab-content">
+    <div id="meetingView" class="tab-content weekly-secondary-workspace">
+      <div class="weekly-workspace-heading"><div><span class="weekly-eyebrow">KEEP EVERYONE IN SYNC</span><h1 class="weekly-view-title">Meeting &amp; Coordination</h1><p class="weekly-view-description">Capture meeting notes, attendance, and weekly teaching reports.</p></div></div>
       <!-- Filter Bar -->
       <div class="filter-bar">
         <div class="filter-controls-group">
@@ -1553,6 +1567,7 @@
 
     <!-- Admin View -->
     <div id="adminView" class="tab-content">
+      <div class="weekly-workspace-heading"><div><span class="weekly-eyebrow">MANAGE YOUR SCHOOL WORKSPACE</span><h1 class="weekly-view-title">Admin Dashboard</h1><p class="weekly-view-description">Manage school data, the academic calendar, and access settings.</p></div></div>
       <div class="admin-grid">
 
         <!-- Left Column with Sub-Tab Toggle -->
