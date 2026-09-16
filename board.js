@@ -5043,14 +5043,24 @@ function onPointerDown(e) {
             } else {
                 activeResizeElement = hitHandle.element;
                 const ep = (hitHandle.element.type === 'line' || hitHandle.element.type === 'arrow') ? getLineEndpoints(hitHandle.element) : null;
+                const initialOrigin = getElementOrigin(hitHandle.element);
+                const isPath = hitHandle.element.type === 'path' && Array.isArray(hitHandle.element.points) && hitHandle.element.points.length > 0;
+                const pathBounds = isPath ? computePathBounds(hitHandle.element.points) : null;
+                const initX = pathBounds ? pathBounds.minX : (hitHandle.element.x !== undefined ? hitHandle.element.x : 0);
+                const initY = pathBounds ? pathBounds.minY : (hitHandle.element.y !== undefined ? hitHandle.element.y : 0);
+                const initW = pathBounds ? pathBounds.width : (hitHandle.element.width || 120);
+                const initH = pathBounds ? pathBounds.height : (hitHandle.element.height || 80);
                 resizeStart = {
                     ptX: pt.x,
                     ptY: pt.y,
                     isMulti: false,
-                    x: hitHandle.element.x,
-                    y: hitHandle.element.y,
-                    width: hitHandle.element.width || 120,
-                    height: hitHandle.element.height || 80,
+                    x: initX,
+                    y: initY,
+                    width: initW,
+                    height: initH,
+                    rotation: hitHandle.element.rotation || 0,
+                    initialOrigin: initialOrigin ? { x: initialOrigin.x, y: initialOrigin.y } : null,
+                    customOrigin: hitHandle.element.origin ? { x: hitHandle.element.origin.x, y: hitHandle.element.origin.y } : null,
                     ep: ep,
                     points: hitHandle.element.type === 'path' && hitHandle.element.points
                         ? hitHandle.element.points.map(p => ({
@@ -5555,105 +5565,194 @@ function onPointerMove(e) {
                 return;
             }
 
-            const dx = pt.x - resizeStart.ptX;
-            const dy = pt.y - resizeStart.ptY;
+            const worldDx = pt.x - resizeStart.ptX;
+            const worldDy = pt.y - resizeStart.ptY;
             const origW = resizeStart.width || 120;
             const origH = resizeStart.height || 80;
             const aspect = (origH > 0) ? (origW / origH) : 1;
+            const rot = resizeStart.rotation || 0;
+
+            // Project mouse movement into the element's local coordinate system:
+            let localDx = worldDx;
+            let localDy = worldDy;
+            if (rot !== 0) {
+                const unrotRad = (-rot * Math.PI) / 180;
+                const cosU = Math.cos(unrotRad);
+                const sinU = Math.sin(unrotRad);
+                localDx = worldDx * cosU - worldDy * sinU;
+                localDy = worldDx * sinU + worldDy * cosU;
+            }
+
+            let newW = origW;
+            let newH = origH;
+            let localX = resizeStart.x;
+            let localY = resizeStart.y;
 
             if (e.shiftKey) {
                 // Proportional resize preserving aspect ratio when Shift key is held
                 if (activeResizeHandle === 'se') {
-                    let newW, newH;
-                    if (Math.abs(dx) >= Math.abs(dy * aspect)) {
-                        newW = Math.max(30, Math.round(origW + dx));
+                    if (Math.abs(localDx) >= Math.abs(localDy * aspect)) {
+                        newW = Math.max(30, Math.round(origW + localDx));
                         newH = Math.max(30, Math.round(newW / aspect));
                     } else {
-                        newH = Math.max(30, Math.round(origH + dy));
+                        newH = Math.max(30, Math.round(origH + localDy));
                         newW = Math.max(30, Math.round(newH * aspect));
                     }
                     if (newW < 30) { newW = 30; newH = Math.max(30, Math.round(30 / aspect)); }
                     if (newH < 30) { newH = 30; newW = Math.max(30, Math.round(30 * aspect)); }
-                    el.width = newW;
-                    el.height = newH;
                 } else if (activeResizeHandle === 'sw') {
-                    let newW, newH;
-                    if (Math.abs(-dx) >= Math.abs(dy * aspect)) {
-                        newW = Math.max(30, Math.round(origW - dx));
+                    if (Math.abs(-localDx) >= Math.abs(localDy * aspect)) {
+                        newW = Math.max(30, Math.round(origW - localDx));
                         newH = Math.max(30, Math.round(newW / aspect));
                     } else {
-                        newH = Math.max(30, Math.round(origH + dy));
+                        newH = Math.max(30, Math.round(origH + localDy));
                         newW = Math.max(30, Math.round(newH * aspect));
                     }
-                    el.x = Math.round(resizeStart.x + (origW - newW));
-                    el.width = newW;
-                    el.height = newH;
+                    localX = Math.round(resizeStart.x + (origW - newW));
                 } else if (activeResizeHandle === 'ne') {
-                    let newW, newH;
-                    if (Math.abs(dx) >= Math.abs(-dy * aspect)) {
-                        newW = Math.max(30, Math.round(origW + dx));
+                    if (Math.abs(localDx) >= Math.abs(-localDy * aspect)) {
+                        newW = Math.max(30, Math.round(origW + localDx));
                         newH = Math.max(30, Math.round(newW / aspect));
                     } else {
-                        newH = Math.max(30, Math.round(origH - dy));
+                        newH = Math.max(30, Math.round(origH - localDy));
                         newW = Math.max(30, Math.round(newH * aspect));
                     }
-                    el.y = Math.round(resizeStart.y + (origH - newH));
-                    el.width = newW;
-                    el.height = newH;
+                    localY = Math.round(resizeStart.y + (origH - newH));
                 } else if (activeResizeHandle === 'nw') {
-                    let newW, newH;
-                    if (Math.abs(-dx) >= Math.abs(-dy * aspect)) {
-                        newW = Math.max(30, Math.round(origW - dx));
+                    if (Math.abs(-localDx) >= Math.abs(-localDy * aspect)) {
+                        newW = Math.max(30, Math.round(origW - localDx));
                         newH = Math.max(30, Math.round(newW / aspect));
                     } else {
-                        newH = Math.max(30, Math.round(origH - dy));
+                        newH = Math.max(30, Math.round(origH - localDy));
                         newW = Math.max(30, Math.round(newH * aspect));
                     }
-                    el.x = Math.round(resizeStart.x + (origW - newW));
-                    el.y = Math.round(resizeStart.y + (origH - newH));
-                    el.width = newW;
-                    el.height = newH;
+                    localX = Math.round(resizeStart.x + (origW - newW));
+                    localY = Math.round(resizeStart.y + (origH - newH));
                 }
             } else {
                 if (activeResizeHandle === 'se') {
-                    el.width = Math.max(30, Math.round(resizeStart.width + dx));
-                    el.height = Math.max(30, Math.round(resizeStart.height + dy));
+                    newW = Math.max(30, Math.round(origW + localDx));
+                    newH = Math.max(30, Math.round(origH + localDy));
                 } else if (activeResizeHandle === 'sw') {
-                    const newW = Math.max(30, Math.round(resizeStart.width - dx));
-                    el.x = Math.round(resizeStart.x + (resizeStart.width - newW));
-                    el.width = newW;
-                    el.height = Math.max(30, Math.round(resizeStart.height + dy));
+                    newW = Math.max(30, Math.round(origW - localDx));
+                    localX = Math.round(resizeStart.x + (origW - newW));
+                    newH = Math.max(30, Math.round(origH + localDy));
                 } else if (activeResizeHandle === 'ne') {
-                    el.width = Math.max(30, Math.round(resizeStart.width + dx));
-                    const newH = Math.max(30, Math.round(resizeStart.height - dy));
-                    el.y = Math.round(resizeStart.y + (resizeStart.height - newH));
-                    el.height = newH;
+                    newW = Math.max(30, Math.round(origW + localDx));
+                    newH = Math.max(30, Math.round(origH - localDy));
+                    localY = Math.round(resizeStart.y + (origH - newH));
                 } else if (activeResizeHandle === 'nw') {
-                    const newW = Math.max(30, Math.round(resizeStart.width - dx));
-                    const newH = Math.max(30, Math.round(resizeStart.height - dy));
-                    el.x = Math.round(resizeStart.x + (resizeStart.width - newW));
-                    el.y = Math.round(resizeStart.y + (resizeStart.height - newH));
-                    el.width = newW;
-                    el.height = newH;
+                    newW = Math.max(30, Math.round(origW - localDx));
+                    newH = Math.max(30, Math.round(origH - localDy));
+                    localX = Math.round(resizeStart.x + (origW - newW));
+                    localY = Math.round(resizeStart.y + (origH - newH));
                 }
+            }
+
+            el.width = newW;
+            el.height = newH;
+
+            // Anchor & position pinning for rotated elements:
+            if (rot !== 0 && resizeStart.initialOrigin) {
+                const initOx = resizeStart.initialOrigin.x;
+                const initOy = resizeStart.initialOrigin.y;
+                const rad = (rot * Math.PI) / 180;
+                const cosR = Math.cos(rad);
+                const sinR = Math.sin(rad);
+
+                // Determine stationary (opposite) corner in initial local space:
+                let anchorLocalX, anchorLocalY;
+                if (activeResizeHandle === 'se') {
+                    anchorLocalX = resizeStart.x;
+                    anchorLocalY = resizeStart.y;
+                } else if (activeResizeHandle === 'sw') {
+                    anchorLocalX = resizeStart.x + origW;
+                    anchorLocalY = resizeStart.y;
+                } else if (activeResizeHandle === 'ne') {
+                    anchorLocalX = resizeStart.x;
+                    anchorLocalY = resizeStart.y + origH;
+                } else { // 'nw'
+                    anchorLocalX = resizeStart.x + origW;
+                    anchorLocalY = resizeStart.y + origH;
+                }
+
+                // Stationary corner in fixed world coordinates:
+                const anchorWorldX = initOx + (anchorLocalX - initOx) * cosR - (anchorLocalY - initOy) * sinR;
+                const anchorWorldY = initOy + (anchorLocalX - initOx) * sinR + (anchorLocalY - initOy) * cosR;
+
+                if (resizeStart.customOrigin) {
+                    // When a custom origin is set, update el.x and el.y so stationary corner remains fixed
+                    let newAnchorLocalX, newAnchorLocalY;
+                    if (activeResizeHandle === 'se') {
+                        newAnchorLocalX = localX;
+                        newAnchorLocalY = localY;
+                    } else if (activeResizeHandle === 'sw') {
+                        newAnchorLocalX = localX + newW;
+                        newAnchorLocalY = localY;
+                    } else if (activeResizeHandle === 'ne') {
+                        newAnchorLocalX = localX;
+                        newAnchorLocalY = localY + newH;
+                    } else { // 'nw'
+                        newAnchorLocalX = localX + newW;
+                        newAnchorLocalY = localY + newH;
+                    }
+                    el.x = Math.round(localX);
+                    el.y = Math.round(localY);
+                } else {
+                    // Center-origin mode:
+                    // New anchor in new unrotated space relative to new center (w/2, h/2):
+                    let relAnchorX, relAnchorY;
+                    if (activeResizeHandle === 'se') {
+                        relAnchorX = -newW / 2;
+                        relAnchorY = -newH / 2;
+                    } else if (activeResizeHandle === 'sw') {
+                        relAnchorX = newW / 2;
+                        relAnchorY = -newH / 2;
+                    } else if (activeResizeHandle === 'ne') {
+                        relAnchorX = -newW / 2;
+                        relAnchorY = newH / 2;
+                    } else { // 'nw'
+                        relAnchorX = newW / 2;
+                        relAnchorY = newH / 2;
+                    }
+
+                    // New center in world space:
+                    const newCenterWorldX = anchorWorldX - (relAnchorX * cosR - relAnchorY * sinR);
+                    const newCenterWorldY = anchorWorldY - (relAnchorX * sinR + relAnchorY * cosR);
+
+                    // Compute top-left local x and y:
+                    el.x = Math.round(newCenterWorldX - newW / 2);
+                    el.y = Math.round(newCenterWorldY - newH / 2);
+                }
+            } else {
+                el.x = localX;
+                el.y = localY;
             }
 
             // Proportional point scaling for vector paths
             if (el.type === 'path' && resizeStart.points && origW > 0 && origH > 0) {
                 const scaleX = el.width / origW;
                 const scaleY = el.height / origH;
+                const startX = resizeStart.x;
+                const startY = resizeStart.y;
                 el.points = resizeStart.points.map(p => ({
-                    x: Math.round(el.x + (p.x - resizeStart.x) * scaleX),
-                    y: Math.round(el.y + (p.y - resizeStart.y) * scaleY),
+                    x: Math.round(el.x + (p.x - startX) * scaleX),
+                    y: Math.round(el.y + (p.y - startY) * scaleY),
                     handleIn: p.handleIn ? {
-                        x: Math.round(el.x + (p.handleIn.x - resizeStart.x) * scaleX),
-                        y: Math.round(el.y + (p.handleIn.y - resizeStart.y) * scaleY)
+                        x: Math.round(el.x + (p.handleIn.x - startX) * scaleX),
+                        y: Math.round(el.y + (p.handleIn.y - startY) * scaleY)
                     } : null,
                     handleOut: p.handleOut ? {
-                        x: Math.round(el.x + (p.handleOut.x - resizeStart.x) * scaleX),
-                        y: Math.round(el.y + (p.handleOut.y - resizeStart.y) * scaleY)
+                        x: Math.round(el.x + (p.handleOut.x - startX) * scaleX),
+                        y: Math.round(el.y + (p.handleOut.y - startY) * scaleY)
                     } : null
                 }));
+                // Keep el bounds properties in sync with new points
+                const newBounds = computePathBounds(el.points);
+                el.x = newBounds.minX;
+                el.y = newBounds.minY;
+                el.width = newBounds.width;
+                el.height = newBounds.height;
             }
 
             renderCanvas();

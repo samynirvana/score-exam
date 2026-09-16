@@ -1486,10 +1486,10 @@
                                         Spin Duration:
                                     </span>
                                     <select id="wheelDurationSelect" class="wheel-setting-control">
-                                        <option value="2">Fast (2s)</option>
-                                        <option value="4" selected>Normal (4s)</option>
-                                        <option value="6">Suspenseful (6s)</option>
-                                        <option value="8">Super Long (8s)</option>
+                                        <option value="4">Quick (4s)</option>
+                                        <option value="5" selected>Suspenseful (5s, 10+ spins)</option>
+                                        <option value="7">Extended (7s)</option>
+                                        <option value="10">Dramatic (10s)</option>
                                     </select>
                                 </div>
 
@@ -1670,7 +1670,7 @@
                                 <!-- Source Box -->
                                 <div class="converter-box">
                                     <span class="converter-box-label">From Value</span>
-                                    <input type="number" id="convFromInput" class="converter-input-val" value="1" step="any">
+                                    <input type="text" inputmode="decimal" id="convFromInput" class="converter-input-val" value="1" placeholder="0" autocomplete="off">
                                     <select id="convFromUnit" class="converter-select-unit"></select>
                                 </div>
 
@@ -1686,7 +1686,7 @@
                                 <!-- Target Box -->
                                 <div class="converter-box">
                                     <span class="converter-box-label">To Value</span>
-                                    <input type="number" id="convToInput" class="converter-input-val" value="100" step="any">
+                                    <input type="text" inputmode="decimal" id="convToInput" class="converter-input-val" value="100" placeholder="0" autocomplete="off">
                                     <select id="convToUnit" class="converter-select-unit"></select>
                                 </div>
                             </div>
@@ -1729,7 +1729,7 @@
     </div>
 
     <!-- AUDIO FOR TIMER & WHEEL (SYNTHESIZED WEB AUDIO API) -->
-    <script type="module" src="tools-gallery.js?v=436"></script>
+    <script type="module" src="tools-gallery.js?v=439"></script>
     <script type="module" src="studentNav.js?v=385"></script>
 </body>
 

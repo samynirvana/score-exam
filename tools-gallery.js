@@ -72,7 +72,7 @@ const WHEEL_THEMES = {
 };
 
 let wheelSettings = {
-    duration: 4,      // seconds (2, 4, 6, 8)
+    duration: 5,      // seconds (4, 5, 7, 10)
     theme: 'vibrant', // vibrant, pastel, ocean, warm, emerald
     sound: 'classic'  // classic, arcade, digital, silent
 };
@@ -81,6 +81,9 @@ try {
     const savedWheelSettings = localStorage.getItem('mks_wheel_settings');
     if (savedWheelSettings) {
         wheelSettings = { ...wheelSettings, ...JSON.parse(savedWheelSettings) };
+        if (parseFloat(wheelSettings.duration) < 4) {
+            wheelSettings.duration = 5;
+        }
     }
 } catch (e) {}
 
@@ -897,45 +900,57 @@ function spinWheel() {
     if (isSpinning || wheelNames.length === 0) return;
     isSpinning = true;
 
-    // Duration from settings in seconds
-    const durationSecs = parseFloat(wheelSettings.duration) || 4;
+    // Duration from settings in seconds (default 5s, ensures plenty of suspenseful deceleration)
+    const durationSecs = Math.max(4, parseFloat(wheelSettings.duration) || 5);
     const durationMs = durationSecs * 1000;
 
-    // Dynamic rotations based on duration so spin looks natural and realistic
-    const minRounds = Math.max(3, Math.round(durationSecs * 1.5));
-    const extraRounds = minRounds + Math.floor(Math.random() * 3);
+    // Guarantee AT LEAST 10 full 360-degree clockwise rotations on EVERY spin
+    const minRounds = 10;
+    const extraRounds = minRounds + Math.floor(Math.random() * 4); // 10 to 13 full spins
     const randomDegree = Math.floor(Math.random() * 360);
+    // Crucial: Always add to currentRotation so it ALWAYS spins clockwise consistently without jumping or reversing
     const targetRotation = currentRotation + (extraRounds * 360) + randomDegree;
 
-    // Apply dynamic duration and easing to canvas
+    // Apply dynamic duration and realistic easing to canvas (fast spin that suspensefully slows down)
     if (canvas) {
-        canvas.style.transition = `transform ${durationSecs}s cubic-bezier(0.17, 0.97, 0.28, 1)`;
+        canvas.style.transition = `transform ${durationSecs}s cubic-bezier(0.12, 0.95, 0.22, 1)`;
         canvas.style.transform = `rotate(${targetRotation}deg)`;
     }
 
-    // Audio ticking intervals based on spin duration
-    const tickIntervalMs = Math.max(80, Math.round(durationMs / 30));
-    let tickCount = 0;
-    const maxTicks = Math.round(durationMs / tickIntervalMs) - 2;
+    // Audio ticking sound with deceleration simulation for suspense
+    const startTime = performance.now();
+    let tickTimeout = null;
 
-    playTickSound();
-    const tickInterval = setInterval(() => {
-        tickCount++;
+    function scheduleNextTick() {
+        const elapsed = performance.now() - startTime;
+        const progress = Math.min(1, elapsed / durationMs);
+
+        if (progress >= 0.98) return; // Stop right before completion
+
         playTickSound();
-        if (tickCount >= maxTicks) clearInterval(tickInterval);
-    }, tickIntervalMs);
+
+        // Interval increases as progress increases (fast clicks initially ~45ms, slowing down to ~360ms near the stop)
+        const delay = 45 + Math.pow(progress, 3) * 350;
+        if (elapsed + delay < durationMs) {
+            tickTimeout = setTimeout(scheduleNextTick, delay);
+        }
+    }
+
+    scheduleNextTick();
 
     setTimeout(() => {
-        currentRotation = targetRotation % 360;
+        if (tickTimeout) clearTimeout(tickTimeout);
+        // Retain cumulative rotation so next spin starts from this exact angle and continues clockwise
+        currentRotation = targetRotation;
         isSpinning = false;
-        clearInterval(tickInterval);
 
         // Calculate winner
         // The pointer is at 12 o'clock (270 degrees in canvas coordinates)
         const total = wheelNames.length;
         const arcDeg = 360 / total;
-        // Normalize rotation
-        const actualDeg = (360 - (targetRotation % 360) + 270) % 360;
+        // Normalize rotation to determine winner
+        const normalizedDeg = (targetRotation % 360 + 360) % 360;
+        const actualDeg = (360 - normalizedDeg + 270) % 360;
         const winningIndex = Math.floor(actualDeg / arcDeg) % total;
         const winner = wheelNames[winningIndex] || wheelNames[0];
         lastSelectedStudent = winner;
@@ -1086,7 +1101,7 @@ const wheelDurationSelect = document.getElementById('wheelDurationSelect');
 const wheelThemeSelect = document.getElementById('wheelThemeSelect');
 const wheelSoundSelect = document.getElementById('wheelSoundSelect');
 
-if (wheelDurationSelect) wheelDurationSelect.value = String(wheelSettings.duration || 4);
+if (wheelDurationSelect) wheelDurationSelect.value = String(wheelSettings.duration || 5);
 if (wheelThemeSelect) wheelThemeSelect.value = wheelSettings.theme || 'vibrant';
 if (wheelSoundSelect) wheelSoundSelect.value = wheelSettings.sound || 'classic';
 
@@ -1097,7 +1112,7 @@ btnToggleWheelSettings?.addEventListener('click', () => {
 });
 
 wheelDurationSelect?.addEventListener('change', (e) => {
-    wheelSettings.duration = parseFloat(e.target.value) || 4;
+    wheelSettings.duration = parseFloat(e.target.value) || 5;
     localStorage.setItem('mks_wheel_settings', JSON.stringify(wheelSettings));
 });
 
@@ -1337,6 +1352,59 @@ function initConverterCategory(catKey) {
     performConversion('from');
 }
 
+function parseConverterNumber(str) {
+    if (!str && str !== 0) return 0;
+    // Remove all commas from formatted string
+    const clean = String(str).replace(/,/g, '').trim();
+    const val = parseFloat(clean);
+    return isNaN(val) ? 0 : val;
+}
+
+function formatWithCommas(numStr) {
+    if (!numStr) return "";
+    const parts = String(numStr).split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.join('.');
+}
+
+function formatInputValue(inputEl) {
+    if (!inputEl) return;
+    const raw = inputEl.value;
+    // Keep cursor position properly
+    const cursorPos = inputEl.selectionStart || 0;
+    const prevLen = raw.length;
+
+    // Remove any character that is not digit, dot, or minus
+    let clean = raw.replace(/,/g, '');
+    clean = clean.replace(/[^0-9.-]/g, '');
+
+    // Allow at most one minus at start
+    const isNegative = clean.startsWith('-');
+    clean = clean.replace(/-/g, '');
+    if (isNegative) clean = '-' + clean;
+
+    // Allow at most one dot
+    const parts = clean.split('.');
+    if (parts.length > 2) {
+        clean = parts[0] + '.' + parts.slice(1).join('');
+    }
+
+    if (!clean) {
+        inputEl.value = "";
+        return;
+    }
+
+    const formatted = formatWithCommas(clean);
+    inputEl.value = formatted;
+
+    // Adjust cursor position after comma formatting
+    const newLen = formatted.length;
+    const newCursor = Math.max(0, cursorPos + (newLen - prevLen));
+    try {
+        inputEl.setSelectionRange(newCursor, newCursor);
+    } catch (e) {}
+}
+
 function convertValue(val, fromId, toId, catKey) {
     if (isNaN(val)) return 0;
     if (fromId === toId) return val;
@@ -1380,28 +1448,23 @@ function formatConvertedResult(num, catKey = activeConvCategory) {
     if (num === null || isNaN(num)) return "0";
     if (num === 0) return "0";
 
-    // In money converter, remove all numbers after comma/decimal (round to whole number)
-    if (catKey === 'money') {
-        return Math.round(num).toString();
-    }
-
     // Handle very tiny numbers near zero
     if (Math.abs(num) < 0.000001 && Math.abs(num) > 0) {
-        return num.toFixed(8).replace(/\.?0+$/, '');
+        const tinyStr = num.toFixed(8).replace(/\.?0+$/, '');
+        return formatWithCommas(tinyStr);
     }
 
-    // Round to max 6 decimal places to prevent floating point inaccuracy e.g. 0.00000000001
-    // Use Intl.NumberFormat or toFixed without scientific notation
-    const fixedStr = num.toFixed(6);
-    // Remove trailing zeroes after decimal point
-    let cleanStr = fixedStr.replace(/\.?0+$/, '');
-    
-    // In case toFixed still has decimal or for huge numbers, ensure no scientific notation is produced
+    // In money converter, format with up to 2 decimal places if it has decimals, or clean decimal
+    const maxDigits = catKey === 'money' ? 2 : 6;
+    const fixedStr = Number(num.toFixed(maxDigits)).toString();
+
+    // Prevent scientific notation
+    let cleanStr = fixedStr;
     if (cleanStr.includes('e') || cleanStr.includes('E')) {
-        cleanStr = Number(num).toLocaleString('fullwide', { useGrouping: false, maximumFractionDigits: 6 });
+        cleanStr = Number(num).toLocaleString('fullwide', { useGrouping: false, maximumFractionDigits: maxDigits });
     }
 
-    return cleanStr;
+    return formatWithCommas(cleanStr);
 }
 
 function performConversion(source) {
@@ -1414,11 +1477,11 @@ function performConversion(source) {
     const uToName = config?.units.find(u => u.id === toId)?.name || toId;
 
     if (source === 'from') {
-        const fromVal = parseFloat(convFromInput?.value || 0);
+        const fromVal = parseConverterNumber(convFromInput?.value);
         const toVal = convertValue(fromVal, fromId, toId, activeConvCategory);
         if (convToInput) convToInput.value = formatConvertedResult(toVal, activeConvCategory);
     } else {
-        const toVal = parseFloat(convToInput?.value || 0);
+        const toVal = parseConverterNumber(convToInput?.value);
         const fromVal = convertValue(toVal, toId, fromId, activeConvCategory);
         if (convFromInput) convFromInput.value = formatConvertedResult(fromVal, activeConvCategory);
     }
@@ -1442,7 +1505,7 @@ function performConversion(source) {
 // Preset button handler
 window.applyConvPreset = function (val) {
     if (convFromInput) {
-        convFromInput.value = val;
+        convFromInput.value = formatWithCommas(val.toString());
         performConversion('from');
     }
 };
@@ -1455,8 +1518,14 @@ convCatButtons.forEach(btn => {
     });
 });
 
-convFromInput?.addEventListener('input', () => performConversion('from'));
-convToInput?.addEventListener('input', () => performConversion('to'));
+convFromInput?.addEventListener('input', () => {
+    formatInputValue(convFromInput);
+    performConversion('from');
+});
+convToInput?.addEventListener('input', () => {
+    formatInputValue(convToInput);
+    performConversion('to');
+});
 convFromUnit?.addEventListener('change', () => performConversion('from'));
 convToUnit?.addEventListener('change', () => performConversion('from'));
 
