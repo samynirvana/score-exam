@@ -1,0 +1,1736 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Teacher Classroom Tools Gallery - MITRA KASIH SCHOOL</title>
+    <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/1o_7O1hdx1SJOXfoFw9ZKxpl4zSOD_VYd">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=435">
+    <link rel="stylesheet" href="admin.css?v=435">
+    <link rel="stylesheet" href="student.css?v=435">
+
+    <style>
+        :root {
+            --tool-card-bg: #ffffff;
+            --tool-card-border: #e2e8f0;
+            --tool-accent-blue: #2563eb;
+            --tool-accent-emerald: #059669;
+            --tool-accent-purple: #7c3aed;
+            --tool-accent-amber: #d97706;
+        }
+
+        body.dark-theme {
+            --tool-card-bg: #1e293b;
+            --tool-card-border: #334155;
+        }
+
+        .tools-page-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px 28px 48px;
+            box-sizing: border-box;
+            width: 100%;
+        }
+
+        /* Hero Banner */
+        .tools-hero-banner {
+            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #4f46e5 100%);
+            border-radius: 20px;
+            padding: 32px 36px;
+            color: #ffffff;
+            box-shadow: 0 12px 30px -8px rgba(37, 99, 235, 0.35);
+            margin-bottom: 28px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .tools-hero-content {
+            position: relative;
+            z-index: 2;
+            max-width: 680px;
+        }
+
+        .tools-hero-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .tools-hero-title {
+            font-size: 28px;
+            font-weight: 800;
+            color: #ffffff !important;
+            margin: 0 0 8px 0;
+            letter-spacing: -0.02em;
+        }
+
+        .tools-hero-desc {
+            margin: 0;
+            font-size: 14.5px;
+            color: rgba(255, 255, 255, 0.9);
+            line-height: 1.5;
+        }
+
+        /* Navigation Pills */
+        .tools-nav-pills {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            background: var(--card-bg, #ffffff);
+            padding: 8px 10px;
+            border-radius: 14px;
+            border: 1px solid var(--border-color, #e2e8f0);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.03);
+        }
+
+        .tool-nav-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border-radius: 10px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted, #64748b);
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: inherit;
+        }
+
+        .tool-nav-btn:hover {
+            background: rgba(37, 99, 235, 0.08);
+            color: #2563eb;
+        }
+
+        .tool-nav-btn.active {
+            background: #2563eb;
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        /* Tool Panels Container */
+        .tool-panel {
+            display: none;
+            animation: toolFadeIn 0.25s ease forwards;
+        }
+
+        .tool-panel.active {
+            display: block;
+        }
+
+        @keyframes toolFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Common Card Style */
+        .tool-card {
+            background: var(--tool-card-bg);
+            border: 1px solid var(--tool-card-border);
+            border-radius: 18px;
+            padding: 24px;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+            box-sizing: border-box;
+        }
+
+        /* ============================================================
+           TOOL 1: SIMPLE NOTES
+           ============================================================ */
+        .notes-layout {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 20px;
+            min-height: 580px;
+        }
+
+        @media (max-width: 900px) {
+            .notes-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .notes-sidebar {
+            background: var(--tool-card-bg);
+            border: 1px solid var(--tool-card-border);
+            border-radius: 16px;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .notes-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+            max-height: 480px;
+            padding-right: 4px;
+        }
+
+        .note-item {
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--tool-card-border);
+            background: rgba(15, 23, 42, 0.02);
+            cursor: pointer;
+            transition: all 0.18s ease;
+        }
+
+        .note-item:hover, .note-item.active {
+            background: rgba(37, 99, 235, 0.08);
+            border-color: #2563eb;
+        }
+
+        .note-item-title {
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--text-dark, #0f172a);
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .note-item-date {
+            font-size: 11.5px;
+            color: var(--text-muted, #64748b);
+        }
+
+        .note-editor-pane {
+            background: var(--tool-card-bg);
+            border: 1px solid var(--tool-card-border);
+            border-radius: 16px;
+            padding: 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .note-title-input {
+            font-size: 18px !important;
+            font-weight: 800 !important;
+            border: 1px solid var(--tool-card-border) !important;
+            border-radius: 10px !important;
+            padding: 10px 14px !important;
+            background: var(--input-bg, #f8fafc) !important;
+            color: inherit !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        .note-textarea {
+            flex: 1;
+            min-height: 380px;
+            resize: vertical;
+            font-family: inherit !important;
+            font-size: 14.5px !important;
+            line-height: 1.6 !important;
+            padding: 16px !important;
+            border-radius: 12px !important;
+            border: 1px solid var(--tool-card-border) !important;
+            background: var(--input-bg, #f8fafc) !important;
+            color: inherit !important;
+            box-sizing: border-box !important;
+            width: 100% !important;
+        }
+
+        /* ============================================================
+           TOOL 2: CALCULATOR
+        /* ============================================================
+           ALL BUTTONS: RED, WHITE TEXT, NO BORDER, SMOOTH ANIMATION
+           ============================================================ */
+        .btn-primary,
+        .btn-secondary,
+        .btn-danger,
+        .timer-preset-btn,
+        #btnNewNote,
+        #btnSaveNote,
+        #btnDeleteNote,
+        #btnTimerStart,
+        #btnTimerPause,
+        #btnTimerReset,
+        #btnSwStart,
+        #btnSwPause,
+        #btnSwLap,
+        #btnSwReset,
+        #btnSpinWheel,
+        #btnShuffleNames,
+        #btnGenerateSequence,
+        #btnApplyNames,
+        #btnClearNames,
+        #btnCopySequence,
+        #btnRemoveWinner,
+        #btnCloseWinner,
+        .conv-swap-btn,
+        .conv-preset-btn {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+            color: #ffffff !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: 0 4px 14px rgba(220, 38, 38, 0.32) !important;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+            font-family: inherit;
+        }
+
+        .btn-primary:hover,
+        .btn-secondary:hover,
+        .btn-danger:hover,
+        .timer-preset-btn:hover,
+        #btnNewNote:hover,
+        #btnSaveNote:hover,
+        #btnDeleteNote:hover,
+        #btnTimerStart:hover,
+        #btnTimerPause:hover,
+        #btnTimerReset:hover,
+        #btnSwStart:hover,
+        #btnSwPause:hover,
+        #btnSwLap:hover,
+        #btnSwReset:hover,
+        #btnSpinWheel:hover,
+        #btnShuffleNames:hover,
+        #btnGenerateSequence:hover,
+        #btnApplyNames:hover,
+        #btnClearNames:hover,
+        #btnCopySequence:hover,
+        #btnRemoveWinner:hover,
+        #btnCloseWinner:hover,
+        .conv-swap-btn:hover,
+        .conv-preset-btn:hover {
+            background: linear-gradient(135deg, #f87171 0%, #b91c1c 100%) !important;
+            transform: translateY(-2.5px) scale(1.025);
+            box-shadow: 0 8px 22px rgba(220, 38, 38, 0.48) !important;
+            filter: brightness(1.05);
+            color: #ffffff !important;
+        }
+
+        .btn-primary:active,
+        .btn-secondary:active,
+        .btn-danger:active,
+        .timer-preset-btn:active,
+        #btnNewNote:active,
+        #btnSaveNote:active,
+        #btnDeleteNote:active,
+        #btnTimerStart:active,
+        #btnTimerPause:active,
+        #btnTimerReset:active,
+        #btnSwStart:active,
+        #btnSwPause:active,
+        #btnSwLap:active,
+        #btnSwReset:active,
+        #btnSpinWheel:active,
+        #btnShuffleNames:active,
+        #btnGenerateSequence:active,
+        #btnApplyNames:active,
+        #btnClearNames:active,
+        #btnCopySequence:active,
+        #btnRemoveWinner:active,
+        #btnCloseWinner:active,
+        .conv-swap-btn:active,
+        .conv-preset-btn:active {
+            transform: translateY(1.5px) scale(0.975);
+            box-shadow: 0 2px 8px rgba(220, 38, 38, 0.28) !important;
+            filter: brightness(0.95);
+        }
+
+        /* Subtle ripple shimmer effect on button hover */
+        .btn-primary::after,
+        #btnSpinWheel::after,
+        #btnSaveNote::after,
+        #btnTimerStart::after,
+        #btnSwStart::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -120%;
+            width: 80%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+            transform: skewX(-20deg);
+            transition: left 0.55s ease;
+            pointer-events: none;
+        }
+
+        .btn-primary:hover::after,
+        #btnSpinWheel:hover::after,
+        #btnSaveNote:hover::after,
+        #btnTimerStart:hover::after,
+        #btnSwStart:hover::after {
+            left: 140%;
+        }
+
+        /* ============================================================
+           TOOL 2: MODERN ATTRACTIVE & UNIQUE CALCULATOR
+           ============================================================ */
+        .calculator-wrapper {
+            max-width: 440px;
+            margin: 0 auto;
+            background: linear-gradient(165deg, #090d16 0%, #0f172a 60%, #1e1e38 100%);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 32px;
+            padding: 28px;
+            box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+            position: relative;
+            overflow: hidden;
+            transition: max-width 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .calculator-wrapper.scientific-mode {
+            max-width: 580px;
+        }
+
+        .calculator-wrapper::before {
+            content: '';
+            position: absolute;
+            top: -100px;
+            right: -100px;
+            width: 240px;
+            height: 240px;
+            background: radial-gradient(circle, rgba(239, 68, 68, 0.2) 0%, transparent 70%);
+            pointer-events: none;
+            border-radius: 50%;
+        }
+
+        .calc-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 0 4px;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .calc-brand-tag {
+            font-size: 11.5px;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: #ef4444;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .calc-brand-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #ef4444;
+            box-shadow: 0 0 8px #ef4444;
+            animation: calcPulse 2s infinite ease-in-out;
+        }
+
+        @keyframes calcPulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.6; }
+        }
+
+        /* Mode Switcher Toggle */
+        .calc-mode-switch-group {
+            display: inline-flex;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            padding: 3px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .calc-mode-tab {
+            padding: 4px 12px;
+            border-radius: 999px;
+            border: none;
+            background: transparent;
+            color: #94a3b8;
+            font-size: 11.5px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            font-family: inherit;
+        }
+
+        .calc-mode-tab:hover {
+            color: #ffffff;
+        }
+
+        .calc-mode-tab.active {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);
+        }
+
+        /* Screen with hidden scrollbars */
+        .calc-screen {
+            background: rgba(4, 7, 18, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #38bdf8;
+            border-radius: 20px;
+            padding: 20px 24px;
+            text-align: right;
+            margin-bottom: 22px;
+            box-shadow: inset 0 3px 10px rgba(0, 0, 0, 0.7), 0 4px 16px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .calc-history {
+            font-size: 14px;
+            color: #64748b;
+            min-height: 22px;
+            margin-bottom: 6px;
+            overflow-x: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            font-family: 'Outfit', monospace;
+            letter-spacing: 0.5px;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .calc-history::-webkit-scrollbar {
+            display: none;
+            width: 0;
+            height: 0;
+        }
+
+        .calc-current {
+            font-size: 38px;
+            font-weight: 800;
+            color: #ffffff;
+            font-family: 'Outfit', -apple-system, sans-serif;
+            overflow-x: hidden;
+            overflow-y: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            line-height: 1.15;
+            text-shadow: 0 0 16px rgba(255, 255, 255, 0.2);
+            letter-spacing: -0.02em;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .calc-current::-webkit-scrollbar {
+            display: none;
+            width: 0;
+            height: 0;
+        }
+
+        .calc-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        /* Scientific keypad layout */
+        .calc-scientific-section {
+            display: none;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.12);
+            animation: fadeInSci 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .calculator-wrapper.scientific-mode .calc-scientific-section {
+            display: grid;
+        }
+
+        @keyframes fadeInSci {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .calc-btn {
+            height: 60px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.05);
+            font-size: 20px;
+            font-weight: 700;
+            color: #f1f5f9;
+            cursor: pointer;
+            transition: all 0.16s cubic-bezier(0.34, 1.56, 0.64, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            font-family: inherit;
+        }
+
+        .calc-btn:hover {
+            transform: translateY(-2.5px) scale(1.03);
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+        }
+
+        .calc-btn:active {
+            transform: translateY(1.5px) scale(0.97);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .calc-btn.sci {
+            height: 48px;
+            font-size: 14.5px;
+            font-weight: 700;
+            background: rgba(99, 102, 241, 0.12);
+            border-color: rgba(99, 102, 241, 0.25);
+            color: #a5b4fc;
+        }
+
+        .calc-btn.sci:hover {
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            color: #ffffff;
+            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+        }
+
+        .calc-btn.op {
+            background: rgba(249, 115, 22, 0.14);
+            border-color: rgba(249, 115, 22, 0.3);
+            color: #fb923c;
+            font-size: 22px;
+            font-weight: 800;
+        }
+
+        .calc-btn.op:hover {
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            color: #ffffff;
+            border-color: transparent;
+            box-shadow: 0 6px 18px rgba(249, 115, 22, 0.45);
+        }
+
+        .calc-btn.clear {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.35);
+            color: #f87171;
+            font-weight: 800;
+        }
+
+        .calc-btn.clear:hover {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: #ffffff;
+            border-color: transparent;
+            box-shadow: 0 6px 18px rgba(239, 68, 68, 0.45);
+        }
+
+        .calc-btn.equals {
+            background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%) !important;
+            color: #ffffff !important;
+            grid-column: span 2;
+            font-weight: 800;
+            font-size: 24px;
+            border: none !important;
+            box-shadow: 0 8px 24px rgba(220, 38, 38, 0.5) !important;
+        }
+
+        .calc-btn.equals:hover {
+            background: linear-gradient(135deg, #f87171 0%, #991b1b 100%) !important;
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 10px 28px rgba(220, 38, 38, 0.6) !important;
+        }
+
+        /* ============================================================
+           TOOL 3: TIMER & STOPWATCH
+           ============================================================ */
+        .timer-stopwatch-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 900px) {
+            .timer-stopwatch-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .big-time-display {
+            font-size: 54px;
+            font-weight: 800;
+            font-family: 'Outfit', monospace;
+            color: var(--text-dark, #0f172a);
+            text-align: center;
+            padding: 24px 0;
+            letter-spacing: 2px;
+        }
+
+        .time-inputs-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .time-input-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .time-input-box input {
+            width: 72px !important;
+            height: 52px !important;
+            text-align: center !important;
+            font-size: 24px !important;
+            font-weight: 800 !important;
+            padding: 4px !important;
+            border-radius: 12px !important;
+        }
+
+        .time-input-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-muted, #64748b);
+        }
+
+        .timer-btn-row {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .timer-preset-btn {
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .laps-container {
+            max-height: 180px;
+            overflow-y: auto;
+            border: 1px solid var(--tool-card-border);
+            border-radius: 12px;
+            padding: 10px;
+            margin-top: 16px;
+            font-size: 13px;
+            font-family: monospace;
+        }
+
+        .lap-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 10px;
+            border-bottom: 1px dashed var(--tool-card-border);
+        }
+
+        .lap-row:last-child {
+            border-bottom: none;
+        }
+
+        /* ============================================================
+           TOOL 4: WHEEL SPINNER / RANDOMIZER
+           ============================================================ */
+        .randomizer-layout {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 24px;
+            align-items: start;
+        }
+
+        @media (max-width: 900px) {
+            .randomizer-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .wheel-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 480px;
+            margin: 0 auto;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #wheelCanvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.2);
+            transition: transform 4s cubic-bezier(0.17, 0.97, 0.28, 1);
+        }
+
+        .wheel-pointer {
+            position: absolute;
+            top: -18px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 36px;
+            height: 42px;
+            z-index: 10;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.35));
+        }
+
+        .wheel-center-cap {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 66px;
+            height: 66px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25), inset 0 2px 4px rgba(255, 255, 255, 0.9);
+            border: 4px solid #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 5;
+            font-weight: 900;
+            font-size: 14px;
+            color: #dc2626;
+            user-select: none;
+            transition: transform 0.15s ease;
+        }
+
+        .wheel-center-cap:hover {
+            transform: translate(-50%, -50%) scale(1.08);
+        }
+
+        /* Wheel Settings Card & Drawer */
+        .wheel-settings-box {
+            background: rgba(15, 23, 42, 0.03);
+            border: 1px solid var(--tool-card-border);
+            border-radius: 14px;
+            padding: 16px;
+            margin-top: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            animation: fadeInSci 0.22s ease;
+        }
+
+        body.dark-theme .wheel-settings-box {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .wheel-setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .wheel-setting-label {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-dark, #0f172a);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .wheel-setting-control {
+            padding: 8px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--tool-card-border);
+            background: var(--input-bg, #ffffff);
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-dark, #0f172a);
+            font-family: inherit;
+        }
+
+        .winner-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+            animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes modalPop {
+            from {
+                opacity: 0;
+                transform: scale(0.85);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .winner-card {
+            background: var(--tool-card-bg);
+            border-radius: 28px;
+            padding: 38px 44px;
+            text-align: center;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+            max-width: 460px;
+            width: 90%;
+            position: relative;
+            border: 1px solid var(--tool-card-border);
+        }
+
+        /* ============================================================
+           TOOL 5: UNIT CONVERTER
+           ============================================================ */
+        .converter-container {
+            max-width: 860px;
+            margin: 0 auto;
+        }
+
+        .converter-categories {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .conv-cat-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border-radius: 12px;
+            border: 1px solid var(--tool-card-border);
+            background: var(--tool-card-bg);
+            color: var(--text-muted, #64748b);
+            font-size: 13.5px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: inherit;
+        }
+
+        .conv-cat-btn .conv-cat-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            flex-shrink: 0;
+            transition: transform 0.2s ease;
+        }
+
+        .conv-cat-btn:hover .conv-cat-icon {
+            transform: scale(1.15);
+        }
+
+        .conv-cat-btn:hover {
+            color: #ef4444;
+            border-color: #ef4444;
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .conv-cat-btn.active {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: #ffffff !important;
+            border-color: transparent;
+            box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35);
+        }
+
+        .conv-cat-btn.active .conv-cat-icon svg {
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
+        }
+
+        .converter-card-main {
+            background: var(--tool-card-bg);
+            border: 1px solid var(--tool-card-border);
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
+        }
+
+        .converter-io-grid {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 20px;
+            align-items: center;
+        }
+
+        @media (max-width: 768px) {
+            .converter-io-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .converter-box {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: rgba(15, 23, 42, 0.02);
+            border: 1px solid var(--tool-card-border);
+            border-radius: 18px;
+            padding: 20px;
+        }
+
+        body.dark-theme .converter-box {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .converter-box-label {
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted, #64748b);
+        }
+
+        .converter-input-val {
+            font-size: 28px !important;
+            font-weight: 800 !important;
+            font-family: 'Outfit', sans-serif !important;
+            border: 1px solid var(--tool-card-border) !important;
+            border-radius: 12px !important;
+            padding: 12px 16px !important;
+            background: var(--input-bg, #ffffff) !important;
+            color: var(--text-dark, #0f172a) !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        .converter-select-unit {
+            padding: 12px 14px;
+            font-size: 14px;
+            font-weight: 700;
+            border-radius: 10px;
+            border: 1px solid var(--tool-card-border);
+            background: var(--input-bg, #ffffff);
+            color: var(--text-dark, #0f172a);
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .conv-swap-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50% !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+            flex-shrink: 0;
+        }
+
+        .conv-formula-badge {
+            margin-top: 20px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px dashed rgba(239, 68, 68, 0.3);
+            color: #b91c1c;
+            font-size: 13.5px;
+            font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        body.dark-theme .conv-formula-badge {
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+        }
+
+        .conv-live-status {
+            font-size: 11.5px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(16, 185, 129, 0.15);
+            color: #059669;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="app-container">
+
+        <!-- TOPBAR HEADER BAR -->
+        <header class="sidebar student-sidebar">
+            <div class="brand">
+                <div class="brand-logo-container">
+                    <img id="brandLogoImg"
+                        src="https://lh3.googleusercontent.com/d/1o_7O1hdx1SJOXfoFw9ZKxpl4zSOD_VYd"
+                        alt="Logo">
+                </div>
+                <div>
+                    <h2>MITRA KASIH SCHOOL</h2>
+                    <p>Teacher Administration & Tools</p>
+                </div>
+            </div>
+
+            <!-- DESKTOP TOPBAR LINKS -->
+            <div class="menu-bar desktop-menu-bar">
+                <a href="admin.html" class="menu-btn" data-label="Admin Dashboard" style="text-decoration: none;">
+                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                    <span class="menu-label">Admin Dashboard</span>
+                </a>
+
+                <a href="board.html" class="menu-btn" data-label="Whiteboard Studio" style="text-decoration: none;">
+                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="8" y1="12" x2="16" y2="12"></line>
+                        <line x1="12" y1="8" x2="12" y2="16"></line>
+                    </svg>
+                    <span class="menu-label">Whiteboard</span>
+                </a>
+
+                <a href="timeline.html" class="menu-btn" data-label="Classroom Timeline" style="text-decoration: none;">
+                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="8" y1="6" x2="21" y2="6"></line>
+                        <line x1="8" y1="12" x2="21" y2="12"></line>
+                        <line x1="8" y1="18" x2="21" y2="18"></line>
+                        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                    </svg>
+                    <span class="menu-label">Timeline</span>
+                </a>
+
+                <a href="tools-gallery.html" class="menu-btn active" data-label="Useful Tools" style="text-decoration: none;">
+                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                    </svg>
+                    <span class="menu-label">Useful Tools</span>
+                </a>
+            </div>
+
+            <!-- RIGHT ACTIONS -->
+            <div class="user-profile-bottom desktop-user-actions" style="display: flex; align-items: center; gap: 8px; margin: 0;">
+                <button id="themeToggleBtn" class="theme-toggle-btn btn-circle" title="Toggle Dark/Light Mode" aria-label="Toggle Dark/Light Mode">
+                    <svg class="theme-icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                    </svg>
+                    <svg class="theme-icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+
+                <button onclick="window.location.href='admin.html'" class="teacher-btn btn-circle" title="Admin Dashboard">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                        <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- MOBILE MENU -->
+            <div class="mobile-kebab-container">
+                <button id="mobileTopbarKebabBtn" class="mobile-kebab-btn" aria-label="Toggle Menu" title="Menu">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+                        <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+                        <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+                        <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+                    </svg>
+                </button>
+
+                <div id="mobileTopbarDropdown" class="mobile-topbar-dropdown hidden">
+                    <div class="kebab-group-label">NAVIGATION</div>
+                    <a href="admin.html" class="kebab-item">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                        <span>Admin Dashboard</span>
+                    </a>
+                    <a href="board.html" class="kebab-item">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="8" y1="12" x2="16" y2="12"></line><line x1="12" y1="8" x2="12" y2="16"></line></svg>
+                        <span>Whiteboard Studio</span>
+                    </a>
+                    <a href="timeline.html" class="kebab-item">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line></svg>
+                        <span>Classroom Timeline</span>
+                    </a>
+                    <a href="tools-gallery.html" class="kebab-item active">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+                        <span>Useful Tools</span>
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <!-- MAIN TOOLS WRAPPER -->
+        <main class="main-wrapper" style="padding-top: 20px;">
+            <div class="tools-page-container">
+
+                <div class="tools-hero-banner">
+                    <div class="tools-hero-content">
+                        <h1 class="tools-hero-title" style="color: #ffffff !important;">Tools</h1>
+                        <p class="tools-hero-desc" style="color: rgba(255, 255, 255, 0.95) !important;">Various kind of tools to help teaching and learning for students and teachers</p>
+                    </div>
+
+                    <div>
+                        <a href="admin.html" style="background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.4); color: #ffffff; padding: 10px 20px; border-radius: 12px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; backdrop-filter: blur(4px);">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                            Back to Admin
+                        </a>
+                    </div>
+                </div>
+
+                <!-- TOOL NAVIGATION TABS -->
+                <div class="tools-nav-pills">
+                    <button class="tool-nav-btn active" data-tool="notes">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                        <span>Simple Notes</span>
+                    </button>
+                    <button class="tool-nav-btn" data-tool="calculator">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="16" y1="14" x2="16" y2="18"></line><path d="M16 10h.01M12 10h.01M8 10h.01M12 14h.01M8 14h.01M12 18h.01M8 18h.01"></path></svg>
+                        <span>Calculator</span>
+                    </button>
+                    <button class="tool-nav-btn" data-tool="timer">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        <span>Timer & Stopwatch</span>
+                    </button>
+                    <button class="tool-nav-btn" data-tool="wheel">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><path d="m4.93 4.93 4.24 4.24M14.83 14.83l4.24 4.24M14.83 9.17l4.24-4.24M4.93 19.07l4.24-4.24"></path></svg>
+                        <span>Wheel Spinner / Randomizer</span>
+                    </button>
+                    <button class="tool-nav-btn" data-tool="converter">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m16 3 4 4-4 4"></path><path d="M20 7H4"></path><path d="m8 21-4-4 4-4"></path><path d="M4 17h16"></path></svg>
+                        <span>Unit Converter</span>
+                    </button>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- TOOL 1: SIMPLE NOTES                       -->
+                <!-- ========================================== -->
+                <div class="tool-panel active" id="toolPanelNotes">
+                    <div class="notes-layout">
+                        <!-- Sidebar / List -->
+                        <div class="notes-sidebar">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <h3 style="margin: 0; font-size: 16px; font-weight: 800;">My Notes</h3>
+                                <button id="btnNewNote" class="btn-primary" style="padding: 6px 14px; font-size: 12.5px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                    New
+                                </button>
+                            </div>
+                            <input type="text" id="noteSearchInput" placeholder="Search notes..." style="width: 100%; padding: 8px 12px; font-size: 13px; border-radius: 8px;">
+                            <div class="notes-list" id="notesListContainer">
+                                <!-- Rendered dynamically -->
+                            </div>
+                        </div>
+
+                        <!-- Editor -->
+                        <div class="note-editor-pane">
+                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                <input type="text" id="noteTitleInput" class="note-title-input" placeholder="Note Title...">
+                                <div style="display: flex; gap: 8px;">
+                                    <button id="btnSaveNote" class="btn-primary" style="padding: 8px 18px; font-size: 13.5px; font-weight: 700; border-radius: 10px; display: inline-flex; align-items: center; gap: 6px;">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                                        Save Note
+                                    </button>
+                                    <button id="btnDeleteNote" class="btn-danger" style="padding: 8px 14px; font-size: 13.5px; border-radius: 10px;">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <textarea id="noteContentInput" class="note-textarea" placeholder="Start typing your classroom notes, reminders, lesson plan outline, student observations..."></textarea>
+                            <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted, #64748b);">
+                                <span id="noteSavedStatus">All changes saved locally</span>
+                                <span id="noteCharCount">0 characters</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- TOOL 2: MODERN CALCULATOR                  -->
+                <!-- ========================================== -->
+                <div class="tool-panel" id="toolPanelCalculator">
+                    <div class="calculator-wrapper" id="calculatorWrapper">
+                        <div class="calc-header">
+                            <div class="calc-brand-tag">
+                                <span class="calc-brand-dot"></span>
+                                <span>MK Matrix Pro</span>
+                            </div>
+                            <!-- Mode Switcher: Normal vs Scientific -->
+                            <div class="calc-mode-switch-group">
+                                <button type="button" class="calc-mode-tab active" id="btnCalcModeStandard" onclick="setCalcMode('standard')">Standard</button>
+                                <button type="button" class="calc-mode-tab" id="btnCalcModeScientific" onclick="setCalcMode('scientific')">Scientific</button>
+                            </div>
+                        </div>
+
+                        <div class="calc-screen">
+                            <div class="calc-history" id="calcHistory">&nbsp;</div>
+                            <div class="calc-current" id="calcCurrent">0</div>
+                        </div>
+
+                        <!-- Scientific Functions Keypad Row (Visible in Scientific mode) -->
+                        <div class="calc-scientific-section" id="calcScientificSection">
+                            <button type="button" class="calc-btn sci" onclick="calcSci('sin')">sin</button>
+                            <button type="button" class="calc-btn sci" onclick="calcSci('cos')">cos</button>
+                            <button type="button" class="calc-btn sci" onclick="calcSci('tan')">tan</button>
+                            <button type="button" class="calc-btn sci" onclick="calcSci('deg_rad')" id="btnAngleMode">deg</button>
+                            <button type="button" class="calc-btn sci" onclick="calcSci('pi')">π</button>
+
+                            <button type="button" class="calc-btn sci" onclick="calcSci('sqrt')">√x</button>
+                            <button type="button" class="calc-btn sci" onclick="calcSci('square')">x²</button>
+                            <button type="button" class="calc-btn sci" onclick="calcSci('cube')">x³</button>
+                            <button type="button" class="calc-btn sci" onclick="calcSci('power')">xʸ</button>
+                            <button type="button" class="calc-btn sci" onclick="calcSci('e')">e</button>
+
+                            <button type="button" class="calc-btn sci" onclick="calcSci('log')">log</button>
+                            <button type="button" class="calc-btn sci" onclick="calcSci('ln')">ln</button>
+                            <button type="button" class="calc-btn sci" onclick="calcSci('factorial')">x!</button>
+                            <button type="button" class="calc-btn sci" onclick="calcSci('inv')">1/x</button>
+                            <button type="button" class="calc-btn sci" onclick="calcSci('neg')">±</button>
+                        </div>
+
+                        <!-- Standard Keypad -->
+                        <div class="calc-grid">
+                            <button class="calc-btn clear" onclick="calcClear()">AC</button>
+                            <button class="calc-btn op" onclick="calcBackspace()">⌫</button>
+                            <button class="calc-btn op" onclick="calcPercent()">%</button>
+                            <button class="calc-btn op" onclick="calcOp('/')">÷</button>
+
+                            <button class="calc-btn" onclick="calcDigit('7')">7</button>
+                            <button class="calc-btn" onclick="calcDigit('8')">8</button>
+                            <button class="calc-btn" onclick="calcDigit('9')">9</button>
+                            <button class="calc-btn op" onclick="calcOp('*')">×</button>
+
+                            <button class="calc-btn" onclick="calcDigit('4')">4</button>
+                            <button class="calc-btn" onclick="calcDigit('5')">5</button>
+                            <button class="calc-btn" onclick="calcDigit('6')">6</button>
+                            <button class="calc-btn op" onclick="calcOp('-')">−</button>
+
+                            <button class="calc-btn" onclick="calcDigit('1')">1</button>
+                            <button class="calc-btn" onclick="calcDigit('2')">2</button>
+                            <button class="calc-btn" onclick="calcDigit('3')">3</button>
+                            <button class="calc-btn op" onclick="calcOp('+')">+</button>
+
+                            <button class="calc-btn" onclick="calcDigit('0')">0</button>
+                            <button class="calc-btn" onclick="calcDot()">.</button>
+                            <button class="calc-btn equals" onclick="calcEquals()">=</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- TOOL 3: TIMER & STOPWATCH                  -->
+                <!-- ========================================== -->
+                <div class="tool-panel" id="toolPanelTimer">
+                    <div class="timer-stopwatch-container">
+                        <!-- Countdown Timer Card -->
+                        <div class="tool-card">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                <div style="width: 32px; height: 32px; border-radius: 8px; background: #dbeafe; color: #2563eb; display: flex; align-items: center; justify-content: center;">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                </div>
+                                <h3 style="margin: 0; font-size: 18px; font-weight: 800;">Classroom Countdown Timer</h3>
+                            </div>
+
+                            <div class="big-time-display" id="timerDisplay">05:00</div>
+
+                            <div class="time-inputs-row" id="timerInputGroup">
+                                <div class="time-input-box">
+                                    <input type="number" id="timerHours" min="0" max="23" value="0">
+                                    <span class="time-input-label">Hours</span>
+                                </div>
+                                <span style="font-size: 24px; font-weight: 800; margin-top: -12px;">:</span>
+                                <div class="time-input-box">
+                                    <input type="number" id="timerMinutes" min="0" max="59" value="5">
+                                    <span class="time-input-label">Minutes</span>
+                                </div>
+                                <span style="font-size: 24px; font-weight: 800; margin-top: -12px;">:</span>
+                                <div class="time-input-box">
+                                    <input type="number" id="timerSeconds" min="0" max="59" value="0">
+                                    <span class="time-input-label">Seconds</span>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; justify-content: center; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;">
+                                <button class="timer-preset-btn" onclick="setTimerPreset(1)">1 Min</button>
+                                <button class="timer-preset-btn" onclick="setTimerPreset(3)">3 Mins</button>
+                                <button class="timer-preset-btn" onclick="setTimerPreset(5)">5 Mins</button>
+                                <button class="timer-preset-btn" onclick="setTimerPreset(10)">10 Mins</button>
+                                <button class="timer-preset-btn" onclick="setTimerPreset(15)">15 Mins</button>
+                                <button class="timer-preset-btn" onclick="setTimerPreset(30)">30 Mins</button>
+                            </div>
+
+                            <div class="timer-btn-row">
+                                <button id="btnTimerStart" class="btn-primary" style="padding: 12px 28px; font-size: 15px; font-weight: 800; border-radius: 12px;">Start Timer</button>
+                                <button id="btnTimerPause" class="btn-secondary" style="padding: 12px 20px; font-size: 15px; font-weight: 700; border-radius: 12px; display: none;">Pause</button>
+                                <button id="btnTimerReset" class="btn-secondary" style="padding: 12px 20px; font-size: 15px; font-weight: 700; border-radius: 12px;">Reset</button>
+                            </div>
+                        </div>
+
+                        <!-- Stopwatch Card -->
+                        <div class="tool-card">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                <div style="width: 32px; height: 32px; border-radius: 8px; background: #dcfce7; color: #059669; display: flex; align-items: center; justify-content: center;">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2 2"></path><path d="M5 3 2 6"></path><path d="m22 6-3-3"></path><path d="M12 2v2"></path></svg>
+                                </div>
+                                <h3 style="margin: 0; font-size: 18px; font-weight: 800;">Classroom Stopwatch</h3>
+                            </div>
+
+                            <div class="big-time-display" id="stopwatchDisplay" style="color: #059669;">00:00.00</div>
+
+                            <div class="timer-btn-row" style="margin-bottom: 16px;">
+                                <button id="btnSwStart" class="btn-primary" style="padding: 12px 28px; font-size: 15px; font-weight: 800; border-radius: 12px;">Start</button>
+                                <button id="btnSwPause" class="btn-secondary" style="padding: 12px 20px; font-size: 15px; font-weight: 700; border-radius: 12px; display: none;">Pause</button>
+                                <button id="btnSwLap" class="btn-secondary" style="padding: 12px 20px; font-size: 15px; font-weight: 700; border-radius: 12px;">Lap</button>
+                                <button id="btnSwReset" class="btn-secondary" style="padding: 12px 20px; font-size: 15px; font-weight: 700; border-radius: 12px;">Reset</button>
+                            </div>
+
+                            <div class="laps-container" id="swLapsContainer">
+                                <div style="text-align: center; color: var(--text-muted, #64748b); padding: 8px;">No laps recorded yet</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- TOOL 4: WHEEL SPINNER / RANDOMIZER         -->
+                <!-- ========================================== -->
+                <div class="tool-panel" id="toolPanelWheel">
+                    <div class="randomizer-layout">
+                        <!-- Canvas Wheel & Spin Control -->
+                        <div class="tool-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 520px;">
+                            <div class="wheel-wrapper">
+                                <!-- Pointer triangle -->
+                                <svg class="wheel-pointer" viewBox="0 0 24 28" fill="#ef4444">
+                                    <path d="M12 28L0 6C0 2.68 2.68 0 6 0H18C21.32 0 24 2.68 24 6L12 28Z" />
+                                    <circle cx="12" cy="7" r="3" fill="#ffffff"/>
+                                </svg>
+
+                                <canvas id="wheelCanvas" width="600" height="600"></canvas>
+                                <div class="wheel-center-cap" id="btnCenterSpin">SPIN</div>
+                            </div>
+
+                            <!-- Wheel Controls -->
+                            <div style="margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
+                                <button id="btnSpinWheel" class="btn-primary" style="padding: 14px 32px; font-size: 16px; font-weight: 800; border-radius: 14px; box-shadow: 0 8px 20px rgba(220, 38, 38, 0.4); display: inline-flex; align-items: center; justify-content: center;">
+                                    Spin Wheel!
+                                </button>
+                                <button id="btnShuffleNames" class="btn-secondary" style="padding: 14px 20px; font-size: 14px; font-weight: 700; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center;" title="Shuffle Order">
+                                    Shuffle
+                                </button>
+                                <button id="btnGenerateSequence" class="btn-secondary" style="padding: 14px 20px; font-size: 14px; font-weight: 700; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center;" title="Generate random sequence order for all students">
+                                    Generate Sequence
+                                </button>
+                                <button id="btnToggleWheelSettings" class="btn-secondary" style="padding: 14px 18px; font-size: 14px; font-weight: 700; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center;" title="Wheel Settings">
+                                    Settings
+                                </button>
+                            </div>
+
+                            <!-- Wheel Settings Drawer -->
+                            <div id="wheelSettingsDrawer" class="wheel-settings-box" style="display: none; width: 100%; max-width: 480px; box-sizing: border-box;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--tool-card-border); padding-bottom: 8px;">
+                                    <strong style="font-size: 14px; color: var(--text-dark, #0f172a);">⚙️ Wheel Customization</strong>
+                                    <span style="font-size: 11.5px; color: var(--text-muted, #64748b);">Saved automatically</span>
+                                </div>
+
+                                <!-- Duration Setting -->
+                                <div class="wheel-setting-row">
+                                    <span class="wheel-setting-label">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                        Spin Duration:
+                                    </span>
+                                    <select id="wheelDurationSelect" class="wheel-setting-control">
+                                        <option value="2">Fast (2s)</option>
+                                        <option value="4" selected>Normal (4s)</option>
+                                        <option value="6">Suspenseful (6s)</option>
+                                        <option value="8">Super Long (8s)</option>
+                                    </select>
+                                </div>
+
+                                <!-- Theme Setting -->
+                                <div class="wheel-setting-row">
+                                    <span class="wheel-setting-label">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24M14.83 14.83l4.24 4.24M14.83 9.17l4.24-4.24M4.93 19.07l4.24-4.24"/></svg>
+                                        Color Theme:
+                                    </span>
+                                    <select id="wheelThemeSelect" class="wheel-setting-control">
+                                        <option value="vibrant" selected>Rainbow Vibrant</option>
+                                        <option value="pastel">Soft Pastel</option>
+                                        <option value="ocean">Ocean Breeze (Blues & Aquas)</option>
+                                        <option value="warm">Sunset Warmth (Red, Orange, Gold)</option>
+                                        <option value="emerald">Emerald Forest (Greens & Mints)</option>
+                                    </select>
+                                </div>
+
+                                <!-- Sound Effect Setting -->
+                                <div class="wheel-setting-row">
+                                    <span class="wheel-setting-label">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+                                        Sound Effect:
+                                    </span>
+                                    <select id="wheelSoundSelect" class="wheel-setting-control">
+                                        <option value="classic" selected>Classic Click & Fanfare</option>
+                                        <option value="arcade">Retro 8-Bit Arcade</option>
+                                        <option value="digital">Digital Pop & Chime</option>
+                                        <option value="silent">Mute / Silent</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Names & Class Sync Panel -->
+                        <div class="tool-card" style="display: flex; flex-direction: column; gap: 14px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <h3 style="margin: 0; font-size: 17px; font-weight: 800;">Student Names</h3>
+                                <span id="namesCountBadge" style="font-size: 12px; font-weight: 700; background: #e0e7ff; color: #3730a3; padding: 3px 10px; border-radius: 12px;">0 items</span>
+                            </div>
+
+                            <div>
+                                <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #64748b); text-transform: uppercase; margin-bottom: 6px; display: block;">Quick Load from Class:</label>
+                                <select id="wheelClassSelector" style="width: 100%; padding: 10px; font-size: 13.5px; border-radius: 10px;">
+                                    <option value="">-- Choose Class to Load --</option>
+                                </select>
+                            </div>
+
+                            <div style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
+                                <label style="font-size: 12px; font-weight: 700; color: var(--text-muted, #64748b); text-transform: uppercase;">Names List (One per line):</label>
+                                <textarea id="wheelNamesInput" rows="12" style="width: 100%; font-family: inherit; font-size: 13.5px; padding: 12px; border-radius: 10px; resize: vertical; line-height: 1.5;" placeholder="Enter student names here...&#10;Alice&#10;Bob&#10;Charlie&#10;David"></textarea>
+                            </div>
+
+                            <div style="display: flex; gap: 8px;">
+                                <button id="btnApplyNames" class="btn-primary" style="flex: 1; padding: 10px; font-size: 13.5px; font-weight: 700; border-radius: 10px;">Apply to Wheel</button>
+                                <button id="btnClearNames" class="btn-secondary" style="padding: 10px 14px; font-size: 13.5px; border-radius: 10px;">Clear</button>
+                            </div>
+
+                            <!-- Generated Sequence Container -->
+                            <div id="sequenceResultContainer" style="display: none; background: rgba(37, 99, 235, 0.05); border: 1px solid #bfdbfe; border-radius: 12px; padding: 14px; margin-top: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <strong style="font-size: 13.5px; color: #1e3a8a;">Presentation Order</strong>
+                                    <button id="btnCopySequence" class="conv-preset-btn" style="padding: 4px 12px; font-size: 12px; border-radius: 8px; font-weight: 700;">Copy</button>
+                                </div>
+                                <ol id="sequenceList" style="margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.6; max-height: 180px; overflow-y: auto;">
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- TOOL 5: UNIT CONVERTER                     -->
+                <!-- ========================================== -->
+                <div class="tool-panel" id="toolPanelConverter">
+                    <div class="converter-container">
+                        <!-- Category selector pills with colorful SVGs -->
+                        <div class="converter-categories" id="convCatList">
+                            <button class="conv-cat-btn active" data-cat="length">
+                                <span class="conv-cat-icon">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                        <rect x="2" y="7" width="20" height="10" rx="2" fill="#818cf8" stroke="#4f46e5" stroke-width="1.8"/>
+                                        <line x1="6" y1="7" x2="6" y2="12" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round"/>
+                                        <line x1="10" y1="7" x2="10" y2="10" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round"/>
+                                        <line x1="14" y1="7" x2="14" y2="12" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round"/>
+                                        <line x1="18" y1="7" x2="18" y2="10" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round"/>
+                                    </svg>
+                                </span>
+                                <span>Length</span>
+                            </button>
+
+                            <button class="conv-cat-btn" data-cat="temperature">
+                                <span class="conv-cat-icon">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                        <path d="M14 14.76V5a2 2 0 1 0-4 0v9.76a4 4 0 1 0 4 0z" fill="#fed7aa" stroke="#ea580c" stroke-width="1.8"/>
+                                        <circle cx="12" cy="17" r="2.2" fill="#ef4444"/>
+                                        <path d="M12 9v5.5" stroke="#ef4444" stroke-width="2" stroke-linecap="round"/>
+                                    </svg>
+                                </span>
+                                <span>Temperature</span>
+                            </button>
+
+                            <button class="conv-cat-btn" data-cat="area">
+                                <span class="conv-cat-icon">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                        <path d="M3 21V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="#c7d2fe" stroke="#3730a3" stroke-width="1.8"/>
+                                        <path d="M3 13h8v8H3z" fill="#818cf8"/>
+                                        <path d="M11 3v10h10" stroke="#4f46e5" stroke-width="1.5" stroke-dasharray="2 2"/>
+                                    </svg>
+                                </span>
+                                <span>Area</span>
+                            </button>
+
+                            <button class="conv-cat-btn" data-cat="volume">
+                                <span class="conv-cat-icon">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                        <path d="M9 3h6v3l3.5 6.5A4 4 0 0 1 15 19H9a4 4 0 0 1-3.5-6.5L9 6V3z" fill="#bbf7d0" stroke="#16a34a" stroke-width="1.8"/>
+                                        <path d="M7 14c1.5 1 4 1 5.5 0s3.5-.5 4.5.5v2a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3v-2.5z" fill="#22c55e"/>
+                                        <circle cx="10" cy="12" r="1" fill="#ffffff"/>
+                                        <circle cx="13" cy="14" r="1.2" fill="#ffffff"/>
+                                    </svg>
+                                </span>
+                                <span>Volume</span>
+                            </button>
+
+                            <button class="conv-cat-btn" data-cat="weight">
+                                <span class="conv-cat-icon">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                        <path d="M12 3v18M6 8l-4 8h8L6 8zm12 0l-4 8h8l-4-8z" stroke="#d97706" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                        <path d="M2 16a4 4 0 0 0 8 0H2zm12 0a4 4 0 0 0 8 0h-8z" fill="#fde68a"/>
+                                        <circle cx="12" cy="4" r="2" fill="#f59e0b"/>
+                                    </svg>
+                                </span>
+                                <span>Weight</span>
+                            </button>
+
+                            <button class="conv-cat-btn" data-cat="time">
+                                <span class="conv-cat-icon">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                        <circle cx="12" cy="12" r="9" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.8"/>
+                                        <polyline points="12 7 12 12 15.5 14" stroke="#0369a1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        <circle cx="12" cy="12" r="1.5" fill="#f43f5e"/>
+                                    </svg>
+                                </span>
+                                <span>Time</span>
+                            </button>
+
+                            <button class="conv-cat-btn" data-cat="money">
+                                <span class="conv-cat-icon">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                        <rect x="2" y="6" width="20" height="12" rx="3" fill="#86efac" stroke="#15803d" stroke-width="1.8"/>
+                                        <circle cx="12" cy="12" r="3.2" fill="#22c55e" stroke="#15803d" stroke-width="1.2"/>
+                                        <path d="M12 10.2v3.6M10.8 11.2c.4-.4 1.8-.4 2 0s-.6 1-1.3 1.2c-.7.2-1.3.6-1.1 1.2.2.5 1.6.5 2 0" stroke="#ffffff" stroke-width="1.3" stroke-linecap="round"/>
+                                        <circle cx="5" cy="12" r="1" fill="#15803d"/>
+                                        <circle cx="19" cy="12" r="1" fill="#15803d"/>
+                                    </svg>
+                                </span>
+                                <span>Money / Currency</span>
+                            </button>
+                        </div>
+
+                        <!-- Main Interactive Conversion Card -->
+                        <div class="converter-card-main">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 10px;">
+                                <div>
+                                    <h3 id="convTitle" style="margin: 0 0 4px 0; font-size: 20px; font-weight: 800;">Length Converter</h3>
+                                    <p id="convSubtitle" style="margin: 0; font-size: 13px; color: var(--text-muted, #64748b);">Convert meters, kilometers, miles, inches, and feet</p>
+                                </div>
+                                <div id="convLiveBadgeContainer" style="display: none;">
+                                    <span class="conv-live-status">
+                                        <span style="width: 7px; height: 7px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+                                        <span id="convLiveBadgeText">Live Market Rates</span>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="converter-io-grid">
+                                <!-- Source Box -->
+                                <div class="converter-box">
+                                    <span class="converter-box-label">From Value</span>
+                                    <input type="number" id="convFromInput" class="converter-input-val" value="1" step="any">
+                                    <select id="convFromUnit" class="converter-select-unit"></select>
+                                </div>
+
+                                <!-- Swap Button -->
+                                <div>
+                                    <button id="btnConvSwap" class="conv-swap-btn" title="Swap Units" aria-label="Swap Units">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M7 16V4M7 4L3 8M7 4L11 8M17 8V20M17 20L21 16M17 20L13 16"/>
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                <!-- Target Box -->
+                                <div class="converter-box">
+                                    <span class="converter-box-label">To Value</span>
+                                    <input type="number" id="convToInput" class="converter-input-val" value="100" step="any">
+                                    <select id="convToUnit" class="converter-select-unit"></select>
+                                </div>
+                            </div>
+
+                            <!-- Formula / Ratio Display Badge -->
+                            <div class="conv-formula-badge" id="convFormulaBadge">
+                                <span id="convFormulaText">1 Meter (m) = 100 Centimeters (cm)</span>
+                                <span id="convRateInfo" style="font-size: 12px; opacity: 0.85;">Formula: × 100</span>
+                            </div>
+
+                            <!-- Quick Presets -->
+                            <div style="margin-top: 22px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                <span style="font-size: 12px; font-weight: 800; color: var(--text-muted, #64748b); text-transform: uppercase;">Quick Values:</span>
+                                <button class="conv-preset-btn" onclick="applyConvPreset(1)" style="padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700;">1</button>
+                                <button class="conv-preset-btn" onclick="applyConvPreset(5)" style="padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700;">5</button>
+                                <button class="conv-preset-btn" onclick="applyConvPreset(10)" style="padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700;">10</button>
+                                <button class="conv-preset-btn" onclick="applyConvPreset(50)" style="padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700;">50</button>
+                                <button class="conv-preset-btn" onclick="applyConvPreset(100)" style="padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700;">100</button>
+                                <button class="conv-preset-btn" onclick="applyConvPreset(1000)" style="padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700;">1,000</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- WINNER CELEBRATION MODAL -->
+    <div id="winnerModal" class="winner-modal" style="display: none;">
+        <div class="winner-card">
+            <div style="font-size: 48px; margin-bottom: 8px;">🎉</div>
+            <div style="text-transform: uppercase; font-size: 12px; font-weight: 800; letter-spacing: 1.5px; color: #2563eb; margin-bottom: 6px;">Selected Student</div>
+            <h2 id="winnerNameDisplay" style="font-size: 32px; font-weight: 800; color: var(--text-dark, #0f172a); margin: 0 0 16px 0;">Student Name</h2>
+            <div style="display: flex; justify-content: center; gap: 10px;">
+                <button id="btnRemoveWinner" class="btn-secondary" style="padding: 10px 18px; font-size: 13.5px; border-radius: 10px;">Remove from Wheel</button>
+                <button id="btnCloseWinner" class="btn-primary" style="padding: 10px 24px; font-size: 13.5px; font-weight: 700; border-radius: 10px;">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AUDIO FOR TIMER & WHEEL (SYNTHESIZED WEB AUDIO API) -->
+    <script type="module" src="tools-gallery.js?v=436"></script>
+    <script type="module" src="studentNav.js?v=385"></script>
+</body>
+
+</html>
