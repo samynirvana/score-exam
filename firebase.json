@@ -14,7 +14,9 @@
       "**/.vscode/**",
       "**/node_modules/**",
       "firestore.rules",
-      "linkconverter.py"
+      "linkconverter.py",
+      "**/*.mp4",
+      "**/*.jpg"
     ]
   },
   "firestore": [

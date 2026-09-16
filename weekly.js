@@ -971,7 +971,7 @@ function updateClassDaySelectOptions() {
     ? academicCalendar[year][theme][week]
     : null;
 
-  let optionsHtml = `<option value="ALL">All Days (Full Week)</option>`;
+  let optionsHtml = `<option value="ALL">Full Week</option>`;
 
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -1020,7 +1020,7 @@ function updateTeacherDaySelectOptions() {
     ? academicCalendar[year][theme][week]
     : null;
 
-  let optionsHtml = `<option value="ALL">All Days (Full Week)</option>`;
+  let optionsHtml = `<option value="ALL">Full Week</option>`;
 
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -1957,7 +1957,7 @@ function getSubjectPastelObject(subjectName) {
 
 function getSubjectPastelStyle(subjectName) {
   const p = getSubjectPastelObject(subjectName);
-  return `background-color: ${p.bg}; border: 1.5px solid ${p.border}; color: ${p.text};`;
+  return `background-color: ${p.bg}; border: 1px solid #000000; color: ${p.text};`;
 }
 
 function enterClassEditMode() {
@@ -2374,9 +2374,23 @@ document.querySelectorAll('.tab-content > .weekly-workspace-heading, #scheduleBu
     banner.prepend(weeklyBannerVideo);
   }
   const daytime = new Date().getHours() >= 6 && new Date().getHours() < 18;
+  const drivePoster = daytime
+    ? 'https://lh3.googleusercontent.com/d/1ozoUmpJTsMTSvykTQr-WNQ3K19D1_NGb'
+    : 'https://lh3.googleusercontent.com/d/12BaqYdue8roO0CCfwajIEcCkIkTZe5pR';
+  const driveDirect = daytime
+    ? 'https://drive.usercontent.google.com/download?id=1s8HaspAJnJ4OknN1woyVkHxnR9ZgsUMB'
+    : 'https://drive.usercontent.google.com/download?id=1mRP5cbvnYeKA-dAkL6b6W-Ba7H96UDeW';
+  const driveUc = daytime
+    ? 'https://drive.google.com/uc?id=1s8HaspAJnJ4OknN1woyVkHxnR9ZgsUMB&export=download'
+    : 'https://drive.google.com/uc?id=1mRP5cbvnYeKA-dAkL6b6W-Ba7H96UDeW&export=download';
   weeklyBannerVideo.muted = true;
-  weeklyBannerVideo.poster = daytime ? 'day_building.jpg' : 'night_building.jpg';
-  weeklyBannerVideo.querySelector('source').src = daytime ? 'Day.mp4' : 'Night.mp4';
+  weeklyBannerVideo.poster = drivePoster;
+  weeklyBannerVideo.innerHTML = `
+    <source src="${driveDirect}" type="video/mp4">
+    <source src="${driveUc}" type="video/mp4">
+    <source src="${daytime ? 'Day.mp4' : 'Night.mp4'}" type="video/mp4">
+  `;
+  weeklyBannerVideo.load();
   const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
   const syncBannerPlayback = () => {
     if (motionPreference.matches || document.hidden || !banner.closest('.tab-content').classList.contains('active')) weeklyBannerVideo.pause();
@@ -2424,18 +2438,20 @@ function syncWeeklyWorkspace() {
   const currentWeek = [...week.options].find(option => { const dates = weeks[option.value]; return dates?.startDate <= today && dates?.endDate >= today; });
   document.getElementById('weeklyWorkspaceTitle').textContent = `${document.getElementById('classSelectView').value || 'Class'} · Weekly Schedule`;
   document.getElementById('weeklyWorkspaceSubtitle').textContent = [theme, week.value, weeks[week.value]?.startDate ? formatModernDateRange(weeks[week.value].startDate, weeks[week.value].endDate) : ''].filter(Boolean).join(' · ');
-  const previous = document.getElementById('weeklyPrevious'), next = document.getElementById('weeklyNext'), todayBtn = document.getElementById('weeklyToday');
-  previous.disabled = isClassEditMode || week.selectedIndex <= 0;
-  next.disabled = isClassEditMode || week.selectedIndex < 0 || week.selectedIndex >= week.options.length - 1;
-  todayBtn.disabled = isClassEditMode || !currentWeek;
-  todayBtn.title = currentWeek ? 'Show this week' : 'This week is outside the selected theme';
+  const previous = document.getElementById('weeklyPrevious'), next = document.getElementById('weeklyNext'), todayBtn = document.getElementById('weeklyToday') || document.getElementById('classDateBadge');
+  if (previous) previous.disabled = isClassEditMode || week.selectedIndex <= 0;
+  if (next) next.disabled = isClassEditMode || week.selectedIndex < 0 || week.selectedIndex >= week.options.length - 1;
+  if (todayBtn) {
+    if (todayBtn.tagName === 'BUTTON') todayBtn.disabled = isClassEditMode || !currentWeek;
+    todayBtn.title = currentWeek ? 'Show this week' : 'This week is outside the selected theme';
+  }
   const changeWeek = index => {
     week.selectedIndex = index; week.dispatchEvent(new Event('change', {bubbles:true}));
     if (!matchMedia('(prefers-reduced-motion: reduce)').matches) document.getElementById('printableArea').animate([{opacity:.65}, {opacity:1}], {duration:180});
   };
-  previous.onclick = () => changeWeek(week.selectedIndex - 1);
-  next.onclick = () => changeWeek(week.selectedIndex + 1);
-  todayBtn.onclick = () => { if (currentWeek) changeWeek(currentWeek.index); };
+  if (previous) previous.onclick = () => changeWeek(week.selectedIndex - 1);
+  if (next) next.onclick = () => changeWeek(week.selectedIndex + 1);
+  if (todayBtn) todayBtn.onclick = () => { if (currentWeek && !isClassEditMode) changeWeek(currentWeek.index); };
   ['Day', 'Week'].forEach(mode => {
     const button = document.getElementById(`weekly${mode}View`);
     button.disabled = isClassEditMode;
@@ -2792,7 +2808,8 @@ document.getElementById('btnPrintPDF')?.addEventListener('click', async () => {
     .print-header-center { flex:1; text-align:center; padding:0 12px; }
     .print-school-name { font-size:21px; font-weight:800; margin-bottom:4px; }
     .print-schedule-subtitle { font-size:14px; font-weight:700; }
-    table { table-layout:fixed; } th,td { position:static !important; }
+    table { table-layout:fixed; border-collapse:collapse !important; border:1.5px solid #000000 !important; }
+    th,td { position:static !important; border:1px solid #000000 !important; }
     tr { break-inside:avoid; } svg { vertical-align:middle; }
   </style></head><body><main id="printSheet">${header.outerHTML}${clone.outerHTML}</main></body></html>`;
   frame.onload = async () => {
@@ -7275,20 +7292,24 @@ function updateLoginVisualDayNight() {
   if (videoEl) {
     const hour = new Date().getHours();
     const isDay = (hour >= 6 && hour < 18);
-    const localSrc = isDay ? 'Day.mp4' : 'Night.mp4';
+    const drivePoster = isDay
+      ? 'https://lh3.googleusercontent.com/d/1ozoUmpJTsMTSvykTQr-WNQ3K19D1_NGb'
+      : 'https://lh3.googleusercontent.com/d/12BaqYdue8roO0CCfwajIEcCkIkTZe5pR';
     const driveDirect = isDay
       ? 'https://drive.usercontent.google.com/download?id=1s8HaspAJnJ4OknN1woyVkHxnR9ZgsUMB'
       : 'https://drive.usercontent.google.com/download?id=1mRP5cbvnYeKA-dAkL6b6W-Ba7H96UDeW';
     const driveUc = isDay
       ? 'https://drive.google.com/uc?id=1s8HaspAJnJ4OknN1woyVkHxnR9ZgsUMB&export=download'
       : 'https://drive.google.com/uc?id=1mRP5cbvnYeKA-dAkL6b6W-Ba7H96UDeW&export=download';
+    const localSrc = isDay ? 'Day.mp4' : 'Night.mp4';
 
+    videoEl.poster = drivePoster;
     const currentSources = Array.from(videoEl.querySelectorAll('source')).map(s => s.getAttribute('src'));
-    if (!currentSources.length || currentSources[0] !== localSrc) {
+    if (!currentSources.length || currentSources[0] !== driveDirect) {
       videoEl.innerHTML = `
-        <source src="${localSrc}" type="video/mp4">
         <source src="${driveDirect}" type="video/mp4">
         <source src="${driveUc}" type="video/mp4">
+        <source src="${localSrc}" type="video/mp4">
       `;
       videoEl.load();
       videoEl.play().catch(() => {});

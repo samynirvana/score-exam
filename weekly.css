@@ -8,6 +8,23 @@
 .weekly-navigation, .weekly-view-switch { display: flex; align-items: center; gap: 4px; }
 .weekly-navigation button, .weekly-nav-arrow { border: 1px solid #dce3ee; background: white; color: #475569; border-radius: 8px; padding: 8px 12px; cursor: pointer; white-space: nowrap; }
 .weekly-navigation button:disabled, .weekly-nav-arrow:disabled { opacity: .35; cursor: default; }
+.weekly-navigation .banner-date-badge {
+  margin: 0;
+  padding: 8px 14px;
+  background: #ffffff;
+  color: #1e40af;
+  border: 1px solid #dce3ee;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
 .weekly-view-switch { margin-left: 8px; padding: 3px; background: #e9edf5; border-radius: 10px; }
 .weekly-view-switch button { border: 0; background: transparent; }
 .weekly-view-switch button[aria-pressed="true"] { background: white; color: #4338ca; box-shadow: 0 1px 4px #1e293b15; }
@@ -21,10 +38,13 @@
   #classView .filter-label { font-size: 10px; color: #64748b; }
   #classView #btnPrintPDF { background: #fff; color: #475569; border: 1px solid #dce3ee; box-shadow: none; }
   #classView #printableArea { overflow: auto; max-height: 72vh; border-radius: 12px; scrollbar-width: thin; }
-  #classView .schedule-table thead th { position: sticky; top: 0; z-index: 3; background: #f8fafc; padding: 14px 8px; border-bottom: 1px solid #dbe3ef; }
+  #classView .schedule-table { border: 1.5px solid #000000; border-collapse: collapse; }
+  #classView .schedule-table thead th { position: sticky; top: 0; z-index: 3; background: #f8fafc; padding: 14px 8px; border-bottom: 1.5px solid #000000; border-right: 1px solid #000000; }
+  #classView .schedule-table thead th:last-child { border-right: none; }
   #classView .schedule-table .col-time { position: sticky; left: 0; z-index: 4; }
   #classView .schedule-table tbody td:first-child:not([colspan]) { position: sticky; left: 0; z-index: 2; background: #f8fafc; }
-  #classView .schedule-table td { border-color: #dce3eb; }
+  #classView .schedule-table td { border-bottom: 1px solid #000000; border-right: 1px solid #000000; }
+  #classView .schedule-table td:last-child { border-right: none; }
   #classView .schedule-table td:not(:first-child) { background-image: linear-gradient(#ffffff35, #ffffff35); }
   #classView .schedule-table tbody td:not(:first-child):hover { box-shadow: inset 0 0 0 2px #6366f155; }
   #classView .schedule-table th.weekly-is-today { background: #eef2ff; box-shadow: inset 0 3px #6366f1; color: #4338ca; }
@@ -61,8 +81,11 @@
   .weekly-secondary-workspace :is(.teacher-schedule-card, .meeting-card, .reward-panel, .home-teacher-panel, .material-panel, .schedule-container) { border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 4px 16px #1e293b05; }
   .weekly-secondary-workspace :is(.ts-card-header, .meeting-card-header, .reward-panel-header, .material-panel-header) { background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
   .weekly-secondary-workspace :is(.ts-card-title, .meeting-card-title, .reward-panel-title) { color: #17233b; font-size: 16px; letter-spacing: -.2px; }
-  .weekly-secondary-workspace .schedule-table td { border-color: #dce3eb; }
-  .weekly-secondary-workspace .schedule-table th { background: #f8fafc; }
+  .weekly-secondary-workspace .schedule-table { border: 1.5px solid #000000; border-collapse: collapse; }
+  .weekly-secondary-workspace .schedule-table td { border-bottom: 1px solid #000000; border-right: 1px solid #000000; }
+  .weekly-secondary-workspace .schedule-table td:last-child { border-right: none; }
+  .weekly-secondary-workspace .schedule-table th { background: #f8fafc; border-bottom: 1.5px solid #000000; border-right: 1px solid #000000; }
+  .weekly-secondary-workspace .schedule-table th:last-child { border-right: none; }
   .weekly-secondary-workspace .schedule-table td:not(:first-child) { background-image: linear-gradient(#ffffff35, #ffffff35); }
   .weekly-secondary-workspace :is(input, select, textarea) { border-radius: 8px; }
   .weekly-secondary-workspace button { transition: background-color 150ms ease, box-shadow 150ms ease !important; }
@@ -910,15 +933,16 @@ button, input, select, textarea {
 }
 
 .schedule-side .schedule-table {
-  border: 1px solid #94a3b8;
+  border: 1.5px solid #000000;
   border-radius: 8px;
+  border-collapse: collapse;
   overflow: hidden;
 }
 
 .schedule-side .schedule-table td,
 .schedule-side .schedule-table th {
-  border-bottom: 1px solid #cbd5e1;
-  border-right: 1px solid #cbd5e1;
+  border-bottom: 1px solid #000000;
+  border-right: 1px solid #000000;
 }
 
 .material-side {
@@ -1046,10 +1070,10 @@ button, input, select, textarea {
 
 .schedule-table {
   width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
+  border-collapse: collapse;
   font-size: 12px;
   background: #ffffff;
+  border: 1.5px solid #000000;
 }
 
 .schedule-table thead th {
@@ -1057,8 +1081,8 @@ button, input, select, textarea {
   padding: 14px 12px;
   text-align: center;
   vertical-align: middle;
-  border-bottom: 2px solid #94a3b8;
-  border-right: 1px solid #cbd5e1;
+  border-bottom: 1.5px solid #000000;
+  border-right: 1px solid #000000;
 }
 
 .schedule-table thead th:last-child {
@@ -1128,8 +1152,8 @@ button, input, select, textarea {
 
 /* Table Rows & Cells */
 .schedule-table td {
-  border-bottom: 1px solid #cbd5e1;
-  border-right: 1px solid #cbd5e1;
+  border-bottom: 1px solid #000000;
+  border-right: 1px solid #000000;
   padding: 12px 10px;
   text-align: center;
   vertical-align: middle;
@@ -1942,6 +1966,7 @@ select:focus {
   .schedule-table {
     width: 100% !important;
     border-collapse: collapse !important;
+    border: 1.5px solid #000000 !important;
     page-break-inside: auto;
   }
 
@@ -1953,12 +1978,12 @@ select:focus {
   .schedule-table th {
     background-color: #f1f5f9 !important;
     color: #0f172a !important;
-    border: 1px solid #cbd5e1 !important;
+    border: 1px solid #000000 !important;
     padding: 8px 6px !important;
   }
 
   .schedule-table td {
-    border: 1px solid #cbd5e1 !important;
+    border: 1px solid #000000 !important;
     padding: 8px 6px !important;
   }
 
@@ -3597,17 +3622,18 @@ select:focus {
 .ts-table-wrapper {
   overflow-x: auto;
   border-radius: 10px;
-  border: 1px solid #e2e8f0;
+  border: 1.5px solid #000000;
 }
 
 .ts-data-table {
   width: 100%;
   border-collapse: collapse;
+  border: 1.5px solid #000000;
 }
 
 .ts-data-table th,
 .ts-data-table td {
-  border: 1px solid #e2e8f0;
+  border: 1px solid #000000;
   padding: 10px 12px;
   font-size: 13px;
   vertical-align: top;
@@ -3618,6 +3644,7 @@ select:focus {
   color: #1e293b;
   font-weight: 700;
   text-align: left;
+  border-bottom: 1.5px solid #000000;
 }
 
 .ts-col-header-content {
