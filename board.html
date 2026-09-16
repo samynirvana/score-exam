@@ -259,7 +259,7 @@
                     <div class="board-hub-title-group" style="gap: 0;">
                         <div>
                             <h1 style="font-size: 24px; font-weight: 800; margin: 0; color: var(--text-dark, #0f172a); font-family: 'Outfit', sans-serif; letter-spacing: -0.02em;">
-                                Whiteboard
+                                Whiteboard Studio
                             </h1>
                             <span id="hubUserName" style="display: none;">Student</span>
                         </div>
@@ -1471,6 +1471,25 @@
                     <div id="propSectionMulti" class="prop-section hidden">
                         <div class="prop-section-label">MULTIPLE SELECTION</div>
                         <p class="prop-help-text" id="propMultiCountText">Select items</p>
+                        <div id="propMultiFillGroup" class="prop-field-group" style="margin-top: 10px;">
+                            <div class="prop-sublabel-row"><span>FILL COLOR</span></div>
+                            <div class="prop-color-swatches" id="propMultiFillSwatches"></div>
+                        </div>
+                        <div id="propMultiTextGroup" class="prop-field-group" style="margin-top: 10px;">
+                            <div class="prop-sublabel-row"><span>TEXT COLOR</span></div>
+                            <div class="prop-color-swatches" id="propMultiTextSwatches"></div>
+                        </div>
+                        <div id="propMultiBorderGroup" class="prop-field-group" style="margin-top: 10px;">
+                            <div class="prop-sublabel-row"><span>BORDER COLOR</span></div>
+                            <div class="prop-color-swatches" id="propMultiBorderSwatches"></div>
+                            <label class="prop-field-label" style="margin-top: 8px;">BORDER THICKNESS (PX)
+                                <input id="propMultiBorderWidth" type="number" min="0" max="24" step="1" class="prop-input" placeholder="Mixed" />
+                            </label>
+                            <div class="prop-style-toggle-row" style="margin-top: 8px;">
+                                <button type="button" class="prop-style-toggle" data-multi-stroke-style="solid">Solid</button>
+                                <button type="button" class="prop-style-toggle" data-multi-stroke-style="dashed">Dashed</button>
+                            </div>
+                        </div>
                         <div class="prop-row-grid-2">
                             <button type="button" id="btnPropGroup" class="prop-btn-secondary">Group</button>
                             <button type="button" id="btnPropUngroup" class="prop-btn-secondary">Ungroup</button>
@@ -1638,7 +1657,7 @@
     </div>
 
     <!-- Scripts -->
-    <script type="module" src="board.js?v=429"></script>
+    <script type="module" src="board.js?v=430"></script>
     <script src="studentNav.js?v=420"></script>
 </body>
 

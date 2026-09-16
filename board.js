@@ -7184,6 +7184,36 @@ function getSelectedElementsList() {
     return elements.filter(el => selectedElementIds.has(el.id));
 }
 
+function supportsMultiFill(el) {
+    return el.type === 'shape' || (el.type === 'path' && el.closed) || el.type === 'sticky';
+}
+
+function supportsMultiTextColor(el) {
+    return el.type === 'shape' || (el.type === 'path' && el.closed) || el.type === 'text' || el.type === 'sticky';
+}
+
+function supportsMultiBorder(el) {
+    return el.type === 'shape' || el.type === 'path' || el.type === 'line' || el.type === 'arrow';
+}
+
+function sharedSelectionValue(list, readValue) {
+    if (!list.length) return null;
+    const first = readValue(list[0]);
+    return list.every(el => readValue(el) === first) ? first : null;
+}
+
+function applyMultiProperty(predicate, update) {
+    if (currentBoard?.isReadOnly) return;
+    const list = getSelectedElementsList().filter(predicate);
+    if (selectedElementIds.size < 2 || !list.length) return;
+    pushUndoState();
+    list.forEach(update);
+    renderCanvas();
+    scheduleAutoSave();
+    updatePropertiesPanel();
+    updateFormattingBar();
+}
+
 function getSingleSelectedElement() {
     if (selectedElementIds.size !== 1) return null;
     const id = Array.from(selectedElementIds)[0];
@@ -7474,6 +7504,18 @@ function setupPropertiesPanelInputs() {
     // 4. Shape Type Switcher
     document.getElementById('btnPropGroup')?.addEventListener('click', () => setSelectionGroup());
     document.getElementById('btnPropUngroup')?.addEventListener('click', () => setSelectionGroup(true));
+    document.getElementById('propMultiBorderWidth')?.addEventListener('change', (event) => {
+        const width = Number(event.target.value);
+        if (!Number.isFinite(width) || event.target.value === '') return;
+        const clampedWidth = Math.max(0, Math.min(24, width));
+        event.target.value = clampedWidth;
+        applyMultiProperty(supportsMultiBorder, el => { el.strokeWidth = clampedWidth; });
+    });
+    document.querySelectorAll('[data-multi-stroke-style]').forEach(button => {
+        button.addEventListener('click', () => {
+            applyMultiProperty(supportsMultiBorder, el => { el.strokeStyle = button.dataset.multiStrokeStyle; });
+        });
+    });
     document.getElementById('btnConvertPathToShape')?.addEventListener('click', convertSelectedPathToShape);
     document.getElementById('btnPropConvertPathToShape')?.addEventListener('click', convertSelectedPathToShape);
     document.getElementById('propCornerRadius')?.addEventListener('change', (event) => {
@@ -8227,6 +8269,46 @@ function updatePropertiesPanel() {
 
         const multiText = document.getElementById('propMultiCountText');
         if (multiText) multiText.innerText = `${count} elements currently selected`;
+
+        const fillElements = groupSelection.filter(supportsMultiFill);
+        const textElements = groupSelection.filter(supportsMultiTextColor);
+        const borderElements = groupSelection.filter(supportsMultiBorder);
+        document.getElementById('propMultiFillGroup')?.classList.toggle('hidden', !fillElements.length);
+        document.getElementById('propMultiTextGroup')?.classList.toggle('hidden', !textElements.length);
+        document.getElementById('propMultiBorderGroup')?.classList.toggle('hidden', !borderElements.length);
+
+        if (fillElements.length) {
+            const fillColor = sharedSelectionValue(fillElements, el => el.type === 'sticky' ? el.color : el.fillColor);
+            renderColorSwatches('propMultiFillSwatches', ['transparent', '#ffffff', '#fef08a', '#fbcfe8', '#bbf7d0', '#bae6fd', '#e9d5ff', '#fed7aa', '#cbd5e1', '#1e293b'], fillColor, color => {
+                applyMultiProperty(supportsMultiFill, el => {
+                    if (el.type === 'sticky') el.color = color;
+                    else el.fillColor = color;
+                });
+            });
+        }
+        if (textElements.length) {
+            const textColor = sharedSelectionValue(textElements, el => el.type === 'text' ? (el.color || el.textColor || '#0f172a') : (el.textColor || '#0f172a'));
+            renderColorSwatches('propMultiTextSwatches', ['#0f172a', '#1e5eff', '#10b981', '#ef4444', '#8b5cf6', '#f59e0b', '#ffffff'], textColor, color => {
+                applyMultiProperty(supportsMultiTextColor, el => {
+                    el.textColor = color;
+                    if (el.type === 'text') el.color = color;
+                });
+            });
+        }
+        if (borderElements.length) {
+            const borderColor = sharedSelectionValue(borderElements, el => el.strokeColor);
+            renderColorSwatches('propMultiBorderSwatches', ['transparent', '#0f172a', '#1e5eff', '#10b981', '#ef4444', '#8b5cf6', '#f59e0b', '#64748b', '#ffffff'], borderColor, color => {
+                applyMultiProperty(supportsMultiBorder, el => { el.strokeColor = color; });
+            });
+            const borderWidth = document.getElementById('propMultiBorderWidth');
+            if (borderWidth && document.activeElement !== borderWidth) {
+                borderWidth.value = sharedSelectionValue(borderElements, el => el.strokeWidth ?? 2) ?? '';
+            }
+            const strokeStyle = sharedSelectionValue(borderElements, el => el.strokeStyle || 'solid');
+            document.querySelectorAll('[data-multi-stroke-style]').forEach(button => {
+                button.classList.toggle('active', button.dataset.multiStrokeStyle === strokeStyle);
+            });
+        }
 
         // Hide rotation and coordinates for heterogeneous multi-selection
         const groupRot = document.getElementById('propGroupRotation');
