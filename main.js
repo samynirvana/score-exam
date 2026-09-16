@@ -149,8 +149,8 @@ async function checkStudentSession() {
         listenActiveStudentAttendance();
         listenStudentAssignmentReminders(currentLoggedInStudent.code);
     } else {
-        if (overlay) overlay.style.display = 'flex';
-        updateGreetingBanner();
+        // If on studentdash.html without active session, redirect to login page
+        window.location.replace("index.html");
     }
 }
 
@@ -311,7 +311,7 @@ document.getElementById('studentLogoutBtn')?.addEventListener('click', async () 
         sessionStorage.removeItem('studentLoggedInSession');
         sessionStorage.removeItem('studentTimelineSession');
     }
-    location.reload();
+    window.location.replace("index.html");
 });
 
 // Auto-fetch profile for logged in code

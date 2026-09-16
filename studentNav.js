@@ -194,7 +194,7 @@ const initMobileNav = () => {
 
     const navWeekly = dropdown.querySelector('.nav-weekly');
 
-    if (currentPath === 'index.html' || currentPath === '') {
+    if (currentPath === 'studentdash.html' || currentPath === 'index.html' || currentPath === '') {
         navDashboard?.classList.add('active');
     } else if (currentPath === 'quiz.html') {
         navQuiz?.classList.add('active');
