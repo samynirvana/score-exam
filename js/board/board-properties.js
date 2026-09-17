@@ -162,64 +162,77 @@ export function getSingleSelectedElement() {
 function renderColorSwatches(containerId, palette, currentColor, onColorSelected) {
     const container = document.getElementById(containerId);
     if (!container) return;
-    container.innerHTML = '';
+    container.onColorSelected = onColorSelected;
 
-    palette.forEach(c => {
-        const swatch = document.createElement('div');
-        swatch.className = 'prop-color-swatch';
-        if (c === 'transparent') {
-            swatch.classList.add('prop-color-none');
-            swatch.title = 'No Color (Transparent)';
-            swatch.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" style="pointer-events: none;"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>';
-        } else {
-            swatch.style.background = c;
-            swatch.title = c;
-        }
-
-        if (currentColor && (currentColor.toLowerCase() === c.toLowerCase() || (c === 'transparent' && currentColor === 'transparent'))) {
-            swatch.classList.add('active');
-        }
-
-        swatch.addEventListener('click', (e) => {
-            e.stopPropagation();
-            onColorSelected(c);
+    // Keep the inspector compact: two presets followed by the custom picker.
+    // Shape fill/border already have separate No Fill/No Border buttons.
+    const hasNoColorButton = containerId === 'propShapeFillSwatches' || containerId === 'propShapeBorderSwatches';
+    const presets = (hasNoColorButton ? palette.filter(c => c !== 'transparent') : palette).slice(0, 2);
+    if (!container.querySelector('.prop-native-picker')) {
+        presets.forEach(() => {
+            const swatch = document.createElement('div');
+            swatch.className = 'prop-color-swatch';
+            swatch.addEventListener('click', (e) => {
+                e.stopPropagation();
+                container.onColorSelected(swatch.dataset.color);
+            });
+            container.appendChild(swatch);
         });
 
-        container.appendChild(swatch);
+        const customWrapper = document.createElement('div');
+        customWrapper.className = 'prop-custom-color-wrapper';
+        customWrapper.title = 'Choose custom color';
+        const customDot = document.createElement('div');
+        customDot.className = 'prop-custom-color-dot';
+        customDot.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9c0-1.2-.8-2-2-2h-2a2 2 0 0 1-2-2V6a3 3 0 0 0-3-3Z"/><circle cx="7.5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="11" cy="7.5" r="1" fill="currentColor" stroke="none"/><circle cx="16.5" cy="14" r="1" fill="currentColor" stroke="none"/></svg>';
+        const nativeInput = document.createElement('input');
+        nativeInput.type = 'color';
+        nativeInput.className = 'prop-native-picker';
+        nativeInput.setAttribute('aria-label', 'Choose custom color');
+
+        let undoCaptured = false;
+        nativeInput.addEventListener('pointerdown', () => { undoCaptured = false; });
+        nativeInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') undoCaptured = false;
+        });
+        const applyCustomColor = (value) => {
+            if (!undoCaptured) {
+                boardContext.pushUndoState();
+                undoCaptured = true;
+            }
+            customWrapper.classList.add('active');
+            customWrapper.style.setProperty('--chosen-color', value);
+            container.querySelectorAll('.prop-color-swatch').forEach(s => s.classList.remove('active'));
+            nativeInput.dataset.appliedColor = value;
+            container.onColorSelected(value, true);
+        };
+        nativeInput.addEventListener('input', (e) => applyCustomColor(e.target.value));
+        nativeInput.addEventListener('change', (e) => {
+            if (!undoCaptured || e.target.value !== nativeInput.dataset.appliedColor) applyCustomColor(e.target.value);
+            boardContext.updateFormattingBar(true);
+        });
+
+        customWrapper.append(customDot, nativeInput);
+        container.appendChild(customWrapper);
+    }
+
+    container.querySelectorAll('.prop-color-swatch').forEach((swatch, index) => {
+        const color = presets[index];
+        swatch.dataset.color = color;
+        swatch.classList.toggle('prop-color-none', color === 'transparent');
+        swatch.classList.toggle('active', Boolean(currentColor && currentColor.toLowerCase() === color.toLowerCase()));
+        swatch.style.background = color === 'transparent' ? '' : color;
+        swatch.title = color === 'transparent' ? 'No Color (Transparent)' : color;
+        swatch.innerHTML = color === 'transparent' ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" style="pointer-events: none;"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>' : '';
     });
-
-    // Add native color picker wrapper
-    const customWrapper = document.createElement('div');
-    customWrapper.className = 'prop-custom-color-wrapper';
-    customWrapper.title = 'Choose custom color';
-
-    const customDot = document.createElement('div');
-    customDot.className = 'prop-custom-color-dot';
-
-    const nativeInput = document.createElement('input');
-    nativeInput.type = 'color';
-    nativeInput.className = 'prop-native-picker';
-    nativeInput.value = (currentColor && currentColor !== 'transparent') ? currentColor : '#1e5eff';
-
-    // Live dragging inside color picker: update canvas without tearing down DOM
-    nativeInput.addEventListener('input', (e) => {
-        const val = e.target.value;
-        customDot.style.background = val;
-        // Mark swatches inactive while custom color is chosen
-        container.querySelectorAll('.prop-color-swatch').forEach(s => s.classList.remove('active'));
-        onColorSelected(val, true);
-    });
-
-    // Finished color selection (dialog closed / mouse release): commit change
-    nativeInput.addEventListener('change', (e) => {
-        const val = e.target.value;
-        customDot.style.background = val;
-        onColorSelected(val, false);
-    });
-
-    customWrapper.appendChild(customDot);
-    customWrapper.appendChild(nativeInput);
-    container.appendChild(customWrapper);
+    const customWrapper = container.querySelector('.prop-custom-color-wrapper');
+    const nativeInput = container.querySelector('.prop-native-picker');
+    if (document.activeElement !== nativeInput) {
+        nativeInput.value = /^#[0-9a-f]{6}$/i.test(currentColor || '') ? currentColor : '#1e5eff';
+    }
+    const isCustom = Boolean(currentColor && currentColor !== 'transparent' && !presets.some(c => c.toLowerCase() === currentColor.toLowerCase()));
+    customWrapper.classList.toggle('active', isCustom);
+    if (isCustom) customWrapper.style.setProperty('--chosen-color', nativeInput.value);
 }
 
 function setupInspectorCategories() {
@@ -1597,4 +1610,3 @@ export function updatePropertiesPanel() {
         }
     }
 }
-

@@ -6035,14 +6035,14 @@ function openInPlaceTextEditor(el) {
     updateFormattingBar();
 }
 
-function updateFormattingBar() {
+function updateFormattingBar(skipPropertiesPanel = false) {
     const bar = document.getElementById('boardFormattingBar');
     if (!bar) return;
 
     if (!isFloatingBarEnabled || selectedElementIds.size === 0) {
         bar.classList.add('hidden');
         document.getElementById('fmtColorPopover')?.classList.add('hidden');
-        updatePropertiesPanel();
+        if (!skipPropertiesPanel) updatePropertiesPanel();
         return;
     }
 
@@ -6059,7 +6059,7 @@ function updateFormattingBar() {
     const selectedEl = elements.find(item => selectedElementIds.has(item.id));
     if (!selectedEl) {
         bar.classList.add('hidden');
-        updatePropertiesPanel();
+        if (!skipPropertiesPanel) updatePropertiesPanel();
         return;
     }
 
@@ -6237,7 +6237,7 @@ function updateFormattingBar() {
         borderInd.style.borderColor = (borderColor && borderColor !== 'transparent') ? borderColor : '#cbd5e1';
     }
 
-    updatePropertiesPanel();
+    if (!skipPropertiesPanel) updatePropertiesPanel();
 }
 
 // --- 7. UNDO / REDO & AUTO-SAVE ---
