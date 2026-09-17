@@ -137,20 +137,24 @@ function sharedSelectionValue(list, readValue) {
     return list.every(el => readValue(el) === first) ? first : null;
 }
 
-function applyMultiProperty(predicate, update) {
-    if (boardContext.currentBoard?.isReadOnly) return;
+function applyMultiProperty(predicate, update, isLive = false) {
+    if (boardContext?.currentBoard?.isReadOnly) return;
     const list = getSelectedElementsList().filter(predicate);
     if (boardContext.selectedElementIds.size < 2 || !list.length) return;
-    boardContext.pushUndoState();
+    if (!isLive) {
+        boardContext.pushUndoState();
+    }
     list.forEach(update);
     boardContext.renderCanvas();
     boardContext.scheduleAutoSave();
-    updatePropertiesPanel();
-    boardContext.updateFormattingBar();
+    if (!isLive) {
+        updatePropertiesPanel();
+        boardContext.updateFormattingBar();
+    }
 }
 
-function getSingleSelectedElement() {
-    if (boardContext.selectedElementIds.size !== 1) return null;
+export function getSingleSelectedElement() {
+    if (!boardContext || boardContext.selectedElementIds.size !== 1) return null;
     const id = Array.from(boardContext.selectedElementIds)[0];
     return boardContext.elements.find(el => el.id === id) || null;
 }
@@ -197,11 +201,20 @@ function renderColorSwatches(containerId, palette, currentColor, onColorSelected
     nativeInput.className = 'prop-native-picker';
     nativeInput.value = (currentColor && currentColor !== 'transparent') ? currentColor : '#1e5eff';
 
+    // Live dragging inside color picker: update canvas without tearing down DOM
     nativeInput.addEventListener('input', (e) => {
-        onColorSelected(e.target.value);
+        const val = e.target.value;
+        customDot.style.background = val;
+        // Mark swatches inactive while custom color is chosen
+        container.querySelectorAll('.prop-color-swatch').forEach(s => s.classList.remove('active'));
+        onColorSelected(val, true);
     });
+
+    // Finished color selection (dialog closed / mouse release): commit change
     nativeInput.addEventListener('change', (e) => {
-        onColorSelected(e.target.value);
+        const val = e.target.value;
+        customDot.style.background = val;
+        onColorSelected(val, false);
     });
 
     customWrapper.appendChild(customDot);
@@ -1214,26 +1227,26 @@ export function updatePropertiesPanel() {
 
         if (fillElements.length) {
             const fillColor = sharedSelectionValue(fillElements, el => el.type === 'sticky' ? el.color : el.fillColor);
-            renderColorSwatches('propMultiFillSwatches', ['transparent', '#ffffff', '#fef08a', '#fbcfe8', '#bbf7d0', '#bae6fd', '#e9d5ff', '#fed7aa', '#cbd5e1', '#1e293b'], fillColor, color => {
+            renderColorSwatches('propMultiFillSwatches', ['transparent', '#ffffff', '#fef08a', '#fbcfe8', '#bbf7d0', '#bae6fd', '#e9d5ff', '#fed7aa', '#cbd5e1', '#1e293b'], fillColor, (color, isLive = false) => {
                 applyMultiProperty(supportsMultiFill, el => {
                     if (el.type === 'sticky') el.color = color;
                     else el.fillColor = color;
-                });
+                }, isLive);
             });
         }
         if (textElements.length) {
             const textColor = sharedSelectionValue(textElements, el => el.type === 'text' ? (el.color || el.textColor || '#0f172a') : (el.textColor || '#0f172a'));
-            renderColorSwatches('propMultiTextSwatches', ['#0f172a', '#1e5eff', '#10b981', '#ef4444', '#8b5cf6', '#f59e0b', '#ffffff'], textColor, color => {
+            renderColorSwatches('propMultiTextSwatches', ['#0f172a', '#1e5eff', '#10b981', '#ef4444', '#8b5cf6', '#f59e0b', '#ffffff'], textColor, (color, isLive = false) => {
                 applyMultiProperty(supportsMultiTextColor, el => {
                     el.textColor = color;
                     if (el.type === 'text') el.color = color;
-                });
+                }, isLive);
             });
         }
         if (borderElements.length) {
             const borderColor = sharedSelectionValue(borderElements, el => el.strokeColor);
-            renderColorSwatches('propMultiBorderSwatches', ['transparent', '#0f172a', '#1e5eff', '#10b981', '#ef4444', '#8b5cf6', '#f59e0b', '#64748b', '#ffffff'], borderColor, color => {
-                applyMultiProperty(supportsMultiBorder, el => { el.strokeColor = color; });
+            renderColorSwatches('propMultiBorderSwatches', ['transparent', '#0f172a', '#1e5eff', '#10b981', '#ef4444', '#8b5cf6', '#f59e0b', '#64748b', '#ffffff'], borderColor, (color, isLive = false) => {
+                applyMultiProperty(supportsMultiBorder, el => { el.strokeColor = color; }, isLive);
             });
             const borderWidth = document.getElementById('propMultiBorderWidth');
             if (borderWidth && document.activeElement !== borderWidth) {
@@ -1331,24 +1344,28 @@ export function updatePropertiesPanel() {
 
         // Fill Swatches
         const fillPalette = ['transparent', '#ffffff', '#fef08a', '#fbcfe8', '#bbf7d0', '#bae6fd', '#e9d5ff', '#fed7aa', '#cbd5e1', '#1e293b'];
-        renderColorSwatches('propShapeFillSwatches', fillPalette, el.fillColor, (newColor) => {
-            boardContext.pushUndoState();
+        renderColorSwatches('propShapeFillSwatches', fillPalette, el.fillColor, (newColor, isLive = false) => {
+            if (!isLive) boardContext.pushUndoState();
             el.fillColor = newColor;
             boardContext.renderCanvas();
             boardContext.scheduleAutoSave();
-            updatePropertiesPanel();
-            boardContext.updateFormattingBar();
+            if (!isLive) {
+                updatePropertiesPanel();
+                boardContext.updateFormattingBar();
+            }
         });
 
         // Border Swatches
         const borderPalette = ['transparent', '#0f172a', '#1e5eff', '#10b981', '#ef4444', '#8b5cf6', '#f59e0b', '#64748b', '#ffffff'];
-        renderColorSwatches('propShapeBorderSwatches', borderPalette, el.strokeColor, (newColor) => {
-            boardContext.pushUndoState();
+        renderColorSwatches('propShapeBorderSwatches', borderPalette, el.strokeColor, (newColor, isLive = false) => {
+            if (!isLive) boardContext.pushUndoState();
             el.strokeColor = newColor;
             boardContext.renderCanvas();
             boardContext.scheduleAutoSave();
-            updatePropertiesPanel();
-            boardContext.updateFormattingBar();
+            if (!isLive) {
+                updatePropertiesPanel();
+                boardContext.updateFormattingBar();
+            }
         });
 
         // Border Thickness & Style
@@ -1370,13 +1387,15 @@ export function updatePropertiesPanel() {
         }
 
         const textColorPalette = ['#0f172a', '#1e5eff', '#10b981', '#ef4444', '#8b5cf6', '#f59e0b', '#ffffff'];
-        renderColorSwatches('propShapeTextSwatches', textColorPalette, el.textColor || '#0f172a', (newColor) => {
-            boardContext.pushUndoState();
+        renderColorSwatches('propShapeTextSwatches', textColorPalette, el.textColor || '#0f172a', (newColor, isLive = false) => {
+            if (!isLive) boardContext.pushUndoState();
             el.textColor = newColor;
             boardContext.renderCanvas();
             boardContext.scheduleAutoSave();
-            updatePropertiesPanel();
-            boardContext.updateFormattingBar();
+            if (!isLive) {
+                updatePropertiesPanel();
+                boardContext.updateFormattingBar();
+            }
         });
 
         const shapeFontSize = document.getElementById('propShapeFontSize');
@@ -1418,14 +1437,16 @@ export function updatePropertiesPanel() {
         }
 
         const textColorPalette = ['#0f172a', '#1e5eff', '#10b981', '#ef4444', '#8b5cf6', '#f59e0b', '#ffffff'];
-        renderColorSwatches('propTextColorSwatches', textColorPalette, el.color || el.textColor || '#0f172a', (newColor) => {
-            boardContext.pushUndoState();
+        renderColorSwatches('propTextColorSwatches', textColorPalette, el.color || el.textColor || '#0f172a', (newColor, isLive = false) => {
+            if (!isLive) boardContext.pushUndoState();
             el.color = newColor;
             el.textColor = newColor;
             boardContext.renderCanvas();
             boardContext.scheduleAutoSave();
-            updatePropertiesPanel();
-            boardContext.updateFormattingBar();
+            if (!isLive) {
+                updatePropertiesPanel();
+                boardContext.updateFormattingBar();
+            }
         });
 
         const textFontSize = document.getElementById('propTextFontSize');
@@ -1464,25 +1485,29 @@ export function updatePropertiesPanel() {
         }
 
         const stickyBgPalette = boardContext.STICKY_COLORS.map(s => s.bg);
-        renderColorSwatches('propStickyColorSwatches', stickyBgPalette, el.color, (newColor) => {
-            boardContext.pushUndoState();
+        renderColorSwatches('propStickyColorSwatches', stickyBgPalette, el.color, (newColor, isLive = false) => {
+            if (!isLive) boardContext.pushUndoState();
             el.color = newColor;
             const match = boardContext.STICKY_COLORS.find(s => s.bg.toLowerCase() === newColor.toLowerCase());
             if (match) el.textColor = match.text;
             boardContext.renderCanvas();
             boardContext.scheduleAutoSave();
-            updatePropertiesPanel();
-            boardContext.updateFormattingBar();
+            if (!isLive) {
+                updatePropertiesPanel();
+                boardContext.updateFormattingBar();
+            }
         });
 
         const textColorPalette = ['#0f172a', '#713f12', '#831843', '#14532d', '#0c4a6e', '#581c87', '#f8fafc'];
-        renderColorSwatches('propStickyTextColorSwatches', textColorPalette, el.textColor, (newColor) => {
-            boardContext.pushUndoState();
+        renderColorSwatches('propStickyTextColorSwatches', textColorPalette, el.textColor, (newColor, isLive = false) => {
+            if (!isLive) boardContext.pushUndoState();
             el.textColor = newColor;
             boardContext.renderCanvas();
             boardContext.scheduleAutoSave();
-            updatePropertiesPanel();
-            boardContext.updateFormattingBar();
+            if (!isLive) {
+                updatePropertiesPanel();
+                boardContext.updateFormattingBar();
+            }
         });
 
         const stickyFontSize = document.getElementById('propStickyFontSize');
@@ -1505,13 +1530,15 @@ export function updatePropertiesPanel() {
         }
 
         const linePalette = ['#1e5eff', '#0f172a', '#10b981', '#ef4444', '#8b5cf6', '#f59e0b', '#ffffff'];
-        renderColorSwatches('propLineColorSwatches', linePalette, el.strokeColor, (newColor) => {
-            boardContext.pushUndoState();
+        renderColorSwatches('propLineColorSwatches', linePalette, el.strokeColor, (newColor, isLive = false) => {
+            if (!isLive) boardContext.pushUndoState();
             el.strokeColor = newColor;
             boardContext.renderCanvas();
             boardContext.scheduleAutoSave();
-            updatePropertiesPanel();
-            boardContext.updateFormattingBar();
+            if (!isLive) {
+                updatePropertiesPanel();
+                boardContext.updateFormattingBar();
+            }
         });
 
         const lineSlider = document.getElementById('propSliderLineThickness');
@@ -1542,14 +1569,16 @@ export function updatePropertiesPanel() {
         }
 
         const drawPalette = ['#1e293b', '#1e5eff', '#ef4444', '#10b981', '#8b5cf6', '#facc15', '#ffffff'];
-        renderColorSwatches('propDrawColorSwatches', drawPalette, el.color || el.strokeColor, (newColor) => {
-            boardContext.pushUndoState();
+        renderColorSwatches('propDrawColorSwatches', drawPalette, el.color || el.strokeColor, (newColor, isLive = false) => {
+            if (!isLive) boardContext.pushUndoState();
             if (el.type === 'draw') el.color = newColor;
             else if (el.type === 'path') el.strokeColor = newColor;
             boardContext.renderCanvas();
             boardContext.scheduleAutoSave();
-            updatePropertiesPanel();
-            boardContext.updateFormattingBar();
+            if (!isLive) {
+                updatePropertiesPanel();
+                boardContext.updateFormattingBar();
+            }
         });
 
         const drawSlider = document.getElementById('propSliderDrawSize');

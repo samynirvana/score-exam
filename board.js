@@ -13,7 +13,31 @@ import { calculateMagnetSnapPoint, getClosestPointOnSegment as snapClosestPointO
 import { exportCanvasAsPNG } from "./js/board/board-export.js";
 import { HistoryManager } from "./js/board/board-history.js";
 import { generateTemplateElements } from "./js/board/board-templates.js";
-import { initPropertiesPanel, updatePropertiesPanel, setPropertiesContext } from "./js/board/board-properties.js";
+import { initPropertiesPanel, updatePropertiesPanel, setPropertiesContext, getSingleSelectedElement } from "./js/board/board-properties.js";
+import {
+    checkIsBoardOwner,
+    fetchBoardsFromFirestore,
+    saveBoardDirectlyToFirestore,
+    createBoardInFirestore,
+    duplicateBoardInFirestore,
+    copyTeacherBoardToStudentInFirestore,
+    deleteBoardFromFirestore
+} from "./js/board/board-firestore.js";
+import {
+    ensureFontLoaded,
+    roundRect,
+    drawStarPath,
+    drawSpeechBubblePath,
+    drawArrowHead,
+    drawCloudPath,
+    renderElementText,
+    wrapText,
+    roundedVectorPoints,
+    drawPathShape,
+    applyBorderDash,
+    renderStrokePoints,
+    updateTextElementBounds
+} from "./js/board/board-renderer.js";
 
 // --- GLOBAL STATE ---
 let currentUser = null; // { type: 'student'|'staff', code, name, studentClass, uid, role }
@@ -327,112 +351,24 @@ function updateNavUserUI() {
     }
 }
 
-// --- BOARD PERMISSION & OWNERSHIP HELPER ---
-function checkIsBoardOwner(data, user) {
-    if (!user || !data) return false;
-    const isStaff = user.type === 'staff';
-    const isAdmin = isStaff && user.role === 'admin';
-    if (isAdmin) return true; // Admins have full management access to all boards
-
-    if (isStaff) {
-        // Staff/Teacher ownership: match authorUid, authorEmail, authorCode, or authorName
-        if (data.authorUid && user.uid && data.authorUid === user.uid) return true;
-        if (data.authorEmail && user.email && data.authorEmail.toLowerCase().trim() === user.email.toLowerCase().trim()) return true;
-        if (data.authorCode && user.code && data.authorCode === user.code) return true;
-        if (!data.authorUid && data.authorName && user.name && data.authorName.trim().toLowerCase() === user.name.trim().toLowerCase()) return true;
-        return false;
-    } else {
-        // Student ownership
-        if (data.authorCode && user.code && data.authorCode === user.code) return true;
-        if (data.authorUid && user.uid && data.authorUid === user.uid) return true;
-        return false;
-    }
-}
-
 // --- 2. BOARD HUB MANAGEMENT ---
 async function loadBoards() {
     if (!currentUser) return;
-    const myGrid = document.getElementById('myBoardsGrid');
-    const teacherGrid = document.getElementById('teacherBoardsGrid');
-    const studentSharedGrid = document.getElementById('studentSharedBoardsGrid');
     const myCount = document.getElementById('myBoardsCount');
     const teacherCount = document.getElementById('teacherBoardsCount');
     const studentSharedCount = document.getElementById('studentSharedBoardsCount');
 
     try {
-        // 1. Fetch My Personal Boards from Firestore
-        if (currentUser.type === 'staff') {
-            const uidSnap = await getDocs(query(collection(db, "boards"), where("authorUid", "==", currentUser.uid)));
-            const map = new Map();
-            uidSnap.forEach(d => map.set(d.id, { id: d.id, ...d.data() }));
-            if (currentUser.email) {
-                try {
-                    const emailSnap = await getDocs(query(collection(db, "boards"), where("authorEmail", "==", currentUser.email)));
-                    emailSnap.forEach(d => map.set(d.id, { id: d.id, ...d.data() }));
-                } catch (_) { }
-            }
-            myBoardsList = Array.from(map.values());
-        } else {
-            const myQuery = query(collection(db, "boards"), where("authorCode", "==", currentUser.code));
-            const mySnap = await getDocs(myQuery);
-            myBoardsList = [];
-            mySnap.forEach(docSnap => myBoardsList.push({ id: docSnap.id, ...docSnap.data() }));
-        }
-
-        // 2. Fetch Teacher Shared Boards from Firestore (supporting multi-class targetClasses)
-        const teacherQuery = query(collection(db, "boards"), where("isShared", "==", true));
-        const teacherSnap = await getDocs(teacherQuery);
-        teacherBoardsList = [];
-        teacherSnap.forEach(docSnap => {
-            const data = docSnap.data();
-            const targets = Array.isArray(data.targetClasses) && data.targetClasses.length > 0
-                ? data.targetClasses
-                : (data.targetClass ? data.targetClass.split(',').map(s => s.trim()) : ['All']);
-            const studentClass = (currentUser.studentClass || '').trim();
-            const isMatch = currentUser.type === 'staff' || targets.includes('All') || targets.some(t => t.toLowerCase() === studentClass.toLowerCase());
-            if (isMatch) {
-                teacherBoardsList.push({ id: docSnap.id, ...data });
-            }
-        });
-
-        // 3. If teacher/staff, fetch boards shared by students for feedback/review
-        if (currentUser.type === 'staff') {
-            try {
-                const studentQuery = query(collection(db, "boards"), where("isSharedWithTeacher", "==", true));
-                const studentSnap = await getDocs(studentQuery);
-                studentSharedBoardsList = [];
-                const teacherEmail = (currentUser.email || '').toLowerCase().trim();
-                const teacherUid = (currentUser.uid || '').toLowerCase().trim();
-                const isAdmin = currentUser.role === 'admin';
-
-                studentSnap.forEach(docSnap => {
-                    const data = docSnap.data();
-                    const sharedList = Array.isArray(data.sharedWithTeachers)
-                        ? data.sharedWithTeachers.map(x => String(x).toLowerCase().trim())
-                        : [];
-                    // Admin can access everything; teachers can ONLY access boards explicitly shared with them
-                    const isForMe = isAdmin || (
-                        (teacherEmail && sharedList.includes(teacherEmail)) ||
-                        (teacherUid && sharedList.includes(teacherUid))
-                    );
-                    if (isForMe) {
-                        studentSharedBoardsList.push({ id: docSnap.id, ...data });
-                    }
-                });
-
-                studentSharedBoardsList.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
-                if (studentSharedCount) studentSharedCount.innerText = studentSharedBoardsList.length;
-            } catch (err) {
-                console.warn("Student shared boards fetch error:", err);
-            }
-        }
-
-        // Sort boards by latest update
-        myBoardsList.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
-        teacherBoardsList.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
+        const res = await fetchBoardsFromFirestore(currentUser);
+        myBoardsList = res.myBoards;
+        teacherBoardsList = res.teacherBoards;
+        studentSharedBoardsList = res.studentSharedBoards;
 
         if (myCount) myCount.innerText = myBoardsList.length;
         if (teacherCount) teacherCount.innerText = teacherBoardsList.length;
+        if (studentSharedCount && currentUser.type === 'staff') {
+            studentSharedCount.innerText = studentSharedBoardsList.length;
+        }
 
         renderHubBoardsGrid();
     } catch (err) {
@@ -775,28 +711,15 @@ function setupHubEventListeners() {
 // --- 3. TEMPLATES & CREATION ---
 window.createNewBoard = async function (templateName = 'Blank Board') {
     if (!currentUser) return;
-    const isStaff = currentUser.type === 'staff';
     const newElements = generateTemplateElements(templateName);
-    const newBoardData = {
-        title: templateName === 'Blank Board' ? 'Untitled Board' : templateName,
-        authorUid: currentUser.uid || '',
-        authorCode: currentUser.code || '',
-        authorEmail: currentUser.email || '',
-        authorName: currentUser.name || (isStaff ? 'Teacher' : 'Student'),
-        authorRole: currentUser.role || (isStaff ? 'teacher' : 'student'),
-        studentClass: currentUser.studentClass || 'Unassigned',
-        targetClass: 'All',
-        isShared: false,
-        elements: newElements,
-        settings: { gridStyle: 'dots', normalGridSize: 24, isometricGridSize: 20, isometricGridAngle1: 30, isometricGridAngle2: -30, isMagnetSnapping: true, zoom: 1, panX: 0, panY: 0 },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-    };
-
     try {
-        const docRef = await addDoc(collection(db, "boards"), newBoardData);
-        currentBoardId = docRef.id;
-        currentBoard = { id: docRef.id, ...newBoardData };
+        const board = await createBoardInFirestore({
+            title: templateName === 'Blank Board' ? 'Untitled Board' : templateName,
+            currentUser,
+            elements: newElements
+        });
+        currentBoardId = board.id;
+        currentBoard = board;
         openBoardWorkspace(currentBoard);
     } catch (err) {
         alert("Failed to create board in cloud Firestore: " + err.message);
@@ -898,27 +821,8 @@ window.openBoardEditor = async function (boardId, isReadOnly = false) {
 
 window.duplicateBoard = async function (boardId) {
     try {
-        const snap = await getDoc(doc(db, "boards", boardId));
-        if (snap.exists()) {
-            const data = snap.data();
-            const isStaff = currentUser?.type === 'staff';
-            const copyData = {
-                ...data,
-                title: `${data.title || 'Untitled Board'} (Copy)`,
-                authorUid: currentUser.uid || '',
-                authorCode: currentUser.code || '',
-                authorEmail: currentUser.email || '',
-                authorName: currentUser.name || (isStaff ? 'Teacher' : 'Student'),
-                authorRole: currentUser.role || (isStaff ? 'teacher' : 'student'),
-                isShared: false,
-                isSharedWithTeacher: false,
-                sharedWithTeachers: [],
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            };
-            await addDoc(collection(db, "boards"), copyData);
-            await loadBoards();
-        }
+        await duplicateBoardInFirestore(boardId, currentUser);
+        await loadBoards();
     } catch (err) {
         alert("Duplicate error: " + err.message);
     }
@@ -930,32 +834,10 @@ window.copyTeacherBoardToMine = async function (boardId) {
         return;
     }
     try {
-        const snap = await getDoc(doc(db, "boards", boardId));
-        if (snap.exists()) {
-            const data = snap.data();
-            const myCopy = {
-                ...data,
-                title: `My Copy - ${data.title || 'Teacher Board'}`,
-                authorUid: currentUser.uid || '',
-                authorCode: currentUser.code || '',
-                authorEmail: currentUser.email || '',
-                authorName: currentUser.name || 'Student',
-                authorRole: 'student',
-                studentClass: currentUser.studentClass || 'Unassigned',
-                isShared: false,
-                isSharedWithTeacher: false,
-                sharedWithTeachers: [],
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            };
-
-            const newDoc = await addDoc(collection(db, "boards"), myCopy);
-            alert("✓ Board duplicated to your personal boards! You can now freely edit your copy.");
-            await loadBoards();
-            window.openBoardEditor(newDoc.id, false);
-        } else {
-            alert("Board not found.");
-        }
+        const newBoard = await copyTeacherBoardToStudentInFirestore(boardId, currentUser);
+        alert("✓ Board duplicated to your personal boards! You can now freely edit your copy.");
+        await loadBoards();
+        window.openBoardEditor(newBoard.id, false);
     } catch (err) {
         alert("Copy error: " + err.message);
     }
@@ -963,24 +845,8 @@ window.copyTeacherBoardToMine = async function (boardId) {
 
 window.deleteBoard = async function (boardId) {
     try {
-        const snap = await getDoc(doc(db, "boards", boardId));
-        if (!snap.exists()) {
-            alert("Board not found.");
-            return;
-        }
-        const data = snap.data();
-        const isAdmin = currentUser?.type === 'staff' && currentUser?.role === 'admin';
-        const isOwner = checkIsBoardOwner(data, currentUser);
-
-        if (!isAdmin && !isOwner) {
-            alert("You can only delete boards that you own.");
-            return;
-        }
-
-        const title = data.title || 'this board';
-        if (!confirm(`Are you sure you want to permanently delete "${title}"?`)) return;
-
-        await deleteDoc(doc(db, "boards", boardId));
+        if (!confirm("Are you sure you want to permanently delete this board?")) return;
+        await deleteBoardFromFirestore(boardId, currentUser);
         await loadBoards();
     } catch (err) {
         alert("Delete error: " + err.message);
@@ -1750,65 +1616,6 @@ function renderElement(ctx, el) {
     ctx.restore();
 }
 
-function roundedVectorPoints(points, radius, closed) {
-    if (!closed || !(radius > 0) || points.length < 3) return points;
-    return points.flatMap((p, i) => {
-        const prev = points[(i + points.length - 1) % points.length];
-        const next = points[(i + 1) % points.length];
-        // Preserve existing Bezier segments; round only straight-sided corners.
-        if (p.handleIn || p.handleOut || prev.handleOut || next.handleIn) return [p];
-        const a = Math.hypot(prev.x - p.x, prev.y - p.y);
-        const b = Math.hypot(next.x - p.x, next.y - p.y);
-        if (!a || !b) return [p];
-        const d = Math.min(radius, a / 2, b / 2);
-        const entry = { x: p.x + (prev.x - p.x) * d / a, y: p.y + (prev.y - p.y) * d / a };
-        const exit = { x: p.x + (next.x - p.x) * d / b, y: p.y + (next.y - p.y) * d / b };
-        entry.handleOut = { x: entry.x + (p.x - entry.x) * 2 / 3, y: entry.y + (p.y - entry.y) * 2 / 3 };
-        exit.handleIn = { x: exit.x + (p.x - exit.x) * 2 / 3, y: exit.y + (p.y - exit.y) * 2 / 3 };
-        return [entry, exit];
-    });
-}
-
-function drawPathShape(ctx, points, closed, radius = 0) {
-    if (!points || points.length === 0) return;
-    points = roundedVectorPoints(points, radius, closed);
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-
-    for (let i = 1; i < points.length; i++) {
-        const prev = points[i - 1];
-        const curr = points[i];
-        const cp1 = prev.handleOut || { x: prev.x, y: prev.y };
-        const cp2 = curr.handleIn || { x: curr.x, y: curr.y };
-
-        if (prev.handleOut || curr.handleIn) {
-            ctx.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, curr.x, curr.y);
-        } else {
-            ctx.lineTo(curr.x, curr.y);
-        }
-    }
-
-    if (closed && points.length > 2) {
-        const last = points[points.length - 1];
-        const first = points[0];
-        const cp1 = last.handleOut || { x: last.x, y: last.y };
-        const cp2 = first.handleIn || { x: first.x, y: first.y };
-        if (last.handleOut || first.handleIn) {
-            ctx.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, first.x, first.y);
-        } else {
-            ctx.lineTo(first.x, first.y);
-        }
-        ctx.closePath();
-    }
-}
-
-function applyBorderDash(ctx, el) {
-    const length = el.dashLength ?? Math.max(6, (el.strokeWidth || 2) * 3);
-    const gap = el.borderSpacing ?? 6;
-    ctx.setLineDash([length, gap]);
-    ctx.lineDashOffset = (el.dashRotation || 0) / 360 * (length + gap);
-}
-
 function renderPathElement(ctx, el) {
     if (!el.points || el.points.length < 2) return;
     ctx.save();
@@ -2161,35 +1968,6 @@ function finalizeActivePenPath() {
     renderCanvas();
 }
 
-function renderStrokePoints(ctx, points, color, size, isHighlighter) {
-    if (!points || points.length < 2) return;
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-
-    for (let i = 1; i < points.length; i++) {
-        const midX = (points[i - 1].x + points[i].x) / 2;
-        const midY = (points[i - 1].y + points[i].y) / 2;
-        ctx.quadraticCurveTo(points[i - 1].x, points[i - 1].y, midX, midY);
-    }
-    ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
-
-    if (isHighlighter) {
-        ctx.strokeStyle = color || '#fef08a';
-        ctx.globalAlpha = 0.38;
-        ctx.lineWidth = (size || 14) * 2;
-        ctx.lineCap = 'square';
-        ctx.lineJoin = 'bevel';
-    } else {
-        ctx.strokeStyle = color || '#1e293b';
-        ctx.lineWidth = size || 4;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-    }
-    ctx.stroke();
-    ctx.restore();
-}
-
 const imageCache = new Map();
 
 function renderImageElement(ctx, el) {
@@ -2414,36 +2192,6 @@ function renderShape(ctx, el) {
         const textAlign = el.textAlign || 'center';
         const textVAlign = el.textVAlign || 'middle';
         renderElementText(ctx, el.text, el.x, el.y, w, h, fontSize, fontSize * 1.35, textAlign, textVAlign, { top: 10, right: 12, bottom: 10, left: 12 }, Boolean(el.isUnderline));
-    }
-}
-
-function drawCloudPath(ctx, x, y, w, h) {
-    ctx.moveTo(x + w * 0.2, y + h * 0.7);
-    ctx.bezierCurveTo(x, y + h * 0.7, x, y + h * 0.35, x + w * 0.2, y + h * 0.35);
-    ctx.bezierCurveTo(x + w * 0.15, y + h * 0.1, x + w * 0.45, y + h * 0.05, x + w * 0.5, y + h * 0.25);
-    ctx.bezierCurveTo(x + w * 0.65, y + h * 0.05, x + w * 0.85, y + h * 0.15, x + w * 0.8, y + h * 0.4);
-    ctx.bezierCurveTo(x + w * 1.05, y + h * 0.45, x + w * 1.02, y + h * 0.75, x + w * 0.8, y + h * 0.75);
-    ctx.closePath();
-}
-
-function updateTextElementBounds(el) {
-    if (!el || el.type !== 'text') return;
-    const lines = (el.text || ' ').split('\n');
-    const measureCanvas = document.createElement('canvas');
-    const mCtx = measureCanvas.getContext('2d');
-    if (mCtx) {
-        const isBold = el.isBold ? 'bold ' : '';
-        const isItalic = el.isItalic ? 'italic ' : '';
-        const fSize = el.fontSize || 20;
-        const fFam = el.fontFamily || "'Outfit', sans-serif";
-        mCtx.font = `${isBold}${isItalic}${fSize}px ${fFam}`;
-        let maxW = 40;
-        lines.forEach(l => {
-            const tw = mCtx.measureText(l || ' ').width;
-            if (tw > maxW) maxW = tw;
-        });
-        el.width = Math.max(60, Math.round(maxW + 16));
-        el.height = Math.max(36, Math.round(lines.length * (fSize * 1.35) + 8));
     }
 }
 
@@ -2846,47 +2594,6 @@ function findResizeHandleHit(wx, wy) {
     return null;
 }
 
-const loadedFonts = new Set([
-    'Caveat', 'Inter', 'Merriweather', 'Roboto Mono', 'Outfit', 'sans-serif', 'serif', 'monospace', 'cursive'
-]);
-const loadingFonts = new Set();
-
-function ensureFontLoaded(fontFamily) {
-    if (!fontFamily) return;
-    const match = fontFamily.match(/'([^']+)'/);
-    const cleanFontName = match ? match[1] : fontFamily.split(',')[0].replace(/['"]/g, '').trim();
-    if (!cleanFontName || cleanFontName === 'sans-serif' || cleanFontName === 'serif' || cleanFontName === 'monospace') return;
-
-    // If already loaded or currently in-flight, exit immediately to prevent re-render loops!
-    if (loadedFonts.has(cleanFontName)) return;
-    if (loadingFonts.has(cleanFontName)) return;
-
-    loadingFonts.add(cleanFontName);
-
-    const linkId = `gfont-${cleanFontName.replace(/\s+/g, '-').toLowerCase()}`;
-    if (!document.getElementById(linkId)) {
-        const link = document.createElement('link');
-        link.id = linkId;
-        link.rel = 'stylesheet';
-        link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(cleanFontName)}&display=swap`;
-        document.head.appendChild(link);
-    }
-
-    if (document.fonts && document.fonts.load) {
-        document.fonts.load(`16px "${cleanFontName}"`).then(() => {
-            loadedFonts.add(cleanFontName);
-            loadingFonts.delete(cleanFontName);
-            renderCanvas();
-        }).catch(() => {
-            loadedFonts.add(cleanFontName);
-            loadingFonts.delete(cleanFontName);
-        });
-    } else {
-        loadedFonts.add(cleanFontName);
-        loadingFonts.delete(cleanFontName);
-    }
-}
-
 function renderSelectionBoxes(ctx) {
     if (selectedElementIds.size === 0) return;
 
@@ -3111,10 +2818,45 @@ function setupCanvasEventListeners() {
         });
     }
 
-    // Clipboard Paste support for Images (Ctrl+V)
+    // Clipboard Paste support for Elements and Images (Ctrl+V)
     window.addEventListener('paste', (e) => {
         if (currentBoard?.isReadOnly) return;
         if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) return;
+
+        // 1. Check if clipboard contains serialized whiteboard elements
+        const clipboardText = e.clipboardData && e.clipboardData.getData ? e.clipboardData.getData('text/plain') : null;
+        if (clipboardText) {
+            try {
+                const parsed = JSON.parse(clipboardText);
+                if (parsed && parsed.type === 'score-exam-whiteboard-elements' && Array.isArray(parsed.elements) && parsed.elements.length > 0) {
+                    e.preventDefault();
+                    window.pasteCopiedElements(parsed.elements);
+                    return;
+                }
+            } catch (_) { }
+        }
+
+        // 2. Check if internal in-memory whiteboard clipboard has elements
+        if (whiteboardClipboard && whiteboardClipboard.length > 0) {
+            // If clipboard has an image file, let image pasting take precedence only if clipboard text was not whiteboard elements
+            const items = e.clipboardData && e.clipboardData.items;
+            let hasImage = false;
+            if (items) {
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].type && items[i].type.indexOf('image') !== -1) {
+                        hasImage = true;
+                        break;
+                    }
+                }
+            }
+            if (!hasImage) {
+                e.preventDefault();
+                window.pasteCopiedElements();
+                return;
+            }
+        }
+
+        // 3. Fallback to image upload from clipboard
         const items = e.clipboardData && e.clipboardData.items;
         if (!items) return;
         for (let i = 0; i < items.length; i++) {
@@ -4263,27 +4005,30 @@ function updatePickerLoupe(clientX, clientY) {
         loupe.style.position = 'fixed';
         loupe.style.pointerEvents = 'none';
         loupe.style.zIndex = '999999';
-        loupe.style.width = '30px';
-        loupe.style.height = '30px';
+        loupe.style.width = '38px';
+        loupe.style.height = '38px';
         loupe.style.borderRadius = '50%';
-        loupe.style.border = '2.5px solid #ffffff';
-        loupe.style.boxShadow = '0 2px 10px rgba(0,0,0,0.4)';
-        loupe.style.transform = 'translate(-50%, -140%)';
+        loupe.style.border = '3px solid #ffffff';
+        loupe.style.boxShadow = '0 4px 16px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.15)';
+        loupe.style.transform = 'translate(-50%, -130%)';
+        loupe.style.transition = 'background-color 0.04s ease';
+        loupe.style.display = 'flex';
+        loupe.style.alignItems = 'center';
+        loupe.style.justifyContent = 'center';
+        loupe.innerHTML = '<span style="width: 4px; height: 4px; border-radius: 50%; background: #ffffff; box-shadow: 0 0 2px rgba(0,0,0,0.8);"></span>';
         document.body.appendChild(loupe);
     }
-    loupe.style.display = (activeTool === 'picker') ? 'block' : 'none';
+    loupe.style.display = (activeTool === 'picker') ? 'flex' : 'none';
     loupe.style.left = `${clientX}px`;
     loupe.style.top = `${clientY}px`;
 
-    const canvas = document.getElementById('boardCanvas');
+    const canvas = document.getElementById('whiteboardCanvas');
     if (canvas) {
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        const px = Math.floor((clientX - rect.left) * scaleX);
-        const py = Math.floor((clientY - rect.top) * scaleY);
+        const px = Math.max(0, Math.min(canvas.width - 1, Math.floor((clientX - rect.left) * (canvas.width / rect.width))));
+        const py = Math.max(0, Math.min(canvas.height - 1, Math.floor((clientY - rect.top) * (canvas.height / rect.height))));
         try {
-            const ctx = canvas.getContext('2d');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
             const p = ctx.getImageData(px, py, 1, 1).data;
             if (p[3] > 0) {
                 const hex = '#' + ((1 << 24) + (p[0] << 16) + (p[1] << 8) + p[2]).toString(16).slice(1);
@@ -4296,15 +4041,13 @@ function updatePickerLoupe(clientX, clientY) {
 }
 
 function pickColorAt(clientX, clientY) {
-    const canvas = document.getElementById('boardCanvas');
+    const canvas = document.getElementById('whiteboardCanvas');
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const px = Math.floor((clientX - rect.left) * scaleX);
-    const py = Math.floor((clientY - rect.top) * scaleY);
+    const px = Math.max(0, Math.min(canvas.width - 1, Math.floor((clientX - rect.left) * (canvas.width / rect.width))));
+    const py = Math.max(0, Math.min(canvas.height - 1, Math.floor((clientY - rect.top) * (canvas.height / rect.height))));
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     let hex = '#1e5eff';
     try {
         const p = ctx.getImageData(px, py, 1, 1).data;
@@ -4342,7 +4085,10 @@ function applyPickedColor(hex) {
         pushUndoState();
         elements.forEach(el => {
             if (selectedElementIds.has(el.id)) {
-                if (el.type === 'shape' || el.type === 'sticky') {
+                if (el.type === 'shape') {
+                    el.color = hex;
+                    el.fillColor = hex;
+                } else if (el.type === 'sticky') {
                     el.color = hex;
                 } else if (el.type === 'text') {
                     el.color = hex;
@@ -4350,11 +4096,20 @@ function applyPickedColor(hex) {
                 } else if (el.type === 'line' || el.type === 'arrow' || el.type === 'draw') {
                     el.color = hex;
                     el.strokeColor = hex;
+                } else if (el.type === 'path') {
+                    if (el.closed) {
+                        el.fillColor = hex;
+                    } else {
+                        el.color = hex;
+                        el.strokeColor = hex;
+                    }
                 }
             }
         });
         scheduleAutoSave();
         renderCanvas();
+        updateFormattingBar();
+        updatePropertiesPanel();
     }
 
     // Copy to clipboard
@@ -4918,6 +4673,28 @@ function onPointerDown(e) {
                 const initY = pathBounds ? pathBounds.minY : (hitHandle.element.y !== undefined ? hitHandle.element.y : 0);
                 const initW = pathBounds ? pathBounds.width : (hitHandle.element.width || 120);
                 const initH = pathBounds ? pathBounds.height : (hitHandle.element.height || 80);
+
+                // Compute exact stationary (opposite) corner in world space at resize start
+                let fixedAnchorWorld = null;
+                if (hitHandle.element.rotation) {
+                    let oppLocalX = initX;
+                    let oppLocalY = initY;
+                    if (hitHandle.handle === 'se') {
+                        oppLocalX = initX;
+                        oppLocalY = initY;
+                    } else if (hitHandle.handle === 'sw') {
+                        oppLocalX = initX + initW;
+                        oppLocalY = initY;
+                    } else if (hitHandle.handle === 'ne') {
+                        oppLocalX = initX;
+                        oppLocalY = initY + initH;
+                    } else if (hitHandle.handle === 'nw') {
+                        oppLocalX = initX + initW;
+                        oppLocalY = initY + initH;
+                    }
+                    fixedAnchorWorld = localToWorldPoint(oppLocalX, oppLocalY, hitHandle.element);
+                }
+
                 resizeStart = {
                     ptX: pt.x,
                     ptY: pt.y,
@@ -4927,6 +4704,7 @@ function onPointerDown(e) {
                     width: initW,
                     height: initH,
                     rotation: hitHandle.element.rotation || 0,
+                    fixedAnchorWorld: fixedAnchorWorld,
                     initialOrigin: initialOrigin ? { x: initialOrigin.x, y: initialOrigin.y } : null,
                     customOrigin: hitHandle.element.origin ? { x: hitHandle.element.origin.x, y: hitHandle.element.origin.y } : null,
                     ep: ep,
@@ -5521,77 +5299,38 @@ function onPointerMove(e) {
             el.height = newH;
 
             // Anchor & position pinning for rotated elements:
-            if (rot !== 0 && resizeStart.initialOrigin) {
-                const initOx = resizeStart.initialOrigin.x;
-                const initOy = resizeStart.initialOrigin.y;
+            if (rot !== 0 && resizeStart.fixedAnchorWorld) {
                 const rad = (rot * Math.PI) / 180;
                 const cosR = Math.cos(rad);
                 const sinR = Math.sin(rad);
 
-                // Determine stationary (opposite) corner in initial local space:
-                let anchorLocalX, anchorLocalY;
+                // Local vector from opposite (stationary) corner to element center (newW/2, newH/2):
+                let dxLocal, dyLocal;
                 if (activeResizeHandle === 'se') {
-                    anchorLocalX = resizeStart.x;
-                    anchorLocalY = resizeStart.y;
+                    // Opposite corner is top-left (0, 0)
+                    dxLocal = newW / 2;
+                    dyLocal = newH / 2;
                 } else if (activeResizeHandle === 'sw') {
-                    anchorLocalX = resizeStart.x + origW;
-                    anchorLocalY = resizeStart.y;
+                    // Opposite corner is top-right (newW, 0)
+                    dxLocal = -newW / 2;
+                    dyLocal = newH / 2;
                 } else if (activeResizeHandle === 'ne') {
-                    anchorLocalX = resizeStart.x;
-                    anchorLocalY = resizeStart.y + origH;
+                    // Opposite corner is bottom-left (0, newH)
+                    dxLocal = newW / 2;
+                    dyLocal = -newH / 2;
                 } else { // 'nw'
-                    anchorLocalX = resizeStart.x + origW;
-                    anchorLocalY = resizeStart.y + origH;
+                    // Opposite corner is bottom-right (newW, newH)
+                    dxLocal = -newW / 2;
+                    dyLocal = -newH / 2;
                 }
 
-                // Stationary corner in fixed world coordinates:
-                const anchorWorldX = initOx + (anchorLocalX - initOx) * cosR - (anchorLocalY - initOy) * sinR;
-                const anchorWorldY = initOy + (anchorLocalX - initOx) * sinR + (anchorLocalY - initOy) * cosR;
+                // World position of new center:
+                const newCenterWorldX = resizeStart.fixedAnchorWorld.x + (dxLocal * cosR - dyLocal * sinR);
+                const newCenterWorldY = resizeStart.fixedAnchorWorld.y + (dxLocal * sinR + dyLocal * cosR);
 
-                if (resizeStart.customOrigin) {
-                    // When a custom origin is set, update el.x and el.y so stationary corner remains fixed
-                    let newAnchorLocalX, newAnchorLocalY;
-                    if (activeResizeHandle === 'se') {
-                        newAnchorLocalX = localX;
-                        newAnchorLocalY = localY;
-                    } else if (activeResizeHandle === 'sw') {
-                        newAnchorLocalX = localX + newW;
-                        newAnchorLocalY = localY;
-                    } else if (activeResizeHandle === 'ne') {
-                        newAnchorLocalX = localX;
-                        newAnchorLocalY = localY + newH;
-                    } else { // 'nw'
-                        newAnchorLocalX = localX + newW;
-                        newAnchorLocalY = localY + newH;
-                    }
-                    el.x = Math.round(localX);
-                    el.y = Math.round(localY);
-                } else {
-                    // Center-origin mode:
-                    // New anchor in new unrotated space relative to new center (w/2, h/2):
-                    let relAnchorX, relAnchorY;
-                    if (activeResizeHandle === 'se') {
-                        relAnchorX = -newW / 2;
-                        relAnchorY = -newH / 2;
-                    } else if (activeResizeHandle === 'sw') {
-                        relAnchorX = newW / 2;
-                        relAnchorY = -newH / 2;
-                    } else if (activeResizeHandle === 'ne') {
-                        relAnchorX = -newW / 2;
-                        relAnchorY = newH / 2;
-                    } else { // 'nw'
-                        relAnchorX = newW / 2;
-                        relAnchorY = newH / 2;
-                    }
-
-                    // New center in world space:
-                    const newCenterWorldX = anchorWorldX - (relAnchorX * cosR - relAnchorY * sinR);
-                    const newCenterWorldY = anchorWorldY - (relAnchorX * sinR + relAnchorY * cosR);
-
-                    // Compute top-left local x and y:
-                    el.x = Math.round(newCenterWorldX - newW / 2);
-                    el.y = Math.round(newCenterWorldY - newH / 2);
-                }
+                // Element top-left local coordinates:
+                el.x = Math.round(newCenterWorldX - newW / 2);
+                el.y = Math.round(newCenterWorldY - newH / 2);
             } else {
                 el.x = localX;
                 el.y = localY;
@@ -6550,16 +6289,16 @@ function scheduleAutoSave() {
 }
 
 async function saveCurrentBoardDirectly() {
-    if (!currentBoardId || !currentUser) return;
-    if (currentBoard?.isReadOnly) return;
+    if (!currentBoardId || !currentUser || currentBoard?.isReadOnly) return;
     const syncStatus = document.getElementById('boardSyncStatus');
 
     try {
-        await updateDoc(doc(db, "boards", currentBoardId), {
-            title: (currentBoard && currentBoard.title) || 'Untitled Board',
-            elements: elements,
-            settings: { gridStyle, normalGridSize, isometricGridSize, isometricGridAngle1, isometricGridAngle2, isMagnetSnapping, zoom: camera.zoom, panX: camera.x, panY: camera.y },
-            updatedAt: new Date().toISOString()
+        await saveBoardDirectlyToFirestore({
+            boardId: currentBoardId,
+            currentUser,
+            currentBoard,
+            elements,
+            settings: { gridStyle, normalGridSize, isometricGridSize, isometricGridAngle1, isometricGridAngle2, isMagnetSnapping, zoom: camera.zoom, panX: camera.x, panY: camera.y }
         });
         hasUnsavedChanges = false;
         if (syncStatus) {
@@ -6573,7 +6312,7 @@ async function saveCurrentBoardDirectly() {
             }
         }
     } catch (err) {
-        console.warn("Cloud auto-save error:", err);
+        console.warn('Cloud auto-save error:', err);
         if (syncStatus) syncStatus.innerText = '⚠️ Save error';
     }
 }
@@ -6650,6 +6389,87 @@ window.duplicateSelectedElements = function () {
     updateFormattingBar();
 };
 
+let whiteboardClipboard = [];
+
+window.copySelectedElements = function () {
+    if (selectedElementIds.size === 0) return false;
+    expandGroupedSelection();
+    const selected = elements.filter(el => selectedElementIds.has(el.id));
+    if (selected.length === 0) return false;
+    whiteboardClipboard = JSON.parse(JSON.stringify(selected));
+
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(JSON.stringify({
+                type: 'score-exam-whiteboard-elements',
+                elements: whiteboardClipboard
+            })).catch(() => { });
+        }
+    } catch (_) { }
+    return true;
+};
+
+window.pasteCopiedElements = function (sourceElements = null) {
+    if (currentBoard?.isReadOnly) return false;
+    const toPaste = sourceElements || whiteboardClipboard;
+    if (!toPaste || !Array.isArray(toPaste) || toPaste.length === 0) return false;
+
+    pushUndoState();
+    const newSelected = new Set();
+    const clonedGroups = new Map();
+    toPaste.forEach(rawEl => {
+        const clone = JSON.parse(JSON.stringify(rawEl));
+        if (clone.groupId) {
+            if (!clonedGroups.has(clone.groupId)) {
+                clonedGroups.set(clone.groupId, `group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+            }
+            clone.groupId = clonedGroups.get(clone.groupId);
+        }
+        clone.id = `el-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+        clone.x += 24;
+        clone.y += 24;
+        if (clone.type === 'path' && Array.isArray(clone.points)) {
+            clone.points = clone.points.map(p => ({
+                x: p.x + 24,
+                y: p.y + 24,
+                handleIn: p.handleIn ? { x: p.handleIn.x + 24, y: p.handleIn.y + 24 } : null,
+                handleOut: p.handleOut ? { x: p.handleOut.x + 24, y: p.handleOut.y + 24 } : null
+            }));
+        } else if (clone.type === 'draw' && Array.isArray(clone.points)) {
+            clone.points = clone.points.map(p => ({ x: p.x + 24, y: p.y + 24 }));
+        } else if ((clone.type === 'line' || clone.type === 'arrow') && clone.x1 !== undefined) {
+            clone.x1 += 24; clone.y1 += 24; clone.x2 += 24; clone.y2 += 24;
+        }
+        elements.push(clone);
+        newSelected.add(clone.id);
+    });
+
+    whiteboardClipboard = whiteboardClipboard.map(el => {
+        const nextClone = JSON.parse(JSON.stringify(el));
+        nextClone.x += 24;
+        nextClone.y += 24;
+        if (nextClone.type === 'path' && Array.isArray(nextClone.points)) {
+            nextClone.points = nextClone.points.map(p => ({
+                x: p.x + 24,
+                y: p.y + 24,
+                handleIn: p.handleIn ? { x: p.handleIn.x + 24, y: p.handleIn.y + 24 } : null,
+                handleOut: p.handleOut ? { x: p.handleOut.x + 24, y: p.handleOut.y + 24 } : null
+            }));
+        } else if (nextClone.type === 'draw' && Array.isArray(nextClone.points)) {
+            nextClone.points = nextClone.points.map(p => ({ x: p.x + 24, y: p.y + 24 }));
+        } else if ((nextClone.type === 'line' || nextClone.type === 'arrow') && nextClone.x1 !== undefined) {
+            nextClone.x1 += 24; nextClone.y1 += 24; nextClone.x2 += 24; nextClone.y2 += 24;
+        }
+        return nextClone;
+    });
+
+    selectedElementIds = newSelected;
+    scheduleAutoSave();
+    renderCanvas();
+    updateFormattingBar();
+    renderCanvas();
+};
+
 window.bringSelectedToFront = function () {
     if (selectedElementIds.size === 0) return;
     pushUndoState();
@@ -6673,11 +6493,9 @@ window.sendSelectedToBack = function () {
 // --- 10. KEYBOARD SHORTCUTS ---
 function setupKeyboardShortcuts() {
     window.addEventListener('keydown', (e) => {
-        // Ignore if typing inside input / textarea
         if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
 
         if (currentBoard?.isReadOnly) {
-            // Read-only mode: students cannot edit teacher boards with shortcuts
             if (e.key === 'Escape') {
                 selectedElementIds.clear();
                 renderCanvas();
@@ -6694,6 +6512,16 @@ function setupKeyboardShortcuts() {
         } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
             e.preventDefault();
             window.redo();
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+            if (selectedElementIds.size > 0) {
+                e.preventDefault();
+                window.copySelectedElements();
+            }
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+            if (whiteboardClipboard.length > 0) {
+                e.preventDefault();
+                window.pasteCopiedElements();
+            }
         } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
             e.preventDefault();
             window.duplicateSelectedElements();
@@ -6778,6 +6606,8 @@ function setupKeyboardShortcuts() {
             setWhiteboardTool('line');
         } else if (e.key.toLowerCase() === 'a') {
             setWhiteboardTool('arrow');
+        } else if (e.key.toLowerCase() === 'i') {
+            setWhiteboardTool('picker');
         } else if (e.key.toLowerCase() === 'm') {
             isMagnetSnapping = !isMagnetSnapping;
             const btnSnapMagnet = document.getElementById('btnSnapMagnet');
@@ -6787,154 +6617,3 @@ function setupKeyboardShortcuts() {
         }
     });
 }
-
-// --- UTILITY DRAWING HELPERS ---
-function roundRect(ctx, x, y, width, height, radius = 8, fill = true, stroke = false) {
-    ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.lineTo(x + width - radius, y);
-    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-    ctx.lineTo(x + width, y + height - radius);
-    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-    ctx.lineTo(x + radius, y + height);
-    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-    ctx.lineTo(x, y + radius);
-    ctx.quadraticCurveTo(x, y, x + radius, y);
-    ctx.closePath();
-    if (fill) ctx.fill();
-    if (stroke) ctx.stroke();
-}
-
-function renderElementText(ctx, text, boxX, boxY, boxW, boxH, fontSize, lineHeight, textAlign = 'left', textVAlign = 'top', padding = { top: 0, right: 0, bottom: 0, left: 0 }, isUnderline = false) {
-    if (!text) return;
-    const padTop = padding.top !== undefined ? padding.top : 0;
-    const padBottom = padding.bottom !== undefined ? padding.bottom : 0;
-    const padLeft = padding.left !== undefined ? padding.left : 0;
-    const padRight = padding.right !== undefined ? padding.right : 0;
-
-    const availW = Math.max(10, boxW - padLeft - padRight);
-    const availH = Math.max(10, boxH - padTop - padBottom);
-
-    const wrappedLines = [];
-    const paragraphs = (text || '').split('\n');
-    for (let p = 0; p < paragraphs.length; p++) {
-        const words = paragraphs[p].split(' ');
-        let currentLine = '';
-        for (let n = 0; n < words.length; n++) {
-            const word = words[n];
-            const testLine = currentLine ? currentLine + ' ' + word : word;
-            const metrics = ctx.measureText(testLine);
-            if (metrics.width > availW && currentLine) {
-                wrappedLines.push(currentLine);
-                currentLine = word;
-            } else {
-                currentLine = testLine;
-            }
-        }
-        wrappedLines.push(currentLine);
-    }
-
-    if (wrappedLines.length === 0) return;
-
-    const totalTextHeight = wrappedLines.length * lineHeight;
-
-    let startY;
-    if (textVAlign === 'middle' || textVAlign === 'center') {
-        startY = boxY + padTop + Math.max(0, (availH - totalTextHeight) / 2) + fontSize * 0.88;
-    } else if (textVAlign === 'bottom') {
-        startY = boxY + boxH - padBottom - totalTextHeight + fontSize * 0.88;
-    } else { // 'top'
-        startY = boxY + padTop + fontSize * 0.88;
-    }
-
-    ctx.save();
-    ctx.textAlign = 'left';
-    for (let i = 0; i < wrappedLines.length; i++) {
-        const line = wrappedLines[i];
-        const lineMetrics = ctx.measureText(line);
-        let drawX;
-        if (textAlign === 'center') {
-            drawX = boxX + padLeft + Math.max(0, (availW - lineMetrics.width) / 2);
-        } else if (textAlign === 'right') {
-            drawX = boxX + boxW - padRight - lineMetrics.width;
-        } else { // 'left'
-            drawX = boxX + padLeft;
-        }
-
-        const baselineY = startY + i * lineHeight;
-        ctx.fillText(line, drawX, baselineY);
-
-        if (isUnderline && line.trim().length > 0) {
-            ctx.save();
-            ctx.strokeStyle = ctx.fillStyle;
-            ctx.lineWidth = Math.max(1, Math.round(fontSize / 14));
-            const underlineY = baselineY + Math.max(2, Math.round(fontSize * 0.12));
-            ctx.beginPath();
-            ctx.moveTo(drawX, underlineY);
-            ctx.lineTo(drawX + lineMetrics.width, underlineY);
-            ctx.stroke();
-            ctx.restore();
-        }
-    }
-    ctx.restore();
-}
-
-function wrapText(ctx, text, x, y, maxWidth, lineHeight, center = false) {
-    const align = center ? 'center' : 'left';
-    renderElementText(ctx, text, x, y - 16 * 0.88, maxWidth, 1000, 16, lineHeight, align, 'top', { top: 0, right: 0, bottom: 0, left: 0 });
-}
-
-function drawStarPath(ctx, cx, cy, spikes = 5, outerRadius = 30, innerRadius = 15) {
-    let rot = (Math.PI / 2) * 3;
-    let x = cx;
-    let y = cy;
-    const step = Math.PI / spikes;
-
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - outerRadius);
-    for (let i = 0; i < spikes; i++) {
-        x = cx + Math.cos(rot) * outerRadius;
-        y = cy + Math.sin(rot) * outerRadius;
-        ctx.lineTo(x, y);
-        rot += step;
-
-        x = cx + Math.cos(rot) * innerRadius;
-        y = cy + Math.sin(rot) * innerRadius;
-        ctx.lineTo(x, y);
-        rot += step;
-    }
-    ctx.lineTo(cx, cy - outerRadius);
-    ctx.closePath();
-}
-
-function drawSpeechBubblePath(ctx, x, y, w, h) {
-    const r = 12;
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-    ctx.lineTo(x + 40, y + h);
-    ctx.lineTo(x + 20, y + h + 16);
-    ctx.lineTo(x + 26, y + h);
-    ctx.lineTo(x + r, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
-    ctx.closePath();
-}
-
-function drawArrowHead(ctx, fromX, fromY, toX, toY, headLength = 10) {
-    const angle = Math.atan2(toY - fromY, toX - fromX);
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(toX, toY);
-    ctx.lineTo(toX - headLength * Math.cos(angle - Math.PI / 6), toY - headLength * Math.sin(angle - Math.PI / 6));
-    ctx.lineTo(toX - headLength * Math.cos(angle + Math.PI / 6), toY - headLength * Math.sin(angle + Math.PI / 6));
-    ctx.closePath();
-    ctx.fillStyle = ctx.strokeStyle;
-    ctx.fill();
-    ctx.restore();
-}
-
