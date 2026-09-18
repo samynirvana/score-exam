@@ -199,7 +199,9 @@ async function handleStudentLogin() {
     if (rawUser.includes('@')) {
         try {
             await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+            sessionStorage.setItem('analyticsPendingLogin', 'staff');
             await signInWithEmailAndPassword(auth, rawUser, rawPass);
+            sessionStorage.removeItem('studentLoggedInSession');
             localStorage.removeItem(rememberedStudentKey);
             if (window.portalSession?.recordLogin) {
                 window.portalSession.recordLogin(rememberMe, 'staff');
@@ -213,6 +215,7 @@ async function handleStudentLogin() {
             window.location.href = "admin.html";
             return;
         } catch (err) {
+            sessionStorage.removeItem('analyticsPendingLogin');
             console.error("Staff Login Error:", err);
             if (errBox) {
                 let msg = "Staff Login Failed: Invalid email or password.";
@@ -286,6 +289,7 @@ async function handleStudentLogin() {
 
         // Save session in sessionStorage
         sessionStorage.setItem('studentLoggedInSession', JSON.stringify(loggedInStudent));
+        sessionStorage.setItem('analyticsPendingLogin', 'student');
         sessionStorage.setItem('studentTimelineSession', JSON.stringify({
             type: 'student',
             name: loggedInStudent.name,

@@ -11,6 +11,45 @@ service cloud.firestore {
       return isAuthenticated();
     }
 
+    function isAdmin() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Analytics can be read only by admins. Student sessions are custom sessions,
+    // so their event writes are limited to known student codes and fixed fields.
+    match /user_activity_events/{eventId} {
+      allow read: if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly(['userKey', 'role', 'type', 'at'])
+        && request.resource.data.keys().hasAll(['userKey', 'role', 'type', 'at'])
+        && request.resource.data.at == request.time
+        && request.resource.data.type == 'login'
+        && ((request.resource.data.role == 'staff'
+          && isAuthenticated()
+          && request.resource.data.userKey == 'staff:' + request.auth.uid)
+          || (request.resource.data.role == 'student'
+          && request.resource.data.userKey.matches('student:[A-Za-z0-9_-]{1,32}')
+          && exists(/databases/$(database)/documents/students/$(request.resource.data.userKey.split(':')[1]))));
+      allow update, delete: if false;
+    }
+
+    match /user_activity/{activityId} {
+      allow read: if isAdmin();
+      allow create, update: if request.resource.data.keys().hasOnly(['userKey', 'role', 'lastLogin', 'lastAction', 'lastActionAt', 'lastExit', 'lastPage', 'lastVisit'])
+        && request.resource.data.keys().hasAll(['userKey', 'role', 'lastLogin'])
+        && request.resource.data.lastLogin == request.time
+        && ((request.resource.data.role == 'staff'
+          && isAuthenticated()
+          && activityId == 'staff_' + request.auth.uid
+          && request.resource.data.userKey == 'staff:' + request.auth.uid)
+          || (request.resource.data.role == 'student'
+          && request.resource.data.userKey.matches('student:[A-Za-z0-9_-]{1,32}')
+          && activityId == 'student_' + request.resource.data.userKey.split(':')[1]
+          && exists(/databases/$(database)/documents/students/$(request.resource.data.userKey.split(':')[1]))));
+      allow delete: if false;
+    }
+
     // 1. Students & Student Profiles
     // Students can read and update (e.g., photoUrl); Staff/Admin can create/delete
     match /students/{studentId} {
@@ -134,9 +173,9 @@ service cloud.firestore {
     }
 
     // Default fallback for any other subcollections
-    match /{document=**} {
-      allow read: if true;
-      allow write: if isStaffOrAdmin();
+    match /{topCollection}/{document=**} {
+      allow read: if topCollection != 'user_activity_events' && topCollection != 'user_activity';
+      allow write: if topCollection != 'user_activity_events' && topCollection != 'user_activity' && isStaffOrAdmin();
     }
   }
 }

@@ -355,6 +355,9 @@ onAuthStateChanged(auth, async (user) => {
 
 async function logoutAdmin() {
     try {
+        sessionStorage.removeItem('analyticsPendingLogin');
+        sessionStorage.removeItem('analyticsSessionActive');
+        sessionStorage.removeItem('analyticsSessionEnded');
         localStorage.removeItem('portalSessionMeta');
         localStorage.removeItem('portalRememberedStudent');
         localStorage.removeItem('loggedInStudentCode');

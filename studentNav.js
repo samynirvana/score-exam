@@ -1,5 +1,8 @@
 // --- PORTAL SESSION & AUTO-EXPIRATION MANAGEMENT ---
 const APP_SESSION_META_KEY = 'portalSessionMeta';
+// Page analytics is shared by the student and staff navigation shells.
+import('./js/userActivity.js').then(({ trackCurrentPage }) => trackCurrentPage())
+    .catch(error => console.warn('Activity tracking unavailable:', error));
 const SESSION_MAX_IDLE_MS = 60 * 60 * 1000; // 1 hour for non-remembered logins
 
 const getAppSessionMeta = () => {
@@ -47,6 +50,9 @@ const clearAllPortalSessions = async (signOutAuth = true) => {
         localStorage.removeItem(APP_SESSION_META_KEY);
         sessionStorage.removeItem('studentLoggedInSession');
         sessionStorage.removeItem('studentTimelineSession');
+        sessionStorage.removeItem('analyticsPendingLogin');
+        sessionStorage.removeItem('analyticsSessionActive');
+        sessionStorage.removeItem('analyticsSessionEnded');
 
         if (signOutAuth) {
             try {
@@ -107,13 +113,6 @@ document.addEventListener('visibilitychange', () => {
         checkSessionValidity();
     }
 });
-
-// Clear remembered login & session meta on explicit user logout button clicks
-document.addEventListener('click', (event) => {
-    if (event.target.closest?.('#studentLogoutBtn, #mobileKebabLogoutBtn, #logoutBtn, #btnLogout')) {
-        clearAllPortalSessions(true);
-    }
-}, true);
 
 // Run session validity check on initial script load
 checkSessionValidity();

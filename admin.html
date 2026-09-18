@@ -161,6 +161,10 @@
                         </svg>
                     </button>
                     <div class="submenu" id="databasesSubmenu">
+                        <a class="submenu-btn" href="analyticuser.html" id="subtabUserAnalytics" style="text-decoration:none">
+                            <svg class="submenu-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m6 16 5-5 4 3 5-7"/></svg>
+                            <span>User Analytics</span>
+                        </a>
                         <button class="submenu-btn" data-tab="tab-view-ledgers" data-subtab="students"
                             id="subtabStudents">
                             <svg class="submenu-icon" viewBox="0 0 24 24" width="16" height="16" fill="none"
@@ -444,6 +448,7 @@
                         <svg class="mobile-db-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
 </button>
                     <div id="mobileDatabasesSubmenu" class="mobile-db-submenu admin-only-view" hidden>
+                        <a class="kebab-item mobile-db-subtab" href="analyticuser.html" style="text-decoration:none"><span>User Analytics</span></a>
                         <button class="kebab-item mobile-db-subtab" data-tab="tab-view-ledgers" data-subtab="students"
                             id="mobileSubtabStudents">
                             <svg class="submenu-icon" viewBox="0 0 24 24" width="16" height="16" fill="none"
@@ -4626,7 +4631,7 @@
         <div id="studentAttendanceRecords" class="student-att-records"></div>
     </dialog>
 
-    <script src="studentNav.js?v=432"></script>
+    <script src="studentNav.js?v=451"></script>
     <script type="module" src="admin.js?v=440"></script>
 </body>
 

@@ -108,6 +108,8 @@ async function populateAttendanceSubjects() {
 
     const uniqueSubjects = new Set();
     const currentRole = getUserRole();
+    const currentSubject = getTeacherSubject();
+    subjectSelect.disabled = false;
     if (currentRole === 'admin') {
         try {
             const usersSnap = await getDocs(collection(db, "users"));
@@ -121,8 +123,8 @@ async function populateAttendanceSubjects() {
         } catch (e) {
             console.warn("Could not query teacher subjects from users collection:", e);
         }
-    } else if (teacherSubject && teacherSubject !== "Unassigned") {
-        curSub.split(',').map(s => s.trim()).filter(Boolean).forEach(s => uniqueSubjects.add(s));
+    } else if (currentSubject && currentSubject !== "Unassigned") {
+        currentSubject.split(',').map(s => s.trim()).filter(Boolean).forEach(s => uniqueSubjects.add(s));
     }
 
     // Populate dropdown with database-synced teacher subjects
@@ -133,8 +135,8 @@ async function populateAttendanceSubjects() {
         subjectSelect.appendChild(opt);
     });
 
-    if (userRole === 'teacher' && teacherSubject && teacherSubject !== "Unassigned") {
-        const teacherSubs = teacherSubject.split(',').map(s => s.trim()).filter(Boolean);
+    if (currentRole === 'teacher' && currentSubject && currentSubject !== "Unassigned") {
+        const teacherSubs = currentSubject.split(',').map(s => s.trim()).filter(Boolean);
         if (teacherSubs.length > 0) {
             subjectSelect.value = teacherSubs[0];
             if (teacherSubs.length === 1) {
