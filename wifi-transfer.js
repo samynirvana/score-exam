@@ -1,12 +1,20 @@
 // wifi-transfer.js - Ultra-fast Wi-Fi Direct (WebRTC) & Real-time Room Sync Data Transfer
 // Enables seamless phone-to-PC & student file/photo/text sharing with zero app installation.
 
+import { collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { defaultDb, db } from "./firebase.js";
+
 class WifiDataTransferManager {
     constructor() {
         this.roomCode = this.resolveRoomCode();
         this.myDeviceId = 'dev_' + Math.random().toString(36).substring(2, 9);
         this.myDeviceName = localStorage.getItem('mks_wifi_dev_name') || this.detectDeviceDefaultName();
         this.deviceType = this.detectDeviceType();
+        this.customHost = localStorage.getItem('mks_wifi_custom_host') || '';
+        
+        // Use defaultDb or db for realtime room signaling
+        this.signalDb = defaultDb || db;
+        this.firestoreUnsub = null;
         
         this.peer = null;
         this.activeConnections = new Map(); // peerId -> DataConnection
@@ -27,6 +35,9 @@ class WifiDataTransferManager {
             wifiModalQrHolder: document.getElementById('wifiModalQrHolder'),
             wifiModalRoomUrl: document.getElementById('wifiModalRoomUrl'),
             btnCopyModalUrl: document.getElementById('btnCopyModalUrl'),
+            wifiLocalIpHint: document.getElementById('wifiLocalIpHint'),
+            wifiCustomHostInput: document.getElementById('wifiCustomHostInput'),
+            btnApplyCustomHost: document.getElementById('btnApplyCustomHost'),
             miniQrContainer: document.getElementById('wifiMiniQrContainer'),
             deviceCountBadge: document.getElementById('wifiDeviceCountBadge'),
             deviceCardList: document.getElementById('wifiDeviceCardList'),
@@ -93,7 +104,24 @@ class WifiDataTransferManager {
     }
 
     getRoomPairUrl() {
-        const url = new URL(window.location.href);
+        let url;
+        const currentOrigin = window.location.origin;
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+        if (isLocal && this.customHost) {
+            let hostStr = this.customHost.trim();
+            if (!hostStr.startsWith('http://') && !hostStr.startsWith('https://')) {
+                hostStr = 'http://' + hostStr;
+            }
+            try {
+                url = new URL(hostStr + window.location.pathname);
+            } catch (e) {
+                url = new URL(window.location.href);
+            }
+        } else {
+            url = new URL(window.location.href);
+        }
+
         url.searchParams.set('room', this.roomCode);
         url.searchParams.set('tool', 'wifi');
         return url.toString();
@@ -105,12 +133,34 @@ class WifiDataTransferManager {
         this.generateQRCodes();
         this.initPeerConnection();
         this.setupBroadcastChannel();
+        this.setupFirestoreSignaling();
     }
 
     setupUIBindings() {
         if (this.dom.roomCodeDisplay) {
             this.dom.roomCodeDisplay.innerText = this.roomCode;
         }
+
+        // Check if running on localhost to show Wi-Fi IP helper
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        if (isLocal && this.dom.wifiLocalIpHint) {
+            this.dom.wifiLocalIpHint.style.display = 'block';
+            if (this.dom.wifiCustomHostInput) {
+                const port = window.location.port ? `:${window.location.port}` : '';
+                this.dom.wifiCustomHostInput.value = this.customHost || `192.168.1.4${port}`;
+            }
+        }
+
+        this.dom.btnApplyCustomHost?.addEventListener('click', () => {
+            const val = this.dom.wifiCustomHostInput?.value.trim();
+            if (val) {
+                this.customHost = val;
+                localStorage.setItem('mks_wifi_custom_host', val);
+                this.renderMyDeviceUI();
+                this.generateQRCodes();
+                this.showToast('Updated QR code with IP: ' + val);
+            }
+        });
 
         // Copy Room Code / Link
         const copyAction = async (txt, successMsg) => {
@@ -415,57 +465,135 @@ class WifiDataTransferManager {
         });
     }
 
+    // =========================================================================
+    // FIRESTORE REAL-TIME SIGNALING & DISCOVERY ACROSS PHYSICAL DEVICES
+    // =========================================================================
+    setupFirestoreSignaling() {
+        if (!this.signalDb || !this.roomCode) return;
+
+        try {
+            const peersCol = collection(this.signalDb, 'wifiRooms', this.roomCode, 'peers');
+            if (this.firestoreUnsub) {
+                try { this.firestoreUnsub(); } catch (e) {}
+            }
+
+            this.firestoreUnsub = onSnapshot(peersCol, (snapshot) => {
+                const now = Date.now();
+                snapshot.docChanges().forEach(change => {
+                    const data = change.doc.data();
+                    const peerId = change.doc.id;
+
+                    if (change.type === 'removed') {
+                        if (peerId !== this.peer?.id) {
+                            this.nearbyPeers.delete(peerId);
+                            this.renderDeviceList();
+                        }
+                    } else if (change.type === 'added' || change.type === 'modified') {
+                        if (peerId !== this.peer?.id) {
+                            this.registerPeerInfo(peerId, {
+                                id: peerId,
+                                name: data.name || 'Nearby Device',
+                                type: data.type || 'phone'
+                            });
+
+                            // Auto-connect to remote peer via WebRTC if not yet connected
+                            if (this.peer && !this.activeConnections.has(peerId)) {
+                                this.connectToPeer(peerId, data.name, data.type);
+                            }
+                        }
+                    }
+                });
+            }, (err) => {
+                console.warn('Firestore room signaling listener status:', err);
+            });
+
+            // Listen for room fallback messages / clipboard text
+            const msgsCol = collection(this.signalDb, 'wifiRooms', this.roomCode, 'messages');
+            this.firestoreMsgsUnsub = onSnapshot(msgsCol, (snapshot) => {
+                snapshot.docChanges().forEach(change => {
+                    if (change.type === 'added') {
+                        const msg = change.doc.data();
+                        if (msg.senderDeviceId !== this.myDeviceId) {
+                            // Check if not already in transferHistory
+                            const exists = this.transferHistory.some(item => item.firestoreId === change.doc.id);
+                            if (!exists) {
+                                this.playNotificationChime('message');
+                                this.addFeedItem({
+                                    firestoreId: change.doc.id,
+                                    type: 'text',
+                                    senderName: msg.senderName || 'Peer Device',
+                                    text: msg.content,
+                                    timestamp: msg.timestamp || Date.now()
+                                });
+                                this.showToast(`Text received from ${msg.senderName || 'Device'}`);
+                            }
+                        }
+                    }
+                });
+            }, () => {});
+
+            // Setup presence write on beforeunload
+            window.addEventListener('beforeunload', () => {
+                this.removeFirestorePresence();
+            });
+        } catch (err) {
+            console.warn('Firestore signaling setup error:', err);
+        }
+    }
+
+    async updateFirestorePresence() {
+        if (!this.signalDb || !this.peer || !this.peer.id) return;
+        try {
+            const peerRef = doc(this.signalDb, 'wifiRooms', this.roomCode, 'peers', this.peer.id);
+            await setDoc(peerRef, {
+                deviceId: this.myDeviceId,
+                name: this.myDeviceName,
+                type: this.deviceType,
+                lastSeen: Date.now()
+            }, { merge: true });
+        } catch (err) {
+            console.warn('Firestore presence heartbeat error:', err);
+        }
+    }
+
+    async removeFirestorePresence() {
+        if (!this.signalDb || !this.peer || !this.peer.id) return;
+        try {
+            const peerRef = doc(this.signalDb, 'wifiRooms', this.roomCode, 'peers', this.peer.id);
+            await deleteDoc(peerRef);
+        } catch (e) {}
+    }
+
     scanAndConnectRoomPeers() {
-        // Room broadcast mechanism via localStorage heartbeat for devices on the same domain/network
+        // 1. Write presence to Firestore immediately
+        this.updateFirestorePresence();
+
+        // 2. Heartbeat interval every 12 seconds
+        if (this.firestoreHeartbeat) clearInterval(this.firestoreHeartbeat);
+        this.firestoreHeartbeat = setInterval(() => {
+            this.updateFirestorePresence();
+        }, 12000);
+
+        // 3. Fallback Local Storage & BroadcastChannel heartbeat for same-device multi-tab testing
         const roomHeartbeatKey = 'mks_room_peers_' + this.roomCode;
         try {
             const existingRaw = localStorage.getItem(roomHeartbeatKey);
             let peers = existingRaw ? JSON.parse(existingRaw) : {};
             const now = Date.now();
 
-            // Prune dead peers (>45s inactive)
             Object.keys(peers).forEach(pid => {
-                if (now - peers[pid].lastSeen > 45000) {
-                    delete peers[pid];
-                }
-            });
-
-            // Connect to other active peers in room
-            Object.keys(peers).forEach(pid => {
-                if (pid !== this.peer.id) {
+                if (now - peers[pid].lastSeen > 45000) delete peers[pid];
+                else if (pid !== this.peer.id) {
                     this.connectToPeer(pid, peers[pid].name, peers[pid].type);
                 }
             });
 
-            // Add self
             peers[this.peer.id] = {
                 name: this.myDeviceName,
                 type: this.deviceType,
                 lastSeen: now
             };
             localStorage.setItem(roomHeartbeatKey, JSON.stringify(peers));
-
-            // Heartbeat interval
-            if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
-            this.heartbeatInterval = setInterval(() => {
-                try {
-                    const raw = localStorage.getItem(roomHeartbeatKey);
-                    let pMap = raw ? JSON.parse(raw) : {};
-                    const curTime = Date.now();
-                    Object.keys(pMap).forEach(pid => {
-                        if (curTime - pMap[pid].lastSeen > 45000) delete pMap[pid];
-                        else if (pid !== this.peer.id && !this.activeConnections.has(pid)) {
-                            this.connectToPeer(pid, pMap[pid].name, pMap[pid].type);
-                        }
-                    });
-                    pMap[this.peer.id] = {
-                        name: this.myDeviceName,
-                        type: this.deviceType,
-                        lastSeen: curTime
-                    };
-                    localStorage.setItem(roomHeartbeatKey, JSON.stringify(pMap));
-                } catch (e) {}
-            }, 5000);
         } catch (e) {}
     }
 
@@ -701,10 +829,25 @@ class WifiDataTransferManager {
             isOutgoing: true
         });
 
+        // Also broadcast via Firestore real-time collection so phone ⇄ computer get it instantly even if WebRTC encounters strict NAT/firewall
+        if (this.signalDb && this.roomCode) {
+            try {
+                const msgRef = doc(collection(this.signalDb, 'wifiRooms', this.roomCode, 'messages'));
+                setDoc(msgRef, {
+                    senderDeviceId: this.myDeviceId,
+                    senderName: this.myDeviceName,
+                    content: text,
+                    timestamp: Date.now()
+                });
+            } catch (e) {
+                console.warn('Firestore fallback sync warning:', e);
+            }
+        }
+
         if (this.dom.textInput) this.dom.textInput.value = '';
 
         if (sentCount === 0) {
-            this.showToast('Note saved locally. Connect your phone via QR to sync wirelessly!');
+            this.showToast('Synced to room cloud! Connect via QR code to complete P2P pairing.');
         } else {
             this.showToast(`Sent to ${sentCount} connected ${sentCount === 1 ? 'device' : 'devices'}!`);
             this.playNotificationChime('send');

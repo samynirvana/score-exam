@@ -66,13 +66,15 @@ const checkSessionValidity = async () => {
     const meta = getAppSessionMeta();
     const currentPath = window.location.pathname.split('/').pop() || 'index.html';
     const isLoginPage = currentPath === 'index.html' || currentPath === '';
+    const urlParams = new URLSearchParams(window.location.search);
+    const isWifiJoin = urlParams.has('room') || urlParams.get('tool') === 'wifi';
 
     if (meta && !meta.rememberMe) {
         const elapsed = Date.now() - (Number(meta.lastActive) || 0);
         if (elapsed > SESSION_MAX_IDLE_MS) {
             console.warn(`[Security] Session expired (> 1 hour inactive without Remember Me). Elapsed: ${Math.round(elapsed / 60000)}m. Logging out.`);
             await clearAllPortalSessions(true);
-            if (!isLoginPage && currentPath !== 'maintenance.html') {
+            if (!isLoginPage && currentPath !== 'maintenance.html' && !isWifiJoin) {
                 window.location.replace('index.html');
             }
             return false;

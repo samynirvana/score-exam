@@ -1,15 +1,19 @@
 import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { db, auth } from "./firebase.js";
-import { initWifiDataTransfer } from "./wifi-transfer.js?v=440";
+import { initWifiDataTransfer } from "./wifi-transfer.js?v=441";
 
 // ==========================================================================
 // 0. AUTHENTICATION & ACCESS GUARD
 // ==========================================================================
 onAuthStateChanged(auth, (user) => {
-    // Both teachers/admins and students can access, but if unauthenticated and no student session, redirect to portal
+    // Check if user is joining a Wi-Fi transfer session (?room= or ?tool=wifi)
+    const urlParams = new URLSearchParams(window.location.search);
+    const isWifiJoin = urlParams.has('room') || urlParams.get('tool') === 'wifi';
+    
+    // Both teachers/admins and students can access, but if unauthenticated, no student session, and not joining wifi room, redirect to portal
     const hasStudentSession = sessionStorage.getItem('studentLoggedInSession') || localStorage.getItem('portalRememberedStudent');
-    if (!user && !hasStudentSession) {
+    if (!user && !hasStudentSession && !isWifiJoin) {
         window.location.replace("index.html");
     }
 });

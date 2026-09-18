@@ -2735,17 +2735,72 @@ function setupCanvasEventListeners() {
         }
     }, true);
 
-    // Touch Support
+    // Touch Support (Single finger draw/select/drag, Two-finger pinch-to-zoom and pan)
+    let touchStartDist = 0;
+    let touchStartCenter = { x: 0, y: 0 };
+    let touchStartCamera = { x: 0, y: 0, zoom: 1 };
+    let isPinchZooming = false;
+
     surface.addEventListener('touchstart', (e) => {
-        if (e.touches.length === 1) onPointerDown(touchToMouseEvent(e.touches[0]));
+        if (e.touches.length === 1) {
+            isPinchZooming = false;
+            onPointerDown(touchToMouseEvent(e.touches[0]));
+        } else if (e.touches.length === 2) {
+            e.preventDefault();
+            isPinchZooming = true;
+            isDragging = false;
+            isDrawing = false;
+            isResizing = false;
+            isBoxSelecting = false;
+            const t1 = e.touches[0];
+            const t2 = e.touches[1];
+            touchStartDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+            touchStartCenter = {
+                x: (t1.clientX + t2.clientX) / 2,
+                y: (t1.clientY + t2.clientY) / 2
+            };
+            touchStartCamera = { ...camera };
+        }
     }, { passive: false });
 
     surface.addEventListener('touchmove', (e) => {
-        if (e.touches.length === 1) onPointerMove(touchToMouseEvent(e.touches[0]));
+        if (e.touches.length === 1 && !isPinchZooming) {
+            onPointerMove(touchToMouseEvent(e.touches[0]));
+        } else if (e.touches.length === 2 && isPinchZooming) {
+            e.preventDefault();
+            const t1 = e.touches[0];
+            const t2 = e.touches[1];
+            const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+            const currentCenter = {
+                x: (t1.clientX + t2.clientX) / 2,
+                y: (t1.clientY + t2.clientY) / 2
+            };
+
+            if (touchStartDist > 0) {
+                const scaleFactor = currentDist / touchStartDist;
+                const targetZoom = Math.max(0.2, Math.min(3, touchStartCamera.zoom * scaleFactor));
+                const surfaceRect = surface.getBoundingClientRect();
+                const cx = touchStartCenter.x - surfaceRect.left;
+                const cy = touchStartCenter.y - surfaceRect.top;
+
+                camera.zoom = targetZoom;
+                camera.x = cx - (cx - touchStartCamera.x) * (targetZoom / touchStartCamera.zoom) + (currentCenter.x - touchStartCenter.x);
+                camera.y = cy - (cy - touchStartCamera.y) * (targetZoom / touchStartCamera.zoom) + (currentCenter.y - touchStartCenter.y);
+
+                updateZoomDisplay();
+                renderCanvas();
+            }
+        }
     }, { passive: false });
 
     surface.addEventListener('touchend', (e) => {
-        onPointerUp(e);
+        if (isPinchZooming) {
+            if (e.touches.length === 0) {
+                isPinchZooming = false;
+            }
+        } else {
+            onPointerUp(e);
+        }
     });
 
     // Zoom on Mouse Wheel

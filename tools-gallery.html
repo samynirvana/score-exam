@@ -2275,6 +2275,17 @@
                 <div class="wifi-qr-holder" id="wifiModalQrHolder" style="padding: 16px; border-radius: 16px; background: #ffffff;"></div>
             </div>
 
+            <div id="wifiLocalIpHint" style="display: none; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 10px 12px; margin-bottom: 16px; text-align: left;">
+                <div style="font-size: 11px; font-weight: 800; color: #b45309; text-transform: uppercase; margin-bottom: 4px;">Local Dev Notice: Same Wi-Fi Connection</div>
+                <div style="font-size: 11.5px; color: #92400e; margin-bottom: 8px;">
+                    Phones cannot open <code>localhost</code>. Enter your PC Wi-Fi IP (e.g. <code>192.168.1.4</code>) below so your phone QR code points to your computer:
+                </div>
+                <div style="display: flex; gap: 6px;">
+                    <input type="text" id="wifiCustomHostInput" placeholder="192.168.1.4:5500" style="font-size: 12px; padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.4); width: 100%; font-family: monospace;">
+                    <button id="btnApplyCustomHost" class="btn-primary" style="padding: 6px 12px; font-size: 11.5px; border-radius: 8px; white-space: nowrap;">Update QR</button>
+                </div>
+            </div>
+
             <div style="background: rgba(15, 23, 42, 0.04); border-radius: 14px; padding: 14px; margin-bottom: 20px; text-align: left;">
                 <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--text-muted, #64748b); margin-bottom: 4px;">Direct Room Link / Code</div>
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
@@ -2288,7 +2299,7 @@
     </div>
 
     <!-- AUDIO FOR TIMER & WHEEL (SYNTHESIZED WEB AUDIO API) -->
-    <script type="module" src="tools-gallery.js?v=440"></script>
+    <script type="module" src="tools-gallery.js?v=441"></script>
     <script type="module" src="studentNav.js?v=385"></script>
 </body>
 
