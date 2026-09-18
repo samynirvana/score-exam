@@ -1457,6 +1457,268 @@
             transition: width 0.15s ease;
             width: 0%;
         }
+
+        /* ============================================================
+           MOBILE & TABLET RESPONSIVE ENHANCEMENTS
+           ============================================================ */
+        @media (max-width: 1024px) {
+            .tools-page-container {
+                padding: 16px 20px 40px;
+            }
+            .converter-io-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            .conv-swap-btn {
+                margin: 0 auto;
+                transform: rotate(90deg);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .tools-page-container {
+                padding: 12px 14px 48px;
+            }
+
+            /* Hero Banner */
+            .tools-hero-banner {
+                padding: 22px 18px;
+                border-radius: 16px;
+                margin-bottom: 16px;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 14px;
+            }
+
+            .tools-hero-title {
+                font-size: 22px;
+            }
+
+            .tools-hero-desc {
+                font-size: 13px;
+            }
+
+            /* Scrollable Pill Navigation with smooth swipe */
+            .tools-nav-pills {
+                display: flex;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                padding: 6px 8px;
+                gap: 6px;
+                border-radius: 12px;
+                scrollbar-width: none;
+                margin-bottom: 16px;
+            }
+
+            .tools-nav-pills::-webkit-scrollbar {
+                display: none;
+            }
+
+            .tool-nav-btn {
+                white-space: nowrap;
+                padding: 8px 14px;
+                font-size: 13px;
+                flex-shrink: 0;
+            }
+
+            .tool-card {
+                padding: 16px;
+                border-radius: 14px;
+            }
+
+            /* TOOL 1: Notes */
+            .notes-layout {
+                grid-template-columns: 1fr;
+                gap: 14px;
+            }
+
+            .notes-sidebar {
+                padding: 14px;
+            }
+
+            .note-editor-pane {
+                padding: 16px;
+            }
+
+            .note-title-input {
+                font-size: 16px !important;
+            }
+
+            /* TOOL 2: Calculator */
+            .calculator-wrapper {
+                max-width: 100%;
+                padding: 16px 14px;
+                border-radius: 18px;
+            }
+
+            .calc-screen {
+                padding: 14px 16px;
+                margin-bottom: 14px;
+                border-radius: 14px;
+            }
+
+            .calc-current {
+                font-size: 30px;
+            }
+
+            .calc-btn {
+                height: 52px;
+                font-size: 18px;
+                border-radius: 13px;
+            }
+
+            .calc-btn.sci {
+                height: 42px;
+                font-size: 12.5px;
+            }
+
+            .calc-scientific-section {
+                gap: 6px;
+            }
+
+            .calc-grid {
+                gap: 8px;
+            }
+
+            /* TOOL 3: Timer & Stopwatch */
+            .timer-grid-layout {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .big-time-display {
+                font-size: 48px;
+                padding: 24px 10px;
+                margin-bottom: 18px;
+            }
+
+            .timer-btn-row {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            .timer-btn-row button {
+                flex: 1 1 calc(50% - 8px);
+                min-width: 100px;
+                padding: 12px 14px !important;
+            }
+
+            /* TOOL 4: Wheel Spinner */
+            .randomizer-layout {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .wheel-wrapper {
+                width: 320px;
+                height: 320px;
+                max-width: 90vw;
+                max-height: 90vw;
+            }
+
+            .wheel-center-cap {
+                width: 60px;
+                height: 60px;
+                font-size: 13px;
+            }
+
+            .wheel-settings-box {
+                padding: 12px;
+            }
+
+            /* TOOL 5: Converter */
+            .conv-cat-btn {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+
+            .converter-card-main {
+                padding: 16px;
+            }
+
+            .converter-input-val {
+                font-size: 24px;
+            }
+
+            /* TOOL 6: Wi-Fi Transfer */
+            .wifi-hero-card {
+                padding: 18px 16px;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 14px;
+            }
+
+            .wifi-hero-actions {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            .wifi-grid-layout {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .wifi-dropzone {
+                padding: 24px 16px;
+            }
+
+            .wifi-clip-card, .wifi-feed-card {
+                padding: 16px;
+            }
+
+            .wifi-feed-item {
+                padding: 12px 14px;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .wifi-feed-item > div:last-child {
+                width: 100%;
+                display: flex;
+                justify-content: flex-end;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .tools-page-container {
+                padding: 8px 10px 40px;
+            }
+
+            .tools-hero-banner {
+                padding: 16px 14px;
+            }
+
+            .tools-hero-title {
+                font-size: 20px;
+            }
+
+            .calc-btn {
+                height: 48px;
+                font-size: 16px;
+            }
+
+            .big-time-display {
+                font-size: 40px;
+                padding: 18px 8px;
+            }
+
+            .wheel-wrapper {
+                width: 280px;
+                height: 280px;
+            }
+
+            .wheel-center-cap {
+                width: 52px;
+                height: 52px;
+                font-size: 12px;
+            }
+
+            .winner-card {
+                padding: 24px 20px;
+            }
+        }
     </style>
 </head>
 
@@ -1588,9 +1850,9 @@
                     </div>
 
                     <div>
-                        <a href="admin.html" style="background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.4); color: #ffffff; padding: 10px 20px; border-radius: 12px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; backdrop-filter: blur(4px);">
+                        <a href="studentdash.html" id="btnToolsBack" style="background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.4); color: #ffffff; padding: 10px 20px; border-radius: 12px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; backdrop-filter: blur(4px);">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-                            Back to Admin
+                            <span id="btnToolsBackText">Back to Dashboard</span>
                         </a>
                     </div>
                 </div>
@@ -2101,14 +2363,19 @@
                                 <p style="margin: 0; font-size: 13.5px; color: var(--text-muted, #64748b);">Transfer files, pictures, links, and text between your PC, phone, and students seamlessly without cables</p>
                             </div>
 
-                            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                                <div style="text-align: right;">
+                            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;" class="wifi-hero-actions">
+                                <div style="display: flex; flex-direction: column; align-items: flex-end;" class="wifi-room-code-wrapper">
                                     <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted, #64748b); margin-bottom: 3px;">Room Code</div>
                                     <div class="wifi-room-code-badge" id="btnCopyRoomCode" title="Click to copy room link">
                                         <span id="wifiRoomCodeDisplay">MK-8888</span>
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                                     </div>
                                 </div>
+
+                                <button id="btnJoinRoomPrompt" class="btn-secondary" style="padding: 11px 15px; border-radius: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;" title="Switch or Join Room by Code">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+                                    <span>Join Room</span>
+                                </button>
 
                                 <button id="btnOpenQrModal" class="btn-primary" style="padding: 11px 18px; border-radius: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px;">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
@@ -2128,6 +2395,15 @@
                                         <span id="wifiDeviceCountBadge" style="background: rgba(37, 99, 235, 0.12); color: #2563eb; font-size: 11.5px; padding: 2px 8px; border-radius: 999px; font-weight: 800;">1 Active</span>
                                     </div>
                                     <button id="btnRefreshPeer" class="btn-secondary" style="padding: 4px 10px; font-size: 12px; border-radius: 8px;" title="Reset / Reconnect Session">Reconnect</button>
+                                </div>
+
+                                <!-- Room Code Quick Switcher (Helpful for phones) -->
+                                <div style="background: rgba(37, 99, 235, 0.04); padding: 12px; border-radius: 12px; border: 1px solid rgba(37, 99, 235, 0.2);">
+                                    <label style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #2563eb; display: block; margin-bottom: 6px;">Room Code / Join Another Room</label>
+                                    <div style="display: flex; gap: 8px;">
+                                        <input type="text" id="wifiJoinRoomInput" placeholder="e.g. MK-8888" style="font-size: 13px; font-weight: 700; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--tool-card-border); background: var(--input-bg, #ffffff); width: 100%; text-transform: uppercase; font-family: monospace;">
+                                        <button id="btnApplyJoinRoom" class="btn-primary" style="padding: 6px 14px; font-size: 12px; border-radius: 8px; white-space: nowrap;">Join</button>
+                                    </div>
                                 </div>
 
                                 <!-- Current Device Custom Name -->
@@ -2299,7 +2575,7 @@
     </div>
 
     <!-- AUDIO FOR TIMER & WHEEL (SYNTHESIZED WEB AUDIO API) -->
-    <script type="module" src="tools-gallery.js?v=441"></script>
+    <script type="module" src="tools-gallery.js?v=444"></script>
     <script type="module" src="studentNav.js?v=385"></script>
 </body>
 

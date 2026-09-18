@@ -735,7 +735,7 @@ body.dark-mode .student-greeting-banner.birthday-active .greeting-subtitle {
 /* Quick Cards Row */
 .quick-cards-row {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 16px;
     margin-bottom: 24px;
 }
@@ -846,6 +846,36 @@ body.dark-mode .student-greeting-banner.birthday-active .greeting-subtitle {
 
 .green-arrow {
     color: #16a34a;
+}
+
+/* Indigo / Purple Card for Useful Tools */
+.indigo-card {
+    background: #eef2ff;
+    border-color: #e0e7ff;
+}
+
+.dark-theme .indigo-card,
+body.dark-theme .indigo-card {
+    background: #1e1b4b;
+    border-color: #3730a3;
+}
+
+.indigo-icon {
+    background: #4f46e5;
+    color: #ffffff;
+}
+
+.indigo-title {
+    color: #4338ca;
+}
+
+.dark-theme .indigo-title,
+body.dark-theme .indigo-title {
+    color: #a5b4fc;
+}
+
+.indigo-arrow {
+    color: #4f46e5;
 }
 
 /* ======================================================

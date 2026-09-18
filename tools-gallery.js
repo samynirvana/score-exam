@@ -1,7 +1,7 @@
 import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { db, auth } from "./firebase.js";
-import { initWifiDataTransfer } from "./wifi-transfer.js?v=441";
+import { initWifiDataTransfer } from "./wifi-transfer.js?v=444";
 
 // ==========================================================================
 // 0. AUTHENTICATION & ACCESS GUARD
@@ -15,6 +15,19 @@ onAuthStateChanged(auth, (user) => {
     const hasStudentSession = sessionStorage.getItem('studentLoggedInSession') || localStorage.getItem('portalRememberedStudent');
     if (!user && !hasStudentSession && !isWifiJoin) {
         window.location.replace("index.html");
+    }
+
+    // Adaptive Back button: If teacher, point to admin.html, otherwise studentdash.html
+    const backBtn = document.getElementById('btnToolsBack');
+    const backText = document.getElementById('btnToolsBackText');
+    if (backBtn && backText) {
+        if (user) {
+            backBtn.href = "admin.html";
+            backText.textContent = "Back to Admin";
+        } else {
+            backBtn.href = "studentdash.html";
+            backText.textContent = "Back to Dashboard";
+        }
     }
 });
 

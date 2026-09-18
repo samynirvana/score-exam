@@ -191,6 +191,7 @@ const initMobileNav = () => {
     const navQuiz = dropdown.querySelector('.nav-quiz');
     const navTimeline = dropdown.querySelector('.nav-timeline');
     const navBoard = dropdown.querySelector('.nav-board');
+    const navTools = dropdown.querySelector('.nav-tools');
     const navScores = dropdown.querySelector('.nav-scores');
     const navProfile = dropdown.querySelector('.nav-profile');
 
@@ -204,6 +205,8 @@ const initMobileNav = () => {
         navTimeline?.classList.add('active');
     } else if (currentPath === 'board.html') {
         navBoard?.classList.add('active');
+    } else if (currentPath === 'tools-gallery.html') {
+        navTools?.classList.add('active');
     } else if (currentPath === 'scores.html') {
         navScores?.classList.add('active');
     } else if (currentPath === 'profile.html') {

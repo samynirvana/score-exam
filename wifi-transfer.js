@@ -1,19 +1,25 @@
 // wifi-transfer.js - Ultra-fast Wi-Fi Direct (WebRTC) & Real-time Room Sync Data Transfer
 // Enables seamless phone-to-PC & student file/photo/text sharing with zero app installation.
 
-import { collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { collection, doc, setDoc, deleteDoc, onSnapshot, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { defaultDb, db } from "./firebase.js";
 
 class WifiDataTransferManager {
     constructor() {
         this.roomCode = this.resolveRoomCode();
-        this.myDeviceId = 'dev_' + Math.random().toString(36).substring(2, 9);
+        // Persist device ID per browser session/tab so page refreshes don't generate duplicate ghost devices
+        let storedDevId = sessionStorage.getItem('mks_wifi_dev_id');
+        if (!storedDevId) {
+            storedDevId = 'dev_' + Math.random().toString(36).substring(2, 9);
+            sessionStorage.setItem('mks_wifi_dev_id', storedDevId);
+        }
+        this.myDeviceId = storedDevId;
         this.myDeviceName = localStorage.getItem('mks_wifi_dev_name') || this.detectDeviceDefaultName();
         this.deviceType = this.detectDeviceType();
         this.customHost = localStorage.getItem('mks_wifi_custom_host') || '';
         
-        // Use defaultDb or db for realtime room signaling
-        this.signalDb = defaultDb || db;
+        // Use mrsyamdb (db) for realtime room signaling so it matches Firestore rules
+        this.signalDb = db || defaultDb;
         this.firestoreUnsub = null;
         
         this.peer = null;
@@ -28,6 +34,9 @@ class WifiDataTransferManager {
         this.dom = {
             roomCodeDisplay: document.getElementById('wifiRoomCodeDisplay'),
             btnCopyRoomCode: document.getElementById('btnCopyRoomCode'),
+            btnJoinRoomPrompt: document.getElementById('btnJoinRoomPrompt'),
+            wifiJoinRoomInput: document.getElementById('wifiJoinRoomInput'),
+            btnApplyJoinRoom: document.getElementById('btnApplyJoinRoom'),
             btnOpenQrModal: document.getElementById('btnOpenQrModal'),
             btnCloseQrModal: document.getElementById('btnCloseQrModal'),
             btnDoneQrModal: document.getElementById('btnDoneQrModal'),
@@ -180,6 +189,32 @@ class WifiDataTransferManager {
 
         this.dom.btnCopyRoomCode?.addEventListener('click', () => {
             copyAction(this.getRoomPairUrl(), `Room link for ${this.roomCode} copied to clipboard! Share it with your phone or students.`);
+        });
+
+        // Manual Join Room Code (Especially useful on mobile phones)
+        const triggerJoin = () => {
+            const code = this.dom.wifiJoinRoomInput?.value.trim() || prompt('Enter the 6-character Room Code (e.g. MK-1234):', this.roomCode);
+            if (code) {
+                this.switchRoom(code);
+                if (this.dom.wifiJoinRoomInput) this.dom.wifiJoinRoomInput.value = '';
+            }
+        };
+
+        this.dom.btnJoinRoomPrompt?.addEventListener('click', () => {
+            const entered = prompt('Enter Room Code to join (e.g. MK-8888):', this.roomCode);
+            if (entered) this.switchRoom(entered);
+        });
+
+        this.dom.btnApplyJoinRoom?.addEventListener('click', () => {
+            const val = this.dom.wifiJoinRoomInput?.value.trim();
+            if (val) this.switchRoom(val);
+        });
+
+        this.dom.wifiJoinRoomInput?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const val = this.dom.wifiJoinRoomInput?.value.trim();
+                if (val) this.switchRoom(val);
+            }
         });
 
         this.dom.btnCopyModalUrl?.addEventListener('click', () => {
@@ -343,8 +378,10 @@ class WifiDataTransferManager {
                     if (data.type === 'presence' && data.senderId !== this.myDeviceId) {
                         this.registerPeerInfo(data.senderPeerId, {
                             id: data.senderPeerId,
+                            deviceId: data.senderId,
                             name: data.senderName,
-                            type: data.deviceType
+                            type: data.deviceType,
+                            lastSeen: Date.now()
                         });
                         // Respond with our presence
                         this.localChannel.postMessage({
@@ -357,8 +394,10 @@ class WifiDataTransferManager {
                     } else if (data.type === 'presence_ack' && data.senderId !== this.myDeviceId) {
                         this.registerPeerInfo(data.senderPeerId, {
                             id: data.senderPeerId,
+                            deviceId: data.senderId,
                             name: data.senderName,
-                            type: data.deviceType
+                            type: data.deviceType,
+                            lastSeen: Date.now()
                         });
                     }
                 };
@@ -381,9 +420,13 @@ class WifiDataTransferManager {
             try { this.peer.destroy(); } catch (e) {}
         }
 
-        // Deterministic room prefix for easy discovery
+        // Deterministic room prefix for easy discovery - persist peerId per tab session so refresh doesn't create ghosts
         const sanitizedRoom = this.roomCode.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const peerRandom = Math.random().toString(36).substring(2, 7);
+        let peerRandom = sessionStorage.getItem('mks_wifi_peer_rand');
+        if (!peerRandom) {
+            peerRandom = Math.random().toString(36).substring(2, 7);
+            sessionStorage.setItem('mks_wifi_peer_rand', peerRandom);
+        }
         const myPeerId = `mkscore-${sanitizedRoom}-${peerRandom}`;
 
         this.peer = new window.Peer(myPeerId, {
@@ -489,16 +532,42 @@ class WifiDataTransferManager {
                             this.renderDeviceList();
                         }
                     } else if (change.type === 'added' || change.type === 'modified') {
+                        // If this is an old ghost peer from this exact device/tab from before reload
+                        if (data.deviceId === this.myDeviceId && peerId !== this.peer?.id) {
+                            deleteDoc(doc(this.signalDb, 'wifiRooms', this.roomCode, 'peers', peerId)).catch(() => {});
+                            this.nearbyPeers.delete(peerId);
+                            return;
+                        }
+
+                        // Check if doc is stale (> 35s since last heartbeat)
+                        const isStale = data.lastSeen && (now - data.lastSeen > 35000);
+                        if (isStale) {
+                            // Automatically clean up stale ghost peers from room
+                            deleteDoc(doc(this.signalDb, 'wifiRooms', this.roomCode, 'peers', peerId)).catch(() => {});
+                            this.nearbyPeers.delete(peerId);
+                            this.renderDeviceList();
+                            return;
+                        }
+
                         if (peerId !== this.peer?.id) {
+                            // Register immediately in device list
                             this.registerPeerInfo(peerId, {
                                 id: peerId,
+                                deviceId: data.deviceId || peerId,
                                 name: data.name || 'Nearby Device',
-                                type: data.type || 'phone'
+                                type: data.type || 'phone',
+                                lastSeen: data.lastSeen || now,
+                                isConnected: this.activeConnections.has(peerId) && this.activeConnections.get(peerId).open
                             });
 
-                            // Auto-connect to remote peer via WebRTC if not yet connected
-                            if (this.peer && !this.activeConnections.has(peerId)) {
-                                this.connectToPeer(peerId, data.name, data.type);
+                            // Deterministic tie-breaker: only device with lexicographically greater Peer ID initiates WebRTC
+                            if (this.peer && this.peer.id && !this.activeConnections.has(peerId)) {
+                                if (this.peer.id > peerId) {
+                                    console.log(`[Wi-Fi] Initiating connection to ${peerId} (tie-breaker win)`);
+                                    this.connectToPeer(peerId, data.name, data.type);
+                                } else {
+                                    console.log(`[Wi-Fi] Waiting for incoming connection from ${peerId} (tie-breaker wait)`);
+                                }
                             }
                         }
                     }
@@ -509,6 +578,9 @@ class WifiDataTransferManager {
 
             // Listen for room fallback messages / clipboard text
             const msgsCol = collection(this.signalDb, 'wifiRooms', this.roomCode, 'messages');
+            if (this.firestoreMsgsUnsub) {
+                try { this.firestoreMsgsUnsub(); } catch (e) {}
+            }
             this.firestoreMsgsUnsub = onSnapshot(msgsCol, (snapshot) => {
                 snapshot.docChanges().forEach(change => {
                     if (change.type === 'added') {
@@ -551,6 +623,7 @@ class WifiDataTransferManager {
                 type: this.deviceType,
                 lastSeen: Date.now()
             }, { merge: true });
+            console.log(`[Wi-Fi] Presence published in room ${this.roomCode} for ${this.peer.id} (${this.myDeviceName})`);
         } catch (err) {
             console.warn('Firestore presence heartbeat error:', err);
         }
@@ -564,17 +637,63 @@ class WifiDataTransferManager {
         } catch (e) {}
     }
 
-    scanAndConnectRoomPeers() {
+    async scanAndConnectRoomPeers() {
         // 1. Write presence to Firestore immediately
-        this.updateFirestorePresence();
+        await this.updateFirestorePresence();
 
-        // 2. Heartbeat interval every 12 seconds
+        // 2. Proactively scan existing peers in the room from Firestore
+        if (this.signalDb && this.roomCode && this.peer && this.peer.id) {
+            try {
+                const peersCol = collection(this.signalDb, 'wifiRooms', this.roomCode, 'peers');
+                const snapshot = await getDocs(peersCol);
+                const now = Date.now();
+                snapshot.forEach(docSnap => {
+                    const peerId = docSnap.id;
+                    const data = docSnap.data();
+
+                    // Delete old ghosts from self
+                    if (data.deviceId === this.myDeviceId && peerId !== this.peer.id) {
+                        deleteDoc(doc(this.signalDb, 'wifiRooms', this.roomCode, 'peers', peerId)).catch(() => {});
+                        this.nearbyPeers.delete(peerId);
+                        return;
+                    }
+
+                    // Ignore and purge stale peers older than 35 seconds
+                    const isStale = data.lastSeen && (now - data.lastSeen > 35000);
+                    if (isStale) {
+                        deleteDoc(doc(this.signalDb, 'wifiRooms', this.roomCode, 'peers', peerId)).catch(() => {});
+                        this.nearbyPeers.delete(peerId);
+                        return;
+                    }
+
+                    if (peerId !== this.peer.id) {
+                        this.registerPeerInfo(peerId, {
+                            id: peerId,
+                            deviceId: data.deviceId || peerId,
+                            name: data.name || 'Nearby Device',
+                            type: data.type || 'phone',
+                            lastSeen: data.lastSeen || now,
+                            isConnected: this.activeConnections.has(peerId) && this.activeConnections.get(peerId).open
+                        });
+                        if (!this.activeConnections.has(peerId)) {
+                            if (this.peer.id > peerId) {
+                                this.connectToPeer(peerId, data.name, data.type);
+                            }
+                        }
+                    }
+                });
+            } catch (err) {
+                console.warn('[Wi-Fi] Direct snapshot scan error:', err);
+            }
+        }
+
+        // 3. Heartbeat interval every 10 seconds
         if (this.firestoreHeartbeat) clearInterval(this.firestoreHeartbeat);
         this.firestoreHeartbeat = setInterval(() => {
             this.updateFirestorePresence();
-        }, 12000);
+        }, 10000);
 
-        // 3. Fallback Local Storage & BroadcastChannel heartbeat for same-device multi-tab testing
+        // 4. Fallback Local Storage & BroadcastChannel heartbeat for same-device multi-tab testing
         const roomHeartbeatKey = 'mks_room_peers_' + this.roomCode;
         try {
             const existingRaw = localStorage.getItem(roomHeartbeatKey);
@@ -583,7 +702,7 @@ class WifiDataTransferManager {
 
             Object.keys(peers).forEach(pid => {
                 if (now - peers[pid].lastSeen > 45000) delete peers[pid];
-                else if (pid !== this.peer.id) {
+                else if (pid !== this.peer.id && this.peer.id > pid) {
                     this.connectToPeer(pid, peers[pid].name, peers[pid].type);
                 }
             });
@@ -603,11 +722,17 @@ class WifiDataTransferManager {
         }
 
         console.log('Connecting to peer:', targetPeerId);
-        const conn = this.peer.connect(targetPeerId, {
-            reliable: true
-        });
+        try {
+            const conn = this.peer.connect(targetPeerId, {
+                reliable: true
+            });
 
-        this.setupConnectionEvents(conn, targetName, targetType);
+            if (conn) {
+                this.setupConnectionEvents(conn, targetName, targetType);
+            }
+        } catch (e) {
+            console.warn('Peer connect error:', e);
+        }
     }
 
     handleIncomingConnection(conn) {
@@ -631,7 +756,8 @@ class WifiDataTransferManager {
             this.registerPeerInfo(conn.peer, {
                 id: conn.peer,
                 name: knownName || 'Connected Device',
-                type: knownType || 'phone'
+                type: knownType || 'phone',
+                isConnected: true
             });
 
             this.playNotificationChime('connect');
@@ -645,7 +771,10 @@ class WifiDataTransferManager {
         conn.on('close', () => {
             console.log('Connection closed with:', conn.peer);
             this.activeConnections.delete(conn.peer);
-            this.nearbyPeers.delete(conn.peer);
+            if (this.nearbyPeers.has(conn.peer)) {
+                const p = this.nearbyPeers.get(conn.peer);
+                p.isConnected = false;
+            }
             this.renderDeviceList();
         });
 
@@ -655,13 +784,65 @@ class WifiDataTransferManager {
         });
     }
 
+    // Switch Room dynamically (from user input on mobile or PC)
+    switchRoom(newRoomCode) {
+        if (!newRoomCode) return;
+        const formatted = newRoomCode.trim().toUpperCase();
+        if (formatted === this.roomCode) return;
+
+        // Clean up old room presence
+        this.removeFirestorePresence();
+        if (this.firestoreUnsub) {
+            try { this.firestoreUnsub(); } catch (e) {}
+        }
+        if (this.firestoreMsgsUnsub) {
+            try { this.firestoreMsgsUnsub(); } catch (e) {}
+        }
+        if (this.localChannel) {
+            try { this.localChannel.close(); } catch (e) {}
+        }
+
+        // Close peer connections
+        this.activeConnections.forEach(conn => {
+            try { conn.close(); } catch (e) {}
+        });
+        this.activeConnections.clear();
+        this.nearbyPeers.clear();
+
+        this.roomCode = formatted;
+        sessionStorage.setItem('mks_wifi_room', formatted);
+
+        // Update URL query without full page reload
+        const url = new URL(window.location.href);
+        url.searchParams.set('room', formatted);
+        url.searchParams.set('tool', 'wifi');
+        window.history.replaceState({}, '', url.toString());
+
+        if (this.dom.roomCodeDisplay) {
+            this.dom.roomCodeDisplay.innerText = formatted;
+        }
+
+        this.generateQRCodes();
+        this.initPeerConnection();
+        this.setupBroadcastChannel();
+        this.setupFirestoreSignaling();
+        this.showToast('Switched to room ' + formatted);
+    }
+
     registerPeerInfo(peerId, info) {
         if (!peerId) return;
+        const existing = this.nearbyPeers.get(peerId);
+        const isSelf = peerId === this.peer?.id || info.deviceId === this.myDeviceId;
+        const isConnected = isSelf || (info.isConnected !== undefined ? Boolean(info.isConnected) : (existing?.isConnected ?? this.activeConnections.has(peerId)));
+        
         this.nearbyPeers.set(peerId, {
             id: peerId,
-            name: info.name || 'Wireless Device',
-            type: info.type || 'phone',
-            isSelf: peerId === this.peer?.id
+            deviceId: info.deviceId || existing?.deviceId || peerId,
+            name: info.name || existing?.name || 'Wireless Device',
+            type: info.type || existing?.type || 'phone',
+            lastSeen: info.lastSeen || existing?.lastSeen || Date.now(),
+            isSelf: isSelf,
+            isConnected: isConnected
         });
         this.renderDeviceList();
     }
@@ -670,14 +851,59 @@ class WifiDataTransferManager {
         if (!this.dom.deviceCardList) return;
         this.dom.deviceCardList.innerHTML = '';
 
-        const peersArray = Array.from(this.nearbyPeers.values());
-        
+        const allPeers = Array.from(this.nearbyPeers.values());
+        const now = Date.now();
+
+        // 1. Separate Self and Remote Peers
+        let selfPeer = allPeers.find(p => p.isSelf || p.id === this.peer?.id || p.deviceId === this.myDeviceId);
+        if (!selfPeer && this.peer?.id) {
+            selfPeer = {
+                id: this.peer.id,
+                deviceId: this.myDeviceId,
+                name: this.myDeviceName,
+                type: this.deviceType,
+                isSelf: true,
+                isConnected: true
+            };
+        }
+
+        // 2. Deduplicate Remote Peers:
+        // Key by deviceId (or by device name if deviceId is missing) so each physical/browser device is listed only ONCE!
+        const remoteMap = new Map();
+        allPeers.forEach(peer => {
+            // Ignore self from remote list
+            if (peer.isSelf || peer.id === this.peer?.id || peer.deviceId === this.myDeviceId) return;
+            // Ignore peers that haven't been seen in > 40 seconds
+            if (peer.lastSeen && (now - peer.lastSeen > 40000)) return;
+
+            const dedupKey = peer.deviceId || peer.name;
+            const existing = remoteMap.get(dedupKey);
+
+            if (!existing) {
+                remoteMap.set(dedupKey, peer);
+            } else {
+                // If we already have a record for this device, keep the one with an active connection or latest lastSeen
+                const existingConnected = existing.isConnected || this.activeConnections.has(existing.id);
+                const currentConnected = peer.isConnected || this.activeConnections.has(peer.id);
+
+                if (currentConnected && !existingConnected) {
+                    remoteMap.set(dedupKey, peer);
+                } else if (!existingConnected && (peer.lastSeen || 0) > (existing.lastSeen || 0)) {
+                    remoteMap.set(dedupKey, peer);
+                }
+            }
+        });
+
+        const dedupedPeers = [];
+        if (selfPeer) dedupedPeers.push({ ...selfPeer, isSelf: true });
+        remoteMap.forEach(peer => dedupedPeers.push(peer));
+
         if (this.dom.deviceCountBadge) {
-            const count = peersArray.length;
+            const count = dedupedPeers.length;
             this.dom.deviceCountBadge.innerText = `${count} ${count === 1 ? 'Device' : 'Devices'}`;
         }
 
-        peersArray.forEach(peer => {
+        dedupedPeers.forEach(peer => {
             const card = document.createElement('div');
             card.className = `device-card ${peer.isSelf ? 'self' : ''}`;
 
@@ -686,6 +912,10 @@ class WifiDataTransferManager {
                 : peer.type === 'tablet'
                 ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>`
                 : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>`;
+
+            const isConn = peer.isSelf || peer.isConnected || this.activeConnections.has(peer.id);
+            const statusColor = isConn ? '#10b981' : '#f59e0b';
+            const statusLabel = peer.isSelf ? 'This Device' : (isConn ? 'Wi-Fi Direct (P2P)' : 'Room Synced (Active)');
 
             card.innerHTML = `
                 <div class="device-card-info">
@@ -697,8 +927,8 @@ class WifiDataTransferManager {
                             ${this.escapeHtml(peer.name)} ${peer.isSelf ? '<span style="font-size: 11px; opacity: 0.7; font-weight: 700;">(You)</span>' : ''}
                         </div>
                         <div style="font-size: 11.5px; color: var(--text-muted, #64748b); display: flex; align-items: center; gap: 6px;">
-                            <span style="width: 6px; height: 6px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
-                            <span>${peer.isSelf ? 'This Device' : 'Wi-Fi Ready'}</span>
+                            <span style="width: 7px; height: 7px; border-radius: 50%; background: ${statusColor}; display: inline-block;"></span>
+                            <span>${statusLabel}</span>
                         </div>
                     </div>
                 </div>
@@ -711,6 +941,10 @@ class WifiDataTransferManager {
 
             if (!peer.isSelf) {
                 card.querySelector('.btn-direct-send')?.addEventListener('click', () => {
+                    // If not yet P2P connected, try connecting right before picking file
+                    if (!this.activeConnections.has(peer.id) && this.peer) {
+                        this.connectToPeer(peer.id, peer.name, peer.type);
+                    }
                     this.dom.fileInput?.click();
                 });
             }
