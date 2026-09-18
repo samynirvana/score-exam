@@ -1,6 +1,7 @@
 import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { db, auth } from "./firebase.js";
+import { initWifiDataTransfer } from "./wifi-transfer.js?v=440";
 
 // ==========================================================================
 // 0. AUTHENTICATION & ACCESS GUARD
@@ -14,7 +15,7 @@ onAuthStateChanged(auth, (user) => {
 });
 
 // ==========================================================================
-// 1. NAVIGATION TABS (NOTES, CALCULATOR, TIMER, WHEEL)
+// 1. NAVIGATION TABS (NOTES, CALCULATOR, TIMER, WHEEL, CONVERTER, WIFI)
 // ==========================================================================
 const navButtons = document.querySelectorAll('.tool-nav-btn');
 const toolPanels = {
@@ -22,7 +23,8 @@ const toolPanels = {
     calculator: document.getElementById('toolPanelCalculator'),
     timer: document.getElementById('toolPanelTimer'),
     wheel: document.getElementById('toolPanelWheel'),
-    converter: document.getElementById('toolPanelConverter')
+    converter: document.getElementById('toolPanelConverter'),
+    wifi: document.getElementById('toolPanelWifi')
 };
 
 navButtons.forEach(btn => {
@@ -43,6 +45,18 @@ navButtons.forEach(btn => {
         }
     });
 });
+
+// Auto-switch tab if requested in URL (e.g. ?tool=wifi or ?room=...)
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('tool') === 'wifi' || urlParams.get('room')) {
+    const wifiBtn = document.querySelector('.tool-nav-btn[data-tool="wifi"]');
+    if (wifiBtn) {
+        wifiBtn.click();
+    }
+}
+
+// Initialize Wi-Fi Data & File Transfer Manager
+initWifiDataTransfer();
 
 // ==========================================================================
 // 1.5. WHEEL CUSTOMIZATION SETTINGS STATE & PALETTES

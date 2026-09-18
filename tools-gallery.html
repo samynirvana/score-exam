@@ -16,6 +16,9 @@
     <link rel="stylesheet" href="style.css?v=435">
     <link rel="stylesheet" href="admin.css?v=435">
     <link rel="stylesheet" href="student.css?v=435">
+    <!-- QR Code Generator & PeerJS for High-Speed Wi-Fi P2P File & Data Transfer -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 
     <style>
         :root {
@@ -1087,6 +1090,373 @@
             background: rgba(16, 185, 129, 0.15);
             color: #059669;
         }
+
+        /* ============================================================
+           TOOL 6: WI-FI FAST DROP & DATA TRANSFER
+           ============================================================ */
+        .wifi-transfer-container {
+            max-width: 1180px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* Radar & Room Status Header */
+        .wifi-hero-card {
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.08) 0%, rgba(37, 99, 235, 0.12) 100%);
+            border: 1px solid rgba(37, 99, 235, 0.22);
+            border-radius: 20px;
+            padding: 24px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 18px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body.dark-theme .wifi-hero-card {
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(37, 99, 235, 0.2) 100%);
+            border-color: rgba(56, 189, 248, 0.25);
+        }
+
+        .wifi-room-code-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--tool-card-bg);
+            border: 1px solid var(--tool-card-border);
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-family: 'Outfit', monospace;
+            font-weight: 800;
+            font-size: 20px;
+            letter-spacing: 1.5px;
+            color: #2563eb;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        body.dark-theme .wifi-room-code-badge {
+            color: #38bdf8;
+        }
+
+        .wifi-room-code-badge:hover {
+            transform: scale(1.03);
+            border-color: #2563eb;
+        }
+
+        .wifi-pulse-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            animation: wifiPulse 2s infinite cubic-bezier(0.66, 0, 0, 1);
+        }
+
+        @keyframes wifiPulse {
+            to {
+                box-shadow: 0 0 0 12px rgba(16, 185, 129, 0);
+            }
+        }
+
+        /* Two Column Main Workspace */
+        .wifi-grid-layout {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 22px;
+        }
+
+        @media (max-width: 960px) {
+            .wifi-grid-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Devices Radar & QR Panel */
+        .wifi-devices-pane {
+            background: var(--tool-card-bg);
+            border: 1px solid var(--tool-card-border);
+            border-radius: 20px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+        }
+
+        .device-card-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 290px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .device-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border-radius: 14px;
+            border: 1px solid var(--tool-card-border);
+            background: rgba(15, 23, 42, 0.02);
+            transition: all 0.2s ease;
+        }
+
+        body.dark-theme .device-card {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .device-card.self {
+            border-color: rgba(37, 99, 235, 0.4);
+            background: rgba(37, 99, 235, 0.06);
+        }
+
+        .device-card-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .device-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: 700;
+            flex-shrink: 0;
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+        }
+
+        .device-avatar.phone {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            box-shadow: 0 4px 10px rgba(16, 185, 129, 0.25);
+        }
+
+        .device-avatar.tablet {
+            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+            box-shadow: 0 4px 10px rgba(139, 92, 246, 0.25);
+        }
+
+        /* QR Code Box */
+        .wifi-qr-card {
+            background: rgba(15, 23, 42, 0.02);
+            border: 1px dashed var(--tool-card-border);
+            border-radius: 16px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 12px;
+        }
+
+        body.dark-theme .wifi-qr-card {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .wifi-qr-holder {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+        }
+
+        .wifi-qr-holder img, .wifi-qr-holder canvas {
+            display: block !important;
+            max-width: 170px !important;
+            max-height: 170px !important;
+        }
+
+        /* Transfer Area */
+        .wifi-main-pane {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .wifi-dropzone {
+            border: 2px dashed rgba(37, 99, 235, 0.4);
+            border-radius: 20px;
+            padding: 36px 24px;
+            text-align: center;
+            background: var(--tool-card-bg);
+            transition: all 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .wifi-dropzone:hover, .wifi-dropzone.dragover {
+            border-color: #2563eb;
+            background: rgba(37, 99, 235, 0.05);
+            transform: translateY(-2px);
+        }
+
+        .wifi-drop-icon-circle {
+            width: 64px;
+            height: 64px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.15) 0%, rgba(14, 165, 233, 0.15) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #2563eb;
+            margin-bottom: 4px;
+            transition: transform 0.2s ease;
+        }
+
+        .wifi-dropzone:hover .wifi-drop-icon-circle {
+            transform: scale(1.1);
+        }
+
+        /* Text & Clipboard Fast Sync */
+        .wifi-clip-card {
+            background: var(--tool-card-bg);
+            border: 1px solid var(--tool-card-border);
+            border-radius: 20px;
+            padding: 22px 24px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .wifi-clip-input {
+            width: 100%;
+            min-height: 85px;
+            border-radius: 12px;
+            border: 1px solid var(--tool-card-border);
+            padding: 12px 16px;
+            font-size: 14.5px;
+            font-family: inherit;
+            background: var(--input-bg, #f8fafc);
+            color: var(--text-dark, #0f172a);
+            resize: vertical;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .wifi-clip-input:focus {
+            border-color: #2563eb;
+        }
+
+        /* Received Items Stream */
+        .wifi-feed-card {
+            background: var(--tool-card-bg);
+            border: 1px solid var(--tool-card-border);
+            border-radius: 20px;
+            padding: 22px 24px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .wifi-feed-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 380px;
+            overflow-y: auto;
+        }
+
+        .wifi-feed-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            border-radius: 14px;
+            border: 1px solid var(--tool-card-border);
+            background: rgba(15, 23, 42, 0.02);
+            animation: wifiSlideIn 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
+            gap: 14px;
+        }
+
+        body.dark-theme .wifi-feed-item {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        @keyframes wifiSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-8px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .wifi-feed-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .wifi-feed-thumb {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            object-fit: cover;
+            border: 1px solid var(--tool-card-border);
+            flex-shrink: 0;
+        }
+
+        .wifi-feed-icon-box {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            background: rgba(37, 99, 235, 0.1);
+            color: #2563eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        /* Progress Bar Component */
+        .wifi-progress-bar-container {
+            width: 100%;
+            height: 7px;
+            background: rgba(15, 23, 42, 0.08);
+            border-radius: 999px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+
+        body.dark-theme .wifi-progress-bar-container {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .wifi-progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #06b6d4);
+            border-radius: 999px;
+            transition: width 0.15s ease;
+            width: 0%;
+        }
     </style>
 </head>
 
@@ -1246,6 +1616,10 @@
                     <button class="tool-nav-btn" data-tool="converter">
                         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m16 3 4 4-4 4"></path><path d="M20 7H4"></path><path d="m8 21-4-4 4-4"></path><path d="M4 17h16"></path></svg>
                         <span>Unit Converter</span>
+                    </button>
+                    <button class="tool-nav-btn" data-tool="wifi">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
+                        <span>Wi-Fi Fast Drop</span>
                     </button>
                 </div>
 
@@ -1705,9 +2079,166 @@
                                 <button class="conv-preset-btn" onclick="applyConvPreset(10)" style="padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700;">10</button>
                                 <button class="conv-preset-btn" onclick="applyConvPreset(50)" style="padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700;">50</button>
                                 <button class="conv-preset-btn" onclick="applyConvPreset(100)" style="padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700;">100</button>
-                                <button class="conv-preset-btn" onclick="applyConvPreset(1000)" style="padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700;">1,000</button>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- TOOL 6: WI-FI FAST DROP & DATA TRANSFER    -->
+                <!-- ========================================== -->
+                <div class="tool-panel" id="toolPanelWifi">
+                    <div class="wifi-transfer-container">
+                        
+                        <!-- Hero & Status Banner -->
+                        <div class="wifi-hero-card">
+                            <div>
+                                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+                                    <span class="wifi-pulse-dot" id="wifiRadarPulse"></span>
+                                    <span style="font-size: 12.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #2563eb;" id="wifiConnectionStatus">Local Wi-Fi P2P Active</span>
+                                </div>
+                                <h2 style="margin: 0 0 4px 0; font-size: 22px; font-weight: 800; color: var(--text-dark, #0f172a);">Fast Wi-Fi Drop & Sync</h2>
+                                <p style="margin: 0; font-size: 13.5px; color: var(--text-muted, #64748b);">Transfer files, pictures, links, and text between your PC, phone, and students seamlessly without cables</p>
+                            </div>
+
+                            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                <div style="text-align: right;">
+                                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted, #64748b); margin-bottom: 3px;">Room Code</div>
+                                    <div class="wifi-room-code-badge" id="btnCopyRoomCode" title="Click to copy room link">
+                                        <span id="wifiRoomCodeDisplay">MK-8888</span>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                    </div>
+                                </div>
+
+                                <button id="btnOpenQrModal" class="btn-primary" style="padding: 11px 18px; border-radius: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px;">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                                    <span>Connect Phone (QR)</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 2-Column Grid Layout -->
+                        <div class="wifi-grid-layout">
+                            
+                            <!-- Left Sidebar: Devices Radar & Quick Settings -->
+                            <div class="wifi-devices-pane">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="font-weight: 800; font-size: 15px; display: flex; align-items: center; gap: 8px;">
+                                        <span>Nearby Devices</span>
+                                        <span id="wifiDeviceCountBadge" style="background: rgba(37, 99, 235, 0.12); color: #2563eb; font-size: 11.5px; padding: 2px 8px; border-radius: 999px; font-weight: 800;">1 Active</span>
+                                    </div>
+                                    <button id="btnRefreshPeer" class="btn-secondary" style="padding: 4px 10px; font-size: 12px; border-radius: 8px;" title="Reset / Reconnect Session">Reconnect</button>
+                                </div>
+
+                                <!-- Current Device Custom Name -->
+                                <div style="background: rgba(15, 23, 42, 0.02); padding: 12px; border-radius: 12px; border: 1px solid var(--tool-card-border);">
+                                    <label style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted, #64748b); display: block; margin-bottom: 6px;">My Device Name</label>
+                                    <div style="display: flex; gap: 8px;">
+                                        <input type="text" id="wifiMyDeviceNameInput" style="font-size: 13.5px; font-weight: 700; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--tool-card-border); background: var(--input-bg, #ffffff); width: 100%;" value="Laptop">
+                                        <button id="btnSaveDeviceName" class="btn-primary" style="padding: 6px 12px; font-size: 12px; border-radius: 8px;">Save</button>
+                                    </div>
+                                </div>
+
+                                <!-- Connected Peer Devices List -->
+                                <div class="device-card-list" id="wifiDeviceCardList">
+                                    <!-- Dynamic Device Items -->
+                                </div>
+
+                                <!-- Mini QR Code Helper -->
+                                <div class="wifi-qr-card">
+                                    <div style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: var(--text-muted, #64748b);">Scan with Phone Camera</div>
+                                    <div class="wifi-qr-holder" id="wifiMiniQrContainer"></div>
+                                    <div style="font-size: 12px; color: var(--text-muted, #64748b); line-height: 1.4;">
+                                        Open your phone camera to pair instantly on this Wi-Fi.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right Main: Drop Zone, Quick Clipboard & Feed -->
+                            <div class="wifi-main-pane">
+                                
+                                <!-- File Drop Zone -->
+                                <div class="wifi-dropzone" id="wifiDropZone">
+                                    <input type="file" id="wifiFileInput" multiple style="display: none;">
+                                    <div class="wifi-drop-icon-circle">
+                                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                            <polyline points="17 8 12 3 7 8"></polyline>
+                                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                                        </svg>
+                                    </div>
+                                    <div style="font-size: 16px; font-weight: 800; color: var(--text-dark, #0f172a);">
+                                        Click to browse or drop files to send
+                                    </div>
+                                    <div style="font-size: 13px; color: var(--text-muted, #64748b);">
+                                        Supports photos, videos, PDFs, exam docs, presentations (Unlimited size via Wi-Fi direct)
+                                    </div>
+
+                                    <!-- Live Transfer Progress Tracker (Visible while sending/receiving) -->
+                                    <div id="wifiTransferProgressBox" style="display: none; width: 90%; max-width: 480px; margin-top: 14px; background: rgba(15, 23, 42, 0.04); padding: 14px 18px; border-radius: 14px; text-align: left;">
+                                        <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700;">
+                                            <span id="wifiProgressFileName" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px;">document.pdf</span>
+                                            <span id="wifiProgressPercent" style="color: #2563eb;">45%</span>
+                                        </div>
+                                        <div class="wifi-progress-bar-container">
+                                            <div class="wifi-progress-bar-fill" id="wifiProgressBarFill"></div>
+                                        </div>
+                                        <div style="font-size: 11.5px; color: var(--text-muted, #64748b); margin-top: 4px;" id="wifiProgressSpeed">
+                                            Transferring via Wi-Fi WebRTC...
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Instant Clipboard & Notes Sync -->
+                                <div class="wifi-clip-card">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div style="font-weight: 800; font-size: 15px; display: flex; align-items: center; gap: 8px;">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                                            <span>Quick Text / Link Sync</span>
+                                        </div>
+                                        <span style="font-size: 12px; color: var(--text-muted, #64748b);">Instant cross-device clipboard</span>
+                                    </div>
+
+                                    <textarea id="wifiTextMsgInput" class="wifi-clip-input" placeholder="Type or paste text, links, instructions, code snippet, or notes here to send to phone or students..."></textarea>
+                                    
+                                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                                        <div style="display: flex; gap: 6px;">
+                                            <button id="btnPasteFromClipboard" class="btn-secondary" style="padding: 7px 14px; font-size: 12.5px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                                                <span>Paste</span>
+                                            </button>
+                                            <button id="btnClearTextMsg" class="btn-secondary" style="padding: 7px 14px; font-size: 12.5px; border-radius: 8px;">Clear</button>
+                                        </div>
+                                        <button id="btnSendTextMsg" class="btn-primary" style="padding: 8px 20px; font-size: 13.5px; font-weight: 700; border-radius: 10px; display: inline-flex; align-items: center; gap: 8px;">
+                                            <span>Send to Connected Devices</span>
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Received Items & History Stream -->
+                                <div class="wifi-feed-card">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div style="font-weight: 800; font-size: 15px; display: flex; align-items: center; gap: 8px;">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+                                            <span>Received Items & Transfers</span>
+                                        </div>
+                                        <button id="btnClearFeed" class="btn-secondary" style="padding: 4px 10px; font-size: 12px; border-radius: 8px;">Clear History</button>
+                                    </div>
+
+                                    <div class="wifi-feed-list" id="wifiFeedList">
+                                        <!-- Empty state when no items yet -->
+                                        <div id="wifiFeedEmptyState" style="text-align: center; padding: 32px 16px; color: var(--text-muted, #64748b);">
+                                            <div style="font-size: 28px; margin-bottom: 6px;">📡</div>
+                                            <div style="font-weight: 700; font-size: 14px;">No files or text transferred yet</div>
+                                            <div style="font-size: 12.5px; opacity: 0.8; margin-top: 4px;">Connect your phone by scanning the QR code, then send files or messages.</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
@@ -1728,8 +2259,36 @@
         </div>
     </div>
 
+    <!-- WI-FI PHONE CONNECT QR MODAL -->
+    <div id="wifiQrModal" class="winner-modal" style="display: none;">
+        <div class="winner-card" style="max-width: 440px; padding: 32px 28px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0; font-size: 20px; font-weight: 800; color: var(--text-dark, #0f172a);">Connect Phone or Student</h3>
+                <button id="btnCloseQrModal" class="btn-circle" style="width: 32px; height: 32px; background: rgba(15, 23, 42, 0.05); border: none; cursor: pointer; border-radius: 50%; font-weight: 700;">✕</button>
+            </div>
+            
+            <p style="margin: 0 0 20px 0; font-size: 13.5px; color: var(--text-muted, #64748b);">
+                Scan this QR code with your phone camera or tablet to connect immediately.
+            </p>
+
+            <div style="display: flex; justify-content: center; margin-bottom: 20px;">
+                <div class="wifi-qr-holder" id="wifiModalQrHolder" style="padding: 16px; border-radius: 16px; background: #ffffff;"></div>
+            </div>
+
+            <div style="background: rgba(15, 23, 42, 0.04); border-radius: 14px; padding: 14px; margin-bottom: 20px; text-align: left;">
+                <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--text-muted, #64748b); margin-bottom: 4px;">Direct Room Link / Code</div>
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                    <span id="wifiModalRoomUrl" style="font-size: 12px; font-family: monospace; color: #2563eb; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Loading...</span>
+                    <button id="btnCopyModalUrl" class="btn-secondary" style="padding: 4px 10px; font-size: 11.5px; border-radius: 6px; white-space: nowrap;">Copy</button>
+                </div>
+            </div>
+
+            <button id="btnDoneQrModal" class="btn-primary" style="width: 100%; padding: 11px; font-weight: 700; border-radius: 12px;">Close</button>
+        </div>
+    </div>
+
     <!-- AUDIO FOR TIMER & WHEEL (SYNTHESIZED WEB AUDIO API) -->
-    <script type="module" src="tools-gallery.js?v=439"></script>
+    <script type="module" src="tools-gallery.js?v=440"></script>
     <script type="module" src="studentNav.js?v=385"></script>
 </body>
 
