@@ -128,6 +128,11 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // 13. Simple Notes for Teachers & Students (Cloud Sync)
+    match /user_notes/{noteId} {
+      allow read, create, update, delete: if true;
+    }
+
     // Default fallback for any other subcollections
     match /{document=**} {
       allow read: if true;

@@ -139,7 +139,6 @@ class WifiDataTransferManager {
     init() {
         this.setupUIBindings();
         this.renderMyDeviceUI();
-        this.generateQRCodes();
         this.initPeerConnection();
         this.setupBroadcastChannel();
         this.setupFirestoreSignaling();
@@ -188,7 +187,7 @@ class WifiDataTransferManager {
         };
 
         this.dom.btnCopyRoomCode?.addEventListener('click', () => {
-            copyAction(this.getRoomPairUrl(), `Room link for ${this.roomCode} copied to clipboard! Share it with your phone or students.`);
+            copyAction(this.roomCode, `Room Code ${this.roomCode} copied to clipboard! Share it with your phone or students.`);
         });
 
         // Manual Join Room Code (Especially useful on mobile phones)

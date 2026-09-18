@@ -1,7 +1,8 @@
-import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { collection, doc, setDoc, deleteDoc, onSnapshot, getDocs, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { db, auth } from "./firebase.js";
-import { initWifiDataTransfer } from "./wifi-transfer.js?v=444";
+import { escapeHtml } from "./utils.js";
+import { initWifiDataTransfer } from "./wifi-transfer.js?v=445";
 
 // ==========================================================================
 // 0. AUTHENTICATION & ACCESS GUARD
@@ -15,19 +16,6 @@ onAuthStateChanged(auth, (user) => {
     const hasStudentSession = sessionStorage.getItem('studentLoggedInSession') || localStorage.getItem('portalRememberedStudent');
     if (!user && !hasStudentSession && !isWifiJoin) {
         window.location.replace("index.html");
-    }
-
-    // Adaptive Back button: If teacher, point to admin.html, otherwise studentdash.html
-    const backBtn = document.getElementById('btnToolsBack');
-    const backText = document.getElementById('btnToolsBackText');
-    if (backBtn && backText) {
-        if (user) {
-            backBtn.href = "admin.html";
-            backText.textContent = "Back to Admin";
-        } else {
-            backBtn.href = "studentdash.html";
-            backText.textContent = "Back to Dashboard";
-        }
     }
 });
 
@@ -242,39 +230,129 @@ function playAlarmSound() {
 }
 
 // ==========================================================================
-// 3. TOOL: SIMPLE NOTES (LocalStorage backed with auto-save)
+// ==========================================================================
+// 3. TOOL: SIMPLE NOTES (Cloud Database Sync via Firebase Firestore)
 // ==========================================================================
 const NOTES_STORAGE_KEY = 'mks_teacher_simple_notes';
 let notes = [];
 let activeNoteId = null;
+let currentNotesOwner = null; // Teacher email/UID or Student code
+let notesUnsubscribe = null;
+let saveDebounceTimer = null;
 
-function loadNotesFromStorage() {
+// Determine current user identifier for scoping private notes
+function getCurrentNotesOwner() {
+    if (auth?.currentUser) {
+        return auth.currentUser.email || auth.currentUser.uid;
+    }
     try {
-        const raw = localStorage.getItem(NOTES_STORAGE_KEY);
+        const studentRaw = sessionStorage.getItem('studentLoggedInSession') || localStorage.getItem('portalRememberedStudent');
+        if (studentRaw) {
+            const parsed = JSON.parse(studentRaw);
+            if (parsed && (parsed.code || parsed.name)) {
+                return 'student_' + (parsed.code || parsed.name).replace(/[^a-zA-Z0-9_-]/g, '_');
+            }
+        }
+    } catch (e) {}
+    let guestId = localStorage.getItem('mks_notes_guest_id');
+    if (!guestId) {
+        guestId = 'guest_' + Math.random().toString(36).substring(2, 10);
+        localStorage.setItem('mks_notes_guest_id', guestId);
+    }
+    return guestId;
+}
+
+// Subscribe to real-time notes in Firebase Firestore
+function setupFirebaseNotesSync() {
+    currentNotesOwner = getCurrentNotesOwner();
+    const statusEl = document.getElementById('noteSavedStatus');
+    if (statusEl) statusEl.innerText = 'Syncing notes...';
+
+    // Unsubscribe previous listener if any
+    if (notesUnsubscribe) {
+        try { notesUnsubscribe(); } catch (e) {}
+    }
+
+    // First load local cache for instantaneous UI rendering
+    loadLocalNotesCache();
+    renderNotesList();
+    if (notes.length > 0 && !activeNoteId) {
+        selectNote(notes[0].id);
+    }
+
+    try {
+        const notesRef = collection(db, 'user_notes');
+        const q = query(notesRef, where('owner', '==', currentNotesOwner));
+
+        notesUnsubscribe = onSnapshot(q, (snapshot) => {
+            const cloudNotes = [];
+            snapshot.forEach(docSnap => {
+                const data = docSnap.data();
+                cloudNotes.push({
+                    id: docSnap.id,
+                    title: data.title || 'Untitled Note',
+                    content: data.content || '',
+                    updatedAt: data.updatedAt || Date.now(),
+                    owner: data.owner
+                });
+            });
+
+            // Sort newest first
+            cloudNotes.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+
+            // If user has notes in cloud, update list
+            if (cloudNotes.length > 0) {
+                notes = cloudNotes;
+                saveLocalNotesCache();
+                renderNotesList();
+                if (activeNoteId) {
+                    const stillExists = notes.find(n => n.id === activeNoteId);
+                    if (stillExists) {
+                        // Only update inputs if they are not actively focused
+                        const titleInput = document.getElementById('noteTitleInput');
+                        const contentInput = document.getElementById('noteContentInput');
+                        if (document.activeElement !== titleInput && document.activeElement !== contentInput) {
+                            if (titleInput) titleInput.value = stillExists.title || '';
+                            if (contentInput) contentInput.value = stillExists.content || '';
+                        }
+                    } else {
+                        selectNote(notes[0].id);
+                    }
+                } else {
+                    selectNote(notes[0].id);
+                }
+            } else if (notes.length === 0) {
+                // First time user: create a default welcome note in cloud
+                createNewNote('Welcome to Simple Notes', 'This notepad stores your classroom reminders, lesson ideas, and student notes safely in your cloud account.\n\n• Access your notes anywhere on any device.\n• Everything saves automatically as you type.\n• Fast and responsive for quick classroom capture.');
+            }
+
+            if (statusEl) statusEl.innerText = 'Synced with Cloud';
+        }, (err) => {
+            console.warn('[Notes] Firestore listener notice:', err);
+            if (statusEl) statusEl.innerText = 'Saved locally (offline)';
+        });
+    } catch (err) {
+        console.warn('[Notes] Firestore sync setup error:', err);
+    }
+}
+
+function loadLocalNotesCache() {
+    try {
+        const storageKey = NOTES_STORAGE_KEY + '_' + (currentNotesOwner || 'guest');
+        const raw = localStorage.getItem(storageKey) || localStorage.getItem(NOTES_STORAGE_KEY);
         if (raw) {
             notes = JSON.parse(raw);
-        } else {
-            notes = [
-                {
-                    id: 'note_' + Date.now(),
-                    title: 'Welcome to Simple Notes',
-                    content: 'This notepad stores your classroom reminders, lesson ideas, and student notes safely in your browser.\n\n• You can create as many notes as you like.\n• Everything saves automatically as you type.\n• Fast and responsive for quick classroom capture.',
-                    updatedAt: Date.now()
-                }
-            ];
-            saveNotesToStorage();
         }
     } catch (e) {
         notes = [];
     }
 }
 
-function saveNotesToStorage() {
+function saveLocalNotesCache() {
     try {
-        localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(notes));
-    } catch (e) {
-        console.warn("Notes storage error:", e);
-    }
+        const storageKey = NOTES_STORAGE_KEY + '_' + (currentNotesOwner || 'guest');
+        localStorage.setItem(storageKey, JSON.stringify(notes));
+    } catch (e) {}
 }
 
 function renderNotesList() {
@@ -295,7 +373,7 @@ function renderNotesList() {
         item.className = `note-item ${note.id === activeNoteId ? 'active' : ''}`;
         const dateStr = new Date(note.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         item.innerHTML = `
-            <div class="note-item-title">${escapeText(note.title || 'Untitled Note')}</div>
+            <div class="note-item-title">${escapeHtml(note.title || 'Untitled Note')}</div>
             <div class="note-item-date">${dateStr}</div>
         `;
         item.addEventListener('click', () => selectNote(note.id));
@@ -318,24 +396,42 @@ function selectNote(noteId) {
     renderNotesList();
 }
 
-function createNewNote() {
+async function createNewNote(customTitle, customContent) {
+    const newId = 'note_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    const owner = currentNotesOwner || getCurrentNotesOwner();
     const newNote = {
-        id: 'note_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
-        title: 'New Note',
-        content: '',
+        id: newId,
+        owner: owner,
+        title: customTitle || 'New Note',
+        content: customContent || '',
         updatedAt: Date.now()
     };
+
     notes.unshift(newNote);
-    saveNotesToStorage();
+    saveLocalNotesCache();
     selectNote(newNote.id);
     document.getElementById('noteTitleInput')?.focus();
+
+    // Persist to Firebase Firestore
+    try {
+        await setDoc(doc(db, 'user_notes', newId), {
+            owner: owner,
+            title: newNote.title,
+            content: newNote.content,
+            updatedAt: newNote.updatedAt
+        });
+    } catch (e) {
+        console.warn('[Notes] Firestore create error:', e);
+    }
 }
 
-function deleteCurrentNote() {
+async function deleteCurrentNote() {
     if (!activeNoteId) return;
     if (confirm("Are you sure you want to delete this note?")) {
-        notes = notes.filter(n => n.id !== activeNoteId);
-        saveNotesToStorage();
+        const toDeleteId = activeNoteId;
+        notes = notes.filter(n => n.id !== toDeleteId);
+        saveLocalNotesCache();
+
         activeNoteId = notes.length > 0 ? notes[0].id : null;
         if (activeNoteId) {
             selectNote(activeNoteId);
@@ -346,6 +442,13 @@ function deleteCurrentNote() {
             if (contentInput) contentInput.value = '';
             renderNotesList();
         }
+
+        // Delete from Firebase Firestore
+        try {
+            await deleteDoc(doc(db, 'user_notes', toDeleteId));
+        } catch (e) {
+            console.warn('[Notes] Firestore delete error:', e);
+        }
     }
 }
 
@@ -353,24 +456,45 @@ function saveCurrentNote() {
     if (!activeNoteId) {
         if (!document.getElementById('noteTitleInput')?.value && !document.getElementById('noteContentInput')?.value) return;
         createNewNote();
+        return;
     }
     const note = notes.find(n => n.id === activeNoteId);
     if (note) {
         note.title = document.getElementById('noteTitleInput')?.value.trim() || 'Untitled Note';
         note.content = document.getElementById('noteContentInput')?.value || '';
         note.updatedAt = Date.now();
-        saveNotesToStorage();
+        note.owner = currentNotesOwner || getCurrentNotesOwner();
+
+        saveLocalNotesCache();
         renderNotesList();
+
         const statusEl = document.getElementById('noteSavedStatus');
-        if (statusEl) {
-            statusEl.innerText = 'Saved just now';
-            setTimeout(() => { if (statusEl) statusEl.innerText = 'All changes saved locally'; }, 2000);
-        }
+        if (statusEl) statusEl.innerText = 'Saving to cloud...';
+
+        // Debounce cloud write to Firestore so rapid typing is smooth
+        if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
+        saveDebounceTimer = setTimeout(async () => {
+            try {
+                await setDoc(doc(db, 'user_notes', note.id), {
+                    owner: note.owner,
+                    title: note.title,
+                    content: note.content,
+                    updatedAt: note.updatedAt
+                }, { merge: true });
+                if (statusEl) {
+                    statusEl.innerText = 'Saved to Cloud';
+                    setTimeout(() => { if (statusEl) statusEl.innerText = 'Synced with Cloud'; }, 2000);
+                }
+            } catch (err) {
+                console.warn('[Notes] Firestore save error:', err);
+                if (statusEl) statusEl.innerText = 'Saved locally';
+            }
+        }, 600);
     }
 }
 
 // Setup Note Event Listeners
-document.getElementById('btnNewNote')?.addEventListener('click', createNewNote);
+document.getElementById('btnNewNote')?.addEventListener('click', () => createNewNote());
 document.getElementById('btnSaveNote')?.addEventListener('click', saveCurrentNote);
 document.getElementById('btnDeleteNote')?.addEventListener('click', deleteCurrentNote);
 document.getElementById('noteSearchInput')?.addEventListener('input', renderNotesList);
@@ -384,11 +508,10 @@ document.getElementById('noteContentInput')?.addEventListener('input', (e) => {
     saveCurrentNote();
 });
 
-// Initialize Notes
-loadNotesFromStorage();
-if (notes.length > 0) {
-    selectNote(notes[0].id);
-}
+// React to auth state changes to load the user's personal cloud notes
+onAuthStateChanged(auth, () => {
+    setupFirebaseNotesSync();
+});
 
 // ==========================================================================
 // 4. TOOL: CALCULATOR
