@@ -269,7 +269,7 @@ onAuthStateChanged(auth, async (user) => {
                         <source src="${driveUc}" type="video/mp4">
                     `;
                     videoEl.load();
-                    videoEl.play().catch(() => {});
+                    videoEl.play().catch(() => { });
                 }
             };
             updateGreetingBannerVideo();
@@ -653,7 +653,7 @@ function initGoogleClassroomSyncUI() {
             btnConnect.innerText = "Connecting...";
             try {
                 await GClassSync.authenticateGoogleClassroom();
-                
+
                 const statusText = document.getElementById('gclassStatusText');
                 if (statusText) statusText.innerHTML = `<span style="color: #10b981; font-weight: 700;">● Connected</span> - Ready to sync classroom assignments & scores`;
                 btnConnect.style.background = "#10b981";
@@ -678,7 +678,7 @@ function initGoogleClassroomSyncUI() {
             if (!courseObj) return;
 
             const { detectedSubject, detectedClass } = GClassSync.detectSubjectAndClass(courseObj.name, courseObj.section);
-            
+
             const subjectSelect = document.getElementById('gclassTargetSubject');
             const classSelect = document.getElementById('gclassTargetClass');
 
@@ -717,7 +717,7 @@ function initGoogleClassroomSyncUI() {
 
             btnFetchWork.disabled = true;
             btnFetchWork.innerHTML = `<span class="spinner-small" style="display: inline-block; width: 14px; height: 14px; border: 2px solid white; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;"></span> Loading...`;
-            
+
             try {
                 const workSection = document.getElementById('gclassWorkSection');
                 const workListContainer = document.getElementById('gclassWorkListContainer');
@@ -730,7 +730,7 @@ function initGoogleClassroomSyncUI() {
                     workListContainer.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--text-gray);">No published assignments found in this class.</div>`;
                 } else {
                     workListContainer.innerHTML = gclassCurrentCourseWorks.map((cw, idx) => {
-                        const dueDateStr = cw.dueDate ? `${cw.dueDate.year}-${String(cw.dueDate.month).padStart(2,'0')}-${String(cw.dueDate.day).padStart(2,'0')}` : 'No due date';
+                        const dueDateStr = cw.dueDate ? `${cw.dueDate.year}-${String(cw.dueDate.month).padStart(2, '0')}-${String(cw.dueDate.day).padStart(2, '0')}` : 'No due date';
                         const maxPts = cw.maxPoints !== undefined ? `${cw.maxPoints} pts` : 'Ungraded / 100 pts';
                         return `
                             <label style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #ffffff; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--primary-blue)'" onmouseout="this.style.borderColor='var(--border-color)'">
@@ -850,10 +850,10 @@ function initGoogleClassroomSyncUI() {
             try {
                 const result = await GClassSync.commitSyncToFirestore(itemsToSync);
                 alert(`🎉 Successfully synchronized ${result.totalSynced} score(s)!\n• ${result.insertedCount} new scores added\n• ${result.updatedCount} scores updated`);
-                
+
                 // Refresh admin table and views
                 loadAdminTable();
-                
+
                 // Re-run preview to show updated status
                 if (btnPreview) btnPreview.click();
             } catch (err) {
@@ -966,7 +966,7 @@ function renderGclassPreviewTable() {
 
     tbody.innerHTML = filteredItems.map((item, idx) => {
         const itemGlobalIndex = gclassPreviewItems.indexOf(item);
-        
+
         let statusBadge = '';
         if (item.syncStatus === 'READY_NEW') {
             statusBadge = `<span style="background: #ecfdf5; color: #10b981; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">+ New Score</span>`;
@@ -997,7 +997,7 @@ function renderGclassPreviewTable() {
             `;
         }
 
-        const scoreDisplay = item.classroomGrade !== null 
+        const scoreDisplay = item.classroomGrade !== null
             ? `<strong style="font-size: 14px; color: var(--text-dark);">${item.classroomGrade}</strong> <span style="color: var(--text-gray); font-size: 12px;">/ ${item.courseWorkMaxPoints}</span>`
             : `<span style="color: var(--text-gray); font-style: italic;">Not Graded</span>`;
 
@@ -1023,14 +1023,14 @@ function renderGclassPreviewTable() {
     }).join('');
 }
 
-window.toggleGclassPreviewItem = function(globalIndex, isChecked) {
+window.toggleGclassPreviewItem = function (globalIndex, isChecked) {
     if (gclassPreviewItems[globalIndex]) {
         gclassPreviewItems[globalIndex].selected = isChecked;
         renderGclassPreviewTable();
     }
 };
 
-window.manualLinkGclassStudent = function(globalIndex, selectedStudentCode) {
+window.manualLinkGclassStudent = function (globalIndex, selectedStudentCode) {
     const item = gclassPreviewItems[globalIndex];
     if (!item) return;
 
@@ -1913,7 +1913,7 @@ window.loadAdminMaintenanceSettings = async function () {
         if (cached) {
             try {
                 maintenanceData = { ...maintenanceData, ...JSON.parse(cached) };
-            } catch (e) {}
+            } catch (e) { }
         }
 
         // Fetch from Firestore system_settings/maintenance or config/maintenance
@@ -2000,14 +2000,14 @@ window.saveAdminMaintenanceSettings = async function () {
         window.updateMaintenanceUI(payload);
 
         if (msgEl) {
-            msgEl.innerText = isEnabled 
-                ? "Maintenance Mode ACTIVE and landing page updated." 
+            msgEl.innerText = isEnabled
+                ? "Maintenance Mode ACTIVE and landing page updated."
                 : "Settings saved and Portal is ONLINE for students.";
             msgEl.style.color = isEnabled ? "#ef4444" : "#16a34a";
             setTimeout(() => { if (msgEl) msgEl.innerText = ""; }, 4000);
         }
 
-        alert(isEnabled 
+        alert(isEnabled
             ? "Maintenance Mode is now ACTIVE.\nStudents logging in will be directed to the maintenance landing page."
             : "Maintenance Mode is now OFF.\nStudents can access the portal normally.");
 
@@ -4174,7 +4174,7 @@ async function deleteQuiz(id, title = '') {
         try {
             const s = await getDoc(doc(db, "quizzes", id));
             if (s.exists()) resolvedTitle = s.data().title || '';
-        } catch (e) {}
+        } catch (e) { }
     }
 
     const titleMsg = resolvedTitle ? ` "${resolvedTitle}"` : '';
@@ -4218,7 +4218,7 @@ async function deleteQuiz(id, title = '') {
                         deletePromises.push(deleteDoc(doc(db, "exam_scores", d.id)));
                     }
                 });
-            } catch (e) {}
+            } catch (e) { }
 
             try {
                 const scoresSnap = await getDocs(collection(db, "scores"));
@@ -4229,7 +4229,7 @@ async function deleteQuiz(id, title = '') {
                         deletePromises.push(deleteDoc(doc(db, "scores", d.id)));
                     }
                 });
-            } catch (e) {}
+            } catch (e) { }
         }
 
         await Promise.all(deletePromises);
@@ -4491,7 +4491,7 @@ function renderQuizClassPills() {
 
 window.setQuizClassFilter = function (cls, btn = null) {
     window.quizResultsCurrentState.selectedClass = cls;
-    
+
     const container = document.getElementById("quizClassPillsContainer");
     if (container) {
         const normalize = (str) => (str || '').toString().trim().toLowerCase();
@@ -4608,7 +4608,7 @@ function renderQuizResultsTable() {
         const studentCode = student.code || student.id;
         const studentName = student.studentName;
         const studentClass = student.studentClass;
-        
+
         const normCode = normalize(student.code);
         const normId = normalize(student.id);
         const normName = normalize(student.studentName);
@@ -4622,10 +4622,10 @@ function renderQuizResultsTable() {
         // Status Badge HTML with visual icon
         let statusBadgeHtml = "";
         if (isSubmittedOnline) {
-            const autoScoreTxt = (subData.totalAutoGradable && subData.totalAutoGradable > 0) 
-                ? `<small style="display:block; font-size:11px; color:#047857; font-weight:600; margin-top:2px;">Auto: ${subData.score ?? 0}/${subData.totalAutoGradable} pts</small>` 
+            const autoScoreTxt = (subData.totalAutoGradable && subData.totalAutoGradable > 0)
+                ? `<small style="display:block; font-size:11px; color:#047857; font-weight:600; margin-top:2px;">Auto: ${subData.score ?? 0}/${subData.totalAutoGradable} pts</small>`
                 : '';
-            
+
             statusBadgeHtml = `
                 <div style="display:flex; flex-direction:column; align-items:center;">
                     <span class="quiz-badge-status-done" title="Submitted Online">
@@ -4731,7 +4731,7 @@ function renderQuizResultsTable() {
     });
 }
 
-window.deleteStudentQuizSubmission = async function(submissionId, studentName, quizTitle) {
+window.deleteStudentQuizSubmission = async function (submissionId, studentName, quizTitle) {
     if (!submissionId) return;
     if (!confirm(`Are you sure you want to delete the submission for ${studentName} on "${quizTitle}"?`)) return;
     try {
@@ -4740,7 +4740,7 @@ window.deleteStudentQuizSubmission = async function(submissionId, studentName, q
         if (window.quizResultsCurrentState?.quizTitle) {
             window.viewQuizResults(window.quizResultsCurrentState.quizTitle, window.quizResultsCurrentState.quizId);
         }
-    } catch(err) {
+    } catch (err) {
         console.error("Error deleting submission:", err);
         alert("Error deleting submission: " + err.message);
     }
@@ -4873,7 +4873,7 @@ window.viewStudentAnswers = async function (studentCode, studentName, quizTitle,
         if (container) {
             container.innerHTML = responses.map((item, index) => {
                 const normStudentResp = (item.response || '').toString().trim().toLowerCase();
-                
+
                 // Find matching question from quiz definition
                 const originalQuizItem = gradableQuizItems[index] || gradableQuizItems.find(q => (q.prompt || q.question || '').trim().toLowerCase() === (item.prompt || '').trim().toLowerCase());
 
@@ -4996,7 +4996,7 @@ window.saveModalGrade = async function (studentCode, studentName, studentClass, 
     try {
         const state = window.quizResultsCurrentState || {};
         let subject = state.quizData?.subject || state.subject || "";
-        
+
         if (!subject || subject === "General") {
             const subjectTag = document.getElementById('quizResultsSubjectTag')?.innerText?.trim();
             if (subjectTag && subjectTag !== "Subject" && subjectTag !== "Loading...") {
@@ -5119,7 +5119,7 @@ window.saveDirectScore = async function (studentCode, studentName, studentClass,
     try {
         const state = window.quizResultsCurrentState || {};
         let subject = state.quizData?.subject || state.subject || "";
-        
+
         if (!subject || subject === "General") {
             const subjectTag = document.getElementById('quizResultsSubjectTag')?.innerText?.trim();
             if (subjectTag && subjectTag !== "Subject" && subjectTag !== "Loading...") {
@@ -6040,7 +6040,7 @@ window.loadSystemDatabases = async function () {
                             cls.split(',').map(c => c.trim()).filter(Boolean).forEach(c => existing.classesSet.add(c));
                         }
                         if (source === 'google_classroom') existing.source = 'google_classroom';
-                        
+
                         // Mark redundant auto-generated duplicate doc for cleanup
                         if (docSnap.id.startsWith('offline_') || docSnap.id.startsWith('gclass_')) {
                             duplicateDocIdsToDelete.push(docSnap.id);
@@ -6064,7 +6064,7 @@ window.loadSystemDatabases = async function () {
                 // Asynchronously clean up redundant duplicate documents in Firestore
                 if (duplicateDocIdsToDelete.length > 0) {
                     duplicateDocIdsToDelete.forEach(id => {
-                        deleteDoc(doc(db, "system_quizzes", id)).catch(() => {});
+                        deleteDoc(doc(db, "system_quizzes", id)).catch(() => { });
                     });
                 }
 
@@ -6155,9 +6155,9 @@ window.renderQuizzesDatabaseTable = function () {
         items = items.filter(item => {
             const classStr = Array.from(item.classesSet || []).join(', ').toLowerCase();
             return (item.title || '').toLowerCase().includes(searchTerm) ||
-                   (item.subject || '').toLowerCase().includes(searchTerm) ||
-                   (item.type || '').toLowerCase().includes(searchTerm) ||
-                   classStr.includes(searchTerm);
+                (item.subject || '').toLowerCase().includes(searchTerm) ||
+                (item.type || '').toLowerCase().includes(searchTerm) ||
+                classStr.includes(searchTerm);
         });
     }
 
@@ -6512,7 +6512,7 @@ async function deleteSystemRecord(collectionName, docId) {
                         examTitle = (d.name || "").trim();
                         examSubject = (d.subject || "").trim();
                     }
-                } catch (e) {}
+                } catch (e) { }
 
                 // Delete system_quizzes document
                 await deleteDoc(doc(db, "system_quizzes", docId));
@@ -6523,7 +6523,7 @@ async function deleteSystemRecord(collectionName, docId) {
                     const altDocIds = [`offline_${safeTitle}`, `gclass_${safeTitle}`, `offline_${examTitle}`, `gclass_${examTitle}`];
                     altDocIds.forEach(altId => {
                         if (altId !== docId) {
-                            deleteDoc(doc(db, "system_quizzes", altId)).catch(() => {});
+                            deleteDoc(doc(db, "system_quizzes", altId)).catch(() => { });
                         }
                     });
 
@@ -6548,7 +6548,7 @@ async function deleteSystemRecord(collectionName, docId) {
                                 deletePromises.push(deleteDoc(lDoc.ref));
                             }
                         });
-                    } catch (le) {}
+                    } catch (le) { }
 
                     await Promise.all(deletePromises);
                 }
@@ -6823,7 +6823,7 @@ let currentLedgerMeta = { subject: '', studentClass: '', quiz: '', sortOption: '
 function renderLedgerRows(tbody, ledgerResults, sortOption, selectedQuiz) {
     const selectedSubject = document.getElementById('ledgerSubjectSelect')?.value || '';
     const selectedClass = document.getElementById('ledgerClassSelect')?.value || '';
-    
+
     currentLedgerResults = ledgerResults ? [...ledgerResults] : [];
     currentLedgerMeta = {
         subject: selectedSubject,
@@ -8565,7 +8565,7 @@ window.saveEditOfflineQuiz = async function () {
                     targetClass: targetClassStr,
                     targetClassesList: selectedClasses,
                     updatedAt: new Date().toISOString()
-                }, { merge: true }).catch(() => {});
+                }, { merge: true }).catch(() => { });
             }
         });
 
@@ -8608,20 +8608,3 @@ window.saveEditOfflineQuiz = async function () {
 
 window.getSelectedEditOfflineQuizClasses = getSelectedEditOfflineQuizClasses;
 window.updateEditOfflineQuizClassLabel = updateEditOfflineQuizClassLabel;
-
-// --- STUDENTS ATTENDANCE SYSTEM MOVED TO ./js/admin/adminAttendance.js ---
-
-
-
-// --- ATTENDANCE DATA ANALYSIS & REPORTING ENGINE MOVED TO ./js/admin/adminAttendanceAnalytics.js ---
-
-// --- TEACHER / ADMIN PROFILE MANAGEMENT MOVED TO ./js/admin/adminTeacherProfile.js ---
-
-// --- ASSIGNMENT REMINDER SYSTEM MOVED TO ./js/admin/adminReminders.js ---
-
-
-
-
-// --- STUDENT ATTENDANCE HISTORY DIALOG MOVED TO ./js/admin/adminAttendanceAnalytics.js ---
-
-// --- QUIZ DOCUMENT AUTO-IMPORT MOVED TO ./js/admin/adminQuizDocImport.js ---
