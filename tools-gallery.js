@@ -5,18 +5,127 @@ import { escapeHtml } from "./utils.js";
 import { initWifiDataTransfer } from "./wifi-transfer.js?v=445";
 
 // ==========================================================================
-// 0. AUTHENTICATION & ACCESS GUARD
+// 0. AUTHENTICATION & ACCESS GUARD AND TOPBAR ROLE CUSTOMIZATION
 // ==========================================================================
-onAuthStateChanged(auth, (user) => {
+let currentUserRole = null; // 'admin' | 'teacher' | 'student' | null
+
+function updateNavUserUI(role) {
+    const isStaff = role === 'admin' || role === 'teacher';
+    
+    // 1. Hide/show student-only navigation tabs (Dashboard, Online Quiz, Timeline, Board, Profile, Scores)
+    document.querySelectorAll('.student-only-nav').forEach(el => {
+        if (isStaff) {
+            el.style.setProperty('display', 'none', 'important');
+        } else {
+            el.style.removeProperty('display');
+        }
+    });
+
+    // 2. Customize brand subtitle
+    const brandSubtitle = document.querySelector('.brand p');
+    if (brandSubtitle) {
+        if (isStaff) {
+            brandSubtitle.innerText = role === 'admin' ? 'Admin Administration & Tools' : 'Teacher Administration & Tools';
+        } else {
+            brandSubtitle.innerText = 'Student Portal System';
+        }
+    }
+
+    // 3. For Teacher button text / title in topbar
+    const teacherBtn = document.querySelector('.teacher-btn');
+    if (teacherBtn) {
+        if (isStaff) {
+            teacherBtn.setAttribute('title', 'Admin Dashboard');
+            teacherBtn.setAttribute('aria-label', 'Admin Dashboard');
+        } else {
+            teacherBtn.setAttribute('title', 'For Teacher');
+            teacherBtn.setAttribute('aria-label', 'For Teacher');
+        }
+    }
+
+    const mobileTeacherLabel = document.getElementById('mobileTeacherBtnLabel');
+    if (mobileTeacherLabel) {
+        if (isStaff) {
+            mobileTeacherLabel.innerText = role === 'admin' ? 'Admin Dashboard' : 'Teacher Dashboard';
+        } else {
+            mobileTeacherLabel.innerText = 'For Teacher';
+        }
+    }
+}
+
+// Check synchronous student session first to avoid flicker
+const checkInitialSession = () => {
+    const rawSession = sessionStorage.getItem('studentLoggedInSession')
+        || localStorage.getItem('studentLoggedInSession')
+        || localStorage.getItem('portalRememberedStudent');
+    const hasStudentCode = localStorage.getItem('loggedInStudentCode') || localStorage.getItem('studentCode');
+    
+    if (rawSession || hasStudentCode) {
+        currentUserRole = 'student';
+        updateNavUserUI('student');
+    }
+};
+checkInitialSession();
+
+onAuthStateChanged(auth, async (user) => {
     // Check if user is joining a Wi-Fi transfer session (?room= or ?tool=wifi)
     const urlParams = new URLSearchParams(window.location.search);
     const isWifiJoin = urlParams.has('room') || urlParams.get('tool') === 'wifi';
     
-    // Both teachers/admins and students can access, but if unauthenticated, no student session, and not joining wifi room, redirect to portal
-    const hasStudentSession = sessionStorage.getItem('studentLoggedInSession') || localStorage.getItem('portalRememberedStudent');
-    if (!user && !hasStudentSession && !isWifiJoin) {
-        window.location.replace("index.html");
+    if (user) {
+        // Teacher / Staff detected via Firebase Auth
+        let role = 'teacher';
+        try {
+            const userDoc = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js")
+                .then(({ getDoc, doc }) => getDoc(doc(db, "users", user.uid)));
+            if (userDoc.exists() && userDoc.data().role) {
+                role = userDoc.data().role;
+            } else if (user.email && user.email.toLowerCase().includes('admin')) {
+                role = 'admin';
+            }
+        } catch (e) {
+            if (user.email && user.email.toLowerCase().includes('admin')) {
+                role = 'admin';
+            }
+        }
+        currentUserRole = role;
+        updateNavUserUI(role);
+    } else {
+        // Check student session
+        const hasStudentSession = sessionStorage.getItem('studentLoggedInSession')
+            || localStorage.getItem('portalRememberedStudent')
+            || localStorage.getItem('loggedInStudentCode')
+            || localStorage.getItem('studentCode');
+        
+        if (hasStudentSession) {
+            currentUserRole = 'student';
+            updateNavUserUI('student');
+        } else if (!isWifiJoin) {
+            window.location.replace("index.html");
+        }
     }
+});
+
+// Logout handler for studentLogoutBtn
+document.getElementById('studentLogoutBtn')?.addEventListener('click', async () => {
+    if (window.portalSession?.clearSessions) {
+        await window.portalSession.clearSessions(true);
+    } else {
+        localStorage.removeItem('portalRememberedStudent');
+        localStorage.removeItem('portalSessionMeta');
+        localStorage.removeItem('loggedInStudentCode');
+        localStorage.removeItem('studentLoggedIn');
+        localStorage.removeItem('studentCode');
+        localStorage.removeItem('studentTimelineSession');
+        localStorage.removeItem('studentLoggedInSession');
+        sessionStorage.removeItem('studentLoggedInSession');
+        sessionStorage.removeItem('studentTimelineSession');
+        try {
+            const { signOut } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js");
+            if (auth.currentUser) await signOut(auth);
+        } catch (e) {}
+    }
+    window.location.href = 'index.html';
 });
 
 // ==========================================================================
