@@ -6,3 +6,12 @@ body.dark-theme{background:#101b2d;color:#e5edf8}body.dark-theme .main{backgroun
 /* Outline highlight on active Databases nav item to match admin.html screenshot */
 .desktop-menu-bar #groupDatabases > .menu-btn.active { outline: 2px solid #1e5eff; outline-offset: -2px; border-radius: 9px; }
 .desktop-menu-bar #groupDatabases > .menu-btn.active::after { left: 6px; right: 6px; }
+
+/* Allow scrolling in analyticuser (overriding admin.css html, body { height: 100vh; overflow: hidden; }) */
+html, body {
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
