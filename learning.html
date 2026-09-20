@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Learning Module · Mitra Kasih School</title>
+  <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/1o_7O1hdx1SJOXfoFw9ZKxpl4zSOD_VYd">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=440">
+  <link rel="stylesheet" href="admin.css?v=440">
+  <link rel="stylesheet" href="student.css?v=440">
+  <link rel="stylesheet" href="learning.css?v=101">
+</head>
+
+<body>
+  <div class="app-container">
+
+    <!-- TOPBAR / SIDEBAR NAVIGATION -->
+    <header class="sidebar student-sidebar">
+      <div class="brand">
+        <div class="brand-logo-container">
+          <img id="brandLogoImg" src="https://lh3.googleusercontent.com/d/1o_7O1hdx1SJOXfoFw9ZKxpl4zSOD_VYd" alt="Logo">
+        </div>
+        <div>
+          <h2 style="margin: 0; font-size: 15px; font-weight: 800; color: #ffffff; letter-spacing: 0.5px;">
+            MITRA KASIH SCHOOL</h2>
+          <p id="portalRoleSubtitle" style="margin: 2px 0 0 0; font-size: 12px; color: var(--text-gray);">Learning Module</p>
+        </div>
+      </div>
+
+      <!-- DESKTOP TOPBAR LINKS -->
+      <div class="menu-bar desktop-menu-bar">
+        <a href="studentdash.html" class="menu-btn student-only-nav" data-label="Dashboard" style="text-decoration: none;">
+          <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+          <span class="menu-label">Dashboard</span>
+        </a>
+
+        <a href="quiz.html" class="menu-btn student-only-nav" data-label="Online Quiz" style="text-decoration: none;">
+          <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+          </svg>
+          <span class="menu-label">Online Quiz</span>
+        </a>
+
+        <a href="timeline.html" class="menu-btn student-only-nav" data-label="Classroom Feed" style="text-decoration: none;">
+          <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"></line>
+            <line x1="8" y1="12" x2="21" y2="12"></line>
+            <line x1="8" y1="18" x2="21" y2="18"></line>
+            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+          </svg>
+          <span class="menu-label">Classroom Timeline</span>
+        </a>
+
+        <a href="board.html" class="menu-btn student-only-nav" data-label="Board" style="text-decoration: none;">
+          <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+            <line x1="8" y1="12" x2="16" y2="12"></line>
+            <line x1="12" y1="8" x2="12" y2="16"></line>
+          </svg>
+          <span class="menu-label">Board</span>
+        </a>
+
+        <a href="tools-gallery.html" class="menu-btn" data-label="Useful Tools" style="text-decoration: none;">
+          <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+          </svg>
+          <span class="menu-label">Tools</span>
+        </a>
+
+        <a href="learning.html" class="menu-btn active" data-label="Learning Module" style="text-decoration: none;">
+          <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            <path d="M9 7h6"></path>
+            <path d="M9 11h6"></path>
+          </svg>
+          <span class="menu-label">Learning</span>
+        </a>
+
+        <a href="scores.html" class="menu-btn student-only-nav" data-label="My Scores" style="text-decoration: none;">
+          <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+          <span class="menu-label">My Scores</span>
+        </a>
+      </div>
+
+      <!-- RIGHT ACTIONS -->
+      <div class="user-profile-bottom desktop-user-actions" style="display: flex; align-items: center; gap: 8px; margin: 0;">
+        <button id="themeToggleBtn" class="theme-toggle-btn btn-circle" title="Toggle Theme" aria-label="Toggle Theme">
+          <svg class="theme-icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+          </svg>
+          <svg class="theme-icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+
+        <button id="backToAdminBtn" onclick="window.location.href='admin.html'" class="teacher-btn btn-circle" title="For Teacher Workspace" aria-label="For Teacher Workspace">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+            <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+          </svg>
+        </button>
+
+        <button id="appLogoutBtn" class="logout-btn btn-circle" title="Logout" aria-label="Logout">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- MOBILE KEBAB -->
+      <div class="mobile-kebab-container">
+        <button id="mobileTopbarKebabBtn" class="mobile-kebab-btn" aria-label="Toggle Menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+            <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+            <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+            <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+          </svg>
+        </button>
+        <div id="mobileTopbarDropdown" class="mobile-topbar-dropdown hidden">
+          <a href="studentdash.html" class="kebab-item student-only-nav"><span>Dashboard</span></a>
+          <a href="quiz.html" class="kebab-item student-only-nav"><span>Online Quiz</span></a>
+          <a href="timeline.html" class="kebab-item student-only-nav"><span>Classroom Timeline</span></a>
+          <a href="tools-gallery.html" class="kebab-item"><span>Useful Tools</span></a>
+          <a href="learning.html" class="kebab-item"><span>Learning Module</span></a>
+          <a href="admin.html" class="kebab-item"><span>Teacher Admin</span></a>
+          <button id="mobileLogoutBtn" class="kebab-item kebab-btn-danger"><span>Logout</span></button>
+        </div>
+      </div>
+    </header>
+
+    <!-- MAIN GAMIFIED LEARNING SHELL -->
+    <main class="lm-shell">
+
+      <!-- HERO BANNER WITH LEVEL XP & BADGE -->
+      <section class="lm-hero-banner">
+        <div class="lm-hero-info">
+          <div class="lm-tag-badge">
+            <span>🎮 Gamified Quest Hub</span>
+            <span id="userRoleIndicator">· Student Mode</span>
+          </div>
+          <h1 class="lm-hero-title">
+            <span id="heroClassTitle">Grade 9 English</span>
+            <span>Academy Quests</span>
+          </h1>
+          <p class="lm-hero-desc">
+            Level up your language mastery through deep-dive conceptual formulas, real-world context across cinema, hit music, and classic literature, and interactive mastery challenges!
+          </p>
+        </div>
+
+        <!-- GAMIFICATION STATS HUD -->
+        <div class="lm-hud-stats">
+          <div class="lm-hud-card">
+            <div class="lm-hud-icon">⚡</div>
+            <div class="lm-hud-val" id="hudXpDisplay">0</div>
+            <div class="lm-hud-label">Total XP</div>
+          </div>
+          <div class="lm-hud-card">
+            <div class="lm-hud-icon">🎖️</div>
+            <div class="lm-hud-val" id="hudRankDisplay">Novice</div>
+            <div class="lm-hud-label">Rank</div>
+          </div>
+          <div class="lm-hud-card">
+            <div class="lm-hud-icon">⭐</div>
+            <div class="lm-hud-val" id="hudCompletedCount">0 / 12</div>
+            <div class="lm-hud-label">Quests Mastered</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CONTROL BAR: CLASS SELECTOR, SUBJECT PICKER & TEACHER CONTROLS -->
+      <section class="lm-control-bar">
+        <div class="lm-control-left">
+          <div class="lm-select-group">
+            <label class="lm-select-label" for="classSelect">Class:</label>
+            <select id="classSelect" class="lm-select">
+              <!-- Populated dynamically via JS -->
+            </select>
+          </div>
+
+          <div class="lm-select-group">
+            <label class="lm-select-label">Subject:</label>
+            <div class="lm-subject-tabs" id="subjectTabsContainer">
+              <button type="button" class="lm-subject-pill active" data-subject="English">English</button>
+              <button type="button" class="lm-subject-pill" data-subject="ICT">ICT</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="lm-control-right" id="teacherControlsGroup" style="display: none;">
+          <div class="lm-teacher-mode-pill">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <span>Teacher Control Active</span>
+          </div>
+          <button type="button" class="lm-btn-teacher-action" id="btnUnlockAll">
+            <span>Unlock All</span>
+          </button>
+          <button type="button" class="lm-btn-teacher-action" id="btnLockAll" style="background: linear-gradient(135deg, #475569, #334155);">
+            <span>Lock All</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- CLASS LOCK ALERT (Visible if student tries tampering or unassigned) -->
+      <div id="classRestrictionBanner" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; border-radius: 14px; padding: 14px 20px; margin-bottom: 24px; color: #fecdd3; font-size: 13.5px;">
+        <strong>Notice:</strong> As a student in <span id="enrolledClassTag" style="font-weight: 800; color: #ffffff;"></span>, your learning pathway is locked to your enrolled class curriculum.
+      </div>
+
+      <!-- QUEST MAP GRID (12 MODULES) -->
+      <section class="lm-quest-section">
+        <div class="lm-quest-heading">
+          <div>
+            <h2 class="lm-quest-title">Curriculum Quest Nodes</h2>
+            <p class="lm-quest-subtitle">Click any unlocked quest to inspect deep formulas, pop culture contexts, or challenge the practice arena.</p>
+          </div>
+          <div id="teacherActionNotice" style="font-size: 12.5px; color: #fbbf24; font-weight: 600; display: none;">
+            💡 Teachers: Click the lock icon on any card to toggle student access.
+          </div>
+        </div>
+
+        <div class="lm-quest-grid" id="questGridContainer">
+          <!-- Populated dynamically via JS from ENGLISH_G9_MODULES -->
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ============================================================
+       LESSON & PRACTICE MODAL
+       ============================================================ -->
+  <div class="lm-modal-overlay" id="lessonModalOverlay">
+    <div class="lm-modal-dialog">
+      
+      <div class="lm-modal-header">
+        <div class="lm-modal-header-left">
+          <div class="lm-modal-icon" id="modalUnitIcon">📖</div>
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <h3 class="lm-modal-title" id="modalUnitTitle">16 English Tenses</h3>
+              <span class="lm-modal-badge" id="modalUnitBadge">Grammar Core</span>
+            </div>
+            <p style="margin: 3px 0 0 0; font-size: 12.5px; color: #94a3b8;" id="modalUnitSub">Deep-Dive Study & Practice Arena</p>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <button type="button" class="lm-btn-teacher-action" id="btnEditQuestionsModal" style="display: none; padding: 6px 12px; font-size: 12px;">
+            ✏️ Edit Questions
+          </button>
+          <button type="button" class="lm-modal-close-btn" id="modalCloseBtn" aria-label="Close">✕</button>
+        </div>
+      </div>
+
+      <!-- TABS: THEORY vs POP CULTURE CONTEXT vs PRACTICE ARENA -->
+      <div class="lm-modal-tabs">
+        <button type="button" class="lm-modal-tab-btn active" data-tab="theory">📐 Formula & Theory</button>
+        <button type="button" class="lm-modal-tab-btn" data-tab="contexts">🎬 Movies, Music & Books</button>
+        <button type="button" class="lm-modal-tab-btn" data-tab="arena">⚔️ Practice Arena (+XP)</button>
+      </div>
+
+      <!-- MODAL CONTENT BODY -->
+      <div class="lm-modal-body">
+        
+        <!-- TAB 1: THEORY -->
+        <div id="tabTheory" class="lm-tab-pane">
+          <div class="lm-formula-box">
+            <div class="lm-formula-tag">Syntax Formula & Structure</div>
+            <div class="lm-formula-text" id="modalFormulaText"></div>
+          </div>
+          <div class="lm-theory-section" id="modalTheoryBody"></div>
+        </div>
+
+        <!-- TAB 2: CONTEXTS -->
+        <div id="tabContexts" class="lm-tab-pane" style="display: none;">
+          <p style="font-size: 14px; color: #cbd5e1; margin-top: 0;">
+            See how master storytellers, musicians, and screenwriters apply these grammar concepts in real life:
+          </p>
+          <div class="lm-context-grid">
+            <div class="lm-context-card">
+              <div class="lm-context-icon">🎬</div>
+              <div class="lm-context-type">In Cinema & Movies</div>
+              <h4 class="lm-context-title" id="contextMovieTitle"></h4>
+              <div class="lm-context-quote" id="contextMovieQuote"></div>
+              <p class="lm-context-desc" id="contextMovieDesc"></p>
+            </div>
+
+            <div class="lm-context-card">
+              <div class="lm-context-icon">🎵</div>
+              <div class="lm-context-type">In Music & Songs</div>
+              <h4 class="lm-context-title" id="contextMusicTitle"></h4>
+              <div class="lm-context-quote" id="contextMusicQuote"></div>
+              <p class="lm-context-desc" id="contextMusicDesc"></p>
+            </div>
+
+            <div class="lm-context-card">
+              <div class="lm-context-icon">📚</div>
+              <div class="lm-context-type">In Literature & Books</div>
+              <h4 class="lm-context-title" id="contextBookTitle"></h4>
+              <div class="lm-context-quote" id="contextBookQuote"></div>
+              <p class="lm-context-desc" id="contextBookDesc"></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: PRACTICE ARENA -->
+        <div id="tabArena" class="lm-tab-pane" style="display: none;">
+          <div class="lm-arena-wrapper">
+            
+            <div id="arenaQuizContainer">
+              <div class="lm-quiz-progress-bar-wrap">
+                <div class="lm-quiz-progress-bar-fill" id="quizProgressBar"></div>
+              </div>
+
+              <div class="lm-quiz-q-num" id="quizQuestionCount">Question 1 of 5</div>
+              <div class="lm-quiz-question-text" id="quizQuestionText"></div>
+
+              <div class="lm-quiz-options-list" id="quizOptionsList"></div>
+
+              <div class="lm-feedback-panel" id="quizFeedbackPanel" style="display: none;">
+                <div class="lm-feedback-title" id="quizFeedbackTitle"></div>
+                <p class="lm-feedback-text" id="quizFeedbackText"></p>
+              </div>
+
+              <div class="lm-quiz-footer">
+                <button type="button" class="lm-btn-next-q" id="btnNextQuestion" style="display: none;">
+                  Next Question →
+                </button>
+              </div>
+            </div>
+
+            <!-- RESULT CELEBRATION -->
+            <div id="arenaCelebrationView" class="lm-celebration-card" style="display: none;">
+              <div class="lm-celebration-trophy">🏆</div>
+              <h3 class="lm-celebration-title">Quest Completed!</h3>
+              <p class="lm-celebration-sub" id="celebrationScoreText">You answered all questions correctly!</p>
+              <div>
+                <div class="lm-xp-awarded-pill" id="celebrationXpText">+350 XP</div>
+              </div>
+              <button type="button" class="lm-btn-next-q" id="btnFinishQuest">
+                Return to Quest Map
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============================================================
+       TEACHER QUESTION MANAGER MODAL
+       ============================================================ -->
+  <div class="lm-modal-overlay" id="teacherEditorOverlay">
+    <div class="lm-modal-dialog lm-teacher-editor-dialog">
+      <div class="lm-modal-header">
+        <div>
+          <h3 class="lm-modal-title">Customize Practice Questions</h3>
+          <p style="margin: 3px 0 0 0; font-size: 12.5px; color: #94a3b8;">
+            Update or edit questions for <span id="editorUnitTitle" style="color: #60a5fa; font-weight: 700;"></span>
+          </p>
+        </div>
+        <button type="button" class="lm-modal-close-btn" id="teacherEditorCloseBtn">✕</button>
+      </div>
+      <div class="lm-modal-body">
+        <div id="teacherQuestionsList"></div>
+        <button type="button" class="lm-btn-teacher-action" id="btnAddCustomQuestion" style="margin-top: 10px;">
+          + Add New Question
+        </button>
+        <div class="lm-editor-btn-row">
+          <button type="button" class="lm-btn-teacher-action" id="btnResetQuestions" style="background: #475569;">
+            Reset to Defaults
+          </button>
+          <button type="button" class="lm-btn-next-q" id="btnSaveQuestions">
+            Save & Publish to Class
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script type="module" src="learning.js"></script>
+</body>
+</html>

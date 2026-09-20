@@ -564,6 +564,7 @@ textarea:focus {
     text-align: left !important;
     width: 100% !important;
     box-sizing: border-box !important;
+    -webkit-user-select: none !important;
     user-select: none !important;
     white-space: nowrap !important;
 }
@@ -966,7 +967,6 @@ select:focus {
     /* Prevents short tables from cutting off kebab popups */
     padding-bottom: 50px;
     /* Extra spacing at bottom for open menus */
-    -webkit-overflow-scrolling: touch;
     touch-action: pan-x pan-y;
 }
 
@@ -2570,7 +2570,6 @@ div.gform-q-input:empty:before {
         height: auto !important;
         overflow-x: hidden !important;
         overflow-y: auto !important;
-        -webkit-overflow-scrolling: touch !important;
         position: relative !important;
     }
 
@@ -2769,7 +2768,6 @@ div.gform-q-input:empty:before {
         max-width: 100% !important;
         overflow-x: auto !important;
         overflow-y: visible !important;
-        -webkit-overflow-scrolling: touch !important;
         touch-action: auto !important;
         display: block !important;
         box-sizing: border-box !important;
@@ -3455,7 +3453,6 @@ body.dark-mode #mobileTopbarKebabBtn {
     gap: 4px !important;
     max-height: calc(100dvh - 70px) !important;
     overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
     animation: kebabDropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
@@ -3738,6 +3735,7 @@ body.dark-theme .db-pill-btn.active {
 .multi-select-dropdown {
     position: relative;
     width: 100%;
+    -webkit-user-select: none;
     user-select: none;
 }
 
@@ -4034,9 +4032,9 @@ body.dark-theme .toggle-mode-btn.active {
    MODERN CUSTOM DROPDOWN STYLING SYSTEM
    ====================================================== */
 select:not(.fmt-select) {
-    appearance: none !important;
     -webkit-appearance: none !important;
     -moz-appearance: none !important;
+    appearance: none !important;
     background-color: var(--card-bg, #ffffff) !important;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%231e5eff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
     background-repeat: no-repeat !important;
@@ -4333,7 +4331,6 @@ body.dark-theme .profile-dropdown-item:hover {
     max-height: none !important;
     overflow-y: auto !important;
     overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
     padding: 0 20px 20px 20px !important;
     background: var(--bg-card, #ffffff) !important;
 }
@@ -4410,6 +4407,7 @@ body.dark-theme .profile-dropdown-item:hover {
     line-height: 1 !important;
     transition: all 0.2s ease !important;
     flex-shrink: 0 !important;
+    -webkit-user-select: none !important;
     user-select: none !important;
 }
 
@@ -5328,6 +5326,7 @@ body.dark-theme #btnDeselectAllGclassWork {
     border-radius: 10px;
     padding: 3px 8px;
     transition: background-color 0.2s ease, transform 0.15s ease;
+    -webkit-user-select: none;
     user-select: none;
 }
 #desktopUserProfileBadge:hover {
@@ -5342,6 +5341,7 @@ body.dark-theme #btnDeselectAllGclassWork {
     cursor: pointer;
     border-radius: 10px;
     transition: background-color 0.2s ease;
+    -webkit-user-select: none;
     user-select: none;
 }
 #mobileUserProfileBadge:hover {
@@ -5416,6 +5416,7 @@ body.dark-theme #btnDeselectAllGclassWork {
     font-size: 14px !important;
     font-weight: bold !important;
     transition: background 0.15s, transform 0.1s !important;
+    -webkit-user-select: none !important;
     user-select: none !important;
     padding: 0 !important;
     margin: 0 !important;
@@ -5455,6 +5456,7 @@ body.dark-theme #btnDeselectAllGclassWork {
     top: 50% !important;
     transform: translateY(-50%) !important;
     cursor: pointer !important;
+    -webkit-user-select: none !important;
     user-select: none !important;
     display: inline-flex !important;
     align-items: center !important;
@@ -5486,6 +5488,7 @@ body.dark-theme #btnDeselectAllGclassWork {
     background: rgba(30, 94, 255, 0.08) !important;
     border: 1px solid rgba(30, 94, 255, 0.2) !important;
     transition: background 0.15s, transform 0.1s !important;
+    -webkit-user-select: none !important;
     user-select: none !important;
     display: inline-flex !important;
     align-items: center !important;
@@ -5506,6 +5509,7 @@ body.dark-theme #btnDeselectAllGclassWork {
     background: rgba(239, 68, 68, 0.08) !important;
     border: 1px solid rgba(239, 68, 68, 0.2) !important;
     transition: background 0.15s, transform 0.1s !important;
+    -webkit-user-select: none !important;
     user-select: none !important;
     display: inline-flex !important;
     align-items: center !important;
@@ -6850,6 +6854,7 @@ body.dark-mode .reminder-select-pill-divider {
     border-radius: 10px !important;
     cursor: pointer !important;
     transition: all 0.15s ease !important;
+    -webkit-user-select: none !important;
     user-select: none !important;
     box-sizing: border-box !important;
     min-width: 0 !important;
@@ -7550,6 +7555,7 @@ body.dark-mode .att-page-num-btn.active {
     justify-content: center !important;
     gap: 7px !important;
     outline: none !important;
+    -webkit-user-select: none !important;
     user-select: none !important;
     text-decoration: none !important;
     transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1), 

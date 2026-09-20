@@ -391,8 +391,8 @@ body.dark-theme .board-workspace-view {
 .board-topbar {
     height: 56px;
     background: var(--toolbar-bg-light);
-    backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--toolbar-border-light);
     display: flex;
     align-items: center;
@@ -683,8 +683,8 @@ body.dark-theme .board-icon-btn.board-btn-danger:hover {
     left: 18px;
     top: 76px;
     background: var(--toolbar-bg-light);
-    backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
     border: 1px solid var(--toolbar-border-light);
     border-radius: 14px;
     padding: 6px;
@@ -790,6 +790,7 @@ body.dark-theme .tool-btn.active svg {
     position: absolute;
     left: 60px;
     background: var(--toolbar-bg-light);
+    -webkit-backdrop-filter: blur(14px);
     backdrop-filter: blur(14px);
     border: 1px solid var(--toolbar-border-light);
     border-radius: 12px;
@@ -839,6 +840,7 @@ body.dark-theme .board-sub-palette {
     gap: 4px !important;
     box-sizing: border-box !important;
     background: var(--toolbar-bg-light) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
     backdrop-filter: blur(14px) !important;
     border: 1px solid var(--toolbar-border-light) !important;
     border-radius: 12px !important;
@@ -929,8 +931,8 @@ body.dark-theme .shape-choice-btn:hover {
     left: 68px;
     top: 320px;
     background: var(--toolbar-bg-light) !important;
-    backdrop-filter: blur(14px) !important;
     -webkit-backdrop-filter: blur(14px) !important;
+    backdrop-filter: blur(14px) !important;
     border: 1px solid var(--toolbar-border-light) !important;
     border-radius: 12px !important;
     padding: 6px !important;
@@ -1115,8 +1117,8 @@ body.dark-theme .anchor-tool-choice-btn.active {
     gap: 4px !important;
     box-sizing: border-box !important;
     background: var(--toolbar-bg-light);
-    backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
     border: 1px solid var(--toolbar-border-light);
     border-radius: 12px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
@@ -1336,8 +1338,8 @@ body.dark-theme .line-width-btn {
     left: 50%;
     transform: translateX(-50%);
     background: var(--toolbar-bg-light, rgba(255, 255, 255, 0.96));
-    backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
     border: 1px solid var(--toolbar-border-light, #e2e8f0);
     border-radius: 12px;
     padding: 5px 10px;
@@ -1459,8 +1461,8 @@ body.dark-theme .fmt-btn-group {
     margin: 0 !important;
     outline: none !important;
     cursor: pointer !important;
-    appearance: none !important;
     -webkit-appearance: none !important;
+    appearance: none !important;
     transition: all 0.15s ease !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
@@ -1504,6 +1506,7 @@ body.dark-theme .fmt-select optgroup {
     color: var(--text-dark, #0f172a);
     min-width: 28px;
     text-align: center;
+    -webkit-user-select: none;
     user-select: none;
 }
 
@@ -1524,6 +1527,7 @@ body.dark-theme .fmt-select optgroup {
     line-height: 28px !important;
     text-align: center !important;
     box-sizing: border-box !important;
+    -webkit-user-select: text !important;
     user-select: text !important;
 }
 
@@ -1665,8 +1669,8 @@ textarea#boardInPlaceEditor {
     overflow: hidden !important;
     z-index: 1000 !important;
     caret-color: #1e5eff !important;
-    user-select: text !important;
     -webkit-user-select: text !important;
+    user-select: text !important;
     box-sizing: border-box !important;
     border-radius: 0 !important;
     white-space: pre-wrap !important;
@@ -1691,6 +1695,7 @@ body.dark-mode textarea#boardInPlaceEditor {
     overflow: hidden;
     cursor: default;
     touch-action: none;
+    -webkit-user-select: none;
     user-select: none;
 }
 
@@ -1847,8 +1852,8 @@ body.dark-theme .board-canvas-surface.grid-lines .board-grid-layer {
     min-width: 260px;
     max-width: calc(100vw - 24px);
     background: var(--toolbar-bg-light, #ffffff);
-    backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
     border: 1px solid var(--toolbar-border-light, #e2e8f0);
     border-radius: 10px;
     padding: 6px;
@@ -1876,6 +1881,7 @@ body.dark-theme .board-bg-dropdown {
     all: unset;
     box-sizing: border-box !important;
     cursor: pointer !important;
+    -webkit-user-select: none !important;
     user-select: none !important;
     text-align: center !important;
     font-family: inherit !important;
@@ -1916,6 +1922,7 @@ body.dark-theme .bg-option-header {
     font-weight: 500 !important;
     color: var(--text-dark, #0f172a) !important;
     transition: background 0.12s ease, color 0.12s ease !important;
+    -webkit-user-select: none !important;
     user-select: none !important;
     box-sizing: border-box !important;
     width: 100% !important;
@@ -2378,8 +2385,8 @@ body.dark-theme #btnToggleFloatingBar.active {
     right: 20px;
     bottom: 20px;
     background: var(--toolbar-bg-light);
-    backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
     border: 1px solid var(--toolbar-border-light);
     border-radius: 12px;
     padding: 4px 6px;
@@ -2451,6 +2458,7 @@ body.dark-theme .board-zoom-val {
     inset: 0;
     z-index: 99999;
     background: rgba(15, 23, 42, 0.55);
+    -webkit-backdrop-filter: blur(4px);
     backdrop-filter: blur(4px);
     display: flex;
     align-items: center;
@@ -2660,8 +2668,8 @@ body.dark-theme .student-shared-group-title {
     max-width: 520px;
     max-height: calc(100vh - 86px);
     background: var(--toolbar-bg-light, rgba(255, 255, 255, 0.95));
-    backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
+    backdrop-filter: blur(18px);
     border: 1px solid var(--toolbar-border-light, #e2e8f0);
     border-radius: 5px;
     box-shadow: 0 18px 44px -12px rgba(15, 23, 42, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.72) inset;
@@ -2670,6 +2678,7 @@ body.dark-theme .student-shared-group-title {
     flex-direction: column;
     overflow: hidden;
     transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease, box-shadow 0.2s ease;
+    -webkit-user-select: none;
     user-select: none;
 }
 
@@ -3028,6 +3037,7 @@ body.dark-theme .prop-textarea {
 .prop-input-mini,
 .prop-input-stepped {
     -moz-appearance: textfield;
+    appearance: textfield;
 }
 
 .prop-input-mini {
@@ -3700,7 +3710,6 @@ body.dark-theme .prop-action-danger:hover {
         gap: 3px !important;
         max-width: calc(100vw - 20px) !important;
         overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch !important;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28) !important;
         scrollbar-width: none !important;
     }

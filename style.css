@@ -226,32 +226,47 @@ html, body {
 }
 
 .badge-success {
+    background: #eefbf3;
     background: oklch(96% 0.03 155);
+    color: #166534;
     color: oklch(48% 0.17 155);
+    border: 1px solid #bbf7d0;
     border: 1px solid oklch(85% 0.07 155);
 }
 
 .badge-warning {
+    background: #fffbeb;
     background: oklch(97% 0.04 65);
+    color: #92400e;
     color: oklch(52% 0.16 65);
+    border: 1px solid #fde68a;
     border: 1px solid oklch(88% 0.09 65);
 }
 
 .badge-danger {
+    background: #fef2f2;
     background: oklch(96% 0.04 25);
+    color: #991b1b;
     color: oklch(48% 0.22 25);
+    border: 1px solid #fecaca;
     border: 1px solid oklch(86% 0.09 25);
 }
 
 .badge-info {
+    background: #eff6ff;
     background: oklch(96% 0.03 230);
+    color: #1d4ed8;
     color: oklch(46% 0.16 230);
+    border: 1px solid #bfdbfe;
     border: 1px solid oklch(86% 0.08 230);
 }
 
 .badge-purple {
+    background: #faf5ff;
     background: oklch(96.5% 0.03 300);
+    color: #7e22ce;
     color: oklch(46% 0.18 300);
+    border: 1px solid #e9d5ff;
     border: 1px solid oklch(86% 0.08 300);
 }
 
@@ -266,41 +281,58 @@ html, body {
 }
 
 .chip-math {
+    background: #eff6ff;
     background: oklch(95.5% 0.03 260);
+    color: #1e40af;
     color: oklch(48% 0.20 260);
+    border: 1px solid #bfdbfe;
     border: 1px solid oklch(85% 0.08 260);
 }
 
 .chip-science {
+    background: #ecfeff;
     background: oklch(95.5% 0.03 180);
+    color: #0e7490;
     color: oklch(46% 0.16 180);
+    border: 1px solid #a5f3fc;
     border: 1px solid oklch(85% 0.08 180);
 }
 
 .chip-english {
+    background: #fffbeb;
     background: oklch(96.5% 0.04 65);
+    color: #92400e;
     color: oklch(50% 0.16 65);
+    border: 1px solid #fde68a;
     border: 1px solid oklch(86% 0.09 65);
 }
 
 .chip-character {
+    background: #f0fdf4;
     background: oklch(96% 0.03 150);
+    color: #15803d;
     color: oklch(46% 0.17 150);
+    border: 1px solid #bbf7d0;
     border: 1px solid oklch(85% 0.07 150);
 }
 
 /* Surface Tint Wrappers */
 .surface-tint-warm {
+    background: #fbfbfd;
     background: oklch(98.8% 0.005 245);
+    border: 1px solid #e2e8f0;
     border: 1px solid oklch(90% 0.015 250);
 }
 
 .card-accent-left {
+    border-left: 4px solid var(--primary-blue, #2563eb);
     border-left: 4px solid var(--primary-blue, oklch(50% 0.22 260));
 }
 .card-accent-left-gold {
+    border-left: 4px solid var(--accent-gold, #d97706);
     border-left: 4px solid var(--accent-gold, oklch(68% 0.16 75));
 }
 .card-accent-left-emerald {
+    border-left: 4px solid #16a34a;
     border-left: 4px solid oklch(52% 0.17 155);
 }

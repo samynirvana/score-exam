@@ -3,8 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -54,8 +53,8 @@
                     <input type="password" id="loginStudentPassword" placeholder="Code or Account Password" autocomplete="current-password">
                 </div>
 
-                <label for="loginRememberMe" style="display: flex; align-items: center; gap: 9px; margin: -2px 0 24px 0; text-align: left; font-size: 13.5px; font-weight: 500; font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif; color: var(--text-dark, #334155); cursor: pointer; user-select: none;">
-                    <input type="checkbox" id="loginRememberMe" style="width: 17px; height: 17px; min-height: 0; margin: 0; padding: 0; accent-color: #1e5eff; flex-shrink: 0; border-radius: 4px; cursor: pointer;">
+                <label for="loginRememberMe" class="login-remember-row">
+                    <input type="checkbox" id="loginRememberMe" class="login-remember-checkbox">
                     <span>Remember my login</span>
                 </label>
 
@@ -69,7 +68,7 @@
                 </button>
 
                 <!-- ERROR MESSAGE -->
-                <div id="loginErrorMessage" class="error-box hidden" style="margin-top: 14px;">
+                <div id="loginErrorMessage" class="error-box hidden login-error-message">
                     Invalid credentials. Please check your username and password.
                 </div>
             </div>

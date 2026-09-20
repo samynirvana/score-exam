@@ -172,6 +172,18 @@ service cloud.firestore {
       allow read, create, update, delete: if true;
     }
 
+    // 14. Gamified Learning Module Config & Question Customization
+    match /learning_modules_config/{configId} {
+      allow read: if true;
+      allow write: if isStaffOrAdmin();
+    }
+
+    match /learning_custom_questions/{questionId} {
+      allow read: if true;
+      allow write: if isStaffOrAdmin();
+    }
+
+
     // Default fallback for any other subcollections
     match /{topCollection}/{document=**} {
       allow read: if topCollection != 'user_activity_events' && topCollection != 'user_activity';
