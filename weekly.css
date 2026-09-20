@@ -22,6 +22,7 @@
   align-items: center;
   gap: 6px;
   cursor: pointer;
+  -webkit-user-select: none;
   user-select: none;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
@@ -377,8 +378,8 @@ button, input, select, textarea {
   overflow-x: auto;
   scrollbar-width: none;
   cursor: grab;
-  user-select: none;
   -webkit-user-select: none;
+  user-select: none;
   touch-action: pan-x;
   scroll-behavior: smooth;
 }
@@ -2113,8 +2114,8 @@ select:focus {
   width: 100vw;
   height: 100vh;
   background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -3047,6 +3048,7 @@ select:focus {
   color: #334155;
   cursor: pointer;
   transition: background 0.15s ease;
+  -webkit-user-select: none;
   user-select: none;
 }
 
@@ -3322,8 +3324,10 @@ select:focus {
   border: 1.5px solid #2563eb;
   border-radius: 12px;
   box-shadow: 0 14px 35px -5px rgba(15, 23, 42, 0.25), 0 8px 16px -6px rgba(15, 23, 42, 0.15);
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   animation: rtFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-user-select: none;
   user-select: none;
   max-width: 95vw;
   flex-wrap: wrap;
@@ -3493,7 +3497,6 @@ select:focus {
   padding: 4px 6px;
   cursor: grab;
   scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
   max-width: 850px;
   flex-shrink: 1;
 }
@@ -3504,6 +3507,7 @@ select:focus {
 
 .schedule-table-pill-tabs.dragging {
   cursor: grabbing;
+  -webkit-user-select: none;
   user-select: none;
   scroll-behavior: auto;
 }
@@ -3719,6 +3723,7 @@ select:focus {
   background: #fafafa;
   color: #64748b;
   font-weight: 700;
+  -webkit-user-select: none;
   user-select: none;
   vertical-align: middle;
 }
@@ -3900,7 +3905,6 @@ select:focus {
     order: 3;
     width: 100%;
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
     padding: 6px;
     justify-content: flex-start;
   }
@@ -4042,7 +4046,6 @@ select:focus {
   .table-container {
     border-radius: 12px;
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
   }
 
@@ -4228,7 +4231,6 @@ select:focus {
 .material-table-container {
   width: 100%;
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
   margin-bottom: 16px;
   border-radius: 10px;
 }
