@@ -26,9 +26,9 @@
       <!-- LEFT COLUMN: DYNAMIC DAY/NIGHT CAMPUS VIDEO & BRANDING -->
       <div class="login-card-visual-col">
         <video id="loginVisualCampusVideo" class="login-visual-video" autoplay muted loop playsinline preload="auto">
-          <source src="Day.mp4" type="video/mp4">
           <source src="https://drive.usercontent.google.com/download?id=1s8HaspAJnJ4OknN1woyVkHxnR9ZgsUMB" type="video/mp4">
           <source src="https://drive.google.com/uc?id=1s8HaspAJnJ4OknN1woyVkHxnR9ZgsUMB&export=download" type="video/mp4">
+          <source src="Day.mp4" type="video/mp4">
         </video>
         <div class="login-visual-overlay"></div>
 
@@ -238,7 +238,11 @@
     <!-- Student Class View -->
     <div id="classView" class="tab-content active">
       <div class="weekly-workspace-heading weekly-video-banner">
-        <video id="weeklyBannerVideo" class="weekly-banner-video" autoplay loop muted playsinline preload="metadata" poster="day_building.jpg" aria-hidden="true" tabindex="-1"><source src="Day.mp4" type="video/mp4"></video>
+        <video id="weeklyBannerVideo" class="weekly-banner-video" autoplay loop muted playsinline preload="metadata" poster="day_building.jpg" aria-hidden="true" tabindex="-1">
+          <source src="https://drive.usercontent.google.com/download?id=1s8HaspAJnJ4OknN1woyVkHxnR9ZgsUMB" type="video/mp4">
+          <source src="https://drive.google.com/uc?id=1s8HaspAJnJ4OknN1woyVkHxnR9ZgsUMB&export=download" type="video/mp4">
+          <source src="Day.mp4" type="video/mp4">
+        </video>
         <div><span class="weekly-eyebrow">YOUR WEEK AT A GLANCE</span><h1 id="weeklyWorkspaceTitle">Weekly Schedule</h1><p id="weeklyWorkspaceSubtitle" aria-live="polite">Choose a class and week to explore the timetable.</p></div>
         <div class="weekly-navigation" aria-label="Schedule navigation">
           <button type="button" id="weeklyPrevious" aria-label="Previous week">‹</button>
@@ -2123,7 +2127,7 @@
     </div>
   </div>
 
-  <script type="module" src="weekly.js?v=432"></script>
+  <script type="module" src="weekly.js?v=433"></script>
   <script type="module">import { trackCurrentPage } from './js/userActivity.js'; trackCurrentPage();</script>
 </body>
 
