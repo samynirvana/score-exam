@@ -2392,7 +2392,6 @@ document.querySelectorAll('.tab-content > .weekly-workspace-heading, #scheduleBu
   weeklyBannerVideo.innerHTML = `
     <source src="${driveDirect}" type="video/mp4">
     <source src="${driveUc}" type="video/mp4">
-    <source src="${daytime ? 'Day.mp4' : 'Night.mp4'}" type="video/mp4">
   `;
   weeklyBannerVideo.load();
   const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
@@ -7305,7 +7304,6 @@ function updateLoginVisualDayNight() {
     const driveUc = isDay
       ? 'https://drive.google.com/uc?id=1s8HaspAJnJ4OknN1woyVkHxnR9ZgsUMB&export=download'
       : 'https://drive.google.com/uc?id=1mRP5cbvnYeKA-dAkL6b6W-Ba7H96UDeW&export=download';
-    const localSrc = isDay ? 'Day.mp4' : 'Night.mp4';
 
     videoEl.poster = drivePoster;
     const currentSources = Array.from(videoEl.querySelectorAll('source')).map(s => s.getAttribute('src'));
@@ -7313,7 +7311,6 @@ function updateLoginVisualDayNight() {
       videoEl.innerHTML = `
         <source src="${driveDirect}" type="video/mp4">
         <source src="${driveUc}" type="video/mp4">
-        <source src="${localSrc}" type="video/mp4">
       `;
       videoEl.load();
       videoEl.play().catch(() => {});

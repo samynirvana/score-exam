@@ -28,7 +28,6 @@
         <video id="loginVisualCampusVideo" class="login-visual-video" autoplay muted loop playsinline preload="auto">
           <source src="https://drive.usercontent.google.com/download?id=1s8HaspAJnJ4OknN1woyVkHxnR9ZgsUMB" type="video/mp4">
           <source src="https://drive.google.com/uc?id=1s8HaspAJnJ4OknN1woyVkHxnR9ZgsUMB&export=download" type="video/mp4">
-          <source src="Day.mp4" type="video/mp4">
         </video>
         <div class="login-visual-overlay"></div>
 
@@ -43,11 +42,12 @@
 
       <!-- RIGHT COLUMN: LOGIN CREDENTIALS FORM -->
       <div class="login-card-form-col">
-        <div class="login-form-brand-row">
+        <div class="login-form-brand-row" style="flex-direction: column; gap: 8px;">
           <img src="mks_logo.png" 
                onerror="this.onerror=null; this.src='https://lh3.googleusercontent.com/d/1ge2ndYnSE0CLQl_iqqRhcLGlxD0A-Bum';" 
                alt="Sekolah Mitra Kasih" 
                class="login-form-brand-logo">
+          <span style="font-size: 15px; font-weight: 700; color: #1e3a8a; letter-spacing: 0.2px; text-align: center;">Teacher Weekly Schedule</span>
         </div>
 
         <form id="loginForm">
@@ -251,10 +251,9 @@
     <!-- Student Class View -->
     <div id="classView" class="tab-content active">
       <div class="weekly-workspace-heading weekly-video-banner">
-        <video id="weeklyBannerVideo" class="weekly-banner-video" autoplay loop muted playsinline preload="metadata" poster="day_building.jpg" aria-hidden="true" tabindex="-1">
+        <video id="weeklyBannerVideo" class="weekly-banner-video" autoplay loop muted playsinline preload="metadata" poster="https://lh3.googleusercontent.com/d/1ozoUmpJTsMTSvykTQr-WNQ3K19D1_NGb" aria-hidden="true" tabindex="-1">
           <source src="https://drive.usercontent.google.com/download?id=1s8HaspAJnJ4OknN1woyVkHxnR9ZgsUMB" type="video/mp4">
           <source src="https://drive.google.com/uc?id=1s8HaspAJnJ4OknN1woyVkHxnR9ZgsUMB&export=download" type="video/mp4">
-          <source src="Day.mp4" type="video/mp4">
         </video>
         <div><span class="weekly-eyebrow" data-i18n="eyebrow_glance">YOUR WEEK AT A GLANCE</span><h1 id="weeklyWorkspaceTitle" data-i18n="class_view_title">Weekly Schedule</h1><p id="weeklyWorkspaceSubtitle" aria-live="polite" data-i18n="class_view_sub">Choose a class and week to explore the timetable.</p></div>
         <div class="weekly-navigation" aria-label="Schedule navigation">
