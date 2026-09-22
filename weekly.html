@@ -14,7 +14,7 @@
     rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=375">
   <link rel="stylesheet" href="student.css?v=392">
-  <link rel="stylesheet" href="weekly.css?v=435">
+  <link rel="stylesheet" href="weekly.css?v=437">
   <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 </head>
 
@@ -814,9 +814,15 @@
           </div>
         </div>
         <div class="filter-actions-group" style="display: flex; gap: 8px; align-items: center;">
-          <button type="button" id="btnTadminAddNewReviewQuestion" class="action-btn notes-save-btn" title="Add a custom review questions item">
-            <span class="btn-icon">+</span>
-            <span>+ Add Review Questions</span>
+          <button type="button" id="btnTadminAddNewReviewQuestion" class="action-btn notes-save-btn" title="Upload review questions / administration document">
+            <span class="btn-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+            </span>
+            <span>Upload File</span>
           </button>
           <button type="button" id="btnExportTadminExcel" class="action-btn notes-save-btn" title="Export administration status to Excel">
             <span class="btn-icon">
@@ -912,8 +918,14 @@
               <p class="tadmin-section-desc">Teachers can submit and add as many review question packages, quiz sheets, or exam reviews as needed.</p>
             </div>
             <button type="button" class="action-btn notes-save-btn" onclick="openAddReviewQuestionModal()">
-              <span class="btn-icon">+</span>
-              <span>+ Add Review Questions</span>
+              <span class="btn-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+              </span>
+              <span>Upload File</span>
             </button>
           </div>
           <div class="tadmin-review-questions-list" id="tadminReviewQuestionsList">
@@ -2415,8 +2427,8 @@
             <line x1="9" y1="15" x2="15" y2="15" />
           </svg>
         </div>
-        <h2 style="font-size: 19px; margin-bottom: 4px;">Add Review Questions / Material</h2>
-        <p style="font-size: 13px; color: #64748b;">Add a new review question bank, quiz, or exam package.</p>
+        <h2 style="font-size: 19px; margin-bottom: 4px;">Upload Review Questions / Material</h2>
+        <p style="font-size: 13px; color: #64748b;">Upload review question bank, quiz, or exam package (DOCX, Sheet, PowerPoint, PDF, JPG).</p>
       </div>
 
       <form id="tadminAddReviewQuestionForm">
@@ -2437,8 +2449,9 @@
         </div>
 
         <div class="form-group" style="margin-bottom: 12px;">
-          <label for="tadminRQFileInput">Attach File (PDF, Docs, Sheets, Image)</label>
-          <input type="file" id="tadminRQFileInput" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.webp">
+          <label for="tadminRQFileInput" style="font-weight: 600; font-size: 12px; color: #475569;">Attach File (DOCX, Sheet, PowerPoint, PDF, or JPG/Image)</label>
+          <input type="file" id="tadminRQFileInput" class="form-control" accept=".docx,.doc,.xlsx,.xls,.pptx,.ppt,.jpg,.jpeg,.png,.webp,.pdf">
+          <span style="font-size: 11px; color: #64748b; margin-top: 4px; display: block;">Upload Word (.docx/.doc), Excel (.xlsx/.xls), PowerPoint (.pptx/.ppt), PDF, or JPG/PNG image to Meeting Koordinasi.</span>
         </div>
 
         <div class="form-group" style="margin-bottom: 16px;">
@@ -2453,7 +2466,7 @@
 
         <div style="display: flex; gap: 10px; margin-top: 20px;">
           <button type="button" id="btnCancelTadminAddRQ" class="login-btn" style="background: #e2e8f0; color: #334155; flex: 1;">Cancel</button>
-          <button type="submit" id="btnSubmitTadminAddRQ" class="login-btn" style="flex: 1.5;">Save Item</button>
+          <button type="submit" id="btnSubmitTadminAddRQ" class="login-btn" style="flex: 1.5;">Upload &amp; Save</button>
         </div>
       </form>
     </div>
@@ -2499,7 +2512,7 @@
     </div>
   </div>
 
-  <script type="module" src="weekly.js?v=435"></script>
+  <script type="module" src="weekly.js?v=437"></script>
   <script type="module">import { trackCurrentPage } from './js/userActivity.js'; trackCurrentPage();</script>
 </body>
 

@@ -4804,6 +4804,29 @@ input:disabled + .toggle-slider {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  max-height: 295px;
+  overflow-y: auto;
+  padding-right: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+.builder-rules-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.builder-rules-list::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.builder-rules-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.builder-rules-list::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .rule-item {

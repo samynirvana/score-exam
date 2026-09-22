@@ -9191,7 +9191,7 @@ export function renderTeacherAdministrationView() {
       rqList.innerHTML = `
         <div style="grid-column: 1/-1; padding: 24px; text-align: center; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px; color: #64748b;">
           <p style="margin: 0 0 6px 0; font-weight: 600;">No review questions added yet.</p>
-          <span style="font-size: 12px;">Teachers can add whatever quizzes, practice sheets, or review packages needed using the "+ Add Review Questions" button above.</span>
+          <span style="font-size: 12px;">Teachers can upload whatever quizzes, practice sheets, or review packages needed using the "Upload File" button above.</span>
         </div>
       `;
     } else {
