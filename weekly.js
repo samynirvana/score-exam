@@ -10,6 +10,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { escapeHtml, triggerCelebration, attachRippleEffect, initStaggeredReveals } from "./utils.js";
 import { getDailyQuote } from "./dailyQuotes.js";
+import { getCurrentLanguage, toggleLanguage, applyTranslations, t } from "./weeklyI18n.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBIUtrjlgHEI7TtOY-nRiXzQ0DIcdkT-W0",
@@ -143,14 +144,17 @@ function updateUniformBadges(selectedClass, calPrefix = null) {
       ? draftWeeklyUniforms[day]
       : (savedUniforms[day] || defaultUniforms[day]);
 
+    const dayKey = `day_${day.toLowerCase()}`;
+    const displayDay = (getCurrentLanguage() === 'id' ? t(dayKey) : day).toUpperCase();
+
     if (isClassEditMode) {
       th.innerHTML = `
-        <span class="day-name">${day}</span>
+        <span class="day-name">${displayDay}</span>
         <input type="text" class="edit-uniform-input" data-day="${day}" value="${currentUniform}" placeholder="Uniform for ${day}...">
       `;
     } else {
       th.innerHTML = `
-        <span class="day-name">${day}</span>
+        <span class="day-name">${displayDay}</span>
         <span class="uniform-badge">${currentUniform}</span>
       `;
     }
@@ -8776,3 +8780,34 @@ async function applyGeneratedScheduleToMaster() {
   }
 }
 
+
+// ---------------------------------------------------------------------------
+// Internationalization & Language Switcher Initialization
+// ---------------------------------------------------------------------------
+function initWeeklyI18n() {
+  applyTranslations();
+
+  const langToggleBtn = document.getElementById('btnLanguageToggle');
+  if (langToggleBtn) {
+    langToggleBtn.addEventListener('click', () => {
+      toggleLanguage();
+      const activeClass = document.getElementById('classSelectView')?.value;
+      if (activeClass) {
+        updateUniformBadges(activeClass);
+      }
+    });
+  }
+
+  window.addEventListener('languageChanged', () => {
+    const activeClass = document.getElementById('classSelectView')?.value;
+    if (activeClass) {
+      updateUniformBadges(activeClass);
+    }
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initWeeklyI18n);
+} else {
+  initWeeklyI18n();
+}
