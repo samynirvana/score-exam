@@ -14,7 +14,7 @@
     rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=375">
   <link rel="stylesheet" href="student.css?v=392">
-  <link rel="stylesheet" href="weekly.css?v=433">
+  <link rel="stylesheet" href="weekly.css?v=435">
   <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 </head>
 
@@ -168,6 +168,19 @@
             </svg>
           </span>
           <span data-i18n="nav_teacher_schedules">Teacher Schedules</span>
+        </button>
+        <button class="tab-btn" id="btnAdminAdministrationView">
+          <span class="tab-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10 9 9 9 8 9" />
+            </svg>
+          </span>
+          <span data-i18n="nav_administration">Administration</span>
         </button>
         <button class="tab-btn" id="btnRewardView">
           <span class="tab-icon">
@@ -749,6 +762,204 @@
           <div class="signature-box">
             <div class="signature-line">Teacher Coordinator</div>
             <div class="signature-name">( ............................................ )</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Teacher Administration View -->
+    <div id="adminAdministrationView" class="tab-content weekly-secondary-workspace">
+      <!-- Dynamic Workspace Heading Video Banner -->
+      <div class="weekly-workspace-heading weekly-video-banner">
+        <video class="weekly-banner-video" autoplay loop muted playsinline preload="metadata" poster="https://lh3.googleusercontent.com/d/1ozoUmpJTsMTSvykTQr-WNQ3K19D1_NGb" aria-hidden="true" tabindex="-1">
+          <source src="https://drive.usercontent.google.com/download?id=1s8HaspAJnJ4OknN1woyVkHxnR9ZgsUMB" type="video/mp4">
+          <source src="https://drive.google.com/uc?id=1s8HaspAJnJ4OknN1woyVkHxnR9ZgsUMB&export=download" type="video/mp4">
+        </video>
+        <div>
+          <span class="weekly-eyebrow">TEACHER CURRICULUM &amp; ADMINISTRATION</span>
+          <h1 class="weekly-view-title">Teacher Administration</h1>
+          <p class="weekly-view-description">Submit, review, and track the 9 essential teacher administrative documents for each academic year.</p>
+        </div>
+        <div class="tadmin-header-actions" style="display: flex; gap: 8px; align-items: center;">
+          <div class="weekly-view-switch" aria-label="Administration View Switcher">
+            <button type="button" id="btnTadminModeTeacher" class="tadmin-mode-btn" aria-pressed="true">
+              <span style="font-weight: 700;">Teacher Portal</span>
+            </button>
+            <button type="button" id="btnTadminModeAdmin" class="tadmin-mode-btn" aria-pressed="false">
+              <span style="font-weight: 700;">Admin Master Checklist</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter Controls Bar -->
+      <div class="filter-bar">
+        <div class="filter-controls-group">
+          <div class="filter-item">
+            <span class="filter-label" data-i18n="label_school_year">School Year</span>
+            <select id="tadminYearSelect" class="modern-select"></select>
+          </div>
+          <div class="filter-item" id="tadminTeacherFilterGroup">
+            <span class="filter-label">Teacher</span>
+            <select id="tadminTeacherSelect" class="modern-select"></select>
+          </div>
+          <div class="filter-item">
+            <span class="filter-label">Category Filter</span>
+            <select id="tadminCategoryFilter" class="modern-select">
+              <option value="ALL">All 9 Categories</option>
+              <option value="cat_theme">Themes 1–4 (Modules, Focus, Materials, Review Analysis)</option>
+              <option value="cat_semester">Semesters 1–2 (Mapping, Scores, Rubric, Achievement)</option>
+              <option value="cat_review">Review Questions (Flexible Bank)</option>
+            </select>
+          </div>
+        </div>
+        <div class="filter-actions-group" style="display: flex; gap: 8px; align-items: center;">
+          <button type="button" id="btnTadminAddNewReviewQuestion" class="action-btn notes-save-btn" title="Add a custom review questions item">
+            <span class="btn-icon">+</span>
+            <span>+ Add Review Questions</span>
+          </button>
+          <button type="button" id="btnExportTadminExcel" class="action-btn notes-save-btn" title="Export administration status to Excel">
+            <span class="btn-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+                <polyline points="10 9 9 9 8 9" />
+              </svg>
+            </span>
+            <span>Export Status</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Summary KPI Scorecards Bar -->
+      <div class="tadmin-stats-grid" id="tadminStatsGrid">
+        <div class="tadmin-stat-card">
+          <div class="tadmin-stat-label">Total Submissions</div>
+          <div class="tadmin-stat-value" id="statTadminTotal">0</div>
+          <div class="tadmin-stat-sub">across selected scope</div>
+        </div>
+        <div class="tadmin-stat-card verified">
+          <div class="tadmin-stat-label">Verified &amp; Checked</div>
+          <div class="tadmin-stat-value" id="statTadminVerified">0</div>
+          <div class="tadmin-stat-sub">reviewed by Admin</div>
+        </div>
+        <div class="tadmin-stat-card pending">
+          <div class="tadmin-stat-label">Pending Admin Check</div>
+          <div class="tadmin-stat-value" id="statTadminPending">0</div>
+          <div class="tadmin-stat-sub">awaiting verification</div>
+        </div>
+        <div class="tadmin-stat-card missing">
+          <div class="tadmin-stat-label">Missing / Incomplete</div>
+          <div class="tadmin-stat-value" id="statTadminMissing">0</div>
+          <div class="tadmin-stat-sub">not yet submitted</div>
+        </div>
+      </div>
+
+      <!-- TEACHER VIEW: Grid Cards for Uploading & Submitting Administration -->
+      <div id="tadminTeacherViewContainer" class="tadmin-view-panel">
+        <!-- Section 1: Themes 1 - 4 Scope (Items 1-4) -->
+        <div class="tadmin-section-block">
+          <div class="tadmin-section-header">
+            <div>
+              <h3 class="tadmin-section-title">
+                <span class="tadmin-section-badge">Part A • 4 Themes</span>
+                Learning Modules, Focus, Materials &amp; Review Analysis
+              </h3>
+              <p class="tadmin-section-desc">Submit individual files for Theme 1, Theme 2, Theme 3, and Theme 4 for the chosen academic year.</p>
+            </div>
+            <div class="tadmin-theme-pills-nav" id="tadminThemePillsNav">
+              <button type="button" class="tadmin-pill-btn active" data-theme="Theme 1" onclick="setTadminActiveTheme('Theme 1')">Theme 1</button>
+              <button type="button" class="tadmin-pill-btn" data-theme="Theme 2" onclick="setTadminActiveTheme('Theme 2')">Theme 2</button>
+              <button type="button" class="tadmin-pill-btn" data-theme="Theme 3" onclick="setTadminActiveTheme('Theme 3')">Theme 3</button>
+              <button type="button" class="tadmin-pill-btn" data-theme="Theme 4" onclick="setTadminActiveTheme('Theme 4')">Theme 4</button>
+            </div>
+          </div>
+          <div class="tadmin-cards-grid" id="tadminThemeCardsGrid">
+            <!-- Dynamically populated 4 category cards for active theme -->
+          </div>
+        </div>
+
+        <!-- Section 2: Semesters 1 - 2 Scope (Items 5-8) -->
+        <div class="tadmin-section-block" style="margin-top: 24px;">
+          <div class="tadmin-section-header">
+            <div>
+              <h3 class="tadmin-section-title">
+                <span class="tadmin-section-badge semester">Part B • 2 Semesters</span>
+                Students Mapping, Assessment Scores, Score Rubric &amp; Achievement
+              </h3>
+              <p class="tadmin-section-desc">Submit individual files for Semester 1 and Semester 2 for the chosen academic year.</p>
+            </div>
+            <div class="tadmin-theme-pills-nav" id="tadminSemesterPillsNav">
+              <button type="button" class="tadmin-pill-btn active" data-semester="Semester 1" onclick="setTadminActiveSemester('Semester 1')">Semester 1</button>
+              <button type="button" class="tadmin-pill-btn" data-semester="Semester 2" onclick="setTadminActiveSemester('Semester 2')">Semester 2</button>
+            </div>
+          </div>
+          <div class="tadmin-cards-grid" id="tadminSemesterCardsGrid">
+            <!-- Dynamically populated 4 category cards for active semester -->
+          </div>
+        </div>
+
+        <!-- Section 3: Review Questions (Item 9 - Open Multi-Items) -->
+        <div class="tadmin-section-block" style="margin-top: 24px;">
+          <div class="tadmin-section-header">
+            <div>
+              <h3 class="tadmin-section-title">
+                <span class="tadmin-section-badge custom">Part C • Flexible Question Bank</span>
+                Review Questions &amp; Practice Materials
+              </h3>
+              <p class="tadmin-section-desc">Teachers can submit and add as many review question packages, quiz sheets, or exam reviews as needed.</p>
+            </div>
+            <button type="button" class="action-btn notes-save-btn" onclick="openAddReviewQuestionModal()">
+              <span class="btn-icon">+</span>
+              <span>+ Add Review Questions</span>
+            </button>
+          </div>
+          <div class="tadmin-review-questions-list" id="tadminReviewQuestionsList">
+            <!-- Dynamically populated custom review question items -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ADMIN MASTER CHECKLIST VIEW: High-Level Overview & Verification Matrix -->
+      <div id="tadminAdminViewContainer" class="tadmin-view-panel" style="display: none;">
+        <div class="tadmin-master-card">
+          <div class="ts-card-header">
+            <div>
+              <h3 class="ts-card-title">All Teachers Administration Matrix &amp; Verification Checklist</h3>
+              <p class="ts-card-description">Inspect submissions, toggle checklist marks, review attached documents directly, and download compliance reports.</p>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <div class="filter-item" style="min-width: 170px;">
+                <select id="tadminStatusFilter" class="modern-select" style="padding: 6px 10px; font-size: 12.5px;">
+                  <option value="ALL">Status: All Records</option>
+                  <option value="VERIFIED">✅ Verified Only</option>
+                  <option value="PENDING">⏳ Pending Review</option>
+                  <option value="MISSING">⚠️ Incomplete / Missing</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-responsive ts-table-wrapper" style="margin-top: 14px;">
+            <table class="schedule-table ts-data-table tadmin-overview-table" id="tadminMasterTable">
+              <thead>
+                <tr>
+                  <th style="width: 50px; text-align: center;">#</th>
+                  <th style="min-width: 180px; text-align: left;">Teacher Name</th>
+                  <th style="min-width: 110px; text-align: center;">Part A Themes<br><span style="font-size: 10px; font-weight: normal; opacity: 0.85;">(16 items)</span></th>
+                  <th style="min-width: 110px; text-align: center;">Part B Semesters<br><span style="font-size: 10px; font-weight: normal; opacity: 0.85;">(8 items)</span></th>
+                  <th style="min-width: 110px; text-align: center;">Part C Reviews<br><span style="font-size: 10px; font-weight: normal; opacity: 0.85;">(Flexible)</span></th>
+                  <th style="min-width: 130px; text-align: center;">Overall Progress</th>
+                  <th style="min-width: 160px; text-align: center;">Checklist Status</th>
+                  <th style="min-width: 130px; text-align: center;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tadminMasterTableBody">
+                <!-- Dynamically populated teacher matrix rows -->
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -2139,7 +2350,156 @@
     </div>
   </div>
 
-  <script type="module" src="weekly.js?v=434"></script>
+  <!-- Teacher Administration: File Upload Modal -->
+  <div id="tadminUploadModal" class="modal-overlay" style="display: none; z-index: 10500;">
+    <div class="login-card" style="max-width: 500px; text-align: left;">
+      <div class="login-header">
+        <div class="login-icon" style="background: #eff6ff; border-color: #bfdbfe; margin: 0 0 10px 0;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+        </div>
+        <h2 id="tadminUploadModalTitle" style="font-size: 19px; margin-bottom: 4px;">Upload Administration Document</h2>
+        <p id="tadminUploadModalSubtitle" style="font-size: 13px; color: #64748b;">File will be uploaded to the Meeting Koordinasi folder in Google Drive.</p>
+      </div>
+
+      <form id="tadminUploadForm">
+        <input type="hidden" id="tadminUploadCategoryKey">
+        <input type="hidden" id="tadminUploadScopeType">
+        <input type="hidden" id="tadminUploadScopeValue">
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label style="font-weight: 600; font-size: 12px; color: #475569;">Target Category & Scope</label>
+          <div id="tadminUploadTargetBadge" style="padding: 8px 12px; background: #f1f5f9; border-radius: 8px; font-size: 13px; font-weight: 700; color: #1e293b;">
+            -
+          </div>
+        </div>
+
+        <!-- File Picker -->
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="tadminFileInput" style="font-weight: 600; font-size: 12px; color: #475569;">Select File (Docs, Sheets, PPT, PDF, or Image)</label>
+          <input type="file" id="tadminFileInput" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.webp">
+          <span style="font-size: 11px; color: #64748b; margin-top: 4px; display: block;">Supports PDF, Word, Excel, PowerPoint, PNG, JPG (max 25MB).</span>
+        </div>
+
+        <!-- Or Google Drive Direct Link -->
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="tadminDriveLinkInput" style="font-weight: 600; font-size: 12px; color: #475569;">Or Paste Direct Google Drive / Cloud Link (Optional)</label>
+          <input type="url" id="tadminDriveLinkInput" class="form-control" placeholder="https://docs.google.com/... or https://drive.google.com/...">
+        </div>
+
+        <div id="tadminUploadProgress" style="display: none; margin-bottom: 14px; padding: 10px; border-radius: 8px; background: #eff6ff; border: 1px solid #bfdbfe; font-size: 12px; color: #1d4ed8; text-align: center;">
+          <span class="status-dot" style="background: #2563eb; display: inline-block; animation: pulse 1.5s infinite;"></span>
+          <span id="tadminUploadProgressText">Uploading to Google Drive (Meeting Koordinasi)...</span>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <button type="button" id="btnCancelTadminUpload" class="login-btn" style="background: #e2e8f0; color: #334155; flex: 1;">Cancel</button>
+          <button type="submit" id="btnSubmitTadminUpload" class="login-btn" style="flex: 1.5;">Upload & Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Teacher Administration: Add Review Question Item Modal -->
+  <div id="tadminAddReviewQuestionModal" class="modal-overlay" style="display: none; z-index: 10500;">
+    <div class="login-card" style="max-width: 500px; text-align: left;">
+      <div class="login-header">
+        <div class="login-icon" style="background: #eff6ff; border-color: #bfdbfe; margin: 0 0 10px 0;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="12" y1="18" x2="12" y2="12" />
+            <line x1="9" y1="15" x2="15" y2="15" />
+          </svg>
+        </div>
+        <h2 style="font-size: 19px; margin-bottom: 4px;">Add Review Questions / Material</h2>
+        <p style="font-size: 13px; color: #64748b;">Add a new review question bank, quiz, or exam package.</p>
+      </div>
+
+      <form id="tadminAddReviewQuestionForm">
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="tadminRQTitleInput">Item Title / Topic</label>
+          <input type="text" id="tadminRQTitleInput" class="form-control" placeholder="e.g. Mid-Term Review Questions Grade 8, Quiz Bab 3..." required>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+          <div class="form-group">
+            <label for="tadminRQGradeInput">Target Grade / Class</label>
+            <input type="text" id="tadminRQGradeInput" class="form-control" placeholder="e.g. Grade 7, Grade 10">
+          </div>
+          <div class="form-group">
+            <label for="tadminRQSubjectInput">Subject</label>
+            <input type="text" id="tadminRQSubjectInput" class="form-control" placeholder="e.g. Mathematics, Science">
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="tadminRQFileInput">Attach File (PDF, Docs, Sheets, Image)</label>
+          <input type="file" id="tadminRQFileInput" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.webp">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="tadminRQDriveLinkInput">Or Google Drive Link</label>
+          <input type="url" id="tadminRQDriveLinkInput" class="form-control" placeholder="https://docs.google.com/... or https://drive.google.com/...">
+        </div>
+
+        <div id="tadminRQProgress" style="display: none; margin-bottom: 14px; padding: 10px; border-radius: 8px; background: #eff6ff; border: 1px solid #bfdbfe; font-size: 12px; color: #1d4ed8; text-align: center;">
+          <span class="status-dot" style="background: #2563eb; display: inline-block; animation: pulse 1.5s infinite;"></span>
+          <span>Uploading to Google Drive (Meeting Koordinasi)...</span>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <button type="button" id="btnCancelTadminAddRQ" class="login-btn" style="background: #e2e8f0; color: #334155; flex: 1;">Cancel</button>
+          <button type="submit" id="btnSubmitTadminAddRQ" class="login-btn" style="flex: 1.5;">Save Item</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Teacher Administration: In-App Document Preview Modal -->
+  <div id="tadminDocPreviewModal" class="modal-overlay" style="display: none; z-index: 10600;">
+    <div class="login-card tadmin-preview-card" style="max-width: 95vw; width: 1100px; height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; border-radius: 16px;">
+      <!-- Preview Header -->
+      <div class="tadmin-preview-header" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; background: #0f172a; color: #fff;">
+        <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+          <div style="width: 34px; height: 34px; border-radius: 8px; background: rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+            </svg>
+          </div>
+          <div style="min-width: 0;">
+            <h3 id="tadminPreviewDocTitle" style="font-size: 15px; font-weight: 700; margin: 0; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Document Preview</h3>
+            <span id="tadminPreviewDocMeta" style="font-size: 12px; color: #94a3b8;">-</span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
+          <a id="tadminPreviewOpenExternalBtn" href="#" target="_blank" class="action-btn" style="background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.25); text-decoration: none; padding: 6px 12px; font-size: 12px; border-radius: 8px;">
+            Open in New Tab ↗
+          </a>
+          <button type="button" id="btnTadminClosePreview" class="action-btn" style="background: #dc2626; color: #fff; border: none; padding: 6px 14px; font-size: 13px; font-weight: 700; border-radius: 8px; cursor: pointer;">
+            ✕ Close
+          </button>
+        </div>
+      </div>
+
+      <!-- Preview Body (Iframe / Image) -->
+      <div class="tadmin-preview-body" style="flex: 1; position: relative; background: #1e293b; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+        <div id="tadminPreviewLoading" style="position: absolute; color: #94a3b8; font-size: 14px;">
+          Loading document preview...
+        </div>
+        <iframe id="tadminPreviewIframe" src="" style="width: 100%; height: 100%; border: none; background: #fff; display: none;" allowfullscreen></iframe>
+        <img id="tadminPreviewImg" src="" alt="Document Preview" style="max-width: 100%; max-height: 100%; object-fit: contain; display: none;">
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="weekly.js?v=435"></script>
   <script type="module">import { trackCurrentPage } from './js/userActivity.js'; trackCurrentPage();</script>
 </body>
 

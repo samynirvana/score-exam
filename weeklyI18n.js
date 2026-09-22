@@ -9,6 +9,7 @@ export const translations = {
     nav_class_view: "Class View",
     nav_teacher_entry: "Teacher Entry",
     nav_teacher_schedules: "Teacher Schedules",
+    nav_administration: "Administration",
     nav_reward_view: "Character & Skill Reward",
     nav_meeting_view: "Meeting & Coordination",
     nav_builder_view: "Class Schedule Builder",
@@ -103,10 +104,11 @@ export const translations = {
   },
   id: {
     // Navigation Tabs
-    nav_class_view: "Jadwal Kelas",
+    nav_class_view: "Jadwal Mingguan",
     nav_teacher_entry: "Input Guru",
     nav_teacher_schedules: "Jadwal Guru",
-    nav_reward_view: "Penghargaan Siswa",
+    nav_administration: "Administrasi Guru",
+    nav_reward_view: "Penghargaan Karakter & Keterampilan",
     nav_meeting_view: "Rapat & Koordinasi",
     nav_builder_view: "Penyusun Jadwal",
     nav_admin_dashboard: "Dasbor Admin",
