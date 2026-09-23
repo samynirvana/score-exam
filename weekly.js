@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, doc, setDoc, onSnapshot, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, updateDoc, onSnapshot, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import {
   getAuth,
   signInWithEmailAndPassword,
@@ -2318,8 +2318,11 @@ async function saveClassWeeklySchedule() {
 
     // Save materials
     if (Object.keys(draftWeeklyMaterials).length > 0) {
-      materialsData = { ...materialsData, ...draftWeeklyMaterials };
-      await setDoc(doc(db, "schedules", "materialsData"), materialsData, { merge: true });
+      const matDocRef = doc(db, "schedules", "materialsData");
+      const latestMatSnap = await getDoc(matDocRef);
+      const remoteMaterials = latestMatSnap.exists() ? latestMatSnap.data() : {};
+      materialsData = { ...remoteMaterials, ...draftWeeklyMaterials };
+      await setDoc(matDocRef, materialsData, { merge: true });
     }
 
     alert(`Weekly schedule, uniforms & materials saved successfully for ${selectedClass} (${week})!`);
@@ -3671,6 +3674,20 @@ function renderTeacherView() {
 
   const tbodyMat = document.getElementById('materialTableBody');
   if (!tbodyMat) return;
+
+  // Preserve any in-progress unsaved input values and active focus
+  const activeEl = document.activeElement;
+  const activeKey = (activeEl && activeEl.classList?.contains('mat-input')) ? activeEl.dataset.key : null;
+  const activeSelectionStart = (activeEl && activeEl.selectionStart !== undefined) ? activeEl.selectionStart : null;
+  const activeSelectionEnd = (activeEl && activeEl.selectionEnd !== undefined) ? activeEl.selectionEnd : null;
+
+  const currentInputsMap = {};
+  tbodyMat.querySelectorAll('.mat-input').forEach(inp => {
+    if (inp.dataset.key) {
+      currentInputsMap[inp.dataset.key] = inp.value;
+    }
+  });
+
   tbodyMat.innerHTML = '';
 
   let teacherAssignments = [];
@@ -3706,7 +3723,10 @@ function renderTeacherView() {
   }
 
   teacherAssignments.forEach(item => {
-    const mat = materialsData[item.key]?.material || '';
+    // If the user already had text in this input, prioritize it so concurrent snapshots don't erase typing
+    const mat = (currentInputsMap[item.key] !== undefined)
+      ? currentInputsMap[item.key]
+      : (materialsData[item.key]?.material || '');
     const link = materialsData[item.key]?.link || '';
     const dayShort = item.day.substring(0, 3);
 
@@ -3717,7 +3737,7 @@ function renderTeacherView() {
         <div style="font-size: 12.5px; color: #475569; font-weight: 600; margin-top: 3px;">${item.subject} <span style="color: #64748b; font-weight: 500;">(${dayShort})</span></div>
       </td>
       <td style="padding: 10px 8px;">
-        <input type="text" class="mat-input" data-key="${item.key}" value="${mat}" placeholder="Enter material description or topic...">
+        <input type="text" class="mat-input" data-key="${item.key}" value="${escapeHtml(mat)}" placeholder="Enter material description or topic...">
       </td>
       <td style="padding: 10px 8px; text-align: center;">
         <div class="kebab-menu">
@@ -3740,6 +3760,19 @@ function renderTeacherView() {
       renderClassSchedule();
     });
   });
+
+  // Restore focus and cursor position if the active element was an input in this table
+  if (activeKey) {
+    const restoredInput = tbodyMat.querySelector(`.mat-input[data-key="${activeKey}"]`);
+    if (restoredInput) {
+      restoredInput.focus();
+      if (activeSelectionStart !== null && activeSelectionEnd !== null) {
+        try {
+          restoredInput.setSelectionRange(activeSelectionStart, activeSelectionEnd);
+        } catch (_) {}
+      }
+    }
+  }
 
   document.querySelectorAll('#materialTableBody .kebab-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -4034,11 +4067,51 @@ document.getElementById('assignSlotForm')?.addEventListener('submit', async (e) 
 });
 
 document.getElementById('saveMaterialsBtn')?.addEventListener('click', async () => {
+  const saveBtn = document.getElementById('saveMaterialsBtn');
+  const originalText = saveBtn ? saveBtn.textContent : '';
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+  }
+
   try {
-    await setDoc(doc(db, "schedules", "materialsData"), materialsData, { merge: true });
+    // 1. Collect all material inputs currently displayed in the Teacher Material table
+    const currentTableInputs = document.querySelectorAll('#materialTableBody .mat-input');
+    const updatesToSave = {};
+
+    currentTableInputs.forEach(inp => {
+      const key = inp.dataset.key;
+      if (key) {
+        if (!materialsData[key]) materialsData[key] = {};
+        materialsData[key].material = inp.value;
+        updatesToSave[key] = {
+          ...(materialsData[key] || {}),
+          material: inp.value
+        };
+      }
+    });
+
+    // 2. Fetch the latest server copy of materialsData to prevent overwriting keys saved by other teachers concurrently
+    const docRef = doc(db, "schedules", "materialsData");
+    const latestDocSnap = await getDoc(docRef);
+    const remoteData = latestDocSnap.exists() ? latestDocSnap.data() : {};
+
+    // 3. Merge: remote server data + only this teacher's current updates
+    const mergedData = { ...remoteData, ...updatesToSave };
+
+    // 4. Save merged data
+    await setDoc(docRef, mergedData, { merge: true });
+    materialsData = mergedData;
+
+    renderClassSchedule();
     alert("Materials updated successfully!");
   } catch (err) {
     alert("Error saving materials: " + err.message);
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = originalText;
+    }
   }
 });
 
