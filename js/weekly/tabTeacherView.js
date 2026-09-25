@@ -18,7 +18,7 @@ import {
   getSlotAssignments
 } from "./weeklyState.js";
 import { renderClassSchedule, getSubjectPastelObject, getSubjectPastelStyle } from "./tabClassView.js";
-import { autoResizeTextarea, updateClassDaySelectOptions, updateTeacherDaySelectOptions } from "../../weekly.js";
+import { autoResizeTextarea, updateTeacherDaySelectOptions } from "../../weekly.js";
 
 export {
   renderTeacherView,
@@ -621,7 +621,7 @@ document.getElementById('saveMaterialsBtn')?.addEventListener('click', async () 
 
     // 4. Save merged data
     await setDoc(docRef, mergedData, { merge: true });
-    materialsData = mergedData;
+    setMaterialsData(mergedData);
 
     renderClassSchedule();
     alert("Materials updated successfully!");
@@ -664,29 +664,6 @@ function toggleTeacherMaterialTable(forceState = null) {
 document.getElementById('btnToggleTeacherMaterial')?.addEventListener('click', () => toggleTeacherMaterialTable());
 document.getElementById('btnCloseTeacherMaterial')?.addEventListener('click', () => toggleTeacherMaterialTable(false));
 
-document.getElementById('classSelectView')?.addEventListener('change', () => {
-  if (isClassEditMode) exitClassEditMode(true);
-  renderClassSchedule();
-});
-document.getElementById('classDaySelect')?.addEventListener('change', () => {
-  if (isClassEditMode) exitClassEditMode(true);
-  renderClassSchedule();
-});
-document.getElementById('classYearSelect')?.addEventListener('change', () => {
-  if (isClassEditMode) exitClassEditMode(true);
-  updateClassDaySelectOptions();
-  renderClassSchedule();
-});
-document.getElementById('classThemeSelect')?.addEventListener('change', () => {
-  if (isClassEditMode) exitClassEditMode(true);
-  updateClassDaySelectOptions();
-  renderClassSchedule();
-});
-document.getElementById('classWeekSelect')?.addEventListener('change', () => {
-  if (isClassEditMode) exitClassEditMode(true);
-  updateClassDaySelectOptions();
-  renderClassSchedule();
-});
 document.getElementById('teacherSelectView')?.addEventListener('change', renderTeacherView);
 document.getElementById('teacherDaySelect')?.addEventListener('change', renderTeacherView);
 document.getElementById('teacherYearSelect')?.addEventListener('change', () => {

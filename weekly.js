@@ -60,6 +60,7 @@ import {
   renderManageScheduleTable,
   renderManageThemesTable,
   populateAdminSelects,
+  populateAdminCalendarDropdowns,
   syncEntitiesFromMasterSchedules,
   updateAdminPeriodSelectOptions
 } from "./js/weekly/tabAdminView.js";
@@ -418,6 +419,7 @@ export function switchTab(tabId, targetBtn) {
   } else if (tabId === 'adminView') {
     renderEntityTables();
     renderManageScheduleTable();
+    populateAdminCalendarDropdowns();
     renderManageThemesTable();
     renderActiveTabsControlTable();
     loadDriveFolderSettings();
@@ -479,6 +481,9 @@ export function populateCalendarSelects() {
 
   updateClassDaySelectOptions();
   updateTeacherDaySelectOptions();
+  if (typeof populateAdminCalendarDropdowns === 'function') {
+    populateAdminCalendarDropdowns();
+  }
   if (typeof populateRewardSelects === 'function') {
     populateRewardSelects();
   }

@@ -32,7 +32,7 @@ import {
   getSlotAssignments
 } from "./weeklyState.js";
 import { renderTeacherView } from "./tabTeacherView.js";
-import { updateClassEditButtonState } from "../../weekly.js";
+import { updateClassEditButtonState, updateClassDaySelectOptions, populateCalendarSelects } from "../../weekly.js";
 
 export {
   getSubjectGroupType,
@@ -230,7 +230,7 @@ function enterClassEditMode() {
     alert("You do not have permission to edit the schedule for this class.");
     return;
   }
-  isClassEditMode = true;
+  setIsClassEditMode(true);
   initDraftWeeklyData(selectedClass, getActiveCalendarPrefix('class'));
   updateClassEditButtonState();
   renderClassSchedule();
@@ -238,21 +238,21 @@ function enterClassEditMode() {
 
 function exitClassEditMode(discardChanges = true) {
   if (discardChanges) {
-    draftWeeklySchedule = null;
-    draftWeeklyMaterials = {};
+    setDraftWeeklySchedule(null);
+    setDraftWeeklyMaterials({});
   }
-  isClassEditMode = false;
+  setIsClassEditMode(false);
   updateClassEditButtonState();
   renderClassSchedule();
 }
 
 function initDraftWeeklyData(selectedClass, calPrefix) {
-  draftWeeklySchedule = {};
-  draftWeeklyMaterials = {};
+  setDraftWeeklySchedule({});
+  setDraftWeeklyMaterials({});
   const overrideKey = `${calPrefix}_${selectedClass}`;
   const defaultUniforms = getDefaultUniforms(selectedClass);
   const savedUniforms = weeklyOverrides?.[overrideKey]?.uniforms || {};
-  draftWeeklyUniforms = { ...defaultUniforms, ...savedUniforms };
+  setDraftWeeklyUniforms({ ...defaultUniforms, ...savedUniforms });
 
   const days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
   days.forEach(day => {
@@ -562,7 +562,7 @@ async function saveClassWeeklySchedule() {
   const week = document.getElementById('classWeekSelect')?.value || 'this week';
 
   try {
-    if (!weeklyOverrides) weeklyOverrides = {};
+    if (!weeklyOverrides) setWeeklyOverrides({});
     weeklyOverrides[overrideKey] = {
       schedule: draftWeeklySchedule,
       uniforms: draftWeeklyUniforms
@@ -576,15 +576,16 @@ async function saveClassWeeklySchedule() {
       const matDocRef = doc(db, "schedules", "materialsData");
       const latestMatSnap = await getDoc(matDocRef);
       const remoteMaterials = latestMatSnap.exists() ? latestMatSnap.data() : {};
-      materialsData = { ...remoteMaterials, ...draftWeeklyMaterials };
-      await setDoc(matDocRef, materialsData, { merge: true });
+      const mergedMaterials = { ...remoteMaterials, ...draftWeeklyMaterials };
+      setMaterialsData(mergedMaterials);
+      await setDoc(matDocRef, mergedMaterials, { merge: true });
     }
 
     alert(`Weekly schedule, uniforms & materials saved successfully for ${selectedClass} (${week})!`);
-    isClassEditMode = false;
-    draftWeeklySchedule = null;
-    draftWeeklyMaterials = {};
-    draftWeeklyUniforms = {};
+    setIsClassEditMode(false);
+    setDraftWeeklySchedule(null);
+    setDraftWeeklyMaterials({});
+    setDraftWeeklyUniforms({});
     updateClassEditButtonState();
     renderClassSchedule();
     renderTeacherView();
@@ -613,10 +614,10 @@ async function resetClassWeeklySchedule() {
       await setDoc(doc(db, "schedules", "weeklyOverrides"), weeklyOverrides);
     }
     alert(`Schedule for ${selectedClass} (${week}) has been reset to Master Template.`);
-    isClassEditMode = false;
-    draftWeeklySchedule = null;
-    draftWeeklyMaterials = {};
-    draftWeeklyUniforms = {};
+    setIsClassEditMode(false);
+    setDraftWeeklySchedule(null);
+    setDraftWeeklyMaterials({});
+    setDraftWeeklyUniforms({});
     updateClassEditButtonState();
     renderClassSchedule();
     renderTeacherView();
@@ -937,6 +938,37 @@ document.getElementById('btnEditClassWeekly')?.addEventListener('click', () => {
 document.getElementById('btnSaveClassEdit')?.addEventListener('click', saveClassWeeklySchedule);
 document.getElementById('btnCancelClassEdit')?.addEventListener('click', () => exitClassEditMode(true));
 document.getElementById('btnResetClassMaster')?.addEventListener('click', resetClassWeeklySchedule);
+// Class View Dropdown & Filter Event Listeners
+document.getElementById('classSelectView')?.addEventListener('change', () => {
+  if (isClassEditMode) exitClassEditMode(true);
+  renderClassSchedule();
+});
+
+document.getElementById('classDaySelect')?.addEventListener('change', () => {
+  if (isClassEditMode) exitClassEditMode(true);
+  renderClassSchedule();
+});
+
+document.getElementById('classYearSelect')?.addEventListener('change', () => {
+  if (isClassEditMode) exitClassEditMode(true);
+  populateCalendarSelects();
+  updateClassDaySelectOptions();
+  renderClassSchedule();
+});
+
+document.getElementById('classThemeSelect')?.addEventListener('change', () => {
+  if (isClassEditMode) exitClassEditMode(true);
+  populateCalendarSelects();
+  updateClassDaySelectOptions();
+  renderClassSchedule();
+});
+
+document.getElementById('classWeekSelect')?.addEventListener('change', () => {
+  if (isClassEditMode) exitClassEditMode(true);
+  updateClassDaySelectOptions();
+  renderClassSchedule();
+});
+
 
 function updateClassPrintHeader(selectedClass) {
   const isHS = isHighSchoolClass(selectedClass);

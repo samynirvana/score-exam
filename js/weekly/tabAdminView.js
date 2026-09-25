@@ -6,6 +6,7 @@ import {
   secondaryAuth,
   timeSlots,
   appEntities,
+  setAppEntities,
   masterSchedules,
   weeklyOverrides,
   materialsData,
@@ -48,7 +49,10 @@ document.getElementById('manageDaySelect')?.addEventListener('change', renderMan
 // Admin Sub-Tab Navigation
 document.getElementById('btnSubAdd')?.addEventListener('click', (e) => switchAdminSubTab('subTabAdd', e.target));
 document.getElementById('btnSubManage')?.addEventListener('click', (e) => switchAdminSubTab('subTabManage', e.target));
-document.getElementById('btnSubCalendar')?.addEventListener('click', (e) => switchAdminSubTab('subTabCalendar', e.target));
+document.getElementById('btnSubCalendar')?.addEventListener('click', (e) => {
+  switchAdminSubTab('subTabCalendar', e.target);
+  populateAdminCalendarDropdowns();
+});
 document.getElementById('btnSubTabs')?.addEventListener('click', (e) => {
   switchAdminSubTab('subTabTabs', e.target);
   renderActiveTabsControlTable();
@@ -80,7 +84,15 @@ function loadSelectedThemeDates() {
   const endInput = document.getElementById('calEndDate');
   const submitBtn = document.querySelector('#calendarForm button[type="submit"]');
 
-  if (!year || !theme || !startInput || !endInput) return;
+  if (!startInput || !endInput) return;
+
+  if (!year || !theme || !academicCalendar[year]?.[theme]) {
+    startInput.value = '';
+    endInput.value = '';
+    if (submitBtn) submitBtn.textContent = 'Auto-Generate & Save Weeks';
+    renderManageThemesTable();
+    return;
+  }
 
   const weeks = academicCalendar[year]?.[theme] || {};
   const weekKeys = sortWeeks(Object.keys(weeks));
@@ -191,7 +203,14 @@ function populateAdminCalendarDropdowns() {
   const adminThemeSel = document.getElementById('adminThemeSelect');
   if (!adminYearSel || !adminThemeSel) return;
 
-  const years = Object.keys(academicCalendar);
+  const years = Object.keys(academicCalendar || {});
+  if (years.length === 0) {
+    adminYearSel.innerHTML = '<option value="">-- No School Years --</option>';
+    adminThemeSel.innerHTML = '<option value="">-- No Themes --</option>';
+    loadSelectedThemeDates();
+    return;
+  }
+
   const currYear = adminYearSel.value;
   adminYearSel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
   if (currYear && years.includes(currYear)) adminYearSel.value = currYear;
@@ -200,8 +219,12 @@ function populateAdminCalendarDropdowns() {
   const themes = selectedYear && academicCalendar[selectedYear] ? Object.keys(academicCalendar[selectedYear]) : [];
 
   const currTheme = adminThemeSel.value;
-  adminThemeSel.innerHTML = themes.map(t => `<option value="${t}">${t}</option>`).join('');
-  if (currTheme && themes.includes(currTheme)) adminThemeSel.value = currTheme;
+  if (themes.length === 0) {
+    adminThemeSel.innerHTML = '<option value="">-- No Themes --</option>';
+  } else {
+    adminThemeSel.innerHTML = themes.map(t => `<option value="${t}">${t}</option>`).join('');
+    if (currTheme && themes.includes(currTheme)) adminThemeSel.value = currTheme;
+  }
 
   loadSelectedThemeDates();
 }
@@ -399,7 +422,7 @@ function updateAdminPeriodSelectOptions() {
 }
 
 function syncEntitiesFromMasterSchedules() {
-  if (!appEntities) appEntities = { teachers: [], classes: [], subjects: [], homeTeachers: {}, teacherEmails: {} };
+  if (!appEntities) setAppEntities({ teachers: [], classes: [], subjects: [], homeTeachers: {}, teacherEmails: {} });
   if (!appEntities.classes) appEntities.classes = [];
   if (!appEntities.teachers) appEntities.teachers = [];
   if (!appEntities.subjects) appEntities.subjects = [];
@@ -474,6 +497,7 @@ function syncEntitiesFromMasterSchedules() {
 function populateAdminSelects() {
   syncEntitiesFromMasterSchedules();
   updateAdminPeriodSelectOptions();
+  populateAdminCalendarDropdowns();
 
   const classSelects = [
     document.getElementById('adminClassSelect'),
