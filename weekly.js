@@ -582,22 +582,41 @@ export function updateTeacherDaySelectOptions() {
 // Real-time Firestore Listeners
 onSnapshot(doc(db, "config", "academicCalendar"), (docSnap) => {
   if (docSnap.exists()) {
-    setAcademicCalendar(docSnap.data());
+    const data = docSnap.data();
+    setAcademicCalendar(data);
+    try {
+      localStorage.setItem('mks_academic_calendar_backup', JSON.stringify(data));
+    } catch (e) {}
   } else {
-    const defaultCal = {
-      "2026-2027": {
-        "Theme 1": {
-          "Week 1": { startDate: "2026-07-13", endDate: "2026-07-19" },
-          "Week 2": { startDate: "2026-07-20", endDate: "2026-07-26" }
+    // If not found in Firestore, restore from local backup or use default only in-memory.
+    // CRITICAL: DO NOT call setDoc here! An unprovoked setDoc on offline start, cache miss,
+    // or reconnect overwrites the entire production academicCalendar with a 2-week default.
+    let fallbackCal = null;
+    try {
+      const cached = localStorage.getItem('mks_academic_calendar_backup');
+      if (cached) fallbackCal = JSON.parse(cached);
+    } catch (e) {}
+
+    if (!fallbackCal && (!academicCalendar || Object.keys(academicCalendar).length === 0)) {
+      fallbackCal = {
+        "2026-2027": {
+          "Theme 1": {
+            "Week 1": { startDate: "2026-07-13", endDate: "2026-07-19" },
+            "Week 2": { startDate: "2026-07-20", endDate: "2026-07-26" }
+          }
         }
-      }
-    };
-    setAcademicCalendar(defaultCal);
-    setDoc(doc(db, "config", "academicCalendar"), defaultCal);
+      };
+    }
+
+    if (fallbackCal) {
+      setAcademicCalendar(fallbackCal);
+    }
   }
   populateCalendarSelects();
   renderClassSchedule();
   renderTeacherView();
+}, (err) => {
+  console.warn("Real-time listener on config/academicCalendar encountered error:", err);
 });
 
 onSnapshot(doc(db, "config", "appEntities"), (docSnap) => {

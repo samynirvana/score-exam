@@ -143,6 +143,36 @@ export function formatModernDateRange(startDateStr, endDateStr) {
   return `${m1} ${day1}, ${y1} - ${m2} ${day2}, ${y2}`;
 }
 
+export function formatPrintDateRange(startDateStr, endDateStr) {
+  if (!startDateStr || !endDateStr) return '';
+  try {
+    const sStr = String(startDateStr).includes('T') ? String(startDateStr) : String(startDateStr) + 'T00:00:00';
+    const eStr = String(endDateStr).includes('T') ? String(endDateStr) : String(endDateStr) + 'T00:00:00';
+    const dStart = new Date(sStr);
+    const dEnd = new Date(eStr);
+    if (isNaN(dStart.getTime()) || isNaN(dEnd.getTime())) return '';
+
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const m1 = months[dStart.getMonth()];
+    const m2 = months[dEnd.getMonth()];
+    const day1 = dStart.getDate();
+    const day2 = dEnd.getDate();
+    const y1 = dStart.getFullYear();
+    const y2 = dEnd.getFullYear();
+
+    if (y1 === y2) {
+      if (m1 === m2) {
+        return `${day1} - ${day2} ${m1} ${y1}`;
+      }
+      return `${day1} ${m1} - ${day2} ${m2} ${y1}`;
+    }
+    return `${day1} ${m1} ${y1} - ${day2} ${m2} ${y2}`;
+  } catch (e) {
+    return '';
+  }
+}
+
+
 export function getActiveCalendarPrefix(viewType = 'class') {
   const year = document.getElementById(`${viewType}YearSelect`)?.value || '2026-2027';
   const theme = document.getElementById(`${viewType}ThemeSelect`)?.value || 'Theme 1';

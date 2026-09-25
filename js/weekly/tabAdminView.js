@@ -35,6 +35,7 @@ export {
   renderManageScheduleTable,
   renderManageThemesTable,
   populateAdminSelects,
+  populateAdminCalendarDropdowns,
   syncEntitiesFromMasterSchedules,
   updateAdminPeriodSelectOptions
 };
@@ -44,6 +45,16 @@ document.getElementById('adminClassSelect')?.addEventListener('change', updateAd
 document.getElementById('adminDaySelect')?.addEventListener('change', updateAdminPeriodSelectOptions);
 document.getElementById('manageClassSelect')?.addEventListener('change', renderManageScheduleTable);
 document.getElementById('manageDaySelect')?.addEventListener('change', renderManageScheduleTable);
+
+// Close admin kebab dropdowns when clicking outside
+if (!window._adminKebabOutsideListener) {
+  window._adminKebabOutsideListener = true;
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.kebab-menu')) {
+      document.querySelectorAll('.kebab-dropdown.show').forEach(d => d.classList.remove('show'));
+    }
+  });
+}
 
 
 // Admin Sub-Tab Navigation
@@ -76,6 +87,13 @@ document.getElementById('resourceType')?.addEventListener('change', (e) => {
     teacherAuthFields.style.display = e.target.value === 'teachers' ? 'block' : 'none';
   }
 });
+
+async function saveAcademicCalendarToFirestore(calendarData) {
+  await setDoc(doc(db, "config", "academicCalendar"), calendarData);
+  try {
+    localStorage.setItem('mks_academic_calendar_backup', JSON.stringify(calendarData));
+  } catch (e) {}
+}
 
 function loadSelectedThemeDates() {
   const year = document.getElementById('adminYearSelect')?.value;
@@ -187,7 +205,7 @@ function renderManageThemesTable() {
       if (confirm(`Are you sure you want to delete "${th}" from ${yr}? This will remove all generated weeks for this theme.`)) {
         delete academicCalendar[yr][th];
         try {
-          await setDoc(doc(db, "config", "academicCalendar"), academicCalendar);
+          await saveAcademicCalendarToFirestore(academicCalendar);
           populateCalendarSelects();
           alert(`Successfully deleted ${th}.`);
         } catch (err) {
@@ -260,7 +278,7 @@ document.getElementById('btnAddYear')?.addEventListener('click', async () => {
   }
 
   try {
-    await setDoc(doc(db, "config", "academicCalendar"), academicCalendar);
+    await saveAcademicCalendarToFirestore(academicCalendar);
     populateCalendarSelects();
     const adminYearSel = document.getElementById('adminYearSelect');
     if (adminYearSel) adminYearSel.value = cleanYear;
@@ -285,7 +303,7 @@ document.getElementById('btnAddTheme')?.addEventListener('click', async () => {
   if (!academicCalendar[selectedYear][cleanTheme]) {
     academicCalendar[selectedYear][cleanTheme] = {};
     try {
-      await setDoc(doc(db, "config", "academicCalendar"), academicCalendar);
+      await saveAcademicCalendarToFirestore(academicCalendar);
       populateCalendarSelects();
       document.getElementById('adminThemeSelect').value = cleanTheme;
       loadSelectedThemeDates();
@@ -367,7 +385,7 @@ document.getElementById('calendarForm')?.addEventListener('submit', async (e) =>
   academicCalendar[year][theme] = generatedWeeks;
 
   try {
-    await setDoc(doc(db, "config", "academicCalendar"), academicCalendar);
+    await saveAcademicCalendarToFirestore(academicCalendar);
     const weekCount = Object.keys(generatedWeeks).length;
     alert(`Successfully saved ${weekCount} weeks (Mon–Fri) for ${year} > ${theme}!`);
     populateCalendarSelects();
@@ -692,31 +710,34 @@ function renderEntityTables() {
     if (btnNext) btnNext.disabled = entityPageMap[type] >= totalPages;
   });
 
-  document.querySelectorAll('.kebab-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      document.querySelectorAll('.kebab-dropdown').forEach(d => {
-        if (d !== btn.nextElementSibling) d.classList.remove('show');
+  const entityGrid = document.querySelector('.entity-tables-grid');
+  if (entityGrid) {
+    entityGrid.querySelectorAll('.kebab-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.querySelectorAll('.kebab-dropdown').forEach(d => {
+          if (d !== btn.nextElementSibling) d.classList.remove('show');
+        });
+        btn.nextElementSibling?.classList.toggle('show');
       });
-      btn.nextElementSibling.classList.toggle('show');
     });
-  });
 
-  document.querySelectorAll('.set-hometeacher-opt').forEach(btn => {
-    btn.addEventListener('click', (e) => setHomeTeacher(e.target.dataset.name));
-  });
+    entityGrid.querySelectorAll('.set-hometeacher-opt').forEach(btn => {
+      btn.addEventListener('click', (e) => setHomeTeacher(e.target.dataset.name));
+    });
 
-  document.querySelectorAll('.remove-hometeacher-opt').forEach(btn => {
-    btn.addEventListener('click', (e) => removeHomeTeacher(e.target.dataset.name));
-  });
+    entityGrid.querySelectorAll('.remove-hometeacher-opt').forEach(btn => {
+      btn.addEventListener('click', (e) => removeHomeTeacher(e.target.dataset.name));
+    });
 
-  document.querySelectorAll('.edit-opt').forEach(btn => {
-    btn.addEventListener('click', (e) => editEntity(e.target.dataset.type, e.target.dataset.name));
-  });
+    entityGrid.querySelectorAll('.edit-opt').forEach(btn => {
+      btn.addEventListener('click', (e) => editEntity(e.target.dataset.type, e.target.dataset.name));
+    });
 
-  document.querySelectorAll('.delete-opt').forEach(btn => {
-    btn.addEventListener('click', (e) => deleteEntity(e.target.dataset.type, e.target.dataset.name));
-  });
+    entityGrid.querySelectorAll('.delete-opt').forEach(btn => {
+      btn.addEventListener('click', (e) => deleteEntity(e.target.dataset.type, e.target.dataset.name));
+    });
+  }
 }
 
 // Entity Table Pagination Button Listeners
@@ -893,6 +914,7 @@ function renderManageScheduleTable() {
 
   tbody.querySelectorAll('.edit-slot-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
+      btn.closest('.kebab-dropdown')?.classList.remove('show');
       const slotId = parseInt(e.target.dataset.slot);
       const index = parseInt(e.target.dataset.index);
       editSlotAssignment(selectedClass, selectedDay, slotId, index);
@@ -901,6 +923,7 @@ function renderManageScheduleTable() {
 
   tbody.querySelectorAll('.delete-slot-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
+      btn.closest('.kebab-dropdown')?.classList.remove('show');
       const slotId = parseInt(e.target.dataset.slot);
       const index = parseInt(e.target.dataset.index);
       deleteSlotAssignment(selectedClass, selectedDay, slotId, index);
@@ -965,22 +988,6 @@ async function deleteSlotAssignment(className, day, slotId, index) {
     }
   }
 }
-
-document.getElementById('manageClassSelect')?.addEventListener('change', renderManageScheduleTable);
-document.getElementById('manageDaySelect')?.addEventListener('change', renderManageScheduleTable);
-
-const originalPopulateAdminSelects = populateAdminSelects;
-populateAdminSelects = function () {
-  if (typeof originalPopulateAdminSelects === 'function') originalPopulateAdminSelects();
-
-  const manageClassSel = document.getElementById('manageClassSelect');
-  if (manageClassSel) {
-    const currVal = manageClassSel.value;
-    manageClassSel.innerHTML = appEntities.classes.map(c => `<option value="${c}">${c}</option>`).join('');
-    if (currVal && appEntities.classes.includes(currVal)) manageClassSel.value = currVal;
-    renderManageScheduleTable();
-  }
-};
 
 // Add Resource & Register Teacher in Firebase Auth
 document.getElementById('addResourceForm')?.addEventListener('submit', async (e) => {

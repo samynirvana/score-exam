@@ -1995,10 +1995,18 @@ select:focus {
   .print-schedule-subtitle {
     font-size: 11pt !important;
     font-weight: 700 !important;
-    color: #1e293b !important;
+    color: #000000 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.3px !important;
     margin: 0 !important;
+    line-height: 1.15 !important;
+  }
+
+  .print-schedule-date {
+    font-size: 11pt !important;
+    font-weight: 700 !important;
+    color: #000000 !important;
+    margin: 2px 0 0 0 !important;
     line-height: 1.15 !important;
   }
 

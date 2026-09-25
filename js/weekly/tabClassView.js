@@ -28,6 +28,7 @@ import {
   updateUniformBadges,
   sortWeeks,
   formatModernDateRange,
+  formatPrintDateRange,
   getActiveCalendarPrefix,
   getSlotAssignments
 } from "./weeklyState.js";
@@ -977,17 +978,32 @@ function updateClassPrintHeader(selectedClass) {
     printSchoolName.textContent = isHS ? 'MITRA KASIH HIGH SCHOOL' : 'MITRA KASIH MIDDLE SCHOOL';
   }
 
+  const yr = (document.getElementById('classYearSelect')?.value || '2026/2027').replace('-', '/');
+  const th = document.getElementById('classThemeSelect')?.value || '';
+  const wk = document.getElementById('classWeekSelect')?.value || '';
+  const cls = (selectedClass || 'Class').toUpperCase();
+
   const printSubtitle = document.getElementById('printScheduleSubtitle');
   if (printSubtitle) {
-    const yr = (document.getElementById('classYearSelect')?.value || '2026/2027').replace('-', '/');
-    const th = document.getElementById('classThemeSelect')?.value || '';
-    const wk = document.getElementById('classWeekSelect')?.value || '';
-    const cls = (selectedClass || 'Class').toUpperCase();
-
     const parts = [cls, 'WEEKLY SCHEDULE', yr];
     if (th) parts.push(th.toUpperCase());
     if (wk) parts.push(wk.toUpperCase());
     printSubtitle.textContent = parts.join(' ');
+  }
+
+  const printDate = document.getElementById('printScheduleDate');
+  if (printDate) {
+    const rawYr = document.getElementById('classYearSelect')?.value;
+    const weekInfo = (rawYr && th && wk && academicCalendar[rawYr]?.[th]?.[wk])
+      ? academicCalendar[rawYr][th][wk]
+      : null;
+    if (weekInfo && weekInfo.startDate && weekInfo.endDate) {
+      printDate.textContent = formatPrintDateRange(weekInfo.startDate, weekInfo.endDate);
+      printDate.style.display = 'block';
+    } else {
+      printDate.textContent = '';
+      printDate.style.display = 'none';
+    }
   }
 }
 
@@ -1037,19 +1053,55 @@ document.getElementById('btnPrintPDF')?.addEventListener('click', async () => {
   const subtitle = document.getElementById('printScheduleSubtitle').textContent;
   const fontLinks = [...document.querySelectorAll('link[rel="stylesheet"]')].filter(link => link.href.includes('fonts.googleapis.com')).map(link => link.outerHTML).join('');
   frame.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(subtitle)}</title>${fontLinks}<style>
-    @page { size: A4 landscape; margin: 9mm; }
-    * { box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-    body { margin:0; color:#17233b; font:12px Inter,Arial,sans-serif; }
-    #printSheet { width:${table.getBoundingClientRect().width}px; }
-    .print-header-banner { display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #0f172a; padding-bottom:8px; margin-bottom:8px; }
-    .print-header-logo-side { flex:0 0 20%; text-align:center; }
-    .print-school-logo { width:100%; max-width:230px; height:58px; object-fit:contain; }
-    .print-header-center { flex:1; text-align:center; padding:0 12px; }
-    .print-school-name { font-size:21px; font-weight:800; margin-bottom:4px; }
-    .print-schedule-subtitle { font-size:14px; font-weight:700; }
-    table { table-layout:fixed; border-collapse:collapse !important; border:1.5px solid #000000 !important; }
-    th,td { position:static !important; border:1px solid #000000 !important; }
-    tr { break-inside:avoid; } svg { vertical-align:middle; }
+    @page { size: A4 landscape; margin: 6mm; }
+    * { box-sizing:border-box; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden !important;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: #17233b;
+      font: 12px Inter, Arial, sans-serif;
+      background: #ffffff;
+    }
+    #printSheet {
+      width: ${table.getBoundingClientRect().width}px;
+      margin: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      page-break-inside: avoid;
+      break-inside: avoid;
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+    .print-header-banner {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid #0f172a;
+      padding-bottom: 6px;
+      margin-bottom: 6px;
+    }
+    .print-header-logo-side { flex: 0 0 20%; text-align: center; }
+    .print-school-logo { width: 100%; max-width: 210px; height: 50px; object-fit: contain; }
+    .print-header-center { flex: 1; text-align: center; padding: 0 12px; }
+    .print-school-name { font-size: 20px; font-weight: 800; margin-bottom: 2px; color: #0f172a; letter-spacing: 0.5px; line-height: 1.2; }
+    .print-schedule-subtitle { font-size: 13px; font-weight: 700; color: #000000; line-height: 1.2; }
+    .print-schedule-date { font-size: 13px; font-weight: 700; color: #000000; margin-top: 2px; line-height: 1.2; }
+    table { width: 100%; table-layout: fixed; border-collapse: collapse !important; border: 1.5px solid #000000 !important; }
+    th, td { position: static !important; border: 1px solid #000000 !important; }
+    tr { break-inside: avoid; page-break-inside: avoid; }
+    svg { vertical-align: middle; }
   </style></head><body><main id="printSheet">${header.outerHTML}${clone.outerHTML}</main></body></html>`;
   frame.onload = async () => {
     try {
@@ -1057,9 +1109,35 @@ document.getElementById('btnPrintPDF')?.addEventListener('click', async () => {
       await printDocument.fonts.ready;
       await Promise.all([...printDocument.images].map(img => img.decode().catch(() => {})));
       const sheet = printDocument.getElementById('printSheet');
-      // Uniform scaling fits the complete original table and header on A4 landscape.
-      const scale = Math.min(1, (279 * 96 / 25.4) / sheet.scrollWidth, (192 * 96 / 25.4) / sheet.scrollHeight);
-      sheet.style.zoom = String(scale);
+
+      // A4 Landscape: 297mm x 210mm.
+      // With 6mm margins: Available Width: 285mm, Available Height: 198mm.
+      const availWidth = (285 * 96) / 25.4;   // ~1077.17px
+      const availHeight = (198 * 96) / 25.4;  // ~748.35px
+
+      const initialRect = sheet.getBoundingClientRect();
+      const unscaledWidth = initialRect.width || sheet.scrollWidth || sheet.offsetWidth;
+      const unscaledHeight = initialRect.height || sheet.scrollHeight || sheet.offsetHeight;
+
+      if (unscaledWidth > 0 && unscaledHeight > 0) {
+        // Calculate scale to maximize paper space while strictly fitting on 1 page (0.97 safety buffer)
+        const scaleX = availWidth / unscaledWidth;
+        const scaleY = availHeight / unscaledHeight;
+        let scale = Math.min(scaleX, scaleY) * 0.97;
+
+        // Cap zoom to 1.45 to prevent oversized cells on small tables
+        scale = Math.min(scale, 1.45);
+        sheet.style.zoom = String(scale);
+
+        // Verify post-zoom dimensions to guarantee it never exceeds printable height/width (no 2nd page)
+        const postZoomRect = sheet.getBoundingClientRect();
+        if (postZoomRect.height > availHeight || postZoomRect.width > availWidth) {
+          const correction = Math.min(availWidth / postZoomRect.width, availHeight / postZoomRect.height) * 0.98;
+          scale = scale * correction;
+          sheet.style.zoom = String(scale);
+        }
+      }
+
       frame.contentWindow.focus();
       frame.contentWindow.print();
     } catch (error) {
@@ -1094,6 +1172,21 @@ document.getElementById('btnTeacherPrintPDF')?.addEventListener('click', () => {
     if (th) parts.push(th.toUpperCase());
     if (wk) parts.push(wk.toUpperCase());
     printTeacherSubtitle.textContent = parts.join(' ');
+  }
+
+  const printTeacherDate = document.getElementById('printTeacherScheduleDate');
+  if (printTeacherDate) {
+    const rawYr = document.getElementById('teacherYearSelect')?.value;
+    const weekInfo = (rawYr && th && wk && academicCalendar[rawYr]?.[th]?.[wk])
+      ? academicCalendar[rawYr][th][wk]
+      : null;
+    if (weekInfo && weekInfo.startDate && weekInfo.endDate) {
+      printTeacherDate.textContent = formatPrintDateRange(weekInfo.startDate, weekInfo.endDate);
+      printTeacherDate.style.display = 'block';
+    } else {
+      printTeacherDate.textContent = '';
+      printTeacherDate.style.display = 'none';
+    }
   }
 
   window.print();
