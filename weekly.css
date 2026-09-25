@@ -5584,3 +5584,85 @@ input:disabled + .toggle-slider {
   transition: width 0.3s ease;
 }
 
+/* Kebab dropdown menu styles */
+.tadmin-kebab-container {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.tadmin-kebab-btn {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s ease;
+}
+
+.tadmin-kebab-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
+.tadmin-kebab-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.15), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
+  min-width: 170px;
+  z-index: 1000;
+  padding: 4px 0;
+  display: none;
+}
+
+.tadmin-kebab-menu.show {
+  display: block;
+  animation: modalSlideUp 0.15s ease forwards;
+}
+
+.tadmin-kebab-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #334155;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s ease;
+}
+
+.tadmin-kebab-item:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.tadmin-kebab-item.danger {
+  color: #dc2626;
+}
+
+.tadmin-kebab-item.danger:hover {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.tadmin-kebab-item svg {
+  flex-shrink: 0;
+}
+

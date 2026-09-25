@@ -613,10 +613,7 @@ onSnapshot(doc(db, "config", "appEntities"), (docSnap) => {
       teacherEmails: {}
     });
   }
-  const hadNew = syncEntitiesFromMasterSchedules();
-  if (hadNew) {
-    setDoc(doc(db, "config", "appEntities"), appEntities, { merge: true }).catch(console.warn);
-  }
+  syncEntitiesFromMasterSchedules();
   populateAdminSelects();
   populateMeetingReportSelects();
   renderClassSchedule();
@@ -630,14 +627,7 @@ onSnapshot(doc(db, "schedules", "masterSchedules"), async (docSnap) => {
   } else {
     setMasterSchedules({});
   }
-  const hadNew = syncEntitiesFromMasterSchedules();
-  if (hadNew) {
-    try {
-      await setDoc(doc(db, "config", "appEntities"), appEntities, { merge: true });
-    } catch (e) {
-      console.warn("Could not sync appEntities with masterSchedules:", e);
-    }
-  }
+  syncEntitiesFromMasterSchedules();
   populateAdminSelects();
   populateMeetingReportSelects();
   renderClassSchedule();
@@ -650,10 +640,7 @@ onSnapshot(doc(db, "schedules", "masterSchedules"), async (docSnap) => {
 onSnapshot(doc(db, "schedules", "weeklyOverrides"), (docSnap) => {
   if (docSnap.exists()) setWeeklyOverrides(docSnap.data());
   else setWeeklyOverrides({});
-  const hadNew = syncEntitiesFromMasterSchedules();
-  if (hadNew) {
-    populateAdminSelects();
-  }
+  syncEntitiesFromMasterSchedules();
   if (!isClassEditMode) {
     renderClassSchedule();
     renderTeacherView();

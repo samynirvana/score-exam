@@ -815,16 +815,6 @@
           </div>
         </div>
         <div class="filter-actions-group" style="display: flex; gap: 8px; align-items: center;">
-          <button type="button" id="btnTadminAddNewReviewQuestion" class="action-btn notes-save-btn" title="Upload review questions / administration document">
-            <span class="btn-icon">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
-            </span>
-            <span>Upload File</span>
-          </button>
           <button type="button" id="btnExportTadminExcel" class="action-btn notes-save-btn" title="Export administration status to Excel">
             <span class="btn-icon">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -871,10 +861,9 @@
           <div class="tadmin-section-header">
             <div>
               <h3 class="tadmin-section-title">
-                <span class="tadmin-section-badge">Part A • 4 Themes</span>
-                Learning Modules, Focus, Materials &amp; Review Analysis
+                <span class="tadmin-section-badge">Section A</span>
+                Theme Administration
               </h3>
-              <p class="tadmin-section-desc">Submit individual files for Theme 1, Theme 2, Theme 3, and Theme 4 for the chosen academic year.</p>
             </div>
             <div class="tadmin-theme-pills-nav" id="tadminThemePillsNav">
               <button type="button" class="tadmin-pill-btn active" data-theme="Theme 1" onclick="setTadminActiveTheme('Theme 1')">Theme 1</button>
@@ -893,10 +882,9 @@
           <div class="tadmin-section-header">
             <div>
               <h3 class="tadmin-section-title">
-                <span class="tadmin-section-badge semester">Part B • 2 Semesters</span>
-                Students Mapping, Assessment Scores, Score Rubric &amp; Achievement
+                <span class="tadmin-section-badge semester">Section B</span>
+                Semester Administration
               </h3>
-              <p class="tadmin-section-desc">Submit individual files for Semester 1 and Semester 2 for the chosen academic year.</p>
             </div>
             <div class="tadmin-theme-pills-nav" id="tadminSemesterPillsNav">
               <button type="button" class="tadmin-pill-btn active" data-semester="Semester 1" onclick="setTadminActiveSemester('Semester 1')">Semester 1</button>
@@ -913,12 +901,11 @@
           <div class="tadmin-section-header">
             <div>
               <h3 class="tadmin-section-title">
-                <span class="tadmin-section-badge custom">Part C • Flexible Question Bank</span>
-                Review Questions &amp; Practice Materials
+                <span class="tadmin-section-badge custom">Section C</span>
+                Review Materials
               </h3>
-              <p class="tadmin-section-desc">Teachers can submit and add as many review question packages, quiz sheets, or exam reviews as needed.</p>
             </div>
-            <button type="button" class="action-btn notes-save-btn" onclick="openAddReviewQuestionModal()">
+            <button type="button" class="action-btn notes-save-btn" onclick="window.openAddReviewQuestionModal()">
               <span class="btn-icon">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -2163,6 +2150,9 @@
             </button>
           </form>
         </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Floating Rich-Text Toolbar -->
   <div id="floatingRichTextToolbar" class="floating-richtext-toolbar" style="display: none;">
@@ -2374,8 +2364,7 @@
             <line x1="12" y1="3" x2="12" y2="15" />
           </svg>
         </div>
-        <h2 id="tadminUploadModalTitle" style="font-size: 19px; margin-bottom: 4px;">Upload Administration Document</h2>
-        <p id="tadminUploadModalSubtitle" style="font-size: 13px; color: #64748b;">File will be uploaded to the Meeting Koordinasi folder in Google Drive.</p>
+        <h2 id="tadminUploadModalTitle" style="font-size: 19px; margin-bottom: 4px;">Upload</h2>
       </div>
 
       <form id="tadminUploadForm">
@@ -2384,22 +2373,32 @@
         <input type="hidden" id="tadminUploadScopeValue">
 
         <div class="form-group" style="margin-bottom: 12px;">
-          <label style="font-weight: 600; font-size: 12px; color: #475569;">Target Category & Scope</label>
+          <label style="font-weight: 600; font-size: 12px; color: #475569;">Category</label>
           <div id="tadminUploadTargetBadge" style="padding: 8px 12px; background: #f1f5f9; border-radius: 8px; font-size: 13px; font-weight: 700; color: #1e293b;">
             -
           </div>
         </div>
 
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+          <div class="form-group">
+            <label for="tadminUploadSubjectSelect" style="font-weight: 600; font-size: 12px; color: #475569;">Subject</label>
+            <select id="tadminUploadSubjectSelect" class="form-control" required></select>
+          </div>
+          <div class="form-group">
+            <label for="tadminUploadClassSelect" style="font-weight: 600; font-size: 12px; color: #475569;">Class</label>
+            <select id="tadminUploadClassSelect" class="form-control" required></select>
+          </div>
+        </div>
+
         <!-- File Picker -->
         <div class="form-group" style="margin-bottom: 12px;">
-          <label for="tadminFileInput" style="font-weight: 600; font-size: 12px; color: #475569;">Select File (Docs, Sheets, PPT, PDF, or Image)</label>
+          <label for="tadminFileInput" style="font-weight: 600; font-size: 12px; color: #475569;">Select File</label>
           <input type="file" id="tadminFileInput" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.webp">
-          <span style="font-size: 11px; color: #64748b; margin-top: 4px; display: block;">Supports PDF, Word, Excel, PowerPoint, PNG, JPG (max 25MB).</span>
         </div>
 
         <!-- Or Google Drive Direct Link -->
         <div class="form-group" style="margin-bottom: 16px;">
-          <label for="tadminDriveLinkInput" style="font-weight: 600; font-size: 12px; color: #475569;">Or Paste Direct Google Drive / Cloud Link (Optional)</label>
+          <label for="tadminDriveLinkInput" style="font-weight: 600; font-size: 12px; color: #475569;">Link</label>
           <input type="url" id="tadminDriveLinkInput" class="form-control" placeholder="https://docs.google.com/... or https://drive.google.com/...">
         </div>
 
@@ -2428,19 +2427,18 @@
             <line x1="9" y1="15" x2="15" y2="15" />
           </svg>
         </div>
-        <h2 style="font-size: 19px; margin-bottom: 4px;">Upload Review Questions / Material</h2>
-        <p style="font-size: 13px; color: #64748b;">Upload review question bank, quiz, or exam package (DOCX, Sheet, PowerPoint, PDF, JPG).</p>
+        <h2 style="font-size: 19px; margin-bottom: 4px;">Upload</h2>
       </div>
 
       <form id="tadminAddReviewQuestionForm">
         <div class="form-group" style="margin-bottom: 12px;">
-          <label for="tadminRQTitleInput">Item Title / Topic</label>
+          <label for="tadminRQTitleInput">Topic</label>
           <input type="text" id="tadminRQTitleInput" class="form-control" placeholder="e.g. Mid-Term Review Questions Grade 8, Quiz Bab 3..." required>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
           <div class="form-group">
-            <label for="tadminRQGradeInput">Target Grade / Class</label>
+            <label for="tadminRQGradeInput">Class</label>
             <input type="text" id="tadminRQGradeInput" class="form-control" placeholder="e.g. Grade 7, Grade 10">
           </div>
           <div class="form-group">
@@ -2450,13 +2448,12 @@
         </div>
 
         <div class="form-group" style="margin-bottom: 12px;">
-          <label for="tadminRQFileInput" style="font-weight: 600; font-size: 12px; color: #475569;">Attach File (DOCX, Sheet, PowerPoint, PDF, or JPG/Image)</label>
+          <label for="tadminRQFileInput" style="font-weight: 600; font-size: 12px; color: #475569;">Upload File</label>
           <input type="file" id="tadminRQFileInput" class="form-control" accept=".docx,.doc,.xlsx,.xls,.pptx,.ppt,.jpg,.jpeg,.png,.webp,.pdf">
-          <span style="font-size: 11px; color: #64748b; margin-top: 4px; display: block;">Upload Word (.docx/.doc), Excel (.xlsx/.xls), PowerPoint (.pptx/.ppt), PDF, or JPG/PNG image to Meeting Koordinasi.</span>
         </div>
 
         <div class="form-group" style="margin-bottom: 16px;">
-          <label for="tadminRQDriveLinkInput">Or Google Drive Link</label>
+          <label for="tadminRQDriveLinkInput">Or Link</label>
           <input type="url" id="tadminRQDriveLinkInput" class="form-control" placeholder="https://docs.google.com/... or https://drive.google.com/...">
         </div>
 
@@ -2493,8 +2490,11 @@
           </div>
         </div>
         <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
+          <a id="tadminPreviewDownloadBtn" href="#" download="" target="_blank" class="action-btn" style="background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.25); text-decoration: none; padding: 6px 12px; font-size: 12px; border-radius: 8px; display: none;">
+            ⬇ Download
+          </a>
           <a id="tadminPreviewOpenExternalBtn" href="#" target="_blank" class="action-btn" style="background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.25); text-decoration: none; padding: 6px 12px; font-size: 12px; border-radius: 8px;">
-            Open in New Tab ↗
+            Open in Google Drive ↗
           </a>
           <button type="button" id="btnTadminClosePreview" class="action-btn" style="background: #dc2626; color: #fff; border: none; padding: 6px 14px; font-size: 13px; font-weight: 700; border-radius: 8px; cursor: pointer;">
             ✕ Close
@@ -2509,11 +2509,55 @@
         </div>
         <iframe id="tadminPreviewIframe" src="" style="width: 100%; height: 100%; border: none; background: #fff; display: none;" allowfullscreen></iframe>
         <img id="tadminPreviewImg" src="" alt="Document Preview" style="max-width: 100%; max-height: 100%; object-fit: contain; display: none;">
+        
+        <!-- Fallback notice for files that require direct Google Drive / Office login -->
+        <div id="tadminPreviewFallback" style="display: none; text-align: center; color: #f1f5f9; padding: 30px; max-width: 500px;">
+          <div style="font-size: 40px; margin-bottom: 12px;">📄</div>
+          <h4 id="tadminPreviewFallbackTitle" style="margin: 0 0 8px 0; font-size: 16px; font-weight: 700; color: #fff;">Document Ready</h4>
+          <p style="font-size: 13px; color: #94a3b8; line-height: 1.5; margin: 0 0 20px 0;">
+            This file type is best viewed directly in Google Drive or Microsoft 365 viewer.
+          </p>
+          <a id="tadminPreviewFallbackBtn" href="#" target="_blank" class="login-btn" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none; padding: 10px 20px; font-size: 13px;">
+            <span>Open Document in Google Drive ↗</span>
+          </a>
+        </div>
       </div>
     </div>
   </div>
 
-  <script type="module" src="weekly.js?v=442"></script>
+  <!-- Teacher Administration: Admin Notes / Feedback Modal -->
+  <div id="tadminNotesModal" class="modal-overlay" style="display: none; z-index: 10600;">
+    <div class="login-card" style="max-width: 480px; width: 95%;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="margin: 0; font-size: 17px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+          <span>📝</span> Admin Notes
+        </h3>
+        <button type="button" id="btnCancelTadminNotes" style="background: none; border: none; font-size: 18px; color: #64748b; cursor: pointer;">✕</button>
+      </div>
+      <p id="tadminNotesTargetLabel" style="font-size: 12px; color: #64748b; margin-top: -6px; margin-bottom: 12px; font-weight: 500;">
+        Add feedback or revision notes for this document.
+      </p>
+
+      <form id="tadminNotesForm">
+        <input type="hidden" id="tadminNotesCategoryKey" value="">
+        <input type="hidden" id="tadminNotesScopeType" value="">
+        <input type="hidden" id="tadminNotesScopeValue" value="">
+        <input type="hidden" id="tadminNotesFileId" value="">
+
+        <div style="margin-bottom: 14px;">
+          <textarea id="tadminNotesContent" rows="4" placeholder="Enter notes, corrections, or instructions for the teacher..."
+            style="width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: inherit; resize: vertical;"></textarea>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button type="button" id="btnCloseTadminNotesBtn" class="login-btn" style="background: #e2e8f0; color: #334155; flex: 1;">Cancel</button>
+          <button type="submit" id="btnSaveTadminNotes" class="login-btn" style="flex: 1.5;">Save Notes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="weekly.js?v=451"></script>
   <script type="module">import { trackCurrentPage } from './js/userActivity.js'; trackCurrentPage();</script>
 </body>
 
