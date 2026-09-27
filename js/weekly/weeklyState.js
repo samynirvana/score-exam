@@ -9,6 +9,7 @@ import {
   updatePassword
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getCurrentLanguage, t } from "../../weeklyI18n.js";
+import { escapeHtml } from "../../utils.js";
 
 // Firebase Configurations
 export const firebaseConfig = {
@@ -315,7 +316,9 @@ export function getSlotAssignments(className, day, slotId, viewCalPrefix = null)
 
   if (weeklyOverrides && weeklyOverrides[overrideKey]) {
     const overrideObj = weeklyOverrides[overrideKey];
-    const scheduleMap = overrideObj.schedule || overrideObj;
+    const scheduleMap = (overrideObj && typeof overrideObj.schedule === 'object' && Object.keys(overrideObj.schedule).length > 0)
+      ? overrideObj.schedule
+      : overrideObj;
     if (scheduleMap && scheduleMap[day]) {
       const overrideVal = scheduleMap[day][slotId];
       if (overrideVal !== undefined) {
@@ -342,6 +345,16 @@ export function updateUniformBadges(selectedClass, calPrefix = null) {
   const thHeaders = document.querySelectorAll('#printableArea thead th.col-day');
   const dayFilter = document.getElementById('classDaySelect')?.value || 'ALL';
 
+  // In edit mode, first harvest any existing typed values from the DOM to avoid intermediate re-renders wiping them
+  if (isClassEditMode) {
+    thHeaders.forEach(th => {
+      const inp = th.querySelector('.edit-uniform-input');
+      if (inp && inp.dataset.day) {
+        draftWeeklyUniforms[inp.dataset.day] = inp.value;
+      }
+    });
+  }
+
   thHeaders.forEach((th, idx) => {
     const day = days[idx];
     if (!day) return;
@@ -358,9 +371,9 @@ export function updateUniformBadges(selectedClass, calPrefix = null) {
       }
     }
 
-    const currentUniform = (isClassEditMode && draftWeeklyUniforms[day])
+    const currentUniform = (isClassEditMode && draftWeeklyUniforms[day] !== undefined)
       ? draftWeeklyUniforms[day]
-      : (savedUniforms[day] || defaultUniforms[day]);
+      : ((savedUniforms[day] !== undefined && savedUniforms[day] !== '') ? savedUniforms[day] : defaultUniforms[day]);
 
     const dayKey = `day_${day.toLowerCase()}`;
     const displayDay = (getCurrentLanguage() === 'id' ? t(dayKey) : day).toUpperCase();
@@ -368,79 +381,24 @@ export function updateUniformBadges(selectedClass, calPrefix = null) {
     if (isClassEditMode) {
       th.innerHTML = `
         <span class="day-name">${displayDay}</span>
-        <input type="text" class="edit-uniform-input" data-day="${day}" value="${currentUniform}" placeholder="Uniform for ${day}...">
+        <input type="text" class="edit-uniform-input" data-day="${day}" value="${escapeHtml(currentUniform)}" placeholder="Uniform for ${day}...">
       `;
     } else {
       th.innerHTML = `
         <span class="day-name">${displayDay}</span>
-        <span class="uniform-badge">${currentUniform}</span>
+        <span class="uniform-badge">${escapeHtml(currentUniform)}</span>
       `;
     }
   });
 }
 
-// Synchronize all weekly overrides (across Theme 1, 2, 3, 4 and all weeks) with master schedule for a class
+// Synchronize helper (preserved for backwards-compatibility with callers; does not overwrite manual weekly edits)
 export function syncClassWeeklyOverrides(className, academicYear = '2026-2027') {
-  if (!weeklyOverrides || !masterSchedules || !masterSchedules[className]) return false;
-
-  let changed = false;
-  const classMaster = masterSchedules[className];
-  const prefixPattern = `${academicYear}_`;
-  const suffixPattern = `_${className}`;
-
-  Object.keys(weeklyOverrides).forEach(key => {
-    if (key.startsWith(prefixPattern) && key.endsWith(suffixPattern)) {
-      const overrideObj = weeklyOverrides[key];
-      if (!overrideObj.schedule) overrideObj.schedule = {};
-
-      const days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
-      days.forEach(day => {
-        if (!overrideObj.schedule[day]) overrideObj.schedule[day] = {};
-
-        timeSlots.forEach(slot => {
-          if (slot.isBreak) return;
-          const slotId = slot.id;
-          const masterVal = classMaster[day]?.[slotId];
-          const currentOverrideVal = overrideObj.schedule[day][slotId];
-
-          const isCustomEvent = Array.isArray(currentOverrideVal) && currentOverrideVal.some(
-            e => e.subject && (e.subject.toLowerCase().includes('urgent') || e.subject.toLowerCase().includes('event') || e.subject.toLowerCase().includes('assembly'))
-          );
-
-          if (!isCustomEvent) {
-            if (masterVal !== undefined) {
-              if (JSON.stringify(currentOverrideVal) !== JSON.stringify(masterVal)) {
-                overrideObj.schedule[day][slotId] = JSON.parse(JSON.stringify(masterVal));
-                changed = true;
-              }
-            } else if (currentOverrideVal !== undefined) {
-              delete overrideObj.schedule[day][slotId];
-              changed = true;
-            }
-          }
-        });
-      });
-    }
-  });
-
-  return changed;
+  return false;
 }
 
 // Automatically sync all classes' weekly overrides for the active academic year
 export async function syncAllClassesWeeklyOverrides(academicYear = '2026-2027') {
-  if (!weeklyOverrides || !masterSchedules) return;
-  let anyChanged = false;
-  Object.keys(masterSchedules).forEach(className => {
-    if (syncClassWeeklyOverrides(className, academicYear)) {
-      anyChanged = true;
-    }
-  });
-  if (anyChanged) {
-    try {
-      await setDoc(doc(db, "schedules", "weeklyOverrides"), weeklyOverrides, { merge: true });
-    } catch (e) {
-      console.warn("Could not sync weeklyOverrides to Firestore:", e);
-    }
-  }
+  return;
 }
 

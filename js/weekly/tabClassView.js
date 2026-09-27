@@ -350,8 +350,16 @@ function renderClassEditSchedule(selectedClass, calPrefix) {
           let slotBodyHtml = '';
           if (isSplitSlot) {
             slotBodyHtml += `
-              <div style="background:#eef2ff; border:1px solid #c7d2fe; color:#3730a3; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; margin-bottom:6px; display:inline-block;">
-                Split Subjects (${slotEntries.length})
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:4px; flex-wrap:wrap;">
+                <div style="background:#eef2ff; border:1px solid #c7d2fe; color:#3730a3; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
+                  Split Subjects (${slotEntries.length})
+                </div>
+                <button type="button" class="btn-cell-action btn-override-event" data-day="${day}" data-slot="${slot.id}" data-span="${rowspan}" title="Replace split subjects with a single subject or urgent event">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                  </svg>
+                  <span>Urgent / Single Event</span>
+                </button>
               </div>
             `;
             slotEntries.forEach((entry, eIdx) => {
@@ -377,12 +385,31 @@ function renderClassEditSchedule(selectedClass, calPrefix) {
 
             const customInputDisplay = isCustomSubject ? 'block' : 'none';
 
+            const masterSlotEntries = masterSchedules[selectedClass]?.[day]?.[slot.id];
+            const isMasterSplit = Array.isArray(masterSlotEntries) && masterSlotEntries.length > 1;
+
+            let restoreSplitHtml = '';
+            if (isMasterSplit) {
+              restoreSplitHtml = `
+                <div style="margin-bottom: 6px; display: flex; justify-content: flex-end;">
+                  <button type="button" class="btn-cell-action btn-restore-split" data-day="${day}" data-slot="${slot.id}" data-span="${rowspan}" title="Restore original split subjects from Master Schedule">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="1 4 1 10 7 10"></polyline>
+                      <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                    </svg>
+                    <span>Restore Split (${masterSlotEntries.length})</span>
+                  </button>
+                </div>
+              `;
+            }
+
             slotBodyHtml += `
+              ${restoreSplitHtml}
               <div class="edit-field-label">Subject / Urgent Event</div>
               <select class="edit-cell-select edit-subject-select" data-day="${day}" data-slot="${slot.id}" data-span="${rowspan}">
                 ${subjectOptionsHtml}
               </select>
-              <input type="text" class="edit-cell-input edit-custom-subject-input" data-day="${day}" data-slot="${slot.id}" data-span="${rowspan}" placeholder="Type custom event title..." value="${isCustomSubject ? entry.subject : ''}" style="display: ${customInputDisplay}; margin-top: 3px;">
+              <input type="text" class="edit-cell-input edit-custom-subject-input" data-day="${day}" data-slot="${slot.id}" data-span="${rowspan}" placeholder="Type custom event title..." value="${isCustomSubject ? escapeHtml(entry.subject) : ''}" style="display: ${customInputDisplay}; margin-top: 3px;">
 
               <div class="edit-field-label">Material (This Week)</div>
               <textarea class="edit-cell-textarea edit-mat-input" data-matkey="${matKey}" placeholder="Describe material / topic for this week...">${matInfo.material || ''}</textarea>
@@ -428,6 +455,22 @@ function renderClassEditSchedule(selectedClass, calPrefix) {
           `;
         } else {
           // Empty Slot
+          const masterSlotEntries = masterSchedules[selectedClass]?.[day]?.[slot.id];
+          const isMasterSplit = Array.isArray(masterSlotEntries) && masterSlotEntries.length > 1;
+
+          let restoreMasterSplitBtn = '';
+          if (isMasterSplit) {
+            restoreMasterSplitBtn = `
+              <button type="button" class="btn-cell-action btn-restore-split" data-day="${day}" data-slot="${slot.id}" data-span="1" style="width:100%; justify-content:center; padding:4px 8px; font-weight:600; margin-bottom: 4px;" title="Restore original split subjects from Master Schedule">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+                  <polyline points="1 4 1 10 7 10"></polyline>
+                  <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                </svg>
+                <span>Restore Split (${masterSlotEntries.length})</span>
+              </button>
+            `;
+          }
+
           html += `
             <td class="subject-cell" style="vertical-align: top; padding: 6px;">
               <div class="edit-slot-card" style="background:#f8fafc; border:1px dashed #cbd5e1; text-align:center;">
@@ -435,6 +478,7 @@ function renderClassEditSchedule(selectedClass, calPrefix) {
                   <span class="edit-period-label">Period ${slot.period}</span>
                 </div>
                 <div style="font-size:11px; color:#94a3b8; margin: 6px 0;">(Free / Unassigned)</div>
+                ${restoreMasterSplitBtn}
                 <button type="button" class="btn-cell-action btn-add-slot" data-day="${day}" data-slot="${slot.id}" style="width:100%; justify-content:center; padding:5px 8px; font-weight:700; background:#eef2ff; color:#4f46e5; border-color:#c7d2fe;">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
                     <line x1="12" y1="5" x2="12" y2="19" />
@@ -448,6 +492,7 @@ function renderClassEditSchedule(selectedClass, calPrefix) {
         }
       });
 
+
       tr.innerHTML = html;
     }
 
@@ -458,24 +503,103 @@ function renderClassEditSchedule(selectedClass, calPrefix) {
   attachClassEditTableListeners(selectedClass, calPrefix);
 }
 
+function harvestClassEditInputs(selectedClass, calPrefix) {
+  if (!selectedClass) return draftWeeklyUniforms || {};
+  const prefix = calPrefix || getActiveCalendarPrefix('class');
+  const defaultUniforms = getDefaultUniforms(selectedClass);
+  const currentUniforms = { ...defaultUniforms, ...(draftWeeklyUniforms || {}) };
+
+  // 1. Harvest uniforms from all header inputs
+  document.querySelectorAll('#printableArea thead .edit-uniform-input').forEach(inp => {
+    const day = inp.dataset.day;
+    if (day) {
+      const val = inp.value.trim();
+      currentUniforms[day] = val || defaultUniforms[day];
+      if (draftWeeklyUniforms) {
+        draftWeeklyUniforms[day] = currentUniforms[day];
+      }
+    }
+  });
+
+  // 2. Harvest custom subjects ONLY from VISIBLE, active custom inputs with a typed value
+  if (draftWeeklySchedule) {
+    document.querySelectorAll('#classScheduleBody .edit-custom-subject-input').forEach(inp => {
+      // CRITICAL: Only harvest if this custom subject input is VISIBLE and has a non-empty value!
+      // Inactive/hidden custom inputs (for regular subjects like Math, English) must NEVER overwrite slots!
+      if (inp.style.display === 'none') return;
+      const rawVal = inp.value.trim();
+      if (!rawVal) return;
+
+      const day = inp.dataset.day;
+      const slotId = parseInt(inp.dataset.slot, 10);
+      const span = parseInt(inp.dataset.span, 10) || 1;
+
+      const sIndex = timeSlots.findIndex(s => s.id === slotId);
+      for (let i = 0; i < span; i++) {
+        const targetSlot = timeSlots[sIndex + i];
+        if (targetSlot && !targetSlot.isBreak && draftWeeklySchedule[day]) {
+          if (!draftWeeklySchedule[day][targetSlot.id] || draftWeeklySchedule[day][targetSlot.id].length === 0) {
+            draftWeeklySchedule[day][targetSlot.id] = [{ subject: rawVal, teacher: '' }];
+          } else {
+            draftWeeklySchedule[day][targetSlot.id][0].subject = rawVal;
+          }
+        }
+      }
+
+      // Sync material key on the card
+      const card = inp.closest('.edit-slot-card');
+      const ta = card?.querySelector('.edit-mat-input');
+      if (ta) {
+        const oldKey = ta.dataset.matkey;
+        const newKey = `${prefix}_${selectedClass}_${day}_${rawVal}`;
+        if (oldKey && oldKey !== newKey) {
+          if (draftWeeklyMaterials[oldKey] !== undefined) {
+            draftWeeklyMaterials[newKey] = { ...draftWeeklyMaterials[oldKey] };
+          }
+          ta.dataset.matkey = newKey;
+        }
+      }
+    });
+  }
+
+  // 3. Harvest materials from all textareas in the DOM
+  if (draftWeeklyMaterials) {
+    document.querySelectorAll('#classScheduleBody .edit-mat-input').forEach(ta => {
+      const key = ta.dataset.matkey;
+      if (key) {
+        if (!draftWeeklyMaterials[key]) {
+          draftWeeklyMaterials[key] = { ...(materialsData[key] || {}) };
+        }
+        draftWeeklyMaterials[key].material = ta.value;
+      }
+    });
+  }
+
+  return currentUniforms;
+}
+
 function attachClassEditTableListeners(selectedClass, calPrefix) {
   const tbody = document.getElementById('classScheduleBody');
   if (!tbody) return;
 
-  // 1. Uniform input changes in header
-  document.querySelectorAll('.edit-uniform-input').forEach(inp => {
-    inp.addEventListener('input', (e) => {
+  // 1. Uniform input changes in header (listen to input, change, and blur)
+  document.querySelectorAll('#printableArea thead .edit-uniform-input').forEach(inp => {
+    const handleUniformChange = (e) => {
       const day = inp.dataset.day;
       if (day) {
         draftWeeklyUniforms[day] = e.target.value;
       }
-    });
+    };
+    inp.addEventListener('input', handleUniformChange);
+    inp.addEventListener('change', handleUniformChange);
+    inp.addEventListener('blur', handleUniformChange);
   });
 
   // 2. Merge Down Button
   tbody.querySelectorAll('.btn-merge').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
+      harvestClassEditInputs(selectedClass, calPrefix);
       const day = btn.dataset.day;
       const slotId = parseInt(btn.dataset.slot, 10);
       const span = parseInt(btn.dataset.span, 10) || 1;
@@ -495,6 +619,7 @@ function attachClassEditTableListeners(selectedClass, calPrefix) {
   tbody.querySelectorAll('.btn-split').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
+      harvestClassEditInputs(selectedClass, calPrefix);
       const day = btn.dataset.day;
       const slotId = parseInt(btn.dataset.slot, 10);
       const span = parseInt(btn.dataset.span, 10) || 1;
@@ -515,6 +640,7 @@ function attachClassEditTableListeners(selectedClass, calPrefix) {
   tbody.querySelectorAll('.btn-clear').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
+      harvestClassEditInputs(selectedClass, calPrefix);
       const day = btn.dataset.day;
       const slotId = parseInt(btn.dataset.slot, 10);
       const span = parseInt(btn.dataset.span, 10) || 1;
@@ -530,10 +656,77 @@ function attachClassEditTableListeners(selectedClass, calPrefix) {
     });
   });
 
-  // 5. Add Slot Button
+  // 5. Override Split with Single / Urgent Event Button
+  tbody.querySelectorAll('.btn-override-event').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      harvestClassEditInputs(selectedClass, calPrefix);
+      const day = btn.dataset.day;
+      const slotId = parseInt(btn.dataset.slot, 10);
+      const span = parseInt(btn.dataset.span, 10) || 1;
+
+      const sIndex = timeSlots.findIndex(s => s.id === slotId);
+
+      // Preserve existing material if teacher entered any on split cards
+      let existingMat = '';
+      let existingLink = '';
+      const currentEntries = draftWeeklySchedule[day]?.[slotId] || [];
+      for (const entry of currentEntries) {
+        if (entry.subject) {
+          const k = `${calPrefix}_${selectedClass}_${day}_${entry.subject}`;
+          if (draftWeeklyMaterials[k]?.material) {
+            existingMat = draftWeeklyMaterials[k].material;
+            existingLink = draftWeeklyMaterials[k].link || '';
+            break;
+          }
+        }
+      }
+
+      for (let i = 0; i < span; i++) {
+        const targetSlot = timeSlots[sIndex + i];
+        if (targetSlot && !targetSlot.isBreak) {
+          draftWeeklySchedule[day][targetSlot.id] = [{ subject: 'Urgent School Event', teacher: '' }];
+        }
+      }
+
+      if (existingMat) {
+        const newMatKey = `${calPrefix}_${selectedClass}_${day}_Urgent School Event`;
+        draftWeeklyMaterials[newMatKey] = { material: existingMat, link: existingLink };
+      }
+
+      renderClassSchedule();
+    });
+  });
+
+  // 6. Restore Split from Master Schedule Button
+  tbody.querySelectorAll('.btn-restore-split').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      harvestClassEditInputs(selectedClass, calPrefix);
+      const day = btn.dataset.day;
+      const slotId = parseInt(btn.dataset.slot, 10);
+      const span = parseInt(btn.dataset.span, 10) || 1;
+
+      const sIndex = timeSlots.findIndex(s => s.id === slotId);
+      for (let i = 0; i < span; i++) {
+        const targetSlot = timeSlots[sIndex + i];
+        if (targetSlot && !targetSlot.isBreak) {
+          const origMaster = masterSchedules[selectedClass]?.[day]?.[targetSlot.id];
+          if (origMaster) {
+            const normalized = Array.isArray(origMaster) ? origMaster : [origMaster];
+            draftWeeklySchedule[day][targetSlot.id] = JSON.parse(JSON.stringify(normalized));
+          }
+        }
+      }
+      renderClassSchedule();
+    });
+  });
+
+  // 7. Add Slot Button
   tbody.querySelectorAll('.btn-add-slot').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
+      harvestClassEditInputs(selectedClass, calPrefix);
       const day = btn.dataset.day;
       const slotId = parseInt(btn.dataset.slot, 10);
       const defaultSub = appEntities.subjects?.[0] || 'English';
@@ -542,9 +735,10 @@ function attachClassEditTableListeners(selectedClass, calPrefix) {
     });
   });
 
-  // 6. Subject Select change
+  // 8. Subject Select change & click focus
   tbody.querySelectorAll('.edit-subject-select').forEach(sel => {
     sel.addEventListener('change', (e) => {
+      harvestClassEditInputs(selectedClass, calPrefix);
       const day = sel.dataset.day;
       const slotId = parseInt(sel.dataset.slot, 10);
       const span = parseInt(sel.dataset.span, 10) || 1;
@@ -555,35 +749,75 @@ function attachClassEditTableListeners(selectedClass, calPrefix) {
 
       for (let i = 0; i < span; i++) {
         const targetSlot = timeSlots[sIndex + i];
-        if (targetSlot && !targetSlot.isBreak && draftWeeklySchedule[day][targetSlot.id]?.[0]) {
-          draftWeeklySchedule[day][targetSlot.id][0].subject = newSubject;
+        if (targetSlot && !targetSlot.isBreak) {
+          if (!draftWeeklySchedule[day][targetSlot.id] || draftWeeklySchedule[day][targetSlot.id].length === 0) {
+            draftWeeklySchedule[day][targetSlot.id] = [{ subject: newSubject, teacher: '' }];
+          } else {
+            draftWeeklySchedule[day][targetSlot.id][0].subject = newSubject;
+          }
         }
       }
       renderClassSchedule();
     });
-  });
 
-  // 7. Custom Subject text input
-  tbody.querySelectorAll('.edit-custom-subject-input').forEach(inp => {
-    inp.addEventListener('input', (e) => {
-      const day = inp.dataset.day;
-      const slotId = parseInt(inp.dataset.slot, 10);
-      const span = parseInt(inp.dataset.span, 10) || 1;
-      const val = e.target.value;
-
-      const sIndex = timeSlots.findIndex(s => s.id === slotId);
-      for (let i = 0; i < span; i++) {
-        const targetSlot = timeSlots[sIndex + i];
-        if (targetSlot && !targetSlot.isBreak && draftWeeklySchedule[day][targetSlot.id]?.[0]) {
-          draftWeeklySchedule[day][targetSlot.id][0].subject = val;
+    // If already custom and user clicks/focuses select, ensure text input is shown and focused
+    sel.addEventListener('click', () => {
+      if (sel.value === '__custom__') {
+        const card = sel.closest('.edit-slot-card');
+        const customInp = card?.querySelector('.edit-custom-subject-input');
+        if (customInp) {
+          customInp.style.display = 'block';
+          customInp.focus();
         }
       }
     });
   });
 
-  // 8. Material textarea input
+  // 9. Custom Subject text input (listen to input, change, and blur)
+  tbody.querySelectorAll('.edit-custom-subject-input').forEach(inp => {
+    const handleCustomSubjectInput = (e) => {
+      const rawVal = inp.value.trim();
+      if (!rawVal) return;
+
+      const day = inp.dataset.day;
+      const slotId = parseInt(inp.dataset.slot, 10);
+      const span = parseInt(inp.dataset.span, 10) || 1;
+
+      const sIndex = timeSlots.findIndex(s => s.id === slotId);
+      for (let i = 0; i < span; i++) {
+        const targetSlot = timeSlots[sIndex + i];
+        if (targetSlot && !targetSlot.isBreak && draftWeeklySchedule?.[day]) {
+          if (!draftWeeklySchedule[day][targetSlot.id] || draftWeeklySchedule[day][targetSlot.id].length === 0) {
+            draftWeeklySchedule[day][targetSlot.id] = [{ subject: rawVal, teacher: '' }];
+          } else {
+            draftWeeklySchedule[day][targetSlot.id][0].subject = rawVal;
+          }
+        }
+      }
+
+      // Update material key dynamically on the associated textarea so material changes aren't lost
+      const card = inp.closest('.edit-slot-card');
+      const ta = card?.querySelector('.edit-mat-input');
+      if (ta && rawVal) {
+        const oldKey = ta.dataset.matkey;
+        const newKey = `${calPrefix}_${selectedClass}_${day}_${rawVal}`;
+        if (oldKey && oldKey !== newKey) {
+          if (draftWeeklyMaterials[oldKey] !== undefined) {
+            draftWeeklyMaterials[newKey] = { ...draftWeeklyMaterials[oldKey] };
+          }
+          ta.dataset.matkey = newKey;
+        }
+      }
+    };
+
+    inp.addEventListener('input', handleCustomSubjectInput);
+    inp.addEventListener('change', handleCustomSubjectInput);
+    inp.addEventListener('blur', handleCustomSubjectInput);
+  });
+
+  // 10. Material textarea input
   tbody.querySelectorAll('.edit-mat-input').forEach(ta => {
-    ta.addEventListener('input', (e) => {
+    const handleMatInput = (e) => {
       const key = ta.dataset.matkey;
       if (key) {
         if (!draftWeeklyMaterials[key]) {
@@ -591,7 +825,10 @@ function attachClassEditTableListeners(selectedClass, calPrefix) {
         }
         draftWeeklyMaterials[key].material = e.target.value;
       }
-    });
+    };
+    ta.addEventListener('input', handleMatInput);
+    ta.addEventListener('change', handleMatInput);
+    ta.addEventListener('blur', handleMatInput);
   });
 }
 
@@ -606,14 +843,23 @@ async function saveClassWeeklySchedule() {
   const week = document.getElementById('classWeekSelect')?.value || 'this week';
 
   try {
+    const uniformsToSave = harvestClassEditInputs(selectedClass, calPrefix);
+    const scheduleToSave = JSON.parse(JSON.stringify(draftWeeklySchedule || {}));
+
     if (!weeklyOverrides) setWeeklyOverrides({});
     weeklyOverrides[overrideKey] = {
-      schedule: draftWeeklySchedule,
-      uniforms: draftWeeklyUniforms
+      schedule: scheduleToSave,
+      uniforms: uniformsToSave
     };
+    setWeeklyOverrides({ ...weeklyOverrides });
 
     // Save weekly overrides
-    await setDoc(doc(db, "schedules", "weeklyOverrides"), weeklyOverrides, { merge: true });
+    await setDoc(doc(db, "schedules", "weeklyOverrides"), {
+      [overrideKey]: {
+        schedule: scheduleToSave,
+        uniforms: uniformsToSave
+      }
+    }, { merge: true });
 
     // Save materials
     if (Object.keys(draftWeeklyMaterials).length > 0) {
@@ -776,6 +1022,10 @@ function renderClassSchedule() {
   if (!tbody) return;
 
   const calPrefix = getActiveCalendarPrefix('class');
+
+  if (isClassEditMode) {
+    harvestClassEditInputs(selectedClass, calPrefix);
+  }
 
   updateClassEditButtonState();
 
