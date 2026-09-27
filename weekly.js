@@ -696,8 +696,7 @@ onAuthStateChanged(auth, async (user) => {
   if (user) {
     if (loginModal) loginModal.style.display = 'none';
     if (appMain) appMain.style.display = 'block';
-    if (userDisplayEmailText) userDisplayEmailText.textContent = `Logged in as: ${user.email}`;
-    if (userDisplayEmail) userDisplayEmail.textContent = `Logged in as: ${user.email}`;
+    updateUserDisplayEmail(user.email);
 
     await fetchCurrentUserRole(user);
     checkUserRoleAccess();
@@ -918,26 +917,71 @@ if (weeklyNav) {
   });
 }
 
+// Helper to update user email text according to active language
+export function updateUserDisplayEmail(email = null) {
+  const currentEmail = email || auth.currentUser?.email;
+  const userDisplayEmailText = document.getElementById('userDisplayEmailText');
+  const userDisplayEmail = document.getElementById('userDisplayEmail');
+  const label = t('logged_in_as') || (getCurrentLanguage() === 'id' ? 'Masuk sebagai:' : 'Logged in as:');
+  if (userDisplayEmailText) {
+    userDisplayEmailText.textContent = currentEmail ? `${label} ${currentEmail}` : `${label} -`;
+  }
+  if (userDisplayEmail) {
+    userDisplayEmail.textContent = currentEmail ? `${label} ${currentEmail}` : `${label} -`;
+  }
+}
+
 // i18n & Language Switcher
 function initWeeklyI18n() {
   applyTranslations();
+  updateUserDisplayEmail();
 
-  const langToggleBtn = document.getElementById('btnLanguageToggle');
-  if (langToggleBtn) {
-    langToggleBtn.addEventListener('click', () => {
-      toggleLanguage();
-      const activeClass = document.getElementById('classSelectView')?.value;
-      if (activeClass) {
-        updateUniformBadges(activeClass);
-      }
-    });
-  }
-
-  window.addEventListener('languageChanged', () => {
+  const handleLanguageUpdate = () => {
+    updateUserDisplayEmail();
     const activeClass = document.getElementById('classSelectView')?.value;
     if (activeClass) {
       updateUniformBadges(activeClass);
     }
+
+    // Re-render active tab content so schedules and views reflect the new language
+    const activeTab = document.querySelector('.tab-content.active');
+    if (activeTab) {
+      const tabId = activeTab.id;
+      if (tabId === 'classView') {
+        renderClassSchedule();
+      } else if (tabId === 'teacherView') {
+        renderTeacherView();
+      } else if (tabId === 'teacherSchedulesView') {
+        initTeacherSchedulesView();
+      } else if (tabId === 'adminAdministrationView') {
+        initTeacherAdministrationView();
+      } else if (tabId === 'rewardView') {
+        initRewardView();
+      } else if (tabId === 'meetingView') {
+        initMeetingView();
+      } else if (tabId === 'scheduleBuilderView') {
+        initScheduleBuilderView();
+      } else if (tabId === 'adminView') {
+        renderActiveTabsControlTable();
+        renderEntityTables();
+        renderManageScheduleTable();
+      }
+    }
+  };
+
+  const langToggleBtn = document.getElementById('btnLanguageToggle');
+  if (langToggleBtn && !langToggleBtn.onclick) {
+    langToggleBtn.onclick = (e) => {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      toggleLanguage();
+    };
+  }
+
+  window.addEventListener('languageChanged', () => {
+    handleLanguageUpdate();
   });
 }
 

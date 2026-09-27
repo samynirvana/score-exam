@@ -20,6 +20,7 @@ export const translations = {
     sign_out: "Sign Out",
     change_password_title: "Change Password",
     change_password_sub: "Update account password for your login",
+    change_password_tooltip: "Click to change login password",
 
     // Banner & Headers
     eyebrow_glance: "YOUR WEEK AT A GLANCE",
@@ -118,6 +119,7 @@ export const translations = {
     sign_out: "Keluar",
     change_password_title: "Ubah Kata Sandi",
     change_password_sub: "Perbarui kata sandi akun untuk akses Anda",
+    change_password_tooltip: "Klik untuk mengubah kata sandi login",
 
     // Banner & Headers
     eyebrow_glance: "JADWAL PEKAN ANDA",
@@ -257,10 +259,14 @@ export function applyTranslations(lang = null) {
   // 4. Update language toggle button UI if it exists
   const langToggleBtn = document.getElementById("btnLanguageToggle");
   if (langToggleBtn) {
-    langToggleBtn.setAttribute("title", dict.lang_toggle_title || "Toggle Language");
+    langToggleBtn.setAttribute("title", dict.lang_toggle_title || (activeLang === "en" ? "Ganti ke Bahasa Indonesia" : "Switch to English"));
     const activeLabel = langToggleBtn.querySelector(".lang-active-label");
     if (activeLabel) {
       activeLabel.textContent = activeLang === "en" ? "EN" : "ID";
+    }
+    const switchHint = langToggleBtn.querySelector(".lang-switch-hint");
+    if (switchHint) {
+      switchHint.textContent = activeLang === "en" ? "| ID" : "| EN";
     }
     langToggleBtn.setAttribute("data-current-lang", activeLang);
   }
@@ -270,4 +276,36 @@ export function applyTranslations(lang = null) {
 
   // 6. Trigger custom event for other modules/renderers to re-render dynamic tables
   window.dispatchEvent(new CustomEvent("languageChanged", { detail: { lang: activeLang } }));
+}
+
+export function initLanguageToggle() {
+  const btn = document.getElementById("btnLanguageToggle");
+  if (btn) {
+    btn.onclick = (e) => {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      toggleLanguage();
+    };
+  }
+}
+
+// Auto-run when module is loaded in browser
+if (typeof document !== "undefined") {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => {
+      applyTranslations();
+      initLanguageToggle();
+    });
+  } else {
+    applyTranslations();
+    initLanguageToggle();
+  }
+}
+
+if (typeof window !== "undefined") {
+  window.toggleWeeklyLanguage = toggleLanguage;
+  window.applyWeeklyTranslations = applyTranslations;
+  window.getWeeklyCurrentLanguage = getCurrentLanguage;
 }

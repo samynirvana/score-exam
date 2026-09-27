@@ -1,12 +1,15 @@
 import { doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { escapeHtml } from "../../utils.js";
+import { t, getCurrentLanguage } from "../../weeklyI18n.js";
 import {
   db,
   timeSlots,
   appEntities,
   masterSchedules,
   weeklyOverrides,
+  setWeeklyOverrides,
   materialsData,
+  setMaterialsData,
   classNotesData,
   academicCalendar,
   isClassEditMode,
@@ -645,7 +648,9 @@ function syncWeeklyWorkspace() {
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
   const currentWeek = [...week.options].find(option => { const dates = weeks[option.value]; return dates?.startDate <= today && dates?.endDate >= today; });
-  document.getElementById('weeklyWorkspaceTitle').textContent = `${document.getElementById('classSelectView').value || 'Class'} · Weekly Schedule`;
+  const classVal = document.getElementById('classSelectView')?.value;
+  const classLabel = classVal || (getCurrentLanguage() === 'id' ? 'Kelas' : 'Class');
+  document.getElementById('weeklyWorkspaceTitle').textContent = `${classLabel} · ${t('class_view_title')}`;
   document.getElementById('weeklyWorkspaceSubtitle').textContent = [theme, week.value, weeks[week.value]?.startDate ? formatModernDateRange(weeks[week.value].startDate, weeks[week.value].endDate) : ''].filter(Boolean).join(' · ');
   const previous = document.getElementById('weeklyPrevious'), next = document.getElementById('weeklyNext'), todayBtn = document.getElementById('weeklyToday') || document.getElementById('classDateBadge');
   if (previous) previous.disabled = isClassEditMode || week.selectedIndex <= 0;
@@ -721,60 +726,64 @@ function renderClassSchedule() {
     if (slot.isBreak) {
       tr.className = 'break-row';
       let html = `<td class="time-cell break-time">${slot.time}</td>`;
+      const labelBreak = t('slot_break');
+      const labelLunch = t('slot_lunch');
+      const labelClosing = t('slot_closing');
+      const slotLabel = slot.id === 0 ? t('slot_opening') : (slot.label || labelBreak);
 
       if (isSingleDay) {
         const singleDay = visibleDays[0];
         if (slot.id === 0) {
-          html += `<td class="break-label"><span class="break-pill">${slot.label}</span></td>`;
+          html += `<td class="break-label"><span class="break-pill">${slotLabel}</span></td>`;
         } else if (slot.id === 4) {
           if (singleDay === 'FRIDAY' && isMiddleSchoolClass(selectedClass)) {
             html += `<td class="break-label break-day-cell">
-              <span class="break-pill">BREAK</span>
+              <span class="break-pill">${labelBreak}</span>
               <div class="friday-break-note" style="margin-top: 4px; font-weight: 700; color: #be123c; background: #fff1f2; padding: 2px 6px; border-radius: 4px; border: 1px solid #fecdd3; font-size: 10px; display: inline-block;">09.40 - 09.55</div>
             </td>`;
           } else {
-            html += `<td class="break-label"><span class="break-pill">BREAK</span></td>`;
+            html += `<td class="break-label"><span class="break-pill">${labelBreak}</span></td>`;
           }
         } else if (slot.id === 8) {
           if (singleDay === 'FRIDAY') {
             html += `<td class="break-label break-day-cell"><span class="empty-dash">-</span></td>`;
           } else {
-            html += `<td class="break-label"><span class="break-pill">LUNCH</span></td>`;
+            html += `<td class="break-label"><span class="break-pill">${labelLunch}</span></td>`;
           }
         } else if (slot.id === 12) {
           if (singleDay === 'FRIDAY') {
             html += `<td class="break-label break-day-cell"><span class="empty-dash">-</span></td>`;
           } else {
-            html += `<td class="break-label"><span class="break-pill">CLOSING</span></td>`;
+            html += `<td class="break-label"><span class="break-pill">${labelClosing}</span></td>`;
           }
         } else {
-          html += `<td class="break-label"><span class="break-pill">${slot.label}</span></td>`;
+          html += `<td class="break-label"><span class="break-pill">${slotLabel}</span></td>`;
         }
       } else {
         // Full week (5 days)
         if (slot.id === 0) {
-          html += `<td colspan="5" class="break-label"><span class="break-pill">${slot.label}</span></td>`;
+          html += `<td colspan="5" class="break-label"><span class="break-pill">${slotLabel}</span></td>`;
         } else if (slot.id === 4) {
           // BREAK: Combine Mon-Thu (colspan=4), Friday separate
-          html += `<td colspan="4" class="break-label"><span class="break-pill">BREAK</span></td>`;
+          html += `<td colspan="4" class="break-label"><span class="break-pill">${labelBreak}</span></td>`;
           if (isMiddleSchoolClass(selectedClass)) {
             html += `<td class="break-label break-day-cell">
-              <span class="break-pill">BREAK</span>
+              <span class="break-pill">${labelBreak}</span>
               <div class="friday-break-note" style="margin-top: 4px; font-weight: 700; color: #be123c; background: #fff1f2; padding: 2px 6px; border-radius: 4px; border: 1px solid #fecdd3; font-size: 10px; display: inline-block;">09.40 - 09.55</div>
             </td>`;
           } else {
-            html += `<td class="break-label break-day-cell"><span class="break-pill">BREAK</span></td>`;
+            html += `<td class="break-label break-day-cell"><span class="break-pill">${labelBreak}</span></td>`;
           }
         } else if (slot.id === 8) {
           // LUNCH: Combine Mon-Thu (colspan=4), Friday shows empty dash '-' (CLOSING is now in Period 6)
-          html += `<td colspan="4" class="break-label"><span class="break-pill">LUNCH</span></td>`;
+          html += `<td colspan="4" class="break-label"><span class="break-pill">${labelLunch}</span></td>`;
           html += `<td class="break-label break-day-cell"><span class="empty-dash">-</span></td>`;
         } else if (slot.id === 12) {
           // CLOSING: Combine Mon-Thu (colspan=4), Friday closing text removed
-          html += `<td colspan="4" class="break-label"><span class="break-pill">CLOSING</span></td>`;
+          html += `<td colspan="4" class="break-label"><span class="break-pill">${labelClosing}</span></td>`;
           html += `<td class="break-label break-day-cell"><span class="empty-dash">-</span></td>`;
         } else {
-          html += `<td colspan="5" class="break-label"><span class="break-pill">${slot.label}</span></td>`;
+          html += `<td colspan="5" class="break-label"><span class="break-pill">${slotLabel}</span></td>`;
         }
       }
 

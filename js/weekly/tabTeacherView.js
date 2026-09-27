@@ -7,6 +7,7 @@ import {
   masterSchedules,
   weeklyOverrides,
   materialsData,
+  setMaterialsData,
   classNotesData,
   academicCalendar,
   isTeacherUser,

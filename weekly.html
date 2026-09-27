@@ -14,7 +14,7 @@
     rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=375">
   <link rel="stylesheet" href="student.css?v=392">
-  <link rel="stylesheet" href="weekly.css?v=437">
+  <link rel="stylesheet" href="weekly.css?v=438">
   <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 </head>
 
@@ -230,7 +230,7 @@
       <!-- Right User Status & Actions -->
       <div class="topbar-user">
         <!-- Language Switcher Button -->
-        <button id="btnLanguageToggle" class="lang-toggle-btn" type="button" title="Ganti ke Bahasa Indonesia">
+        <button id="btnLanguageToggle" class="lang-toggle-btn" type="button" title="Ganti ke Bahasa Indonesia" onclick="window.toggleWeeklyLanguage ? window.toggleWeeklyLanguage() : null">
           <span class="lang-toggle-globe">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10"></circle>
@@ -242,7 +242,7 @@
           <span class="lang-switch-hint">| ID</span>
         </button>
 
-        <button id="userDisplayEmailBtn" class="user-email-btn" title="Click to change login password">
+        <button id="userDisplayEmailBtn" class="user-email-btn" title="Click to change login password" data-i18n-title="change_password_tooltip">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round" style="margin-right: 5px;">
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
@@ -250,7 +250,7 @@
           </svg>
           <span id="userDisplayEmailText">Logged in as: -</span>
         </button>
-        <button id="btnLogout" class="logout-btn" title="Sign Out">
+        <button id="btnLogout" class="logout-btn" title="Sign Out" data-i18n-title="sign_out">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -413,7 +413,7 @@
         <table class="schedule-table">
           <thead>
             <tr>
-              <th class="col-time">TIME</th>
+              <th class="col-time" data-i18n="col_time">TIME</th>
               <th class="col-day">
                 <span class="day-name">MONDAY</span>
                 <span class="uniform-badge">Seragam Putih Biru</span>
@@ -535,12 +535,12 @@
           <table class="schedule-table">
             <thead>
               <tr>
-                <th class="col-time" style="width: 17.5%;">TIME</th>
-                <th class="col-day" data-day="MONDAY" style="width: 16.5%;">MON</th>
-                <th class="col-day" data-day="TUESDAY" style="width: 16.5%;">TUE</th>
-                <th class="col-day" data-day="WEDNESDAY" style="width: 16.5%;">WED</th>
-                <th class="col-day" data-day="THURSDAY" style="width: 16.5%;">THU</th>
-                <th class="col-day" data-day="FRIDAY" style="width: 16.5%;">FRI</th>
+                <th class="col-time" data-i18n="col_time" style="width: 17.5%;">TIME</th>
+                <th class="col-day" data-day="MONDAY" data-i18n="day_mon_short" style="width: 16.5%;">MON</th>
+                <th class="col-day" data-day="TUESDAY" data-i18n="day_tue_short" style="width: 16.5%;">TUE</th>
+                <th class="col-day" data-day="WEDNESDAY" data-i18n="day_wed_short" style="width: 16.5%;">WED</th>
+                <th class="col-day" data-day="THURSDAY" data-i18n="day_thu_short" style="width: 16.5%;">THU</th>
+                <th class="col-day" data-day="FRIDAY" data-i18n="day_fri_short" style="width: 16.5%;">FRI</th>
               </tr>
             </thead>
             <tbody id="teacherScheduleBody"></tbody>
@@ -2559,7 +2559,8 @@
     </div>
   </div>
 
-  <script type="module" src="weekly.js?v=457"></script>
+  <script type="module" src="weeklyI18n.js?v=460"></script>
+  <script type="module" src="weekly.js?v=461"></script>
   <script type="module">import { trackCurrentPage } from './js/userActivity.js'; trackCurrentPage();</script>
 </body>
 

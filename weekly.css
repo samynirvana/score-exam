@@ -527,6 +527,10 @@ button, input, select, textarea {
   white-space: nowrap;
 }
 
+.lang-toggle-btn * {
+  pointer-events: none;
+}
+
 .lang-toggle-btn:hover {
   background: #eff6ff;
   border-color: #93c5fd;
