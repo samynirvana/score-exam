@@ -378,3 +378,69 @@ export function updateUniformBadges(selectedClass, calPrefix = null) {
     }
   });
 }
+
+// Synchronize all weekly overrides (across Theme 1, 2, 3, 4 and all weeks) with master schedule for a class
+export function syncClassWeeklyOverrides(className, academicYear = '2026-2027') {
+  if (!weeklyOverrides || !masterSchedules || !masterSchedules[className]) return false;
+
+  let changed = false;
+  const classMaster = masterSchedules[className];
+  const prefixPattern = `${academicYear}_`;
+  const suffixPattern = `_${className}`;
+
+  Object.keys(weeklyOverrides).forEach(key => {
+    if (key.startsWith(prefixPattern) && key.endsWith(suffixPattern)) {
+      const overrideObj = weeklyOverrides[key];
+      if (!overrideObj.schedule) overrideObj.schedule = {};
+
+      const days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
+      days.forEach(day => {
+        if (!overrideObj.schedule[day]) overrideObj.schedule[day] = {};
+
+        timeSlots.forEach(slot => {
+          if (slot.isBreak) return;
+          const slotId = slot.id;
+          const masterVal = classMaster[day]?.[slotId];
+          const currentOverrideVal = overrideObj.schedule[day][slotId];
+
+          const isCustomEvent = Array.isArray(currentOverrideVal) && currentOverrideVal.some(
+            e => e.subject && (e.subject.toLowerCase().includes('urgent') || e.subject.toLowerCase().includes('event') || e.subject.toLowerCase().includes('assembly'))
+          );
+
+          if (!isCustomEvent) {
+            if (masterVal !== undefined) {
+              if (JSON.stringify(currentOverrideVal) !== JSON.stringify(masterVal)) {
+                overrideObj.schedule[day][slotId] = JSON.parse(JSON.stringify(masterVal));
+                changed = true;
+              }
+            } else if (currentOverrideVal !== undefined) {
+              delete overrideObj.schedule[day][slotId];
+              changed = true;
+            }
+          }
+        });
+      });
+    }
+  });
+
+  return changed;
+}
+
+// Automatically sync all classes' weekly overrides for the active academic year
+export async function syncAllClassesWeeklyOverrides(academicYear = '2026-2027') {
+  if (!weeklyOverrides || !masterSchedules) return;
+  let anyChanged = false;
+  Object.keys(masterSchedules).forEach(className => {
+    if (syncClassWeeklyOverrides(className, academicYear)) {
+      anyChanged = true;
+    }
+  });
+  if (anyChanged) {
+    try {
+      await setDoc(doc(db, "schedules", "weeklyOverrides"), weeklyOverrides, { merge: true });
+    } catch (e) {
+      console.warn("Could not sync weeklyOverrides to Firestore:", e);
+    }
+  }
+}
+

@@ -1,4 +1,4 @@
-import { doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { doc, setDoc, getDoc, updateDoc, deleteField } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { escapeHtml } from "../../utils.js";
 import { t, getCurrentLanguage } from "../../weeklyI18n.js";
 import {
@@ -49,6 +49,7 @@ export {
   renderClassSchedule,
   saveClassWeeklySchedule,
   resetClassWeeklySchedule,
+  executeResetClassWeeklySchedule,
   exportWeeklyToExcel
 };
 
@@ -344,15 +345,49 @@ function renderClassEditSchedule(selectedClass, calPrefix) {
         const rowspanAttr = rowspan > 1 ? ` rowspan="${rowspan}"` : '';
 
         if (slotEntries.length > 0) {
-          const entry = slotEntries[0];
-          const matKey = `${calPrefix}_${selectedClass}_${day}_${entry.subject}`;
-          const matInfo = draftWeeklyMaterials[matKey] || materialsData[matKey] || { material: '', link: '' };
-          const isCustomSubject = !registeredSubjects.includes(entry.subject);
+          const isSplitSlot = slotEntries.length > 1;
 
-          let subjectOptionsHtml = registeredSubjects.map(sub => `<option value="${sub}" ${sub === entry.subject ? 'selected' : ''}>${sub}</option>`).join('');
-          subjectOptionsHtml += `<option value="__custom__" ${isCustomSubject ? 'selected' : ''}>✨ Custom Event / Subject...</option>`;
+          let slotBodyHtml = '';
+          if (isSplitSlot) {
+            slotBodyHtml += `
+              <div style="background:#eef2ff; border:1px solid #c7d2fe; color:#3730a3; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; margin-bottom:6px; display:inline-block;">
+                Split Subjects (${slotEntries.length})
+              </div>
+            `;
+            slotEntries.forEach((entry, eIdx) => {
+              const matKey = `${calPrefix}_${selectedClass}_${day}_${entry.subject}`;
+              const matInfo = draftWeeklyMaterials[matKey] || materialsData[matKey] || { material: '', link: '' };
+              const teacherTag = entry.teacher ? ` <span style="font-weight:400; color:#64748b;">(${entry.teacher})</span>` : '';
+              slotBodyHtml += `
+                <div style="border-top: ${eIdx > 0 ? '1px dashed #cbd5e1' : 'none'}; padding-top: ${eIdx > 0 ? '6px' : '0'}; margin-top: ${eIdx > 0 ? '6px' : '0'};">
+                  <div class="edit-field-label" style="font-weight:700; color:#1e293b;">${entry.subject}${teacherTag}</div>
+                  <div class="edit-field-label" style="font-size:10px;">Material (This Week)</div>
+                  <textarea class="edit-cell-textarea edit-mat-input" data-matkey="${matKey}" placeholder="Describe material for ${entry.subject}...">${matInfo.material || ''}</textarea>
+                </div>
+              `;
+            });
+          } else {
+            const entry = slotEntries[0];
+            const matKey = `${calPrefix}_${selectedClass}_${day}_${entry.subject}`;
+            const matInfo = draftWeeklyMaterials[matKey] || materialsData[matKey] || { material: '', link: '' };
+            const isCustomSubject = !registeredSubjects.includes(entry.subject);
 
-          const customInputDisplay = isCustomSubject ? 'block' : 'none';
+            let subjectOptionsHtml = registeredSubjects.map(sub => `<option value="${sub}" ${sub === entry.subject ? 'selected' : ''}>${sub}</option>`).join('');
+            subjectOptionsHtml += `<option value="__custom__" ${isCustomSubject ? 'selected' : ''}>✨ Custom Event / Subject...</option>`;
+
+            const customInputDisplay = isCustomSubject ? 'block' : 'none';
+
+            slotBodyHtml += `
+              <div class="edit-field-label">Subject / Urgent Event</div>
+              <select class="edit-cell-select edit-subject-select" data-day="${day}" data-slot="${slot.id}" data-span="${rowspan}">
+                ${subjectOptionsHtml}
+              </select>
+              <input type="text" class="edit-cell-input edit-custom-subject-input" data-day="${day}" data-slot="${slot.id}" data-span="${rowspan}" placeholder="Type custom event title..." value="${isCustomSubject ? entry.subject : ''}" style="display: ${customInputDisplay}; margin-top: 3px;">
+
+              <div class="edit-field-label">Material (This Week)</div>
+              <textarea class="edit-cell-textarea edit-mat-input" data-matkey="${matKey}" placeholder="Describe material / topic for this week...">${matInfo.material || ''}</textarea>
+            `;
+          }
 
           html += `
             <td${rowspanAttr} class="subject-cell" style="vertical-align: top; padding: 6px;">
@@ -361,23 +396,33 @@ function renderClassEditSchedule(selectedClass, calPrefix) {
                   <span class="edit-period-label">Period ${slot.period}${rowspan > 1 ? `–${slot.period + rowspan - 1}` : ''}</span>
                   ${rowspan > 1 ? `<span class="merged-badge-indicator">${rowspan} Periods</span>` : ''}
                   <div class="edit-merge-controls">
-                    ${rowspan > 1 ? `<button type="button" class="btn-cell-action btn-split" data-day="${day}" data-slot="${slot.id}" data-span="${rowspan}" title="Split merged block into separate periods">➗ Split</button>` : ''}
-                    ${canMergeDown ? `<button type="button" class="btn-cell-action btn-merge" data-day="${day}" data-slot="${slot.id}" data-span="${rowspan}" title="Merge with next period below">⬇️ Merge</button>` : ''}
-                    <button type="button" class="btn-cell-action btn-clear" data-day="${day}" data-slot="${slot.id}" data-span="${rowspan}" title="Clear slot">🗑️</button>
+                    ${rowspan > 1 ? `<button type="button" class="btn-cell-action btn-split" data-day="${day}" data-slot="${slot.id}" data-span="${rowspan}" title="Split merged block into separate periods">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="5" r="2.5" fill="#f59e0b" stroke="none" />
+                        <line x1="5" y1="12" x2="19" y2="12" stroke="#d97706" stroke-width="2.5" />
+                        <circle cx="12" cy="19" r="2.5" fill="#f59e0b" stroke="none" />
+                      </svg>
+                      <span>Split</span>
+                    </button>` : ''}
+                    ${canMergeDown ? `<button type="button" class="btn-cell-action btn-merge" data-day="${day}" data-slot="${slot.id}" data-span="${rowspan}" title="Merge with next period below">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 3v13" stroke="#2563eb" />
+                        <polyline points="7 11 12 16 17 11" stroke="#2563eb" fill="#dbeafe" fill-opacity="0.3" />
+                        <line x1="4" y1="21" x2="20" y2="21" stroke="#3b82f6" stroke-width="2.5" />
+                      </svg>
+                      <span>Merge</span>
+                    </button>` : ''}
+                    <button type="button" class="btn-cell-action btn-clear" data-day="${day}" data-slot="${slot.id}" data-span="${rowspan}" title="Clear slot">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6" stroke="#dc2626" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#dc2626" fill="#fee2e2" fill-opacity="0.4" />
+                        <line x1="10" y1="11" x2="10" y2="17" stroke="#dc2626" />
+                        <line x1="14" y1="11" x2="14" y2="17" stroke="#dc2626" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
-
-                <div class="edit-field-label">Subject / Urgent Event</div>
-                <select class="edit-cell-select edit-subject-select" data-day="${day}" data-slot="${slot.id}" data-span="${rowspan}">
-                  ${subjectOptionsHtml}
-                </select>
-                <input type="text" class="edit-cell-input edit-custom-subject-input" data-day="${day}" data-slot="${slot.id}" data-span="${rowspan}" placeholder="Type custom event title..." value="${isCustomSubject ? entry.subject : ''}" style="display: ${customInputDisplay}; margin-top: 3px;">
-
-                <div class="edit-field-label">Material (This Week)</div>
-                <textarea class="edit-cell-textarea edit-mat-input" data-matkey="${matKey}" placeholder="Describe material / topic for this week...">${matInfo.material || ''}</textarea>
-
-                <div class="edit-field-label">Resource Link</div>
-                <input type="text" class="edit-cell-input edit-link-input" data-matkey="${matKey}" placeholder="https://..." value="${matInfo.link || ''}">
+                ${slotBodyHtml}
               </div>
             </td>
           `;
@@ -391,7 +436,11 @@ function renderClassEditSchedule(selectedClass, calPrefix) {
                 </div>
                 <div style="font-size:11px; color:#94a3b8; margin: 6px 0;">(Free / Unassigned)</div>
                 <button type="button" class="btn-cell-action btn-add-slot" data-day="${day}" data-slot="${slot.id}" style="width:100%; justify-content:center; padding:5px 8px; font-weight:700; background:#eef2ff; color:#4f46e5; border-color:#c7d2fe;">
-                  ➕ Assign Subject / Event
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  <span>Assign Subject / Event</span>
                 </button>
               </div>
             </td>
@@ -537,19 +586,10 @@ function attachClassEditTableListeners(selectedClass, calPrefix) {
     ta.addEventListener('input', (e) => {
       const key = ta.dataset.matkey;
       if (key) {
-        if (!draftWeeklyMaterials[key]) draftWeeklyMaterials[key] = {};
+        if (!draftWeeklyMaterials[key]) {
+          draftWeeklyMaterials[key] = { ...(materialsData[key] || {}) };
+        }
         draftWeeklyMaterials[key].material = e.target.value;
-      }
-    });
-  });
-
-  // 9. Link input
-  tbody.querySelectorAll('.edit-link-input').forEach(inp => {
-    inp.addEventListener('input', (e) => {
-      const key = inp.dataset.matkey;
-      if (key) {
-        if (!draftWeeklyMaterials[key]) draftWeeklyMaterials[key] = {};
-        draftWeeklyMaterials[key].link = e.target.value;
       }
     });
   });
@@ -598,7 +638,7 @@ async function saveClassWeeklySchedule() {
   }
 }
 
-async function resetClassWeeklySchedule() {
+async function executeResetClassWeeklySchedule() {
   const selectedClass = document.getElementById('classSelectView')?.value;
   if (!selectedClass || !canUserEditClass(selectedClass)) {
     alert("You do not have permission to reset the schedule for this class.");
@@ -608,16 +648,40 @@ async function resetClassWeeklySchedule() {
   const overrideKey = `${calPrefix}_${selectedClass}`;
   const week = document.getElementById('classWeekSelect')?.value || 'this week';
 
-  if (!confirm(`Are you sure you want to reset the schedule and uniforms for ${selectedClass} (${week}) back to the Master Template? This will remove all weekly custom events, merges, and custom uniforms for this week.`)) {
-    return;
-  }
+  const modal = document.getElementById('resetMasterConfirmModal');
+  if (modal) modal.style.display = 'none';
 
   try {
+    // 1. Delete from Firestore weeklyOverrides (reverts timetable slot edits/merges back to Master)
+    try {
+      await updateDoc(doc(db, "schedules", "weeklyOverrides"), {
+        [overrideKey]: deleteField()
+      });
+    } catch (e) {
+      if (weeklyOverrides && weeklyOverrides[overrideKey]) {
+        delete weeklyOverrides[overrideKey];
+      }
+      await setDoc(doc(db, "schedules", "weeklyOverrides"), weeklyOverrides || {});
+    }
+
+    // 2. Update local in-memory weeklyOverrides
     if (weeklyOverrides && weeklyOverrides[overrideKey]) {
       delete weeklyOverrides[overrideKey];
-      await setDoc(doc(db, "schedules", "weeklyOverrides"), weeklyOverrides);
+      setWeeklyOverrides({ ...weeklyOverrides });
     }
-    alert(`Schedule for ${selectedClass} (${week}) has been reset to Master Template.`);
+
+    // 3. Ensure materialsData is fully loaded from Firestore (materials are ALWAYS preserved)
+    try {
+      const matDocRef = doc(db, "schedules", "materialsData");
+      const latestMatSnap = await getDoc(matDocRef);
+      if (latestMatSnap.exists()) {
+        setMaterialsData(latestMatSnap.data() || {});
+      }
+    } catch (matErr) {
+      console.warn("Could not reload materialsData:", matErr);
+    }
+
+    // 4. Reset draft states and exit edit mode
     setIsClassEditMode(false);
     setDraftWeeklySchedule(null);
     setDraftWeeklyMaterials({});
@@ -625,10 +689,36 @@ async function resetClassWeeklySchedule() {
     updateClassEditButtonState();
     renderClassSchedule();
     renderTeacherView();
+
+    alert(`Schedule for ${selectedClass} (${week}) has been reset to Master Template. All weekly learning materials have been preserved.`);
   } catch (err) {
+    console.error("Error resetting schedule:", err);
     alert("Error resetting schedule: " + err.message);
   }
 }
+
+function resetClassWeeklySchedule() {
+  const selectedClass = document.getElementById('classSelectView')?.value;
+  if (!selectedClass || !canUserEditClass(selectedClass)) {
+    alert("You do not have permission to reset the schedule for this class.");
+    return;
+  }
+  const week = document.getElementById('classWeekSelect')?.value || 'this week';
+  const modal = document.getElementById('resetMasterConfirmModal');
+  const msgEl = document.getElementById('resetModalMsg');
+  const subtextEl = document.getElementById('resetModalSubtext');
+
+  if (modal) {
+    if (subtextEl) subtextEl.textContent = `${selectedClass} • ${week} • Materials Preserved`;
+    if (msgEl) msgEl.textContent = `Are you sure you want to reset the schedule table for ${selectedClass} (${week}) back to the Master Template?`;
+    modal.style.display = 'flex';
+  } else {
+    if (confirm(`Are you sure you want to reset the schedule table for ${selectedClass} (${week}) back to the Master Template? All weekly learning materials will be preserved.`)) {
+      executeResetClassWeeklySchedule();
+    }
+  }
+}
+
 
 
 let weeklyResponsiveInitialized = false;
@@ -948,6 +1038,28 @@ document.getElementById('btnEditClassWeekly')?.addEventListener('click', () => {
 document.getElementById('btnSaveClassEdit')?.addEventListener('click', saveClassWeeklySchedule);
 document.getElementById('btnCancelClassEdit')?.addEventListener('click', () => exitClassEditMode(true));
 document.getElementById('btnResetClassMaster')?.addEventListener('click', resetClassWeeklySchedule);
+
+// Reset to Master Modal Event Listeners
+document.getElementById('btnCancelResetMasterModal')?.addEventListener('click', () => {
+  const modal = document.getElementById('resetMasterConfirmModal');
+  if (modal) modal.style.display = 'none';
+});
+document.getElementById('btnCancelResetMasterX')?.addEventListener('click', () => {
+  const modal = document.getElementById('resetMasterConfirmModal');
+  if (modal) modal.style.display = 'none';
+});
+document.getElementById('resetMasterConfirmModal')?.addEventListener('click', (e) => {
+  if (e.target === document.getElementById('resetMasterConfirmModal')) {
+    e.target.style.display = 'none';
+  }
+});
+document.getElementById('btnConfirmResetMasterModal')?.addEventListener('click', () => {
+  executeResetClassWeeklySchedule();
+});
+
+// Global window exposure for inline handlers & event delegation
+window.resetClassWeeklySchedule = resetClassWeeklySchedule;
+window.executeResetClassWeeklySchedule = executeResetClassWeeklySchedule;
 // Class View Dropdown & Filter Event Listeners
 document.getElementById('classSelectView')?.addEventListener('change', () => {
   if (isClassEditMode) exitClassEditMode(true);

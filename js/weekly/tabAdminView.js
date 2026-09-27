@@ -19,7 +19,8 @@ import {
   sortWeeks,
   formatModernDateRange,
   getActiveCalendarPrefix,
-  getSlotAssignments
+  getSlotAssignments,
+  syncClassWeeklyOverrides
 } from "./weeklyState.js";
 import { renderClassSchedule, getSubjectGroupType } from "./tabClassView.js";
 import { renderTeacherView } from "./tabTeacherView.js";
@@ -950,9 +951,13 @@ async function editSlotAssignment(className, day, slotId, index) {
   currentAssignments[index] = { subject: cleanSubject, teacher: cleanTeacher };
   masterSchedules[className][day][slotId] = currentAssignments;
 
+  const year = document.getElementById('classYearSelect')?.value || document.getElementById('adminYearSelect')?.value || '2026-2027';
+  syncClassWeeklyOverrides(className, year);
+
   try {
     await setDoc(doc(db, "schedules", "masterSchedules"), masterSchedules);
-    alert("Schedule updated successfully!");
+    await setDoc(doc(db, "schedules", "weeklyOverrides"), weeklyOverrides, { merge: true });
+    alert("Schedule updated successfully across all themes!");
     renderManageScheduleTable();
     renderClassSchedule();
     renderTeacherView();
@@ -976,9 +981,13 @@ async function deleteSlotAssignment(className, day, slotId, index) {
       masterSchedules[className][day][slotId] = currentAssignments;
     }
 
+    const year = document.getElementById('classYearSelect')?.value || document.getElementById('adminYearSelect')?.value || '2026-2027';
+    syncClassWeeklyOverrides(className, year);
+
     try {
       await setDoc(doc(db, "schedules", "masterSchedules"), masterSchedules);
-      alert("Assignment removed successfully!");
+      await setDoc(doc(db, "schedules", "weeklyOverrides"), weeklyOverrides, { merge: true });
+      alert("Assignment removed successfully across all themes!");
       renderManageScheduleTable();
       renderClassSchedule();
       renderTeacherView();
@@ -1059,17 +1068,22 @@ document.getElementById('assignSlotForm')?.addEventListener('submit', async (e) 
 
   while (filledCount < duration && currentSlotId < timeSlots.length) {
     if (!timeSlots[currentSlotId].isBreak) {
-      const existingAssignments = getSlotAssignments(className, day, currentSlotId);
+      let masterAssignments = [];
+      const masterEntry = masterSchedules[className]?.[day]?.[currentSlotId];
+      if (masterEntry) {
+        masterAssignments = Array.isArray(masterEntry)
+          ? JSON.parse(JSON.stringify(masterEntry))
+          : [JSON.parse(JSON.stringify(masterEntry))];
+      }
 
       if (assignMode === 'append' || groupType !== 'regular') {
-        const alreadyExists = existingAssignments.some(
+        const alreadyInMaster = masterAssignments.some(
           item => item.teacher === teacher && item.subject === subject
         );
-
-        if (!alreadyExists) {
-          existingAssignments.push({ subject, teacher });
+        if (!alreadyInMaster) {
+          masterAssignments.push({ subject, teacher });
         }
-        masterSchedules[className][day][currentSlotId] = existingAssignments;
+        masterSchedules[className][day][currentSlotId] = masterAssignments;
       } else {
         masterSchedules[className][day][currentSlotId] = [{ subject, teacher }];
       }
@@ -1078,13 +1092,17 @@ document.getElementById('assignSlotForm')?.addEventListener('submit', async (e) 
     currentSlotId++;
   }
 
+  const year = document.getElementById('adminYearSelect')?.value || document.getElementById('classYearSelect')?.value || '2026-2027';
+  syncClassWeeklyOverrides(className, year);
+
   try {
     await setDoc(doc(db, "schedules", "masterSchedules"), masterSchedules);
+    await setDoc(doc(db, "schedules", "weeklyOverrides"), weeklyOverrides, { merge: true });
     renderClassSchedule();
     renderTeacherView();
     renderManageScheduleTable();
     renderEntityTables();
-    alert(`Successfully assigned ${subject} (${teacher}) to ${className} on ${day}!`);
+    alert(`Successfully assigned ${subject} (${teacher}) to ${className} on ${day}! (Applied across Theme 1, 2, 3, 4)`);
   } catch (err) {
     alert("Error updating schedule: " + err.message);
   }

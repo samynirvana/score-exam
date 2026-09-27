@@ -41,7 +41,8 @@ import {
   getLoggedInTeacherName,
   updateUniformBadges,
   sortWeeks,
-  formatModernDateRange
+  formatModernDateRange,
+  syncAllClassesWeeklyOverrides
 } from "./js/weekly/weeklyState.js";
 
 // Tab Modules
@@ -659,7 +660,20 @@ onSnapshot(doc(db, "schedules", "masterSchedules"), async (docSnap) => {
   renderManageScheduleTable();
   renderEntityTables();
   checkUserRoleAccess();
+  triggerAutoSyncWeeklyOverrides();
 });
+
+let isSyncingOverrides = false;
+async function triggerAutoSyncWeeklyOverrides() {
+  if (isSyncingOverrides) return;
+  isSyncingOverrides = true;
+  try {
+    const year = document.getElementById('classYearSelect')?.value || document.getElementById('adminYearSelect')?.value || '2026-2027';
+    await syncAllClassesWeeklyOverrides(year);
+  } finally {
+    isSyncingOverrides = false;
+  }
+}
 
 onSnapshot(doc(db, "schedules", "weeklyOverrides"), (docSnap) => {
   if (docSnap.exists()) setWeeklyOverrides(docSnap.data());
@@ -670,6 +684,7 @@ onSnapshot(doc(db, "schedules", "weeklyOverrides"), (docSnap) => {
     renderTeacherView();
     renderEntityTables();
   }
+  triggerAutoSyncWeeklyOverrides();
 });
 
 onSnapshot(doc(db, "schedules", "materialsData"), (docSnap) => {

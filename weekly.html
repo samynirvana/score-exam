@@ -14,7 +14,7 @@
     rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=375">
   <link rel="stylesheet" href="student.css?v=392">
-  <link rel="stylesheet" href="weekly.css?v=438">
+  <link rel="stylesheet" href="weekly.css?v=439">
   <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 </head>
 
@@ -357,7 +357,8 @@
         </div>
         <div class="edit-toolbar-actions">
           <button id="btnResetClassMaster" class="action-btn reset-btn"
-            title="Reset this week's schedule to default master template">
+            title="Reset this week's schedule to default master template"
+            onclick="window.resetClassWeeklySchedule ? window.resetClassWeeklySchedule() : null">
             <span class="btn-icon">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
@@ -366,7 +367,7 @@
                 <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" />
               </svg>
             </span>
-            <span>Reset to Master</span>
+            <span data-i18n="btn_reset_master">Reset to Master</span>
           </button>
           <button id="btnCancelClassEdit" class="action-btn cancel-btn">
             <span class="btn-icon">
@@ -2559,8 +2560,41 @@
     </div>
   </div>
 
-  <script type="module" src="weeklyI18n.js?v=460"></script>
-  <script type="module" src="weekly.js?v=461"></script>
+  <!-- Reset Class Schedule to Master Confirmation Modal Overlay -->
+  <div id="resetMasterConfirmModal" class="modal-overlay" style="display: none; z-index: 10600;">
+    <div class="login-card" style="max-width: 440px; width: 92%; text-align: left;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 36px; height: 36px; border-radius: 50%; background: #eff6ff; display: flex; align-items: center; justify-content: center; color: #2563eb; font-size: 18px;">
+            🔄
+          </div>
+          <div>
+            <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #0f172a;">Reset Schedule to Master?</h3>
+            <p id="resetModalSubtext" style="margin: 2px 0 0 0; font-size: 12px; color: #64748b;">Timetable Reset • Materials Preserved</p>
+          </div>
+        </div>
+        <button type="button" id="btnCancelResetMasterX" style="background: none; border: none; font-size: 18px; color: #94a3b8; cursor: pointer; padding: 4px;">✕</button>
+      </div>
+
+      <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+        <p id="resetModalMsg" style="margin: 0; font-size: 13px; color: #1e3a8a; line-height: 1.5; font-weight: 600;">
+          Are you sure you want to reset this week's schedule table back to the Master Template?
+        </p>
+        <p style="margin: 8px 0 0 0; font-size: 12px; color: #1d4ed8; font-weight: 500;">
+          • Any custom subject assignments, split/merged periods, or schedule edits made in this table will revert to the default master schedule.<br>
+          • <strong>All weekly learning materials, topics, and links will be kept safe and preserved.</strong>
+        </p>
+      </div>
+
+      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button type="button" id="btnCancelResetMasterModal" class="login-btn" style="background: #e2e8f0; color: #334155; flex: 1;">Cancel</button>
+        <button type="button" id="btnConfirmResetMasterModal" class="login-btn" style="background: #2563eb; color: #fff; flex: 1.4; box-shadow: 0 2px 8px rgba(37,99,235,0.3);">Yes, Reset Schedule</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="weeklyI18n.js?v=466"></script>
+  <script type="module" src="weekly.js?v=466"></script>
   <script type="module">import { trackCurrentPage } from './js/userActivity.js'; trackCurrentPage();</script>
 </body>
 
