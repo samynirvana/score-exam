@@ -223,7 +223,8 @@ export async function fetchCurrentUserRole(user) {
   try {
     const userDoc = await getDoc(doc(db, "users", user.uid));
     if (userDoc.exists()) {
-      currentUserRole = userDoc.data().role || null;
+      const data = userDoc.data();
+      currentUserRole = data.role || (data.isLeader ? 'teacher_leader' : null);
     } else {
       currentUserRole = null;
     }
@@ -236,14 +237,34 @@ export async function fetchCurrentUserRole(user) {
 export function isAdminUser() {
   const user = auth.currentUser;
   if (!user || !user.email) return false;
-  if (currentUserRole === 'admin') return true;
+  if (currentUserRole === 'admin' || currentUserRole === 'teacher_leader') return true;
+
   const emailLower = user.email.toLowerCase();
-  return (
+  const isGenericAdmin = (
     emailLower === 'adm@gc.com' ||
     emailLower === 'admin@gc.com' ||
     emailLower.startsWith('admin@') ||
     emailLower.startsWith('adm@')
   );
+  if (isGenericAdmin) return true;
+
+  // Check if current logged-in teacher is designated as a Teacher's Leader in appEntities
+  if (appEntities?.teacherLeaders && Array.isArray(appEntities.teacherLeaders) && appEntities.teacherLeaders.length > 0) {
+    if (appEntities.teacherEmails) {
+      for (const [tName, tEmail] of Object.entries(appEntities.teacherEmails)) {
+        if (tEmail && tEmail.toLowerCase() === emailLower && appEntities.teacherLeaders.includes(tName)) {
+          return true;
+        }
+      }
+    }
+
+    const teacherName = resolveTeacherNameFromEmail(user.email);
+    if (teacherName && appEntities.teacherLeaders.includes(teacherName)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 export function isTeacherUser() {
@@ -255,10 +276,9 @@ export function isTeacherUser() {
   return !!getLoggedInTeacherName();
 }
 
-export function getLoggedInTeacherName() {
-  const user = auth.currentUser;
-  if (!user || !user.email) return null;
-  const emailLower = user.email.toLowerCase();
+export function resolveTeacherNameFromEmail(email) {
+  if (!email) return null;
+  const emailLower = email.toLowerCase();
 
   // 1. Direct match in appEntities.teacherEmails
   if (appEntities && appEntities.teacherEmails) {
@@ -267,6 +287,13 @@ export function getLoggedInTeacherName() {
     );
     if (directMatch) return directMatch;
   }
+
+  const isGenericAdmin = (
+    emailLower === 'adm@gc.com' ||
+    emailLower === 'admin@gc.com' ||
+    emailLower.startsWith('admin@') ||
+    emailLower.startsWith('adm@')
+  );
 
   // 2. Fuzzy match against all teachers in appEntities.teachers
   const username = emailLower.split('@')[0].replace(/[^a-z0-9]/g, '');
@@ -284,8 +311,8 @@ export function getLoggedInTeacherName() {
     if (subTeacher) return subTeacher;
   }
 
-  // 3. Fallback for non-admin user
-  if (!isAdminUser() && appEntities && Array.isArray(appEntities.teachers) && appEntities.teachers.length > 0) {
+  // 3. Fallback for non-generic admin user
+  if (!isGenericAdmin && appEntities && Array.isArray(appEntities.teachers) && appEntities.teachers.length > 0) {
     const fallback = appEntities.teachers.find(name => {
       const clean = name.toLowerCase().replace(/^(mr|ms|mrs|miss|dr|ustadz|ustadzah)\.?\s*/i, '').replace(/[^a-z0-9]/g, '');
       return emailLower.includes(clean) || (username.length >= 3 && clean.includes(username));
@@ -294,6 +321,12 @@ export function getLoggedInTeacherName() {
   }
 
   return null;
+}
+
+export function getLoggedInTeacherName() {
+  const user = auth.currentUser;
+  if (!user || !user.email) return null;
+  return resolveTeacherNameFromEmail(user.email);
 }
 
 export function canUserEditClass(className) {

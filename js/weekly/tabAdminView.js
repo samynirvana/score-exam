@@ -441,12 +441,13 @@ function updateAdminPeriodSelectOptions() {
 }
 
 function syncEntitiesFromMasterSchedules() {
-  if (!appEntities) setAppEntities({ teachers: [], classes: [], subjects: [], homeTeachers: {}, teacherEmails: {} });
+  if (!appEntities) setAppEntities({ teachers: [], classes: [], subjects: [], homeTeachers: {}, teacherEmails: {}, teacherLeaders: [] });
   if (!appEntities.classes) appEntities.classes = [];
   if (!appEntities.teachers) appEntities.teachers = [];
   if (!appEntities.subjects) appEntities.subjects = [];
   if (!appEntities.homeTeachers) appEntities.homeTeachers = {};
   if (!appEntities.teacherEmails) appEntities.teacherEmails = {};
+  if (!appEntities.teacherLeaders) appEntities.teacherLeaders = [];
 
   let changed = false;
   const classSet = new Set(appEntities.classes.map(c => (c || '').trim()).filter(Boolean));
@@ -591,6 +592,7 @@ function calculateTeacherTTP(teacherName) {
 const entityPageMap = {
   teachers: 1,
   homeTeachers: 1,
+  teacherLeaders: 1,
   classes: 1,
   subjects: 1
 };
@@ -598,24 +600,38 @@ const ENTITY_PAGE_SIZE = 10;
 
 function renderEntityTables() {
   if (!appEntities.homeTeachers) appEntities.homeTeachers = {};
+  if (!appEntities.teacherLeaders) appEntities.teacherLeaders = [];
   if (!appEntities.teachers) appEntities.teachers = [];
   if (!appEntities.classes) appEntities.classes = [];
   if (!appEntities.subjects) appEntities.subjects = [];
 
+  const isLeader = (name) => Array.isArray(appEntities.teacherLeaders) && appEntities.teacherLeaders.includes(name);
+
   const regularTeachers = appEntities.teachers.filter(t => !appEntities.homeTeachers[t]);
-  const homeTeachersList = appEntities.teachers.filter(t => !!appEntities.homeTeachers[t]);
+  const homeTeachersList = Array.from(new Set([
+    ...appEntities.teachers.filter(t => !!appEntities.homeTeachers?.[t]),
+    ...Object.keys(appEntities.homeTeachers || {}).filter(t => !!appEntities.homeTeachers[t])
+  ]));
+  const teacherLeadersList = Array.from(new Set([
+    ...appEntities.teachers.filter(t => isLeader(t)),
+    ...(Array.isArray(appEntities.teacherLeaders) ? appEntities.teacherLeaders : [])
+  ])).filter(Boolean);
 
   const entityData = {
     teachers: regularTeachers,
     homeTeachers: homeTeachersList,
+    teacherLeaders: teacherLeadersList,
     classes: appEntities.classes,
     subjects: appEntities.subjects
   };
 
-  const types = ['teachers', 'homeTeachers', 'classes', 'subjects'];
+  const types = ['teachers', 'homeTeachers', 'teacherLeaders', 'classes', 'subjects'];
 
   types.forEach(type => {
-    const capitalizeType = type === 'homeTeachers' ? 'HomeTeachers' : (type.charAt(0).toUpperCase() + type.slice(1));
+    let capitalizeType = type.charAt(0).toUpperCase() + type.slice(1);
+    if (type === 'homeTeachers') capitalizeType = 'HomeTeachers';
+    if (type === 'teacherLeaders') capitalizeType = 'TeacherLeaders';
+
     const tbodyId = `table${capitalizeType}`;
     const tbody = document.getElementById(tbodyId);
     if (!tbody) return;
@@ -632,8 +648,11 @@ function renderEntityTables() {
     const pageItems = allItems.slice(startIdx, startIdx + ENTITY_PAGE_SIZE);
 
     if (pageItems.length === 0) {
-      const colSpan = (type === 'teachers' || type === 'homeTeachers') ? 3 : 2;
-      tbody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; color: #64748b; padding: 14px;">No ${type === 'homeTeachers' ? 'home teachers assigned' : type} found.</td></tr>`;
+      const colSpan = (type === 'teachers' || type === 'homeTeachers' || type === 'teacherLeaders') ? 3 : 2;
+      const emptyLabel = type === 'homeTeachers' 
+        ? 'home teachers assigned' 
+        : (type === 'teacherLeaders' ? 'Teacher\'s Leaders assigned' : type);
+      tbody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align: center; color: #64748b; padding: 14px;">No ${emptyLabel} found.</td></tr>`;
     }
 
     pageItems.forEach(item => {
@@ -641,9 +660,12 @@ function renderEntityTables() {
 
       if (type === 'teachers') {
         const ttp = calculateTeacherTTP(item);
+        const leaderBadge = isLeader(item) 
+          ? `<span style="display:inline-flex; align-items:center; gap:2px; font-size:9.5px; font-weight:700; background:#fef3c7; color:#92400e; border:1px solid #fde68a; border-radius:4px; padding:0 5px; margin-left:4px;">⭐ Leader</span>` 
+          : '';
         tr.innerHTML = `
           <td style="text-align: left; padding: 10px 14px;">
-            <strong style="color: #0f172a; font-weight: 700;">${item}</strong>
+            <strong style="color: #0f172a; font-weight: 700;">${item}</strong>${leaderBadge}
           </td>
           <td style="text-align: center; width: 75px; padding: 8px 10px;">
             <span class="ttl-badge" title="Total Teaching Periods: ${ttp}">${ttp}</span>
@@ -652,6 +674,7 @@ function renderEntityTables() {
             <div class="kebab-menu">
               <button class="kebab-btn" title="Actions">⋮</button>
               <div class="kebab-dropdown">
+                <button class="set-leader-opt" data-name="${item}">${isLeader(item) ? '👤 Remove Leader' : '⭐ Set as Leader'}</button>
                 <button class="set-hometeacher-opt" data-name="${item}">Set Home Teacher</button>
                 <button class="edit-opt" data-type="teachers" data-name="${item}">Edit</button>
                 <button class="delete-opt" data-type="teachers" data-name="${item}">Delete</button>
@@ -662,9 +685,12 @@ function renderEntityTables() {
       } else if (type === 'homeTeachers') {
         const assignedClass = appEntities.homeTeachers[item] || '-';
         const ttp = calculateTeacherTTP(item);
+        const leaderBadge = isLeader(item) 
+          ? `<span style="display:inline-flex; align-items:center; gap:2px; font-size:9.5px; font-weight:700; background:#fef3c7; color:#92400e; border:1px solid #fde68a; border-radius:4px; padding:0 5px; margin-left:4px;">⭐ Leader</span>` 
+          : '';
         tr.innerHTML = `
           <td style="text-align: left; padding: 10px 14px;">
-            <strong style="color: #0f172a; font-weight: 700;">${item}</strong>
+            <strong style="color: #0f172a; font-weight: 700;">${item}</strong>${leaderBadge}
             <br><span class="hometeacher-pill">Home Teacher: ${assignedClass}</span>
           </td>
           <td style="text-align: center; width: 75px; padding: 8px 10px;">
@@ -674,8 +700,34 @@ function renderEntityTables() {
             <div class="kebab-menu">
               <button class="kebab-btn" title="Actions">⋮</button>
               <div class="kebab-dropdown">
+                <button class="set-leader-opt" data-name="${item}">${isLeader(item) ? '👤 Remove Leader' : '⭐ Set as Leader'}</button>
                 <button class="set-hometeacher-opt" data-name="${item}">Change Class</button>
                 <button class="remove-hometeacher-opt" data-name="${item}" style="color: #ef4444;">Remove Home Teacher</button>
+                <button class="edit-opt" data-type="teachers" data-name="${item}">Edit</button>
+                <button class="delete-opt" data-type="teachers" data-name="${item}">Delete</button>
+              </div>
+            </div>
+          </td>
+        `;
+      } else if (type === 'teacherLeaders') {
+        const ttp = calculateTeacherTTP(item);
+        const assignedClass = appEntities.homeTeachers[item];
+        const homeTeacherBadge = assignedClass ? `<span class="hometeacher-pill" style="margin-top:2px;">Home Teacher: ${assignedClass}</span>` : '';
+        tr.innerHTML = `
+          <td style="text-align: left; padding: 10px 14px;">
+            <strong style="color: #0f172a; font-weight: 700;">${item}</strong>
+            <br><span style="display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:700; background:#fef3c7; color:#92400e; border:1px solid #fde68a; border-radius:4px; padding:1px 6px; margin-top:2px;">⭐ Teacher's Leader (Admin Access)</span>
+            ${homeTeacherBadge}
+          </td>
+          <td style="text-align: center; width: 75px; padding: 8px 10px;">
+            <span class="ttl-badge" title="Total Teaching Periods: ${ttp}">${ttp}</span>
+          </td>
+          <td style="text-align: center; width: 85px; padding: 8px 10px;">
+            <div class="kebab-menu">
+              <button class="kebab-btn" title="Actions">⋮</button>
+              <div class="kebab-dropdown">
+                <button class="set-leader-opt" data-name="${item}" style="color: #ef4444;">👤 Remove Leader</button>
+                ${assignedClass ? `<button class="set-hometeacher-opt" data-name="${item}">Change Home Class</button><button class="remove-hometeacher-opt" data-name="${item}" style="color: #ef4444;">Remove Home Teacher</button>` : `<button class="set-hometeacher-opt" data-name="${item}">Set Home Teacher</button>`}
                 <button class="edit-opt" data-type="teachers" data-name="${item}">Edit</button>
                 <button class="delete-opt" data-type="teachers" data-name="${item}">Delete</button>
               </div>
@@ -723,6 +775,10 @@ function renderEntityTables() {
       });
     });
 
+    entityGrid.querySelectorAll('.set-leader-opt').forEach(btn => {
+      btn.addEventListener('click', (e) => setTeacherLeader(e.target.dataset.name));
+    });
+
     entityGrid.querySelectorAll('.set-hometeacher-opt').forEach(btn => {
       btn.addEventListener('click', (e) => setHomeTeacher(e.target.dataset.name));
     });
@@ -742,8 +798,11 @@ function renderEntityTables() {
 }
 
 // Entity Table Pagination Button Listeners
-['Teachers', 'HomeTeachers', 'Classes', 'Subjects'].forEach(typeKey => {
-  const type = typeKey === 'HomeTeachers' ? 'homeTeachers' : typeKey.toLowerCase();
+['Teachers', 'HomeTeachers', 'TeacherLeaders', 'Classes', 'Subjects'].forEach(typeKey => {
+  let type = typeKey.toLowerCase();
+  if (typeKey === 'HomeTeachers') type = 'homeTeachers';
+  if (typeKey === 'TeacherLeaders') type = 'teacherLeaders';
+
   document.getElementById(`btnPrev${typeKey}`)?.addEventListener('click', () => {
     if (entityPageMap[type] > 1) {
       entityPageMap[type]--;
@@ -754,8 +813,16 @@ function renderEntityTables() {
     const list = type === 'teachers'
       ? (appEntities.teachers || []).filter(t => !appEntities.homeTeachers?.[t])
       : type === 'homeTeachers'
-        ? (appEntities.teachers || []).filter(t => !!appEntities.homeTeachers?.[t])
-        : (appEntities[type] || []);
+        ? Array.from(new Set([
+            ...(appEntities.teachers || []).filter(t => !!appEntities.homeTeachers?.[t]),
+            ...Object.keys(appEntities.homeTeachers || {}).filter(t => !!appEntities.homeTeachers[t])
+          ]))
+        : type === 'teacherLeaders'
+          ? Array.from(new Set([
+              ...(appEntities.teachers || []).filter(t => Array.isArray(appEntities.teacherLeaders) && appEntities.teacherLeaders.includes(t)),
+              ...(Array.isArray(appEntities.teacherLeaders) ? appEntities.teacherLeaders : [])
+            ])).filter(Boolean)
+          : (appEntities[type] || []);
     const totalPages = Math.ceil(list.length / ENTITY_PAGE_SIZE) || 1;
     if (entityPageMap[type] < totalPages) {
       entityPageMap[type]++;
@@ -763,6 +830,39 @@ function renderEntityTables() {
     }
   });
 });
+
+async function setTeacherLeader(teacherName) {
+  if (!appEntities.teacherLeaders) appEntities.teacherLeaders = [];
+  const isCurrentlyLeader = appEntities.teacherLeaders.includes(teacherName);
+
+  if (isCurrentlyLeader) {
+    if (confirm(`Remove "${teacherName}" from Teacher's Leader role?\n\nThey will return to regular teacher access in Weekly Schedule.`)) {
+      appEntities.teacherLeaders = appEntities.teacherLeaders.filter(t => t !== teacherName);
+      try {
+        await setDoc(doc(db, "config", "appEntities"), appEntities);
+        alert(`Removed ${teacherName} from Teacher's Leader role.`);
+        renderEntityTables();
+        checkUserRoleAccess();
+      } catch (err) {
+        alert("Error updating Teacher's Leader: " + err.message);
+      }
+    }
+  } else {
+    if (confirm(`Assign "${teacherName}" as Teacher's Leader?\n\nThey will be granted full administrative access across all tabs and features in Weekly Schedule just like an admin.`)) {
+      if (!appEntities.teacherLeaders.includes(teacherName)) {
+        appEntities.teacherLeaders.push(teacherName);
+      }
+      try {
+        await setDoc(doc(db, "config", "appEntities"), appEntities);
+        alert(`Successfully assigned ${teacherName} as Teacher's Leader!`);
+        renderEntityTables();
+        checkUserRoleAccess();
+      } catch (err) {
+        alert("Error assigning Teacher's Leader: " + err.message);
+      }
+    }
+  }
+}
 
 async function setHomeTeacher(teacherName) {
   const availableClasses = appEntities.classes.join(', ');
@@ -820,6 +920,10 @@ async function editEntity(type, oldName) {
         appEntities.homeTeachers[cleanName] = appEntities.homeTeachers[oldName];
         delete appEntities.homeTeachers[oldName];
       }
+      if (appEntities.teacherLeaders && appEntities.teacherLeaders.includes(oldName)) {
+        const lIdx = appEntities.teacherLeaders.indexOf(oldName);
+        if (lIdx !== -1) appEntities.teacherLeaders[lIdx] = cleanName;
+      }
     }
 
     try {
@@ -838,6 +942,9 @@ async function deleteEntity(type, name) {
     if (type === 'teachers') {
       if (appEntities.teacherEmails) delete appEntities.teacherEmails[name];
       if (appEntities.homeTeachers) delete appEntities.homeTeachers[name];
+      if (appEntities.teacherLeaders) {
+        appEntities.teacherLeaders = appEntities.teacherLeaders.filter(t => t !== name);
+      }
     }
     try {
       await setDoc(doc(db, "config", "appEntities"), appEntities);

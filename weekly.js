@@ -627,6 +627,7 @@ onSnapshot(doc(db, "config", "appEntities"), (docSnap) => {
     if (!data.subjects) data.subjects = [];
     if (!data.homeTeachers) data.homeTeachers = {};
     if (!data.teacherEmails) data.teacherEmails = {};
+    if (!data.teacherLeaders) data.teacherLeaders = [];
     setAppEntities(data);
   } else {
     setAppEntities({
@@ -634,7 +635,8 @@ onSnapshot(doc(db, "config", "appEntities"), (docSnap) => {
       classes: ["Grade 9A", "Grade 9B", "Grade 9C"],
       subjects: ["English", "Pancasila", "ICT", "Math"],
       homeTeachers: {},
-      teacherEmails: {}
+      teacherEmails: {},
+      teacherLeaders: []
     });
   }
   syncEntitiesFromMasterSchedules();
@@ -642,6 +644,7 @@ onSnapshot(doc(db, "config", "appEntities"), (docSnap) => {
   populateMeetingReportSelects();
   renderClassSchedule();
   renderTeacherView();
+  renderEntityTables();
   checkUserRoleAccess();
 });
 
