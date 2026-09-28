@@ -44,6 +44,7 @@ export {
   areSlotAssignmentsMatching,
   getSubjectPastelObject,
   getSubjectPastelStyle,
+  getSplitSubjectPastelStyle,
   enterClassEditMode,
   exitClassEditMode,
   renderClassSchedule,
@@ -227,6 +228,18 @@ function getSubjectPastelObject(subjectName) {
 function getSubjectPastelStyle(subjectName) {
   const p = getSubjectPastelObject(subjectName);
   return `background-color: ${p.bg}; border: 1px solid #000000; color: ${p.text};`;
+}
+
+function getSplitSubjectPastelStyle(slotEntries) {
+  if (!slotEntries || !slotEntries.length) {
+    return 'background-color: #f8fafc; border: 1px solid #000000; color: #0f172a;';
+  }
+  const bgColors = slotEntries.map(e => (getSubjectPastelObject(e && e.subject) || {}).bg || '#FFFFFF');
+  const uniqueColors = [...new Set(bgColors)];
+  if (uniqueColors.length > 1) {
+    return `background: linear-gradient(180deg, ${bgColors.join(', ')}); border: 1px solid #000000; color: #0f172a;`;
+  }
+  return `background-color: ${uniqueColors[0]}; border: 1px solid #000000; color: #0f172a;`;
 }
 
 function enterClassEditMode() {
@@ -1186,8 +1199,8 @@ function renderClassSchedule() {
 
             const groupBadgeHtml = (groupTitle === 'IPA / IPS MAJOR') ? '' : `<span class="${badgeClass}">${groupTitle}</span>`;
 
-            cellStyle = (slotEntries.length > 1 && primaryGroup === 'regular')
-              ? 'background-color: #f8fafc; border: 1px solid #cbd5e1; color: #0f172a;'
+            cellStyle = (slotEntries.length > 1)
+              ? getSplitSubjectPastelStyle(slotEntries)
               : getSubjectPastelStyle(primaryGroup);
 
             let itemsHtml = '';
@@ -1724,7 +1737,8 @@ function exportWeeklyToExcel() {
         lines.push(itemLine);
       });
 
-      const pastel = getSubjectPastelObject(groupHeader);
+      const firstSubj = items[0]?.querySelector('.group-subject')?.textContent.trim() || items[0]?.querySelector('strong')?.textContent.trim() || '';
+      const pastel = getSubjectPastelObject(groupHeader || firstSubj);
       return {
         text: lines.join('\n'),
         bgHex: pastel.bg,

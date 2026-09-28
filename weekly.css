@@ -5408,22 +5408,38 @@ input:disabled + .toggle-slider {
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
 }
 
+#tadminTeacherViewContainer {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
 .tadmin-cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  justify-content: center;
+}
+
+@media screen and (max-width: 768px) {
+  #tadminTeacherViewContainer {
+    max-width: 100%;
+  }
+  .tadmin-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
 }
 
 .tadmin-card {
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 14px;
+  padding: 18px 20px;
   background: #f8fafc;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   transition: all 0.2s ease;
-  min-height: 190px;
+  min-height: 200px;
 }
 
 .tadmin-card:hover {
