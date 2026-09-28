@@ -902,6 +902,27 @@ document.querySelectorAll('.tab-content > .weekly-workspace-heading, #scheduleBu
   syncBannerPlayback();
 });
 
+// Living weekly timeline: weekday emphasis and restrained pointer parallax.
+const classWeeklyBanner = document.querySelector('#classView > .weekly-video-banner');
+if (classWeeklyBanner) {
+  const currentDay = new Date().getDay();
+  classWeeklyBanner.querySelector(`.weekly-day-node[data-day="${currentDay}"]`)?.classList.add('is-today');
+  const canParallax = matchMedia('(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)').matches;
+  if (canParallax) {
+    classWeeklyBanner.addEventListener('pointermove', (event) => {
+      const bounds = classWeeklyBanner.getBoundingClientRect();
+      const x = ((event.clientX - bounds.left) / bounds.width - .5) * 8;
+      const y = ((event.clientY - bounds.top) / bounds.height - .5) * 5;
+      classWeeklyBanner.style.setProperty('--motion-x', `${x.toFixed(2)}px`);
+      classWeeklyBanner.style.setProperty('--motion-y', `${y.toFixed(2)}px`);
+    }, { passive: true });
+    classWeeklyBanner.addEventListener('pointerleave', () => {
+      classWeeklyBanner.style.setProperty('--motion-x', '0px');
+      classWeeklyBanner.style.setProperty('--motion-y', '0px');
+    });
+  }
+}
+
 const weeklyNav = document.querySelector('.nav-tabs');
 if (weeklyNav) {
   const shortLabels = { btnClassView: 'Classes', btnTeacherView: 'Teacher Entry', btnTeacherSchedulesView: 'Teacher Schedules', btnRewardView: 'Rewards', btnMeetingView: 'Meetings', btnScheduleBuilderView: 'Schedule Builder', btnAdminView: 'Admin' };
@@ -910,16 +931,18 @@ if (weeklyNav) {
     const caption = button?.querySelector('span:last-child');
     if (caption && !caption.classList.contains('tab-icon')) { button.title = caption.textContent.trim(); caption.textContent = label; }
   });
-  const shell = document.createElement('div'); shell.className = 'weekly-nav-shell';
-  weeklyNav.before(shell); shell.append(weeklyNav);
-  [-1, 1].forEach(direction => {
-    const button = document.createElement('button'); button.type = 'button'; button.className = 'weekly-nav-arrow';
-    button.textContent = direction < 0 ? '‹' : '›'; button.setAttribute('aria-label', direction < 0 ? 'Scroll navigation left' : 'Scroll navigation right');
-    button.onclick = () => weeklyNav.scrollBy({left: direction * 220, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'});
-    if (direction < 0) shell.prepend(button); else shell.append(button);
-    const sync = () => { button.disabled = direction < 0 ? weeklyNav.scrollLeft <= 1 : weeklyNav.scrollLeft + weeklyNav.clientWidth >= weeklyNav.scrollWidth - 1; };
-    weeklyNav.addEventListener('scroll', sync, {passive:true}); new ResizeObserver(sync).observe(weeklyNav); sync();
-  });
+  if (!weeklyNav.closest('.weekly-nav-shell')) {
+    const shell = document.createElement('div'); shell.className = 'weekly-nav-shell';
+    weeklyNav.before(shell); shell.append(weeklyNav);
+    [-1, 1].forEach(direction => {
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'weekly-nav-arrow';
+      button.textContent = direction < 0 ? '‹' : '›'; button.setAttribute('aria-label', direction < 0 ? 'Scroll navigation left' : 'Scroll navigation right');
+      button.onclick = () => weeklyNav.scrollBy({left: direction * 220, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'});
+      if (direction < 0) shell.prepend(button); else shell.append(button);
+      const sync = () => { button.disabled = direction < 0 ? weeklyNav.scrollLeft <= 1 : weeklyNav.scrollLeft + weeklyNav.clientWidth >= weeklyNav.scrollWidth - 1; };
+      weeklyNav.addEventListener('scroll', sync, {passive:true}); new ResizeObserver(sync).observe(weeklyNav); sync();
+    });
+  }
 }
 
 // Helper to update user email text according to active language

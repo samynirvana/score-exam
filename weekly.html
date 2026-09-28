@@ -13,8 +13,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=375">
-  <link rel="stylesheet" href="student.css?v=392">
-  <link rel="stylesheet" href="weekly.css?v=440">
+  <link rel="stylesheet" href="student.css?v=393">
+  <link rel="stylesheet" href="weekly.css?v=441">
   <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 </head>
 
@@ -44,10 +44,16 @@
       <!-- RIGHT COLUMN: LOGIN CREDENTIALS FORM -->
       <div class="login-card-form-col">
         <div class="login-form-brand-row" style="flex-direction: column; gap: 8px;">
-          <img src="mks_logo.png" 
-               onerror="this.onerror=null; this.src='https://lh3.googleusercontent.com/d/1ge2ndYnSE0CLQl_iqqRhcLGlxD0A-Bum';" 
-               alt="Sekolah Mitra Kasih" 
-               class="login-form-brand-logo">
+          <button class="motion-logo motion-logo--loop" id="motionLogo" type="button" aria-label="Replay Mitra Kasih logo animation">
+            <span class="motion-logo__halo" aria-hidden="true"></span>
+            <span class="motion-logo__stage">
+              <img src="mks_logo.png" onerror="this.onerror=null; this.src='https://lh3.googleusercontent.com/d/1ge2ndYnSE0CLQl_iqqRhcLGlxD0A-Bum';" alt="Sekolah Mitra Kasih" class="login-form-brand-logo motion-logo__image">
+              <span class="motion-logo__shine" aria-hidden="true"></span>
+            </span>
+            <span class="motion-logo__spark motion-logo__spark--one" aria-hidden="true"></span>
+            <span class="motion-logo__spark motion-logo__spark--two" aria-hidden="true"></span>
+            <span class="motion-logo__spark motion-logo__spark--three" aria-hidden="true"></span>
+          </button>
           <span style="font-size: 15px; font-weight: 700; color: #1e3a8a; letter-spacing: 0.2px; text-align: center;">Teacher Weekly Schedule</span>
         </div>
 
@@ -121,17 +127,11 @@
   <div id="appMain" style="display: none;">
     <!-- Top Navigation Bar -->
     <header class="app-topbar">
-      <div class="topbar-brand">
-        <div class="brand-icon"
-          style="background: #ffffff; width: 44px; height: 44px; padding: 3px; border-radius: 10px; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center;">
-          <img src="https://lh3.googleusercontent.com/d/1o_7O1hdx1SJOXfoFw9ZKxpl4zSOD_VYd" alt="Mitra Kasih Logo"
-            style="width: 100%; height: 100%; object-fit: contain;">
-        </div>
-        <div class="brand-text">
-          <span class="brand-title">Mitra Kasih School</span>
-          <span class="brand-subtitle">Weekly Schedule</span>
-        </div>
-      </div>
+      <button class="topbar-brand motion-logo motion-logo--loop topbar-motion-logo" type="button" aria-label="Replay Mitra Kasih logo animation">
+        <span class="motion-logo__halo" aria-hidden="true"></span>
+        <span class="motion-logo__stage"><img src="mks_logo.png" alt="Sekolah Mitra Kasih" class="login-form-brand-logo motion-logo__image"><span class="motion-logo__shine" aria-hidden="true"></span></span>
+        <span class="motion-logo__spark motion-logo__spark--one" aria-hidden="true"></span><span class="motion-logo__spark motion-logo__spark--two" aria-hidden="true"></span><span class="motion-logo__spark motion-logo__spark--three" aria-hidden="true"></span>
+      </button>
 
       <!-- Navigation Tabs -->
       <nav class="nav-tabs">
@@ -269,7 +269,11 @@
           <source src="https://drive.usercontent.google.com/download?id=1s8HaspAJnJ4OknN1woyVkHxnR9ZgsUMB" type="video/mp4">
           <source src="https://drive.google.com/uc?id=1s8HaspAJnJ4OknN1woyVkHxnR9ZgsUMB&export=download" type="video/mp4">
         </video>
-        <div><span class="weekly-eyebrow" data-i18n="eyebrow_glance">YOUR WEEK AT A GLANCE</span><h1 id="weeklyWorkspaceTitle" data-i18n="class_view_title">Weekly Schedule</h1><p id="weeklyWorkspaceSubtitle" aria-live="polite" data-i18n="class_view_sub">Choose a class and week to explore the timetable.</p></div>
+        <div class="weekly-motion-atmosphere" aria-hidden="true"><span class="weekly-light-trail"></span><span class="weekly-particle weekly-particle--one"></span><span class="weekly-particle weekly-particle--two"></span><span class="weekly-particle weekly-particle--three"></span><span class="weekly-particle weekly-particle--four"></span></div>
+        <div class="weekly-hero-copy">
+          <span class="weekly-eyebrow" data-i18n="eyebrow_glance">YOUR WEEK AT A GLANCE</span><h1 id="weeklyWorkspaceTitle" data-i18n="class_view_title">Weekly Schedule</h1><p id="weeklyWorkspaceSubtitle" aria-live="polite" data-i18n="class_view_sub">Choose a class and week to explore the timetable.</p>
+          <div class="weekly-day-progress" aria-label="School week progress"><span class="weekly-day-node" data-day="1" title="Monday">M</span><span class="weekly-day-node" data-day="2" title="Tuesday">T</span><span class="weekly-day-node" data-day="3" title="Wednesday">W</span><span class="weekly-day-node" data-day="4" title="Thursday">T</span><span class="weekly-day-node" data-day="5" title="Friday">F</span></div>
+        </div>
         <div class="weekly-navigation" aria-label="Schedule navigation">
           <button type="button" id="weeklyPrevious" aria-label="Previous week">‹</button>
           <div id="classDateBadge" class="modern-date-badge banner-date-badge" title="Selected week dates">
@@ -2619,8 +2623,9 @@
     </div>
   </div>
 
-  <script type="module" src="weeklyI18n.js?v=466"></script>
-  <script type="module" src="weekly.js?v=466"></script>
+  <script type="module" src="weeklyI18n.js"></script>
+  <script type="module" src="weekly.js"></script>
+  <script src="js/logo-motion.js?v=2" defer></script>
   <script type="module">import { trackCurrentPage } from './js/userActivity.js'; trackCurrentPage();</script>
 </body>
 

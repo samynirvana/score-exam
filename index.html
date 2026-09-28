@@ -12,7 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=379">
     <link rel="stylesheet" href="admin.css?v=388">
-    <link rel="stylesheet" href="student.css?v=391">
+    <link rel="stylesheet" href="student.css?v=393">
 </head>
 
 <body>
@@ -37,10 +37,16 @@
             <!-- RIGHT COLUMN: LOGIN CREDENTIALS FORM -->
             <div class="login-card-form-col">
                 <div class="login-form-brand-row">
-                    <img src="mks_logo.png" 
-                         onerror="this.onerror=null; this.src='https://lh3.googleusercontent.com/d/1ge2ndYnSE0CLQl_iqqRhcLGlxD0A-Bum';" 
-                         alt="Sekolah Mitra Kasih" 
-                         class="login-form-brand-logo">
+                    <button class="motion-logo" id="motionLogo" type="button" aria-label="Replay Mitra Kasih logo animation">
+                        <span class="motion-logo__halo" aria-hidden="true"></span>
+                        <span class="motion-logo__stage">
+                            <img src="mks_logo.png" onerror="this.onerror=null; this.src='https://lh3.googleusercontent.com/d/1ge2ndYnSE0CLQl_iqqRhcLGlxD0A-Bum';" alt="Sekolah Mitra Kasih" class="login-form-brand-logo motion-logo__image">
+                            <span class="motion-logo__shine" aria-hidden="true"></span>
+                        </span>
+                        <span class="motion-logo__spark motion-logo__spark--one" aria-hidden="true"></span>
+                        <span class="motion-logo__spark motion-logo__spark--two" aria-hidden="true"></span>
+                        <span class="motion-logo__spark motion-logo__spark--three" aria-hidden="true"></span>
+                    </button>
                 </div>
 
                 <div class="login-form-group">
@@ -78,6 +84,7 @@
 
     <script type="module" src="login.js?v=451"></script>
     <script type="module" src="studentNav.js?v=451"></script>
+    <script src="js/logo-motion.js?v=2" defer></script>
 </body>
 
 </html>
