@@ -434,7 +434,6 @@ function renderClassEditSchedule(selectedClass, calPrefix) {
               <div class="edit-slot-card">
                 <div class="edit-slot-header">
                   <span class="edit-period-label">Period ${slot.period}${rowspan > 1 ? `–${slot.period + rowspan - 1}` : ''}</span>
-                  ${rowspan > 1 ? `<span class="merged-badge-indicator">${rowspan} Periods</span>` : ''}
                   <div class="edit-merge-controls">
                     ${rowspan > 1 ? `<button type="button" class="btn-cell-action btn-split" data-day="${day}" data-slot="${slot.id}" data-span="${rowspan}" title="Split merged block into separate periods">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -534,37 +533,46 @@ function harvestClassEditInputs(selectedClass, calPrefix) {
     }
   });
 
-  // 2. Harvest custom subjects ONLY from VISIBLE, active custom inputs with a typed value
+  // 2. Harvest all slot subjects & custom events from every edit card
   if (draftWeeklySchedule) {
-    document.querySelectorAll('#classScheduleBody .edit-custom-subject-input').forEach(inp => {
-      // CRITICAL: Only harvest if this custom subject input is VISIBLE and has a non-empty value!
-      // Inactive/hidden custom inputs (for regular subjects like Math, English) must NEVER overwrite slots!
-      if (inp.style.display === 'none') return;
-      const rawVal = inp.value.trim();
-      if (!rawVal) return;
+    document.querySelectorAll('#classScheduleBody .edit-slot-card').forEach(card => {
+      const sel = card.querySelector('.edit-subject-select');
+      if (!sel) return;
 
-      const day = inp.dataset.day;
-      const slotId = parseInt(inp.dataset.slot, 10);
-      const span = parseInt(inp.dataset.span, 10) || 1;
+      const day = sel.dataset.day;
+      const slotId = parseInt(sel.dataset.slot, 10);
+      const span = parseInt(sel.dataset.span, 10) || 1;
+      if (!day || isNaN(slotId)) return;
+
+      const customInp = card.querySelector('.edit-custom-subject-input');
+      let chosenSubject = '';
+
+      if (sel.value === '__custom__') {
+        const typed = customInp ? customInp.value.trim() : '';
+        chosenSubject = typed || 'Urgent School Event';
+      } else {
+        chosenSubject = sel.value;
+      }
+
+      if (!chosenSubject) return;
 
       const sIndex = timeSlots.findIndex(s => s.id === slotId);
       for (let i = 0; i < span; i++) {
         const targetSlot = timeSlots[sIndex + i];
         if (targetSlot && !targetSlot.isBreak && draftWeeklySchedule[day]) {
           if (!draftWeeklySchedule[day][targetSlot.id] || draftWeeklySchedule[day][targetSlot.id].length === 0) {
-            draftWeeklySchedule[day][targetSlot.id] = [{ subject: rawVal, teacher: '' }];
+            draftWeeklySchedule[day][targetSlot.id] = [{ subject: chosenSubject, teacher: '' }];
           } else {
-            draftWeeklySchedule[day][targetSlot.id][0].subject = rawVal;
+            draftWeeklySchedule[day][targetSlot.id][0].subject = chosenSubject;
           }
         }
       }
 
       // Sync material key on the card
-      const card = inp.closest('.edit-slot-card');
-      const ta = card?.querySelector('.edit-mat-input');
+      const ta = card.querySelector('.edit-mat-input');
       if (ta) {
         const oldKey = ta.dataset.matkey;
-        const newKey = `${prefix}_${selectedClass}_${day}_${rawVal}`;
+        const newKey = `${prefix}_${selectedClass}_${day}_${chosenSubject}`;
         if (oldKey && oldKey !== newKey) {
           if (draftWeeklyMaterials[oldKey] !== undefined) {
             draftWeeklyMaterials[newKey] = { ...draftWeeklyMaterials[oldKey] };
@@ -611,6 +619,7 @@ function attachClassEditTableListeners(selectedClass, calPrefix) {
   // 2. Merge Down Button
   tbody.querySelectorAll('.btn-merge').forEach(btn => {
     btn.addEventListener('click', (e) => {
+      e.preventDefault();
       e.stopPropagation();
       harvestClassEditInputs(selectedClass, calPrefix);
       const day = btn.dataset.day;
@@ -631,6 +640,7 @@ function attachClassEditTableListeners(selectedClass, calPrefix) {
   // 3. Split Button
   tbody.querySelectorAll('.btn-split').forEach(btn => {
     btn.addEventListener('click', (e) => {
+      e.preventDefault();
       e.stopPropagation();
       harvestClassEditInputs(selectedClass, calPrefix);
       const day = btn.dataset.day;
@@ -641,8 +651,7 @@ function attachClassEditTableListeners(selectedClass, calPrefix) {
       for (let i = 1; i < span; i++) {
         const targetSlot = timeSlots[sIndex + i];
         if (targetSlot && !targetSlot.isBreak) {
-          const orig = draftWeeklySchedule[day][slotId]?.[0] || { subject: 'Subject', teacher: '' };
-          draftWeeklySchedule[day][targetSlot.id] = [{ subject: `${orig.subject} (Section ${i + 1})`, teacher: orig.teacher || '' }];
+          draftWeeklySchedule[day][targetSlot.id] = [];
         }
       }
       renderClassSchedule();
@@ -652,6 +661,7 @@ function attachClassEditTableListeners(selectedClass, calPrefix) {
   // 4. Clear Button
   tbody.querySelectorAll('.btn-clear').forEach(btn => {
     btn.addEventListener('click', (e) => {
+      e.preventDefault();
       e.stopPropagation();
       harvestClassEditInputs(selectedClass, calPrefix);
       const day = btn.dataset.day;
@@ -672,6 +682,7 @@ function attachClassEditTableListeners(selectedClass, calPrefix) {
   // 5. Override Split with Single / Urgent Event Button
   tbody.querySelectorAll('.btn-override-event').forEach(btn => {
     btn.addEventListener('click', (e) => {
+      e.preventDefault();
       e.stopPropagation();
       harvestClassEditInputs(selectedClass, calPrefix);
       const day = btn.dataset.day;
@@ -714,6 +725,7 @@ function attachClassEditTableListeners(selectedClass, calPrefix) {
   // 6. Restore Split from Master Schedule Button
   tbody.querySelectorAll('.btn-restore-split').forEach(btn => {
     btn.addEventListener('click', (e) => {
+      e.preventDefault();
       e.stopPropagation();
       harvestClassEditInputs(selectedClass, calPrefix);
       const day = btn.dataset.day;
@@ -738,6 +750,7 @@ function attachClassEditTableListeners(selectedClass, calPrefix) {
   // 7. Add Slot Button
   tbody.querySelectorAll('.btn-add-slot').forEach(btn => {
     btn.addEventListener('click', (e) => {
+      e.preventDefault();
       e.stopPropagation();
       harvestClassEditInputs(selectedClass, calPrefix);
       const day = btn.dataset.day;
@@ -748,29 +761,60 @@ function attachClassEditTableListeners(selectedClass, calPrefix) {
     });
   });
 
+  // Helper to update draftWeeklySchedule for a slot span and sync material key
+  const updateDraftSlotSubject = (day, slotId, span, newSubject, ta) => {
+    if (!draftWeeklySchedule?.[day]) return;
+    const sIndex = timeSlots.findIndex(s => s.id === slotId);
+    for (let i = 0; i < span; i++) {
+      const targetSlot = timeSlots[sIndex + i];
+      if (targetSlot && !targetSlot.isBreak) {
+        if (!draftWeeklySchedule[day][targetSlot.id] || draftWeeklySchedule[day][targetSlot.id].length === 0) {
+          draftWeeklySchedule[day][targetSlot.id] = [{ subject: newSubject, teacher: '' }];
+        } else {
+          draftWeeklySchedule[day][targetSlot.id][0].subject = newSubject;
+        }
+      }
+    }
+    if (ta && newSubject) {
+      const oldKey = ta.dataset.matkey;
+      const newKey = `${calPrefix}_${selectedClass}_${day}_${newSubject}`;
+      if (oldKey && oldKey !== newKey) {
+        if (draftWeeklyMaterials[oldKey] !== undefined) {
+          draftWeeklyMaterials[newKey] = { ...draftWeeklyMaterials[oldKey] };
+        }
+        ta.dataset.matkey = newKey;
+      }
+    }
+  };
+
   // 8. Subject Select change & click focus
   tbody.querySelectorAll('.edit-subject-select').forEach(sel => {
     sel.addEventListener('change', (e) => {
-      harvestClassEditInputs(selectedClass, calPrefix);
+      const card = sel.closest('.edit-slot-card');
+      const customInp = card?.querySelector('.edit-custom-subject-input');
+      const ta = card?.querySelector('.edit-mat-input');
       const day = sel.dataset.day;
       const slotId = parseInt(sel.dataset.slot, 10);
       const span = parseInt(sel.dataset.span, 10) || 1;
       const val = e.target.value;
 
-      const sIndex = timeSlots.findIndex(s => s.id === slotId);
-      const newSubject = val === '__custom__' ? 'Urgent School Event' : val;
-
-      for (let i = 0; i < span; i++) {
-        const targetSlot = timeSlots[sIndex + i];
-        if (targetSlot && !targetSlot.isBreak) {
-          if (!draftWeeklySchedule[day][targetSlot.id] || draftWeeklySchedule[day][targetSlot.id].length === 0) {
-            draftWeeklySchedule[day][targetSlot.id] = [{ subject: newSubject, teacher: '' }];
-          } else {
-            draftWeeklySchedule[day][targetSlot.id][0].subject = newSubject;
+      if (val === '__custom__') {
+        if (customInp) {
+          customInp.style.display = 'block';
+          if (!customInp.value.trim()) {
+            const currentSub = draftWeeklySchedule?.[day]?.[slotId]?.[0]?.subject;
+            customInp.value = (currentSub && !registeredSubjects.includes(currentSub)) ? currentSub : '';
           }
+          customInp.focus();
         }
+        const activeSub = (customInp?.value.trim()) || 'Urgent School Event';
+        updateDraftSlotSubject(day, slotId, span, activeSub, ta);
+      } else {
+        if (customInp) {
+          customInp.style.display = 'none';
+        }
+        updateDraftSlotSubject(day, slotId, span, val, ta);
       }
-      renderClassSchedule();
     });
 
     // If already custom and user clicks/focuses select, ensure text input is shown and focused
@@ -789,38 +833,19 @@ function attachClassEditTableListeners(selectedClass, calPrefix) {
   // 9. Custom Subject text input (listen to input, change, and blur)
   tbody.querySelectorAll('.edit-custom-subject-input').forEach(inp => {
     const handleCustomSubjectInput = (e) => {
-      const rawVal = inp.value.trim();
-      if (!rawVal) return;
+      const card = inp.closest('.edit-slot-card');
+      const sel = card?.querySelector('.edit-subject-select');
+      if (sel && sel.value !== '__custom__') {
+        sel.value = '__custom__';
+      }
 
       const day = inp.dataset.day;
       const slotId = parseInt(inp.dataset.slot, 10);
       const span = parseInt(inp.dataset.span, 10) || 1;
-
-      const sIndex = timeSlots.findIndex(s => s.id === slotId);
-      for (let i = 0; i < span; i++) {
-        const targetSlot = timeSlots[sIndex + i];
-        if (targetSlot && !targetSlot.isBreak && draftWeeklySchedule?.[day]) {
-          if (!draftWeeklySchedule[day][targetSlot.id] || draftWeeklySchedule[day][targetSlot.id].length === 0) {
-            draftWeeklySchedule[day][targetSlot.id] = [{ subject: rawVal, teacher: '' }];
-          } else {
-            draftWeeklySchedule[day][targetSlot.id][0].subject = rawVal;
-          }
-        }
-      }
-
-      // Update material key dynamically on the associated textarea so material changes aren't lost
-      const card = inp.closest('.edit-slot-card');
       const ta = card?.querySelector('.edit-mat-input');
-      if (ta && rawVal) {
-        const oldKey = ta.dataset.matkey;
-        const newKey = `${calPrefix}_${selectedClass}_${day}_${rawVal}`;
-        if (oldKey && oldKey !== newKey) {
-          if (draftWeeklyMaterials[oldKey] !== undefined) {
-            draftWeeklyMaterials[newKey] = { ...draftWeeklyMaterials[oldKey] };
-          }
-          ta.dataset.matkey = newKey;
-        }
-      }
+      const rawVal = inp.value.trim() || 'Urgent School Event';
+
+      updateDraftSlotSubject(day, slotId, span, rawVal, ta);
     };
 
     inp.addEventListener('input', handleCustomSubjectInput);
@@ -1035,10 +1060,6 @@ function renderClassSchedule() {
   if (!tbody) return;
 
   const calPrefix = getActiveCalendarPrefix('class');
-
-  if (isClassEditMode) {
-    harvestClassEditInputs(selectedClass, calPrefix);
-  }
 
   updateClassEditButtonState();
 

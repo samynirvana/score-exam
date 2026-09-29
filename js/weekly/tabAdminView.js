@@ -495,9 +495,9 @@ function syncEntitiesFromMasterSchedules() {
     });
   }
 
-  // 2. Scan weeklyOverrides for any additional classes
+  // 2. Scan weeklyOverrides for any additional classes and subjects
   if (weeklyOverrides && typeof weeklyOverrides === 'object') {
-    Object.keys(weeklyOverrides).forEach(key => {
+    Object.entries(weeklyOverrides).forEach(([key, overrideData]) => {
       const lastUnderscore = key.lastIndexOf('_');
       if (lastUnderscore !== -1) {
         const potentialClass = key.substring(lastUnderscore + 1).trim();
@@ -507,7 +507,34 @@ function syncEntitiesFromMasterSchedules() {
           changed = true;
         }
       }
+      const sched = overrideData?.schedule || overrideData;
+      if (sched && typeof sched === 'object') {
+        Object.values(sched).forEach(daySlots => {
+          if (daySlots && typeof daySlots === 'object') {
+            Object.values(daySlots).forEach(entries => {
+              const arr = Array.isArray(entries) ? entries : (entries ? [entries] : []);
+              arr.forEach(entry => {
+                if (entry && entry.subject) {
+                  const cleanSub = entry.subject.replace(/\s*\(Section\s*\d+\)$/i, '').trim();
+                  if (cleanSub && cleanSub !== '__custom__' && !subjectSet.has(cleanSub)) {
+                    subjectSet.add(cleanSub);
+                    appEntities.subjects.push(cleanSub);
+                    changed = true;
+                  }
+                }
+              });
+            });
+          }
+        });
+      }
     });
+  }
+
+  // Always ensure Pramuka is in registered subjects
+  if (!subjectSet.has('Pramuka')) {
+    subjectSet.add('Pramuka');
+    appEntities.subjects.push('Pramuka');
+    changed = true;
   }
 
   // Naturally sort classes (e.g., Grade 7A, Grade 7B, Grade 8A, Grade 9A, Grade 9B, Grade 10, etc.)

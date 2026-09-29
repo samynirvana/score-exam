@@ -27,8 +27,8 @@ let builderCustomRules = [
   },
   {
     id: 'rule_ms_friday_fixed',
-    title: 'Middle School Friday Period 1 Fixed: Library / Pramuka',
-    desc: 'Library and Pramuka are strictly locked into Friday Period 1 for all middle school classes (Grade 7, 8, 9).',
+    title: 'Middle School Friday Period 1 Fixed: Pramuka',
+    desc: 'Pramuka is strictly locked into Friday Period 1 for all middle school classes (Grade 7, 8, 9).',
     icon: '📚',
     status: 'Strict',
     active: true
@@ -695,7 +695,7 @@ function runClassScheduleGenerator() {
               if (!classOccupied[className]['FRIDAY'][1] && !teacherOccupancy['FRIDAY'][1].has(tLower)) {
                 classOccupied[className]['FRIDAY'][1] = true;
                 generated[className]['FRIDAY'][1] = [{
-                  subject: alloc.subject,
+                  subject: (alloc.subject === 'Library/Pramuka' ? 'Pramuka' : alloc.subject),
                   teacher: teacherName
                 }];
                 teacherOccupancy['FRIDAY'][1].add(tLower);

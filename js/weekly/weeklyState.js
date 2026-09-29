@@ -182,8 +182,15 @@ export function getActiveCalendarPrefix(viewType = 'class') {
 }
 
 // Application State
-export let appEntities = { teachers: [], classes: [], subjects: [], homeTeachers: {}, teacherEmails: {} };
-export function setAppEntities(val) { appEntities = val; }
+export let appEntities = { teachers: [], classes: [], subjects: ['Pramuka'], homeTeachers: {}, teacherEmails: {} };
+export function setAppEntities(val) {
+  if (val && Array.isArray(val.subjects)) {
+    if (!val.subjects.includes('Pramuka')) {
+      val.subjects.push('Pramuka');
+    }
+  }
+  appEntities = val;
+}
 
 export let classNotesData = {};
 export function setClassNotesData(val) { classNotesData = val; }
@@ -347,6 +354,8 @@ export function getSlotAssignments(className, day, slotId, viewCalPrefix = null)
   const calPrefix = viewCalPrefix || getActiveCalendarPrefix('class');
   const overrideKey = `${calPrefix}_${className}`;
 
+  let result = null;
+
   if (weeklyOverrides && weeklyOverrides[overrideKey]) {
     const overrideObj = weeklyOverrides[overrideKey];
     const scheduleMap = (overrideObj && typeof overrideObj.schedule === 'object' && Object.keys(overrideObj.schedule).length > 0)
@@ -355,18 +364,29 @@ export function getSlotAssignments(className, day, slotId, viewCalPrefix = null)
     if (scheduleMap && scheduleMap[day]) {
       const overrideVal = scheduleMap[day][slotId];
       if (overrideVal !== undefined) {
-        if (!overrideVal || overrideVal.length === 0) return [];
-        if (Array.isArray(overrideVal)) return overrideVal;
-        return [overrideVal];
+        if (!overrideVal || overrideVal.length === 0) result = [];
+        else if (Array.isArray(overrideVal)) result = overrideVal;
+        else result = [overrideVal];
       }
     }
   }
 
-  const entry = masterSchedules[className]?.[day]?.[slotId];
-  if (!entry) return [];
-  if (Array.isArray(entry)) return entry;
-  return [entry];
+  if (result === null) {
+    const entry = masterSchedules[className]?.[day]?.[slotId];
+    if (!entry) result = [];
+    else if (Array.isArray(entry)) result = entry;
+    else result = [entry];
+  }
+
+  // Universal normalization: "Library/Pramuka" is permanently modernized to "Pramuka"
+  return result.map(item => {
+    if (item && item.subject === 'Library/Pramuka') {
+      return { ...item, subject: 'Pramuka' };
+    }
+    return item;
+  });
 }
+
 
 export function updateUniformBadges(selectedClass, calPrefix = null) {
   const prefix = calPrefix || getActiveCalendarPrefix('class');

@@ -656,7 +656,7 @@ button, input, select, textarea {
   font-weight: 600;
   color: #0f172a;
   outline: none;
-  transition: all 0.2s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   cursor: pointer;
   min-width: 120px;
 }
@@ -906,6 +906,8 @@ button, input, select, textarea {
   align-items: center;
   gap: 3px;
   transition: all 0.15s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .btn-cell-action * {
