@@ -28,7 +28,8 @@ import {
   loadDriveFolderSettings,
   renderActiveTabsControlTable,
   populateCalendarSelects,
-  checkUserRoleAccess
+  checkUserRoleAccess,
+  renderAppUpdateControlPanel
 } from "../../weekly.js";
 
 export {
@@ -68,6 +69,7 @@ document.getElementById('btnSubCalendar')?.addEventListener('click', (e) => {
 document.getElementById('btnSubTabs')?.addEventListener('click', (e) => {
   switchAdminSubTab('subTabTabs', e.target);
   renderActiveTabsControlTable();
+  renderAppUpdateControlPanel();
 });
 document.getElementById('btnSubDrive')?.addEventListener('click', (e) => {
   switchAdminSubTab('subTabDrive', e.target);

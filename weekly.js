@@ -209,6 +209,309 @@ try {
   console.warn("tabPermissions snapshot setup skipped:", e);
 }
 
+// ======================================================
+// APP UPDATE & DEEP CACHE PURGE SYSTEM
+// ======================================================
+export let currentAppUpdateConfig = {
+  enabled: false,
+  updateId: 'v_default',
+  title: 'Portal Update Ready',
+  message: 'We have updated the portal with important bug fixes and system improvements. Click below to clear stored caches and load the latest version.',
+  allowSkip: false
+};
+
+export async function executeDeepCachePurge(targetUpdateId = null) {
+  const btn = document.getElementById('btnExecuteAppUpdate');
+  const btnText = document.getElementById('btnExecuteAppUpdateText');
+  if (btn) btn.disabled = true;
+  if (btnText) btnText.textContent = t('update_modal_loading') || 'Clearing cache & reloading...';
+
+  try {
+    // 1. Unregister all Service Workers
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (const reg of registrations) {
+        await reg.unregister();
+      }
+    }
+  } catch (err) {
+    console.warn("SW unregister error:", err);
+  }
+
+  try {
+    // 2. Delete all CacheStorage caches
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(key => caches.delete(key)));
+    }
+  } catch (err) {
+    console.warn("CacheStorage delete error:", err);
+  }
+
+  try {
+    // 3. Clear cookies
+    const cookies = document.cookie.split(";");
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i];
+      const eqPos = cookie.indexOf("=");
+      const name = eqPos > -1 ? cookie.substring(0, eqPos).trim() : cookie.trim();
+      if (name) {
+        document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+        document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=" + window.location.hostname;
+        const hostParts = window.location.hostname.split('.');
+        if (hostParts.length > 1) {
+          document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=." + window.location.hostname;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Cookies clear error:", err);
+  }
+
+  try {
+    // 4. Clear sessionStorage
+    sessionStorage.clear();
+  } catch (err) {
+    console.warn("sessionStorage clear error:", err);
+  }
+
+  try {
+    // 5. Clear IndexedDB databases (resets Firestore offline persistence cache)
+    if (window.indexedDB && indexedDB.databases) {
+      const dbs = await indexedDB.databases();
+      for (const dbInfo of dbs) {
+        if (dbInfo.name) {
+          indexedDB.deleteDatabase(dbInfo.name);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("IndexedDB clear error:", err);
+  }
+
+  try {
+    // 6. Record applied update ID before clearing, then save only that ID to prevent infinite reload loops
+    const idToSave = targetUpdateId || ('manual_' + Date.now());
+    localStorage.clear();
+    localStorage.setItem('mks_weekly_applied_update_id', idToSave);
+  } catch (err) {
+    console.warn("localStorage clear error:", err);
+  }
+
+  // 7. Force cache-busting hard reload
+  const targetUrl = new URL(window.location.origin + window.location.pathname);
+  targetUrl.searchParams.set('_v', Date.now().toString());
+  window.location.replace(targetUrl.toString());
+}
+
+export function initAppUpdateListener() {
+  try {
+    onSnapshot(doc(db, "config", "weeklyAppUpdate"), (docSnap) => {
+      if (docSnap.exists()) {
+        currentAppUpdateConfig = { ...currentAppUpdateConfig, ...docSnap.data() };
+      } else {
+        currentAppUpdateConfig = {
+          enabled: false,
+          updateId: 'v_default',
+          title: 'Portal Update Ready',
+          message: 'We have updated the portal with important bug fixes and system improvements. Click below to clear stored caches and load the latest version.',
+          allowSkip: false
+        };
+      }
+      checkAndPromptAppUpdate();
+      renderAppUpdateControlPanel();
+    }, (err) => {
+      console.warn("Could not listen to config/weeklyAppUpdate:", err);
+    });
+  } catch (err) {
+    console.warn("App update listener setup skipped:", err);
+  }
+}
+
+export function checkAndPromptAppUpdate() {
+  const modal = document.getElementById('appUpdateModal');
+  if (!modal) return;
+
+  if (!currentAppUpdateConfig || !currentAppUpdateConfig.enabled) {
+    modal.style.display = 'none';
+    return;
+  }
+
+  const currentUpdateId = currentAppUpdateConfig.updateId || 'v_default';
+  const appliedUpdateId = localStorage.getItem('mks_weekly_applied_update_id');
+
+  // If already applied on this browser, keep it hidden
+  if (appliedUpdateId === currentUpdateId) {
+    modal.style.display = 'none';
+    return;
+  }
+
+  // Otherwise, user needs to update! Display update modal
+  const titleEl = document.getElementById('appUpdateModalTitle');
+  const msgEl = document.getElementById('appUpdateModalMessage');
+  const skipBtn = document.getElementById('btnSkipAppUpdate');
+
+  if (titleEl && currentAppUpdateConfig.title) {
+    titleEl.textContent = currentAppUpdateConfig.title;
+  }
+  if (msgEl && currentAppUpdateConfig.message) {
+    msgEl.textContent = currentAppUpdateConfig.message;
+  }
+  if (skipBtn) {
+    skipBtn.style.display = currentAppUpdateConfig.allowSkip ? 'inline-block' : 'none';
+  }
+
+  modal.style.display = 'flex';
+}
+
+export function renderAppUpdateControlPanel() {
+  const toggle = document.getElementById('toggleAppUpdateModal');
+  const versionInput = document.getElementById('adminUpdateVersionInput');
+  const msgInput = document.getElementById('adminUpdateMessageInput');
+  const allowSkipToggle = document.getElementById('toggleAllowSkipUpdate');
+  const badge = document.getElementById('updateModalStatusBadge');
+
+  if (!toggle) return;
+
+  const isEnabled = !!currentAppUpdateConfig.enabled;
+  toggle.checked = isEnabled;
+  if (badge) {
+    if (isEnabled) {
+      badge.textContent = "Active (Prompting Users)";
+      badge.style.background = "#dcfce7";
+      badge.style.color = "#15803d";
+      badge.style.border = "1px solid #86efac";
+    } else {
+      badge.textContent = "Disabled";
+      badge.style.background = "#f1f5f9";
+      badge.style.color = "#64748b";
+      badge.style.border = "1px solid #cbd5e1";
+    }
+  }
+
+  if (versionInput && !versionInput.matches(':focus')) {
+    versionInput.value = currentAppUpdateConfig.updateId || '';
+  }
+  if (msgInput && !msgInput.matches(':focus')) {
+    msgInput.value = currentAppUpdateConfig.message || '';
+  }
+  if (allowSkipToggle) {
+    allowSkipToggle.checked = !!currentAppUpdateConfig.allowSkip;
+  }
+}
+
+export async function saveAppUpdateSettings(newSettings = {}) {
+  if (!isAdminUser()) {
+    alert("Only administrators can configure update settings.");
+    return false;
+  }
+
+  const feedback = document.getElementById('adminUpdateStatusFeedback');
+  const saveBtn = document.getElementById('btnSaveAppUpdateSettings');
+  if (saveBtn) saveBtn.disabled = true;
+
+  try {
+    const payload = {
+      enabled: newSettings.enabled !== undefined ? newSettings.enabled : (document.getElementById('toggleAppUpdateModal')?.checked || false),
+      updateId: (newSettings.updateId !== undefined ? newSettings.updateId : document.getElementById('adminUpdateVersionInput')?.value.trim()) || ('v_' + Date.now()),
+      message: (newSettings.message !== undefined ? newSettings.message : document.getElementById('adminUpdateMessageInput')?.value.trim()) || 'We have updated the portal with important bug fixes and system improvements. Click below to clear stored caches and load the latest version.',
+      allowSkip: newSettings.allowSkip !== undefined ? newSettings.allowSkip : (document.getElementById('toggleAllowSkipUpdate')?.checked || false),
+      updatedAt: Date.now(),
+      updatedBy: auth.currentUser?.email || 'admin'
+    };
+
+    await setDoc(doc(db, "config", "weeklyAppUpdate"), payload, { merge: true });
+
+    currentAppUpdateConfig = { ...currentAppUpdateConfig, ...payload };
+    renderAppUpdateControlPanel();
+    checkAndPromptAppUpdate();
+
+    if (feedback) {
+      feedback.style.display = 'block';
+      feedback.style.background = '#f0fdf4';
+      feedback.style.color = '#15803d';
+      feedback.style.border = '1px solid #bbf7d0';
+      feedback.textContent = '✓ Update settings saved! Users will be prompted according to this configuration.';
+      setTimeout(() => { feedback.style.display = 'none'; }, 4000);
+    }
+    return true;
+  } catch (err) {
+    console.error("Error saving app update settings:", err);
+    if (feedback) {
+      feedback.style.display = 'block';
+      feedback.style.background = '#fef2f2';
+      feedback.style.color = '#dc2626';
+      feedback.style.border = '1px solid #fecaca';
+      feedback.textContent = 'Failed to save settings: ' + err.message;
+    }
+    alert("Error saving app update settings: " + err.message);
+    return false;
+  } finally {
+    if (saveBtn) saveBtn.disabled = false;
+  }
+}
+
+export function initAppUpdateUIEvents() {
+  // 1. User clicks Update on modal
+  document.getElementById('btnExecuteAppUpdate')?.addEventListener('click', () => {
+    executeDeepCachePurge(currentAppUpdateConfig?.updateId);
+  });
+
+  // 2. User skips update if allowed
+  document.getElementById('btnSkipAppUpdate')?.addEventListener('click', () => {
+    const modal = document.getElementById('appUpdateModal');
+    if (modal) modal.style.display = 'none';
+  });
+
+  // 3. Fallback manual clear cache on login screen
+  document.getElementById('btnManualClearCacheLink')?.addEventListener('click', () => {
+    if (confirm("Clear all browser cache, cookies, and temporary site data to reload the newest version of the page?")) {
+      executeDeepCachePurge(currentAppUpdateConfig?.updateId);
+    }
+  });
+
+  // 4. Admin Toggle Switch
+  document.getElementById('toggleAppUpdateModal')?.addEventListener('change', (e) => {
+    saveAppUpdateSettings({ enabled: e.target.checked });
+  });
+
+  // 5. Admin Generate New Update ID
+  document.getElementById('btnGenerateUpdateId')?.addEventListener('click', () => {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const newId = 'v_' + now.getFullYear() + '.' + pad(now.getMonth() + 1) + '.' + pad(now.getDate()) + '_' + pad(now.getHours()) + pad(now.getMinutes());
+    const input = document.getElementById('adminUpdateVersionInput');
+    if (input) {
+      input.value = newId;
+      input.focus();
+    }
+    const feedback = document.getElementById('adminUpdateStatusFeedback');
+    if (feedback) {
+      feedback.style.display = 'block';
+      feedback.style.background = '#eff6ff';
+      feedback.style.color = '#1d4ed8';
+      feedback.style.border = '1px solid #bfdbfe';
+      feedback.textContent = `Generated new ID: ${newId}. Click "Save Update Settings" to push to all users.`;
+      setTimeout(() => { feedback.style.display = 'none'; }, 4000);
+    }
+  });
+
+  // 6. Admin Save Button
+  document.getElementById('btnSaveAppUpdateSettings')?.addEventListener('click', () => {
+    saveAppUpdateSettings();
+  });
+
+  // 7. Admin Test Cache Clear
+  document.getElementById('btnAdminTestClearCache')?.addEventListener('click', () => {
+    if (confirm("This will clear your local browser cache, service workers, cookies, and reload the latest page. Continue?")) {
+      executeDeepCachePurge(currentAppUpdateConfig?.updateId);
+    }
+  });
+}
+
+window.executeDeepCachePurge = executeDeepCachePurge;
+window.saveAppUpdateSettings = saveAppUpdateSettings;
+
 export function updateClassEditButtonState() {
   const selectedClass = document.getElementById('classSelectView')?.value;
   const btnEdit = document.getElementById('btnEditClassWeekly');
@@ -991,6 +1294,7 @@ function initWeeklyI18n() {
         initScheduleBuilderView();
       } else if (tabId === 'adminView') {
         renderActiveTabsControlTable();
+        renderAppUpdateControlPanel();
         renderEntityTables();
         renderManageScheduleTable();
       }
@@ -1022,6 +1326,8 @@ if (document.readyState === 'loading') {
     initTeacherSchedulesFirestoreListener();
     initScheduleExcelImport();
     updateLoginVisualDayNight();
+    initAppUpdateListener();
+    initAppUpdateUIEvents();
   });
 } else {
   initDraggableNavTabs();
@@ -1030,4 +1336,6 @@ if (document.readyState === 'loading') {
   initTeacherSchedulesFirestoreListener();
   initScheduleExcelImport();
   updateLoginVisualDayNight();
+  initAppUpdateListener();
+  initAppUpdateUIEvents();
 }

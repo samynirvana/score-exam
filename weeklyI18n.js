@@ -101,7 +101,16 @@ export const translations = {
     switch_week: "Week",
 
     // Tooltip
-    lang_toggle_title: "Ganti ke Bahasa Indonesia"
+    lang_toggle_title: "Ganti ke Bahasa Indonesia",
+
+    // Update Modal
+    update_modal_badge: "⚡ New Release Available",
+    update_modal_title: "Portal Update Ready",
+    update_modal_msg: "We have updated the portal with important bug fixes and system improvements. Click below to clear stored caches and load the latest version.",
+    update_modal_btn: "Click to Update & Clear Cache",
+    update_modal_skip: "Continue to Login without updating",
+    update_modal_loading: "Clearing cache & reloading...",
+    update_manual_link: "Having trouble loading? Click here to clear cache & reload"
   },
   id: {
     // Navigation Tabs
@@ -200,7 +209,16 @@ export const translations = {
     switch_week: "Pekan",
 
     // Tooltip
-    lang_toggle_title: "Switch to English"
+    lang_toggle_title: "Switch to English",
+
+    // Update Modal
+    update_modal_badge: "⚡ Pembaruan Baru Tersedia",
+    update_modal_title: "Pembaruan Portal Tersedia",
+    update_modal_msg: "Kami telah memperbarui portal dengan perbaikan bug dan peningkatan sistem. Klik di bawah untuk membersihkan cache lama dan memuat versi terbaru.",
+    update_modal_btn: "Klik untuk Memperbarui & Bersihkan Cache",
+    update_modal_skip: "Lanjut ke Login tanpa memperbarui",
+    update_modal_loading: "Membersihkan cache & memuat ulang...",
+    update_manual_link: "Kendala memuat halaman? Klik di sini untuk bersihkan cache & muat ulang"
   }
 };
 
