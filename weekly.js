@@ -994,6 +994,66 @@ onSnapshot(doc(db, "schedules", "classNotesData"), (docSnap) => {
   renderTeacherView();
 });
 
+// Session & Inactivity Management (1 hour timeout for weekly schedule)
+const WEEKLY_SESSION_KEY = 'weeklyLastActiveTime';
+const WEEKLY_SESSION_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
+
+function isWeeklySessionExpired() {
+  const lastActiveStr = localStorage.getItem(WEEKLY_SESSION_KEY);
+  if (!lastActiveStr) return true;
+  const lastActive = parseInt(lastActiveStr, 10);
+  if (isNaN(lastActive) || lastActive <= 0) return true;
+  return (Date.now() - lastActive) >= WEEKLY_SESSION_TIMEOUT_MS;
+}
+
+let lastWeeklyTouchTime = 0;
+function touchWeeklySession(force = false) {
+  const now = Date.now();
+  if (!force && (now - lastWeeklyTouchTime < 30 * 1000)) return; // Throttle to once every 30s
+  lastWeeklyTouchTime = now;
+  try {
+    localStorage.setItem(WEEKLY_SESSION_KEY, now.toString());
+  } catch (e) {
+    console.warn('Failed to update weekly session timestamp:', e);
+  }
+}
+
+function clearWeeklySession() {
+  try {
+    localStorage.removeItem(WEEKLY_SESSION_KEY);
+  } catch (e) {}
+}
+
+async function forceWeeklyRelogin(reason = '') {
+  clearWeeklySession();
+  const loginModal = document.getElementById('loginModal');
+  const appMain = document.getElementById('appMain');
+  if (loginModal) loginModal.style.display = 'flex';
+  if (appMain) appMain.style.display = 'none';
+
+  const passInput = document.getElementById('loginPassword');
+  if (passInput) passInput.value = '';
+
+  const errDiv = document.getElementById('loginError');
+  if (errDiv) {
+    if (reason) {
+      errDiv.textContent = reason;
+      errDiv.style.display = 'block';
+      errDiv.classList.remove('hidden');
+    } else {
+      errDiv.textContent = '';
+      errDiv.style.display = 'none';
+      errDiv.classList.add('hidden');
+    }
+  }
+
+  try {
+    await signOut(auth);
+  } catch (err) {
+    console.warn('Error during forced weekly signout:', err);
+  }
+}
+
 // Authentication State Observer
 onAuthStateChanged(auth, async (user) => {
   const loginModal = document.getElementById('loginModal');
@@ -1002,6 +1062,14 @@ onAuthStateChanged(auth, async (user) => {
   const userDisplayEmailText = document.getElementById('userDisplayEmailText');
 
   if (user) {
+    // If user hasn't accessed weekly.html for 1 hour or more, require re-login
+    if (isWeeklySessionExpired()) {
+      console.warn('[Weekly Security] Inactivity >= 1 hour since last access. Requiring re-login.');
+      await forceWeeklyRelogin();
+      return;
+    }
+
+    touchWeeklySession(true);
     if (loginModal) loginModal.style.display = 'none';
     if (appMain) appMain.style.display = 'block';
     updateUserDisplayEmail(user.email);
@@ -1012,6 +1080,7 @@ onAuthStateChanged(auth, async (user) => {
     attachRippleEffect('button, .login-btn, .save-btn, .export-btn, .nav-item, .quick-link-card');
     initStaggeredReveals();
   } else {
+    clearWeeklySession();
     if (loginModal) loginModal.style.display = 'flex';
     if (appMain) appMain.style.display = 'none';
   }
@@ -1129,8 +1198,11 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
   submitBtn.textContent = 'Authenticating...';
 
   try {
+    touchWeeklySession(true);
     await signInWithEmailAndPassword(auth, email, password);
+    touchWeeklySession(true);
   } catch (err) {
+    clearWeeklySession();
     if (errDiv) {
       errDiv.textContent = err.message.replace("Firebase: ", "");
       errDiv.style.display = 'block';
@@ -1148,8 +1220,46 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
 });
 
 document.getElementById('btnLogout')?.addEventListener('click', () => {
+  clearWeeklySession();
   signOut(auth);
 });
+
+// Keep weekly session active during user interaction
+['click', 'keydown', 'touchstart', 'scroll'].forEach(evt => {
+  window.addEventListener(evt, () => {
+    if (auth.currentUser && !isWeeklySessionExpired()) {
+      touchWeeklySession(false);
+    }
+  }, { passive: true });
+});
+
+// Check expiration on tab visibility / focus change
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && auth.currentUser) {
+    if (isWeeklySessionExpired()) {
+      forceWeeklyRelogin('Session expired due to inactivity (> 1 hour). Please log in again.');
+    } else {
+      touchWeeklySession(true);
+    }
+  }
+});
+
+window.addEventListener('focus', () => {
+  if (auth.currentUser) {
+    if (isWeeklySessionExpired()) {
+      forceWeeklyRelogin('Session expired due to inactivity (> 1 hour). Please log in again.');
+    } else {
+      touchWeeklySession(true);
+    }
+  }
+});
+
+// Periodic idle check every minute
+setInterval(() => {
+  if (auth.currentUser && isWeeklySessionExpired()) {
+    forceWeeklyRelogin('Session expired due to inactivity (> 1 hour). Please log in again.');
+  }
+}, 60 * 1000);
 
 // Top Navigation Tab Event Listeners
 document.getElementById('btnClassView')?.addEventListener('click', (e) => switchTab('classView', e.currentTarget));

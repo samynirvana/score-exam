@@ -110,7 +110,7 @@ export const translations = {
     update_modal_btn: "Click to Update & Clear Cache",
     update_modal_skip: "Continue to Login without updating",
     update_modal_loading: "Clearing cache & reloading...",
-    update_manual_link: "Having trouble loading? Click here to clear cache & reload"
+    update_manual_link: "Having trouble? Please click here!"
   },
   id: {
     // Navigation Tabs
@@ -218,7 +218,7 @@ export const translations = {
     update_modal_btn: "Klik untuk Memperbarui & Bersihkan Cache",
     update_modal_skip: "Lanjut ke Login tanpa memperbarui",
     update_modal_loading: "Membersihkan cache & memuat ulang...",
-    update_manual_link: "Kendala memuat halaman? Klik di sini untuk bersihkan cache & muat ulang"
+    update_manual_link: "Ada kendala? Silakan klik di sini!"
   }
 };
 

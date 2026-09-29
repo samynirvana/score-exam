@@ -85,9 +85,8 @@
 
           <!-- Fallback Manual Cache Purge Link -->
           <div style="margin-top: 16px; text-align: center;">
-            <button type="button" id="btnManualClearCacheLink" style="background: none; border: none; font-size: 11.5px; color: #64748b; text-decoration: underline; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 6px; transition: color 0.15s ease;">
-              <span>🔄</span>
-              <span>Having trouble loading? Click here to clear cache & reload</span>
+            <button type="button" id="btnManualClearCacheLink" style="background: none; border: none; font-size: 11.5px; color: #64748b; text-decoration: underline; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 4px 8px; border-radius: 6px; transition: color 0.15s ease;">
+              <span data-i18n="update_manual_link">Having trouble? Please click here!</span>
             </button>
           </div>
         </form>
@@ -2757,8 +2756,8 @@
     </div>
   </div>
 
-  <script type="module" src="weeklyI18n.js?v=442"></script>
-  <script type="module" src="weekly.js?v=442"></script>
+  <script type="module" src="weeklyI18n.js?v=443"></script>
+  <script type="module" src="weekly.js?v=443"></script>
   <script src="js/logo-motion.js?v=2" defer></script>
   <script type="module">import { trackCurrentPage } from './js/userActivity.js'; trackCurrentPage();</script>
 </body>
