@@ -33,7 +33,9 @@ import {
   formatModernDateRange,
   formatPrintDateRange,
   getActiveCalendarPrefix,
-  getSlotAssignments
+  getSlotAssignments,
+  getMaterialKey,
+  getMaterialInfo
 } from "./weeklyState.js";
 import { renderTeacherView } from "./tabTeacherView.js";
 import { updateClassEditButtonState, updateClassDaySelectOptions, populateCalendarSelects } from "../../weekly.js";
@@ -82,8 +84,13 @@ function areSlotAssignmentsMatching(entries1, entries2) {
   if (entries1.length === 0) return false;
 
   if (entries1.length === 1) {
-    const sub1 = entries1[0].subject;
-    const sub2 = entries2[0].subject;
+    const e1 = entries1[0];
+    const e2 = entries2[0];
+    if (e1.teacher && e2.teacher && e1.teacher !== e2.teacher) {
+      return false;
+    }
+    const sub1 = e1.subject;
+    const sub2 = e2.subject;
     const g1 = getSubjectGroupType(sub1);
     const g2 = getSubjectGroupType(sub2);
     if (isSameSubjectGroup(sub1, sub2)) return true;
@@ -91,8 +98,8 @@ function areSlotAssignmentsMatching(entries1, entries2) {
     return false;
   }
 
-  const subjects1 = entries1.map(e => e.subject).sort();
-  const subjects2 = entries2.map(e => e.subject).sort();
+  const subjects1 = entries1.map(e => `${e.subject}__${e.teacher || ''}`).sort();
+  const subjects2 = entries2.map(e => `${e.subject}__${e.teacher || ''}`).sort();
   return subjects1.every((s, idx) => s === subjects2[idx]);
 }
 
@@ -281,11 +288,12 @@ function initDraftWeeklyData(selectedClass, calPrefix) {
         draftWeeklySchedule[day][slot.id] = JSON.parse(JSON.stringify(current));
         current.forEach(entry => {
           if (entry.subject) {
-            const matKey = `${calPrefix}_${selectedClass}_${day}_${entry.subject}`;
+            const matKey = getMaterialKey(calPrefix, selectedClass, day, entry.subject, entry.teacher);
             if (draftWeeklyMaterials[matKey] === undefined) {
+              const info = getMaterialInfo(materialsData, calPrefix, selectedClass, day, entry.subject, entry.teacher);
               draftWeeklyMaterials[matKey] = {
-                material: materialsData[matKey]?.material || '',
-                link: materialsData[matKey]?.link || ''
+                material: info.material || '',
+                link: info.link || ''
               };
             }
           }
@@ -376,21 +384,21 @@ function renderClassEditSchedule(selectedClass, calPrefix) {
               </div>
             `;
             slotEntries.forEach((entry, eIdx) => {
-              const matKey = `${calPrefix}_${selectedClass}_${day}_${entry.subject}`;
-              const matInfo = draftWeeklyMaterials[matKey] || materialsData[matKey] || { material: '', link: '' };
-              const teacherTag = entry.teacher ? ` <span style="font-weight:400; color:#64748b;">(${entry.teacher})</span>` : '';
+              const matKey = getMaterialKey(calPrefix, selectedClass, day, entry.subject, entry.teacher);
+              const matInfo = draftWeeklyMaterials[matKey] || getMaterialInfo(materialsData, calPrefix, selectedClass, day, entry.subject, entry.teacher);
+              const teacherTag = entry.teacher ? ` <span style="font-weight:400; color:#64748b;">(${escapeHtml(entry.teacher)})</span>` : '';
               slotBodyHtml += `
                 <div style="border-top: ${eIdx > 0 ? '1px dashed #cbd5e1' : 'none'}; padding-top: ${eIdx > 0 ? '6px' : '0'}; margin-top: ${eIdx > 0 ? '6px' : '0'};">
-                  <div class="edit-field-label" style="font-weight:700; color:#1e293b;">${entry.subject}${teacherTag}</div>
+                  <div class="edit-field-label" style="font-weight:700; color:#1e293b;">${escapeHtml(entry.subject)}${teacherTag}</div>
                   <div class="edit-field-label" style="font-size:10px;">Material (This Week)</div>
-                  <textarea class="edit-cell-textarea edit-mat-input" data-matkey="${matKey}" placeholder="Describe material for ${entry.subject}...">${matInfo.material || ''}</textarea>
+                  <textarea class="edit-cell-textarea edit-mat-input" data-matkey="${matKey}" placeholder="Describe material for ${escapeHtml(entry.subject)}...">${escapeHtml(matInfo.material || '')}</textarea>
                 </div>
               `;
             });
           } else {
             const entry = slotEntries[0];
-            const matKey = `${calPrefix}_${selectedClass}_${day}_${entry.subject}`;
-            const matInfo = draftWeeklyMaterials[matKey] || materialsData[matKey] || { material: '', link: '' };
+            const matKey = getMaterialKey(calPrefix, selectedClass, day, entry.subject, entry.teacher);
+            const matInfo = draftWeeklyMaterials[matKey] || getMaterialInfo(materialsData, calPrefix, selectedClass, day, entry.subject, entry.teacher);
             const isCustomSubject = !registeredSubjects.includes(entry.subject);
 
             let subjectOptionsHtml = registeredSubjects.map(sub => `<option value="${sub}" ${sub === entry.subject ? 'selected' : ''}>${sub}</option>`).join('');
@@ -416,6 +424,8 @@ function renderClassEditSchedule(selectedClass, calPrefix) {
               `;
             }
 
+            const teacherLabel = entry.teacher ? ` - <span style="color:#2563eb; font-weight:600;">(${escapeHtml(entry.teacher)})</span>` : '';
+
             slotBodyHtml += `
               ${restoreSplitHtml}
               <div class="edit-field-label">Subject / Urgent Event</div>
@@ -424,8 +434,8 @@ function renderClassEditSchedule(selectedClass, calPrefix) {
               </select>
               <input type="text" class="edit-cell-input edit-custom-subject-input" data-day="${day}" data-slot="${slot.id}" data-span="${rowspan}" placeholder="Type custom event title..." value="${isCustomSubject ? escapeHtml(entry.subject) : ''}" style="display: ${customInputDisplay}; margin-top: 3px;">
 
-              <div class="edit-field-label">Material (This Week)</div>
-              <textarea class="edit-cell-textarea edit-mat-input" data-matkey="${matKey}" placeholder="Describe material / topic for this week...">${matInfo.material || ''}</textarea>
+              <div class="edit-field-label">Material (This Week)${teacherLabel}</div>
+              <textarea class="edit-cell-textarea edit-mat-input" data-matkey="${matKey}" placeholder="Describe material / topic for this week...">${escapeHtml(matInfo.material || '')}</textarea>
             `;
           }
 
@@ -572,7 +582,8 @@ function harvestClassEditInputs(selectedClass, calPrefix) {
       const ta = card.querySelector('.edit-mat-input');
       if (ta) {
         const oldKey = ta.dataset.matkey;
-        const newKey = `${prefix}_${selectedClass}_${day}_${chosenSubject}`;
+        const currentTeacher = (draftWeeklySchedule[day]?.[slotId]?.[0]?.teacher) || '';
+        const newKey = getMaterialKey(prefix, selectedClass, day, chosenSubject, currentTeacher);
         if (oldKey && oldKey !== newKey) {
           if (draftWeeklyMaterials[oldKey] !== undefined) {
             draftWeeklyMaterials[newKey] = { ...draftWeeklyMaterials[oldKey] };
@@ -697,7 +708,7 @@ function attachClassEditTableListeners(selectedClass, calPrefix) {
       const currentEntries = draftWeeklySchedule[day]?.[slotId] || [];
       for (const entry of currentEntries) {
         if (entry.subject) {
-          const k = `${calPrefix}_${selectedClass}_${day}_${entry.subject}`;
+          const k = getMaterialKey(calPrefix, selectedClass, day, entry.subject, entry.teacher);
           if (draftWeeklyMaterials[k]?.material) {
             existingMat = draftWeeklyMaterials[k].material;
             existingLink = draftWeeklyMaterials[k].link || '';
@@ -714,7 +725,7 @@ function attachClassEditTableListeners(selectedClass, calPrefix) {
       }
 
       if (existingMat) {
-        const newMatKey = `${calPrefix}_${selectedClass}_${day}_Urgent School Event`;
+        const newMatKey = getMaterialKey(calPrefix, selectedClass, day, 'Urgent School Event', '');
         draftWeeklyMaterials[newMatKey] = { material: existingMat, link: existingLink };
       }
 
@@ -777,7 +788,8 @@ function attachClassEditTableListeners(selectedClass, calPrefix) {
     }
     if (ta && newSubject) {
       const oldKey = ta.dataset.matkey;
-      const newKey = `${calPrefix}_${selectedClass}_${day}_${newSubject}`;
+      const currentTeacher = (draftWeeklySchedule[day]?.[slotId]?.[0]?.teacher) || '';
+      const newKey = getMaterialKey(calPrefix, selectedClass, day, newSubject, currentTeacher);
       if (oldKey && oldKey !== newKey) {
         if (draftWeeklyMaterials[oldKey] !== undefined) {
           draftWeeklyMaterials[newKey] = { ...draftWeeklyMaterials[oldKey] };
@@ -1226,8 +1238,7 @@ function renderClassSchedule() {
 
             let itemsHtml = '';
             slotEntries.forEach(entry => {
-              const matKey = `${calPrefix}_${selectedClass}_${day}_${entry.subject}`;
-              const matInfo = materialsData[matKey] || {};
+              const matInfo = getMaterialInfo(materialsData, calPrefix, selectedClass, day, entry.subject, entry.teacher);
               const linkHtml = matInfo.link ? `<a href="${matInfo.link}" target="_blank" class="resource-link">${linkSvg}Link</a>` : '';
               const itemPastelStyle = getSubjectPastelStyle(entry.subject);
               const teacherHtml = (entry.teacher && showTeacher) ? `<div class="teacher-sub">${entry.teacher}</div>` : '';
@@ -1251,8 +1262,7 @@ function renderClassSchedule() {
               </div>`;
           } else {
             const entry = slotEntries[0];
-            const matKey = `${calPrefix}_${selectedClass}_${day}_${entry.subject}`;
-            const matInfo = materialsData[matKey] || {};
+            const matInfo = getMaterialInfo(materialsData, calPrefix, selectedClass, day, entry.subject, entry.teacher);
             const linkHtml = matInfo.link ? `<a href="${matInfo.link}" target="_blank" class="resource-link">${linkSvg}Link</a>` : '';
             const teacherHtml = (entry.teacher && showTeacher) ? `<div class="teacher-tag">${entry.teacher}</div>` : '';
             cellStyle = getSubjectPastelStyle(entry.subject);

@@ -16,7 +16,9 @@ import {
   getFridayMiddleSchoolTime,
   formatModernDateRange,
   getActiveCalendarPrefix,
-  getSlotAssignments
+  getSlotAssignments,
+  getMaterialKey,
+  getMaterialInfo
 } from "./weeklyState.js";
 import { renderClassSchedule, getSubjectPastelObject, getSubjectPastelStyle } from "./tabClassView.js";
 import { autoResizeTextarea, updateTeacherDaySelectOptions } from "../../weekly.js";
@@ -426,9 +428,9 @@ function renderTeacherView() {
               }
             }
 
-            const matKey = `${calPrefix}_${className}_${day}_${subject}`;
-            const matInfo = materialsData[matKey] || {};
-            const matText = matInfo.material ? `<div style="font-size:0.75rem; margin-top:3px; font-weight:500;">${matInfo.material}</div>` : '';
+            const matInfo = getMaterialInfo(materialsData, calPrefix, className, day, subject, selectedTeacher);
+
+            const matText = matInfo.material ? `<div style="font-size:0.75rem; margin-top:3px; font-weight:500;">${escapeHtml(matInfo.material)}</div>` : '';
             const linkHtml = matInfo.link ? `<a href="${matInfo.link}" target="_blank" class="resource-link" style="margin-top:3px; display:inline-block; font-size:0.7rem;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px; vertical-align:middle;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Link</a>` : '';
 
             const cellStyle = getSubjectPastelStyle(subject);
@@ -472,7 +474,7 @@ function renderTeacherView() {
         const slotEntries = getSlotAssignments(className, day, slot.id);
         slotEntries.forEach(entry => {
           if (entry.teacher === selectedTeacher) {
-            const key = `${calPrefix}_${className}_${day}_${entry.subject}`;
+            const key = getMaterialKey(calPrefix, className, day, entry.subject, selectedTeacher);
             if (!teacherAssignments.find(a => a.key === key)) {
               teacherAssignments.push({ key, className, day, subject: entry.subject });
             }
@@ -501,8 +503,8 @@ function renderTeacherView() {
     // If the user already had text in this input, prioritize it so concurrent snapshots don't erase typing
     const mat = (currentInputsMap[item.key] !== undefined)
       ? currentInputsMap[item.key]
-      : (materialsData[item.key]?.material || '');
-    const link = materialsData[item.key]?.link || '';
+      : (materialsData[item.key]?.material || getMaterialInfo(materialsData, calPrefix, item.className, item.day, item.subject, selectedTeacher).material || '');
+    const link = materialsData[item.key]?.link || getMaterialInfo(materialsData, calPrefix, item.className, item.day, item.subject, selectedTeacher).link || '';
     const dayShort = item.day.substring(0, 3);
 
     const tr = document.createElement('tr');

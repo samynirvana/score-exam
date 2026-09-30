@@ -455,3 +455,27 @@ export async function syncAllClassesWeeklyOverrides(academicYear = '2026-2027') 
   return;
 }
 
+// Generate material key distinguishing teacher when multiple teachers instruct the same subject
+export function getMaterialKey(calPrefix, className, day, subject, teacher = null) {
+  const cleanTeacher = (teacher || '').trim();
+  if (cleanTeacher) {
+    return `${calPrefix}_${className}_${day}_${subject}_${cleanTeacher}`;
+  }
+  return `${calPrefix}_${className}_${day}_${subject}`;
+}
+
+// Retrieve material info prioritizing teacher-specific key with fallback to legacy generic key
+export function getMaterialInfo(materials, calPrefix, className, day, subject, teacher = null) {
+  if (!materials) return { material: '', link: '' };
+  const cleanTeacher = (teacher || '').trim();
+  if (cleanTeacher) {
+    const teacherKey = `${calPrefix}_${className}_${day}_${subject}_${cleanTeacher}`;
+    if (materials[teacherKey] !== undefined) {
+      return materials[teacherKey];
+    }
+  }
+  const genericKey = `${calPrefix}_${className}_${day}_${subject}`;
+  return materials[genericKey] || { material: '', link: '' };
+}
+
+
