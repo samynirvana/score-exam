@@ -2778,6 +2778,7 @@ div.gform-q-input:empty:before {
     #studentsTable,
     #pointsTable,
     #behaviorTabPointsTable,
+    #behaviorClassSummaryTable,
     #manageScoreTable,
     #manageNewsTable,
     #quizTable {
@@ -4924,6 +4925,94 @@ body.dark-mode #attendanceTable td:last-child {
     display: inline-block !important;
     flex: 0 0 auto !important;
     margin: 0 !important;
+}
+
+/* Fix Behavior Student Points header controls layout */
+.behavior-header-controls {
+    display: flex !important;
+    gap: 8px !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+}
+
+.behavior-search-wrapper {
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    flex: 0 1 230px !important;
+    min-width: 170px !important;
+}
+
+.behavior-search-wrapper .search-line-icon {
+    position: absolute !important;
+    left: 11px !important;
+    color: #94a3b8 !important;
+    pointer-events: none !important;
+    z-index: 2 !important;
+}
+
+#searchBehaviorStudents {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 38px !important;
+    padding: 0 12px 0 34px !important;
+    font-size: 13px !important;
+    display: block !important;
+    box-sizing: border-box !important;
+    border-radius: 8px !important;
+    border: 1px solid var(--border-color, #cbd5e1) !important;
+    background: var(--bg-card, #ffffff) !important;
+    color: var(--text-dark, #1e293b) !important;
+    margin: 0 !important;
+}
+
+#filterBehaviorClass {
+    width: auto !important;
+    min-width: 125px !important;
+    max-width: 165px !important;
+    height: 38px !important;
+    padding: 6px 12px !important;
+    font-size: 13px !important;
+    display: inline-block !important;
+    flex: 0 0 auto !important;
+    border-radius: 8px !important;
+    border: 1px solid var(--border-color, #cbd5e1) !important;
+    background: var(--bg-card, #ffffff) !important;
+    color: var(--text-dark, #1e293b) !important;
+    margin: 0 !important;
+}
+
+#sortBehaviorStudents {
+    width: auto !important;
+    min-width: 135px !important;
+    max-width: 165px !important;
+    height: 38px !important;
+    padding: 6px 12px !important;
+    font-size: 13px !important;
+    display: inline-block !important;
+    flex: 0 0 auto !important;
+    border-radius: 8px !important;
+    border: 1px solid var(--border-color, #cbd5e1) !important;
+    background: var(--bg-card, #ffffff) !important;
+    color: var(--text-dark, #1e293b) !important;
+    margin: 0 !important;
+}
+
+@media (max-width: 768px) {
+    .behavior-header-controls {
+        flex-wrap: wrap !important;
+        width: 100% !important;
+    }
+    .behavior-search-wrapper {
+        flex: 1 1 100% !important;
+        width: 100% !important;
+    }
+    #filterBehaviorClass,
+    #sortBehaviorStudents {
+        flex: 1 1 calc(50% - 4px) !important;
+        min-width: 0 !important;
+        max-width: none !important;
+    }
 }
 
 /* ======================================================

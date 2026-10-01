@@ -2811,3 +2811,62 @@ body.dark-mode .timeline-tab-select option {
 .dm-emoji-picker button { width: 34px !important; height: 34px !important; min-height: 34px !important; font-size: 22px !important; line-height: 1 !important; }
 .dm-download-btn { flex: 0 0 auto; border: 0 !important; background: transparent !important; color: inherit !important; cursor: pointer !important; padding: 2px !important; font-size: 15px !important; }
 @media (max-width: 480px) { .dm-emoji-picker { right: 42px !important; } }
+
+/* ======================================================
+   TIMELINE LOAD MORE BUTTON & CONTAINER
+   ====================================================== */
+.timeline-load-more-container {
+    padding: 24px 16px 36px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-timeline-load-more {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--card-bg, #ffffff);
+    color: var(--primary-color, #1e5eff);
+    border: 1.5px solid var(--border-color, #cbd5e1);
+    padding: 10px 24px;
+    border-radius: 24px;
+    font-size: 13.5px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+    transition: all 0.2s ease;
+    min-height: 40px;
+}
+
+.btn-timeline-load-more:hover:not(:disabled) {
+    background: var(--primary-color, #1e5eff);
+    color: #ffffff;
+    border-color: var(--primary-color, #1e5eff);
+    box-shadow: 0 4px 12px rgba(30, 94, 255, 0.25);
+    transform: translateY(-1px);
+}
+
+.btn-timeline-load-more:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.btn-timeline-load-more:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.timeline-end-message {
+    padding: 24px 16px 36px 16px;
+    text-align: center;
+    color: var(--text-muted, #94a3b8);
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}

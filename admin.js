@@ -7218,33 +7218,79 @@ window.togglePtCodeVisibility = function (studentId) {
 };
 
 let uniquePastReasons = [];
+let cachedBehaviorStudents = [];
+let cachedBehaviorClassTotals = [];
 
 // 1. Core Data Aggregator for Behavior Tab
 async function refreshBehaviorTabLedgers() {
     try {
+        // Ensure student directory is fetched if available
+        let studentDocs = [];
+        try {
+            if (typeof getOrFetchStudents === 'function') {
+                studentDocs = await getOrFetchStudents();
+            } else if (Array.isArray(allStudentsData) && allStudentsData.length > 0) {
+                studentDocs = allStudentsData;
+            }
+        } catch (err) {
+            console.warn("Could not fetch students directory for behavior aggregation:", err);
+        }
+
         const pointsSnap = await getDocs(collection(db, "student_points"));
 
-        // Variables for tables
-        const studentTotals = {};
+        // Build base student map (from students directory if present)
+        const studentsMap = {};
+        if (Array.isArray(studentDocs) && studentDocs.length > 0) {
+            studentDocs.forEach(s => {
+                const sCode = s.id || s.studentCode || s.code;
+                const sClass = s.studentClass || s.Class || s.class || 'N/A';
+                if (sCode) {
+                    studentsMap[sCode] = {
+                        code: sCode,
+                        name: s.studentName || 'N/A',
+                        sClass: sClass,
+                        total: 0,
+                        posPts: 0,
+                        negPts: 0,
+                        entryCount: 0
+                    };
+                }
+            });
+        }
+
         const reasonStats = {};
         const reasonsSet = new Set();
 
         pointsSnap.forEach(doc => {
             const data = doc.data();
             const pt = parseFloat(data.points) || 0;
+            const code = data.studentCode || doc.id;
             const reasonRaw = (data.reason || "Unknown").trim();
             const rKey = reasonRaw.toLowerCase();
 
-            // Build student totals for the full ledger
-            if (!studentTotals[data.studentCode]) {
-                studentTotals[data.studentCode] = {
-                    code: data.studentCode,
-                    name: data.studentName,
-                    sClass: data.studentClass,
-                    total: 0
+            if (!studentsMap[code]) {
+                studentsMap[code] = {
+                    code: code,
+                    name: data.studentName || 'N/A',
+                    sClass: data.studentClass || 'N/A',
+                    total: 0,
+                    posPts: 0,
+                    negPts: 0,
+                    entryCount: 0
                 };
             }
-            studentTotals[data.studentCode].total += pt;
+            studentsMap[code].total += pt;
+            studentsMap[code].entryCount += 1;
+            if (pt > 0) studentsMap[code].posPts += pt;
+            if (pt < 0) studentsMap[code].negPts += Math.abs(pt);
+
+            // If name or class was missing in directory, backfill from points entry
+            if (studentsMap[code].name === 'N/A' && data.studentName) {
+                studentsMap[code].name = data.studentName;
+            }
+            if ((studentsMap[code].sClass === 'N/A' || !studentsMap[code].sClass) && data.studentClass) {
+                studentsMap[code].sClass = data.studentClass;
+            }
 
             // Build reason statistics
             if (reasonRaw) {
@@ -7260,40 +7306,227 @@ async function refreshBehaviorTabLedgers() {
 
         uniquePastReasons = Array.from(reasonsSet);
 
-        // --- Render Full Ledger in Behavior Tab (without student code column) ---
-        const ledgerTbody = document.querySelector("#behaviorTabPointsTable tbody");
-        if (ledgerTbody) {
-            ledgerTbody.innerHTML = "";
-            Object.values(studentTotals)
-                .sort((a, b) => b.total - a.total)
-                .forEach(info => {
-                    const color = info.total > 0 ? '#28a745' : (info.total < 0 ? '#dc3545' : '#333');
-                    const sign = info.total > 0 ? '+' : '';
-                    const safeName = (info.name || '').replace(/'/g, "\\'");
+        // Aggregate class summaries
+        const classAgg = {};
+        Object.values(studentsMap).forEach(s => {
+            const cName = (s.sClass || 'N/A').trim();
+            if (!classAgg[cName]) {
+                classAgg[cName] = {
+                    className: cName,
+                    totalStudents: 0,
+                    studentsWithRecords: 0,
+                    posPoints: 0,
+                    negPoints: 0,
+                    totalPoints: 0
+                };
+            }
+            classAgg[cName].totalStudents++;
+            classAgg[cName].posPoints += s.posPts;
+            classAgg[cName].negPoints += s.negPts;
+            classAgg[cName].totalPoints += s.total;
+            if (s.entryCount > 0) {
+                classAgg[cName].studentsWithRecords++;
+            }
+        });
 
-                    ledgerTbody.innerHTML += `<tr>
-                        <td><strong>${info.name || 'N/A'}</strong></td>
-                        <td><strong>${info.sClass || 'N/A'}</strong></td>
-                        <td><strong style="color: ${color};">${sign}${info.total}</strong></td>
-                        <td>
-                            <div class="kebab-menu">
-                                <button class="kebab-btn" onclick="toggleMenu(event, 'bhv-${info.code}')">⋮</button>
-                                <div id="menu-bhv-${info.code}" class="dropdown-menu">
-                                    <button class="dropdown-item" onclick="openBehaviorHistoryModal('${info.code}', '${safeName}')">View History</button>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>`;
-                });
+        // Store in global caches
+        cachedBehaviorStudents = Object.values(studentsMap);
+        cachedBehaviorClassTotals = Object.values(classAgg).sort((a, b) => {
+            return a.className.localeCompare(b.className, undefined, { numeric: true, sensitivity: 'base' });
+        });
+
+        // Render Class Summary Table only if user has opened the section
+        const classContainer = document.getElementById("containerBehaviorClassData");
+        if (classContainer && !classContainer.classList.contains("hidden")) {
+            renderBehaviorClassSummaryTable();
         }
 
-        // --- Render Behavior Analytics Bar Charts (Chart.js) ---
+        // Populate Class Filter Dropdown
+        populateBehaviorClassDropdown();
+
+        // Render & Filter Students Table
+        window.filterBehaviorStudentsTable();
+
+        // Render Behavior Analytics Bar Charts (Chart.js)
         renderBehaviorCharts(reasonStats);
 
     } catch (e) {
         console.error("Error generating behavior stats: ", e);
     }
 }
+
+function renderBehaviorClassSummaryTable() {
+    const tbody = document.getElementById("behaviorClassSummaryTbody");
+    const countBadge = document.getElementById("behaviorClassCountBadge");
+    if (!tbody) return;
+
+    if (countBadge) {
+        countBadge.style.display = 'inline-block';
+        countBadge.innerText = `${cachedBehaviorClassTotals.length} Classes`;
+    }
+
+    if (cachedBehaviorClassTotals.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text-gray); padding: 18px;">No class behavior records found.</td></tr>`;
+        return;
+    }
+
+    let html = "";
+    cachedBehaviorClassTotals.forEach(c => {
+        const totalPts = Math.round(c.totalPoints * 10) / 10;
+        const color = totalPts > 0 ? '#10b981' : (totalPts < 0 ? '#e02d2d' : 'var(--text-dark)');
+        const sign = totalPts > 0 ? '+' : '';
+        const safeClass = (c.className || '').replace(/'/g, "\\'");
+
+        html += `<tr>
+            <td><strong>${c.className || 'N/A'}</strong></td>
+            <td style="text-align: center;">${c.totalStudents} <span style="font-size: 11px; color: var(--text-gray);">(${c.studentsWithRecords} with records)</span></td>
+            <td style="text-align: center; color: #10b981; font-weight: 600;">+${Math.round(c.posPoints * 10) / 10}</td>
+            <td style="text-align: center; color: #e02d2d; font-weight: 600;">-${Math.round(c.negPoints * 10) / 10}</td>
+            <td style="text-align: center;"><strong style="color: ${color}; font-size: 14.5px;">${sign}${totalPts}</strong></td>
+            <td style="text-align: center;">
+                <button type="button" class="edit-btn" onclick="window.selectBehaviorClass('${safeClass}')" style="padding: 4px 10px; font-size: 12px; border-radius: 6px; cursor: pointer;">
+                    View Students
+                </button>
+            </td>
+        </tr>`;
+    });
+    tbody.innerHTML = html;
+}
+
+function populateBehaviorClassDropdown() {
+    const classDropdown = document.getElementById("filterBehaviorClass");
+    if (!classDropdown) return;
+
+    const currentVal = classDropdown.value;
+    const classes = cachedBehaviorClassTotals.map(c => c.className).filter(c => c && c !== 'N/A');
+
+    classDropdown.innerHTML = '<option value="all">All Classes</option>';
+    classes.forEach(cls => {
+        classDropdown.innerHTML += `<option value="${cls}">${cls}</option>`;
+    });
+
+    if (classes.includes(currentVal)) {
+        classDropdown.value = currentVal;
+    } else {
+        classDropdown.value = 'all';
+    }
+}
+
+window.filterBehaviorStudentsTable = function () {
+    const tbody = document.querySelector("#behaviorTabPointsTable tbody");
+    const countBadge = document.getElementById("behaviorStudentsCountBadge");
+    const classTotalBadge = document.getElementById("behaviorClassTotalBadge");
+    if (!tbody) return;
+
+    const searchInput = document.getElementById("searchBehaviorStudents");
+    const classSelect = document.getElementById("filterBehaviorClass");
+    const sortSelect = document.getElementById("sortBehaviorStudents");
+
+    const searchVal = searchInput ? searchInput.value.toLowerCase().trim() : "";
+    const selectedClass = classSelect ? classSelect.value : "all";
+    const sortVal = sortSelect ? sortSelect.value : "pointsDesc";
+
+    let filtered = [...cachedBehaviorStudents];
+
+    // Filter by Class
+    if (selectedClass !== "all") {
+        filtered = filtered.filter(s => s.sClass === selectedClass);
+    }
+
+    // Filter by Search Query (Name, Class, or Code)
+    if (searchVal) {
+        filtered = filtered.filter(s => {
+            const nameMatch = (s.name || '').toLowerCase().includes(searchVal);
+            const classMatch = (s.sClass || '').toLowerCase().includes(searchVal);
+            const codeMatch = (s.code || '').toLowerCase().includes(searchVal);
+            return nameMatch || classMatch || codeMatch;
+        });
+    }
+
+    // Sorting
+    filtered.sort((a, b) => {
+        if (sortVal === 'pointsDesc') {
+            return (b.total - a.total) || a.name.localeCompare(b.name);
+        } else if (sortVal === 'pointsAsc') {
+            return (a.total - b.total) || a.name.localeCompare(b.name);
+        } else if (sortVal === 'nameAsc') {
+            return a.name.localeCompare(b.name);
+        } else if (sortVal === 'classAsc') {
+            return a.sClass.localeCompare(b.sClass, undefined, { numeric: true }) || (b.total - a.total);
+        }
+        return b.total - a.total;
+    });
+
+    // Update Badges & Total display
+    if (countBadge) {
+        countBadge.innerText = `${filtered.length} Students`;
+    }
+
+    if (classTotalBadge) {
+        let sumPoints = 0;
+        filtered.forEach(s => sumPoints += s.total);
+        sumPoints = Math.round(sumPoints * 10) / 10;
+        const sign = sumPoints > 0 ? '+' : '';
+        const color = sumPoints > 0 ? '#059669' : (sumPoints < 0 ? '#dc2626' : '#475569');
+
+        if (selectedClass !== 'all') {
+            classTotalBadge.style.display = 'inline-block';
+            classTotalBadge.innerHTML = `Class ${selectedClass} Total: <strong style="color:${color};">${sign}${sumPoints} pts</strong>`;
+        } else if (searchVal) {
+            classTotalBadge.style.display = 'inline-block';
+            classTotalBadge.innerHTML = `Search Total: <strong style="color:${color};">${sign}${sumPoints} pts</strong>`;
+        } else {
+            classTotalBadge.style.display = 'inline-block';
+            classTotalBadge.innerHTML = `All Classes Total: <strong style="color:${color};">${sign}${sumPoints} pts</strong>`;
+        }
+    }
+
+    // Render Table Body
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: var(--text-gray); padding: 24px;">No students found matching your search.</td></tr>`;
+        return;
+    }
+
+    let html = "";
+    filtered.forEach(info => {
+        const roundedTotal = Math.round(info.total * 10) / 10;
+        const color = roundedTotal > 0 ? '#10b981' : (roundedTotal < 0 ? '#e02d2d' : 'var(--text-dark)');
+        const sign = roundedTotal > 0 ? '+' : '';
+        const safeName = (info.name || '').replace(/'/g, "\\'");
+
+        html += `<tr>
+            <td><strong>${info.name || 'N/A'}</strong></td>
+            <td><strong>${info.sClass || 'N/A'}</strong></td>
+            <td><strong style="color: ${color}; font-size: 14px;">${sign}${roundedTotal}</strong></td>
+            <td style="text-align: center;">
+                <div class="kebab-menu">
+                    <button class="kebab-btn" onclick="toggleMenu(event, 'bhv-${info.code}')">⋮</button>
+                    <div id="menu-bhv-${info.code}" class="dropdown-menu">
+                        <button class="dropdown-item" onclick="openBehaviorHistoryModal('${info.code}', '${safeName}')">View History</button>
+                    </div>
+                </div>
+            </td>
+        </tr>`;
+    });
+    tbody.innerHTML = html;
+};
+
+window.selectBehaviorClass = function (className) {
+    const classDropdown = document.getElementById("filterBehaviorClass");
+    if (classDropdown) {
+        classDropdown.value = className;
+    }
+    const searchInput = document.getElementById("searchBehaviorStudents");
+    if (searchInput) {
+        searchInput.value = "";
+    }
+    window.filterBehaviorStudentsTable();
+
+    const targetBox = document.getElementById("studentBehaviorPointsBox");
+    if (targetBox) {
+        targetBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+};
 
 let posChartInstance = null;
 let negChartInstance = null;
@@ -7391,6 +7624,24 @@ window.toggleBehaviorCharts = function () {
         container.classList.add('hidden');
         btn.innerText = 'Show Diagram';
         btn.classList.remove('diagram-hidden-state');
+        btn.style.background = '';
+    }
+};
+
+window.toggleBehaviorClassData = function () {
+    const container = document.getElementById('containerBehaviorClassData');
+    const btn = document.getElementById('btnToggleBehaviorClassData');
+    if (!container || !btn) return;
+
+    if (container.classList.contains('hidden')) {
+        container.classList.remove('hidden');
+        btn.innerText = 'Hide Behavior Class Data';
+        btn.style.background = '#64748b';
+        // Only load/render when clicked to open
+        renderBehaviorClassSummaryTable();
+    } else {
+        container.classList.add('hidden');
+        btn.innerText = 'Open Behavior Class Data';
         btn.style.background = '';
     }
 };
@@ -8215,7 +8466,7 @@ window.openBehaviorHistoryModal = async function (studentCode, studentName) {
 
     if (!modal || !tbody) return;
 
-    title.innerText = `Behavior History: ${studentName} (${studentCode})`;
+    title.innerText = `Behavior History: ${studentName}`;
     tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">Loading logs...</td></tr>`;
 
     modal.classList.remove('hidden');

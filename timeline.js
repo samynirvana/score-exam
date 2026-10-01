@@ -1340,13 +1340,14 @@ window.toggleLikePost = async function(postId) {
 };
 
 // --- TIMELINE FILTER TABS (CLASS vs ALL POSTS) & PAGINATION ---
-const TIMELINE_PAGE_SIZE = 10;
+const TIMELINE_PAGE_SIZE = 15;
 let currentRenderedLimit = TIMELINE_PAGE_SIZE;
-let timelineIntersectionObserver = null;
 let isLoadingMoreTimelinePosts = false;
 let currentTimelineTab = 'all'; // 'class' or 'all'
 let currentStaffSelectedClass = '';
 let allCachedPosts = [];
+let currentFirestoreLimit = 60;
+let hasMoreFirestorePosts = true;
 
 async function renderTimelineTabs() {
     const tabsWrapper = document.getElementById('timelineTabsWrapper');
@@ -1439,18 +1440,22 @@ function updateActiveTabUI() {
     }
 }
 
-function loadPosts() {
+function loadPosts(requestedLimit = currentFirestoreLimit) {
     if (!currentUser) return; 
     if (unsubscribePosts) unsubscribePosts();
 
-    const postsQuery = query(collection(db, "timeline_posts"), orderBy("timestamp", "desc"), limit(40));
+    currentFirestoreLimit = requestedLimit;
+    const postsQuery = query(collection(db, "timeline_posts"), orderBy("timestamp", "desc"), limit(currentFirestoreLimit));
 
     unsubscribePosts = onSnapshot(postsQuery, (snapshot) => {
         allCachedPosts = [];
         snapshot.forEach((docSnap) => {
             allCachedPosts.push({ id: docSnap.id, ...docSnap.data() });
         });
+        hasMoreFirestorePosts = snapshot.docs.length >= currentFirestoreLimit;
         renderTimelineFeed(false);
+    }, (err) => {
+        console.error("Error loading timeline posts:", err);
     });
 }
 
@@ -1487,11 +1492,6 @@ function renderTimelineFeed(resetPagination = true) {
         currentRenderedLimit = TIMELINE_PAGE_SIZE;
     }
 
-    if (timelineIntersectionObserver) {
-        timelineIntersectionObserver.disconnect();
-        timelineIntersectionObserver = null;
-    }
-
     feed.innerHTML = '';
 
     const isStaff = currentUser?.type === 'staff';
@@ -1517,87 +1517,103 @@ function renderTimelineFeed(resetPagination = true) {
         renderSinglePostElement(post, feed);
     });
 
-    if (filtered.length > currentRenderedLimit) {
-        attachTimelineInfiniteScroll(feed);
+    renderTimelineLoadMoreControl(feed, filtered);
+}
+
+function renderTimelineLoadMoreControl(feed, filtered) {
+    const existingContainer = document.getElementById('timelineLoadMoreContainer');
+    if (existingContainer) existingContainer.remove();
+
+    const existingEndMsg = document.getElementById('timelineEndMessage');
+    if (existingEndMsg) existingEndMsg.remove();
+
+    const hasMoreLocalPosts = filtered.length > currentRenderedLimit;
+    const canFetchMoreFromDb = hasMoreFirestorePosts;
+
+    if (hasMoreLocalPosts || canFetchMoreFromDb) {
+        const container = document.createElement('div');
+        container.id = 'timelineLoadMoreContainer';
+        container.className = 'timeline-load-more-container';
+
+        container.innerHTML = `
+            <button type="button" id="btnTimelineLoadMore" class="btn-timeline-load-more" onclick="window.loadMoreTimelinePosts()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+                <span>Load More Posts</span>
+            </button>
+        `;
+        feed.appendChild(container);
+    } else if (filtered.length > 0) {
+        const endMsg = document.createElement('div');
+        endMsg.id = 'timelineEndMessage';
+        endMsg.className = 'timeline-end-message';
+        endMsg.innerHTML = `
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="9 12 11 14 15 10"></polyline>
+            </svg>
+            <span>You've reached the end of the posts</span>
+        `;
+        feed.appendChild(endMsg);
     }
 }
 
-function attachTimelineInfiniteScroll(feed) {
-    const existingSentinel = document.getElementById('timelineScrollSentinel');
-    if (existingSentinel) existingSentinel.remove();
-
-    const sentinel = document.createElement('div');
-    sentinel.id = 'timelineScrollSentinel';
-    sentinel.className = 'timeline-scroll-sentinel';
-    sentinel.style.cssText = 'padding: 24px 16px; text-align: center; color: var(--text-muted, #94a3b8); font-size: 13.5px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;';
-    sentinel.innerHTML = `
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 0.8s linear infinite;">
-            <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
-            <path d="M12 2a10 10 0 0 1 10 10" stroke="#1e5eff"></path>
-        </svg>
-        <span>Loading more posts...</span>
-    `;
-    feed.appendChild(sentinel);
-
-    if ('IntersectionObserver' in window) {
-        timelineIntersectionObserver = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting) {
-                loadNextTimelineBatch();
-            }
-        }, {
-            root: null,
-            rootMargin: '250px 0px',
-            threshold: 0.05
-        });
-        timelineIntersectionObserver.observe(sentinel);
-    }
-}
-
-function loadNextTimelineBatch() {
+window.loadMoreTimelinePosts = async function () {
     if (isLoadingMoreTimelinePosts) return;
     isLoadingMoreTimelinePosts = true;
 
-    const feed = document.getElementById('timelineFeed');
-    const sentinel = document.getElementById('timelineScrollSentinel');
-    if (!feed) {
-        isLoadingMoreTimelinePosts = false;
-        return;
+    const btn = document.getElementById('btnTimelineLoadMore');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 0.8s linear infinite;">
+                <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+                <path d="M12 2a10 10 0 0 1 10 10" stroke="#1e5eff"></path>
+            </svg>
+            <span>Loading...</span>
+        `;
     }
 
     const filtered = getFilteredTimelinePosts();
-    const nextStartIndex = currentRenderedLimit;
-    const nextEndIndex = nextStartIndex + TIMELINE_PAGE_SIZE;
-    const nextSlice = filtered.slice(nextStartIndex, nextEndIndex);
 
-    currentRenderedLimit = nextEndIndex;
+    // If we don't have enough posts in memory for the next batch and DB may have more, expand Firestore query
+    if (filtered.length <= currentRenderedLimit && hasMoreFirestorePosts) {
+        const nextLimit = currentFirestoreLimit + 30;
+        await new Promise((resolve) => {
+            currentFirestoreLimit = nextLimit;
+            if (unsubscribePosts) unsubscribePosts();
 
-    if (nextSlice.length > 0) {
-        nextSlice.forEach(post => {
-            renderSinglePostElement(post, feed, sentinel);
+            const postsQuery = query(collection(db, "timeline_posts"), orderBy("timestamp", "desc"), limit(currentFirestoreLimit));
+
+            let resolved = false;
+            unsubscribePosts = onSnapshot(postsQuery, (snapshot) => {
+                allCachedPosts = [];
+                snapshot.forEach((docSnap) => {
+                    allCachedPosts.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                hasMoreFirestorePosts = snapshot.docs.length >= currentFirestoreLimit;
+                if (!resolved) {
+                    resolved = true;
+                    resolve();
+                } else {
+                    renderTimelineFeed(false);
+                }
+            }, (err) => {
+                console.error("Error expanding timeline query:", err);
+                if (!resolved) {
+                    resolved = true;
+                    resolve();
+                }
+            });
         });
     }
 
-    if (currentRenderedLimit >= filtered.length) {
-        if (timelineIntersectionObserver) {
-            timelineIntersectionObserver.disconnect();
-            timelineIntersectionObserver = null;
-        }
-        if (sentinel) sentinel.remove();
-    }
+    currentRenderedLimit += TIMELINE_PAGE_SIZE;
+    renderTimelineFeed(false);
 
     isLoadingMoreTimelinePosts = false;
-}
-
-// Fallback window scroll listener for loading next batches smoothly
-window.addEventListener('scroll', () => {
-    const sentinel = document.getElementById('timelineScrollSentinel');
-    if (sentinel && !isLoadingMoreTimelinePosts) {
-        const rect = sentinel.getBoundingClientRect();
-        if (rect.top <= window.innerHeight + 300) {
-            loadNextTimelineBatch();
-        }
-    }
-}, { passive: true });
+};
 
 function renderSinglePostElement(post, feed, insertBeforeElement = null) {
     const postId = post.id;
