@@ -66,8 +66,24 @@ service cloud.firestore {
 
     // 3. Behavior / Merit & Demerit Points
     match /student_points/{pointId} {
+      allow read, create: if true;
+      allow update, delete: if isStaffOrAdmin();
+    }
+
+    // 3b. Daily Missions & Student Submissions
+    match /daily_missions/{missionId} {
       allow read: if true;
       allow write: if isStaffOrAdmin();
+    }
+
+    match /daily_mission_submissions/{subId} {
+      allow read, create, update: if true;
+      allow delete: if isStaffOrAdmin();
+    }
+
+    match /daily_mission_rewards/{rewardId} {
+      allow read, create, update: if true;
+      allow delete: if isStaffOrAdmin();
     }
 
     // 4. School News & Updates

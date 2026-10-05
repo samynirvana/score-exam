@@ -77,15 +77,20 @@ function doPost(e) {
       if (folders.hasNext()) {
         targetFolder = folders.next();
       } else {
-        var pFolders = DriveApp.getFoldersByName("picdb");
+        var pFolders = DriveApp.getFoldersByName("picsdb");
         if (pFolders.hasNext()) {
           targetFolder = pFolders.next();
         } else {
-          var tFolders = DriveApp.getFoldersByName("TimelineDB");
-          if (tFolders.hasNext()) {
-            targetFolder = tFolders.next();
+          var pFolders2 = DriveApp.getFoldersByName("picdb");
+          if (pFolders2.hasNext()) {
+            targetFolder = pFolders2.next();
           } else {
-            targetFolder = DriveApp.createFolder(folderName || "picdb");
+            var tFolders = DriveApp.getFoldersByName("TimelineDB");
+            if (tFolders.hasNext()) {
+              targetFolder = tFolders.next();
+            } else {
+              targetFolder = DriveApp.createFolder(folderName || "picsdb");
+            }
           }
         }
       }

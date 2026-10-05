@@ -25,6 +25,7 @@
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="admin.css?v=431">
+    <link rel="stylesheet" href="dailyMission.css?v=440">
 </head>
 
 <body>
@@ -232,6 +233,17 @@
                         <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
                     </svg>
                     <span class="menu-label">News and Notices</span>
+                </button>
+
+                <!-- 5b. Daily Mission -->
+                <button class="menu-btn" data-tab="tab-daily-mission" data-label="Daily Mission" id="menuDailyMission">
+                    <svg class="menu-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <circle cx="12" cy="12" r="6"></circle>
+                        <circle cx="12" cy="12" r="2"></circle>
+                    </svg>
+                    <span class="menu-label">Daily Mission</span>
                 </button>
 
                 <div class="menu-item-group" id="groupTools">
@@ -554,6 +566,17 @@
                             <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
                         </svg>
                         <span>News & Notices</span>
+                    </button>
+
+                    <!-- 5b. Daily Mission -->
+                    <button class="kebab-item" data-tab="tab-daily-mission" id="mobileMenuDailyMission">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <circle cx="12" cy="12" r="6"></circle>
+                            <circle cx="12" cy="12" r="2"></circle>
+                        </svg>
+                        <span>Daily Mission</span>
                     </button>
 
                     <button type="button" class="kebab-item" id="mobileMenuTools" aria-expanded="false"
@@ -2918,6 +2941,208 @@
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 5b: Daily Mission -->
+                <div id="tab-daily-mission" class="tab-content">
+                    <!-- Top Header & Week Navigator -->
+                    <div class="box" style="margin-bottom: 20px; padding: 20px 24px; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%); border: 1.5px solid var(--dm-primary-border);">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div class="dm-icon-badge" style="width: 40px; height: 40px; border-radius: 10px;">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+                                </div>
+                                <div>
+                                    <h3 style="margin: 0; font-size: 19px; font-weight: 800; color: var(--text-dark);">Daily Mission Planner & Checker</h3>
+                                    <p style="margin: 2px 0 0 0; font-size: 13px; color: var(--text-gray);">Set daily missions for Monday–Friday and check student submissions to grant completions.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Week Navigation Controls -->
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <button type="button" id="dmPrevWeekBtn" class="btn-primary" style="background: var(--bg-main); color: var(--text-dark); border: 1px solid var(--border-color); padding: 8px 14px; font-size: 13px; font-weight: 700;">◀ Prev Week</button>
+                            <span id="dmCurrentWeekLabel" style="font-size: 14px; font-weight: 800; color: var(--dm-primary); padding: 6px 14px; background: var(--card-bg); border-radius: 10px; border: 1px solid var(--border-color);">Week of Oct 5 – Oct 9, 2026</span>
+                            <button type="button" id="dmNextWeekBtn" class="btn-primary" style="background: var(--bg-main); color: var(--text-dark); border: 1px solid var(--border-color); padding: 8px 14px; font-size: 13px; font-weight: 700;">Next Week ▶</button>
+                            <button type="button" id="dmThisWeekBtn" class="btn-primary" style="background: var(--dm-primary); color: #ffffff; padding: 8px 16px; font-size: 13px; font-weight: 700;">This Week</button>
+                        </div>
+                    </div>
+
+                    <!-- Subtabs Bar -->
+                    <div class="dm-subtab-bar">
+                        <button type="button" id="dmSubtabPlannerBtn" class="dm-subtab-btn active">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                            <span>1. Mission Settings (Mon–Fri)</span>
+                        </button>
+                        <button type="button" id="dmSubtabSubmissionsBtn" class="dm-subtab-btn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            <span>2. Check Submissions & Give Completion</span>
+                        </button>
+                    </div>
+
+                    <!-- SUBTAB 1: PLANNER & MISSION SETTINGS -->
+                    <div id="dmPlannerView">
+                        <!-- Monday to Friday Day Pills -->
+                        <div class="dm-days-nav" id="dmAdminDayPills" style="margin-bottom: 24px;">
+                            <div class="dm-day-pill active" data-day="Monday">
+                                <span class="dm-day-name">Monday</span>
+                                <span class="dm-day-date">Oct 5</span>
+                                <span class="dm-day-status-dot dm-status-empty">Empty</span>
+                            </div>
+                            <div class="dm-day-pill" data-day="Tuesday">
+                                <span class="dm-day-name">Tuesday</span>
+                                <span class="dm-day-date">Oct 6</span>
+                                <span class="dm-day-status-dot dm-status-empty">Empty</span>
+                            </div>
+                            <div class="dm-day-pill" data-day="Wednesday">
+                                <span class="dm-day-name">Wednesday</span>
+                                <span class="dm-day-date">Oct 7</span>
+                                <span class="dm-day-status-dot dm-status-empty">Empty</span>
+                            </div>
+                            <div class="dm-day-pill" data-day="Thursday">
+                                <span class="dm-day-name">Thursday</span>
+                                <span class="dm-day-date">Oct 8</span>
+                                <span class="dm-day-status-dot dm-status-empty">Empty</span>
+                            </div>
+                            <div class="dm-day-pill" data-day="Friday">
+                                <span class="dm-day-name">Friday</span>
+                                <span class="dm-day-date">Oct 9</span>
+                                <span class="dm-day-status-dot dm-status-empty">Empty</span>
+                            </div>
+                        </div>
+
+                        <!-- 2-Column Grid: Form & Weekly Overview -->
+                        <div class="dm-admin-grid">
+                            <!-- Left: Configure Mission Form -->
+                            <div class="box" id="dmMissionFormWrapper">
+                                <h3 id="dmFormHeading" style="margin-top: 0; margin-bottom: 14px; color: var(--text-dark); font-size: 17px; font-weight: 800;">Configure Mission for Monday</h3>
+                                
+                                <div class="form-group" style="margin-bottom: 14px;">
+                                    <label class="dm-input-label">Mission Title:</label>
+                                    <input type="text" id="dmMissionTitle" placeholder="e.g. Taking a Picture: Nature around school" style="width: 100%; border-radius: 10px; border: 1.5px solid var(--border-color); padding: 10px 14px; font-size: 14px;">
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 14px;">
+                                    <label class="dm-input-label">Task Type for Students:</label>
+                                    <div class="dm-type-grid">
+                                        <div class="dm-type-card selected" data-type="photo">
+                                            <span class="dm-type-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
+                                            <span class="dm-type-label">Taking a Picture</span>
+                                        </div>
+                                        <div class="dm-type-card" data-type="opinion">
+                                            <span class="dm-type-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+                                            <span class="dm-type-label">Giving Opinion</span>
+                                        </div>
+                                        <div class="dm-type-card" data-type="question">
+                                            <span class="dm-type-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+                                            <span class="dm-type-label">Answer Questions</span>
+                                        </div>
+                                        <div class="dm-type-card" data-type="general">
+                                            <span class="dm-type-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></span>
+                                            <span class="dm-type-label">General Task</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Dynamic Question section if Question task type selected -->
+                                <div id="dmQuestionPromptSection" class="form-group" style="display: none; margin-bottom: 14px;">
+                                    <label class="dm-input-label">Specific Question Prompt:</label>
+                                    <input type="text" id="dmQuestionPromptInput" placeholder="e.g. What is the process of photosynthesis?" style="width: 100%; border-radius: 10px; border: 1.5px solid var(--border-color); padding: 10px 14px; font-size: 14px;">
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 14px;">
+                                    <label class="dm-input-label">Mission Instructions / Description:</label>
+                                    <textarea id="dmMissionDesc" class="dm-textarea" placeholder="Explain what students need to do to complete this mission..." style="min-height: 110px;"></textarea>
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 20px;">
+                                    <label class="dm-input-label">Target Class:</label>
+                                    <select id="dmMissionTargetClass" style="width: 100%; height: 42px; border-radius: 10px; border: 1.5px solid var(--border-color); padding: 0 14px; font-size: 14px; background: var(--bg-main); color: var(--text-dark);">
+                                        <option value="all">All Classes</option>
+                                    </select>
+                                </div>
+
+                                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                                    <button type="button" id="dmResetMissionBtn" class="btn-primary" style="background: var(--bg-main); color: var(--text-dark); border: 1px solid var(--border-color); padding: 10px 18px; font-size: 13.5px; font-weight: 700;">Reset</button>
+                                    <button type="button" id="dmSaveMissionBtn" class="btn-primary" style="background: var(--dm-purple-gradient); color: #ffffff; padding: 10px 24px; font-size: 13.5px; font-weight: 800; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);">Save Monday Mission</button>
+                                </div>
+                            </div>
+
+                            <!-- Right: Overview of All 5 Days for Current Week -->
+                            <div class="box">
+                                <h3 style="margin-top: 0; margin-bottom: 14px; color: var(--text-dark); font-size: 17px; font-weight: 800;">Missions Schedule for Selected Week</h3>
+                                <p style="font-size: 13px; color: var(--text-gray); margin-bottom: 16px;">Students who complete all 5 daily missions will unlock a Weekly Bonus of +1.5 Behavior Points!</p>
+                                
+                                <div id="dmWeeklyOverviewCards">
+                                    <!-- JS will inject 5 day cards here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SUBTAB 2: SUBMISSIONS & COMPLETION CHECKER -->
+                    <div id="dmSubmissionsView" style="display: none;">
+                        <!-- Summary Stats & Filter Toolbar -->
+                        <div class="box" style="margin-bottom: 20px; padding: 18px 22px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--border-color);">
+                                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                                    <div>
+                                        <span style="font-size: 12px; color: var(--text-gray); font-weight: 600; display: block;">Total Submissions</span>
+                                        <strong id="dmStatTotalSubmissions" style="font-size: 20px; color: var(--text-dark);">0</strong>
+                                    </div>
+                                    <div>
+                                        <span style="font-size: 12px; color: var(--text-gray); font-weight: 600; display: block;">Pending Review</span>
+                                        <strong id="dmStatPendingSubmissions" style="font-size: 20px; color: #f59e0b;">0</strong>
+                                    </div>
+                                    <div>
+                                        <span style="font-size: 12px; color: var(--text-gray); font-weight: 600; display: block;">Completed (Approved)</span>
+                                        <strong id="dmStatCompletedSubmissions" style="font-size: 20px; color: #10b981;">0</strong>
+                                    </div>
+                                </div>
+
+                                <div style="font-size: 13px; color: var(--text-gray);">
+                                    Click <strong>Give Completion</strong> to approve student tasks.
+                                </div>
+                            </div>
+
+                            <!-- Filter Controls -->
+                            <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+                                <div>
+                                    <label style="font-size: 12px; font-weight: 700; color: var(--text-gray); display: block; margin-bottom: 4px;">Day:</label>
+                                    <select id="dmFilterDay" style="height: 38px; border-radius: 8px; border: 1px solid var(--border-color); padding: 0 10px; font-size: 13px; background: var(--bg-main); color: var(--text-dark);">
+                                        <option value="all">All Days (Mon–Fri)</option>
+                                        <option value="Monday">Monday</option>
+                                        <option value="Tuesday">Tuesday</option>
+                                        <option value="Wednesday">Wednesday</option>
+                                        <option value="Thursday">Thursday</option>
+                                        <option value="Friday">Friday</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label style="font-size: 12px; font-weight: 700; color: var(--text-gray); display: block; margin-bottom: 4px;">Status:</label>
+                                    <select id="dmFilterStatus" style="height: 38px; border-radius: 8px; border: 1px solid var(--border-color); padding: 0 10px; font-size: 13px; background: var(--bg-main); color: var(--text-dark);">
+                                        <option value="all">All Statuses</option>
+                                        <option value="pending">Pending Review</option>
+                                        <option value="completed">Completed</option>
+                                        <option value="revision">Revision Needed</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label style="font-size: 12px; font-weight: 700; color: var(--text-gray); display: block; margin-bottom: 4px;">Class:</label>
+                                    <select id="dmFilterClass" style="height: 38px; border-radius: 8px; border: 1px solid var(--border-color); padding: 0 10px; font-size: 13px; background: var(--bg-main); color: var(--text-dark);">
+                                        <option value="all">All Classes</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submissions List Container -->
+                        <div id="dmSubmissionsListContainer">
+                            <!-- Injected by adminDailyMission.js -->
                         </div>
                     </div>
                 </div>

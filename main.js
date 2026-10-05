@@ -3,6 +3,7 @@ import { signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browser
 import { db, auth } from "./firebase.js";
 import { escapeHtml } from "./utils.js";
 import { getDailyQuote } from "./dailyQuotes.js";
+import { initStudentDailyMission } from "./js/studentDailyMission.js?v=454";
 
 // Restore the existing student session format without retaining password input.
 const rememberedStudentKey = 'portalRememberedStudent';
@@ -148,6 +149,9 @@ async function checkStudentSession() {
         loadNewsTicker();
         listenActiveStudentAttendance();
         listenStudentAssignmentReminders(currentLoggedInStudent.code);
+        initStudentDailyMission(currentLoggedInStudent, () => {
+            fetchStudentUnifiedData(currentLoggedInStudent.code);
+        });
     } else {
         // If on studentdash.html without active session, redirect to login page
         window.location.replace("index.html");
@@ -357,6 +361,9 @@ async function fetchStudentUnifiedData(codeInput) {
                 if (fetchedName) currentLoggedInStudent.name = fetchedName;
                 if (fetchedClass) currentLoggedInStudent.studentClass = fetchedClass;
                 sessionStorage.setItem('studentLoggedInSession', JSON.stringify(currentLoggedInStudent));
+                initStudentDailyMission(currentLoggedInStudent, () => {
+                    fetchStudentUnifiedData(currentLoggedInStudent.code);
+                });
             }
         }
 

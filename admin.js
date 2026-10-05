@@ -10,6 +10,8 @@ import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, where, g
 import { app, db, auth, secondaryAuth } from "./firebase.js";
 import { escapeHtml, formatDate } from "./utils.js";
 import * as GClassSync from "./classroomSync.js";
+import { initAdminDailyMission, loadDailyMissionTab } from "./js/admin/adminDailyMission.js";
+window.loadDailyMissionTab = loadDailyMissionTab;
 
 // --- UTILITY: DEBOUNCE FUNCTION ---
 // Prevents functions from firing repeatedly on every single keystroke
@@ -339,6 +341,8 @@ onAuthStateChanged(auth, async (user) => {
             if (userRole === "admin") {
                 parallelTasks.push(loadTeachersDirectory());
             }
+
+            initAdminDailyMission();
 
             // Execute all queries simultaneously
             await Promise.all(parallelTasks);
@@ -2776,6 +2780,8 @@ document.querySelectorAll('.menu-btn').forEach(button => {
             if (typeof refreshBehaviorTabLedgers === 'function') refreshBehaviorTabLedgers();
         } else if (tabId === 'tab-manage-news') {
             loadNewsTable();
+        } else if (tabId === 'tab-daily-mission') {
+            loadDailyMissionTab();
         } else if (tabId === 'tab-manage-attendance') {
             await populateAttendanceSubjects();
             await populateAttendanceClasses();
@@ -2789,6 +2795,22 @@ document.querySelectorAll('.menu-btn').forEach(button => {
             }
         }
     });
+});
+
+// Support direct URL hash tab navigation (e.g. #tab-daily-mission)
+if (window.location.hash) {
+    const hashTabId = window.location.hash.substring(1);
+    const matchedBtn = document.querySelector(`.menu-bar [data-tab="${hashTabId}"]`);
+    if (matchedBtn) {
+        setTimeout(() => matchedBtn.click(), 100);
+    }
+}
+window.addEventListener('hashchange', () => {
+    if (window.location.hash) {
+        const hashTabId = window.location.hash.substring(1);
+        const matchedBtn = document.querySelector(`.menu-bar [data-tab="${hashTabId}"]`);
+        if (matchedBtn) matchedBtn.click();
+    }
 });
 
 // Sidebar Sub-menu Button Handlers (Databases -> Students, Teacher, Quiz & Manage Score -> Input, Reminder)
