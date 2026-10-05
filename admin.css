@@ -7818,7 +7818,13 @@ body.dark-mode .att-page-num-btn.active {
 /* Inline database submenu in the mobile navigation. */
 .mobile-db-submenu[hidden] { display: none !important; }
 .mobile-db-submenu { margin-left: 20px; padding-left: 8px; border-left: 1px solid var(--border-color, #e2e8f0); }
-.mobile-db-submenu .kebab-item { min-height: 44px; }
+.mobile-db-submenu .kebab-item {
+    min-height: 44px;
+    font-weight: 600 !important;
+}
+.mobile-db-submenu .kebab-item.active {
+    font-weight: 700 !important;
+}
 .mobile-db-arrow { margin-left: auto; transition: transform 0.15s; }
 #mobileMenuDatabases[aria-expanded="true"] .mobile-db-arrow { transform: rotate(180deg); }
 

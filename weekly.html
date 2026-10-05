@@ -17,7 +17,7 @@
     rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=375">
   <link rel="stylesheet" href="student.css?v=393">
-  <link rel="stylesheet" href="weekly.css?v=441">
+  <link rel="stylesheet" href="weekly.css?v=445">
   <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 </head>
 
@@ -293,7 +293,15 @@
       </nav>
 
       <!-- Right User Status & Actions -->
-      <div class="topbar-user">
+      <div class="topbar-user-wrapper">
+        <button id="weeklyMobileMenuBtn" class="weekly-mobile-menu-btn" type="button" aria-label="Toggle user menu" aria-expanded="false" title="Menu" onclick="toggleWeeklyMobileMenu(event)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="6" x2="20" y2="6"></line>
+            <line x1="4" y1="12" x2="20" y2="12"></line>
+            <line x1="4" y1="18" x2="20" y2="18"></line>
+          </svg>
+        </button>
+        <div class="topbar-user" id="topbarUserDropdown">
         <!-- Language Switcher Button -->
         <button id="btnLanguageToggle" class="lang-toggle-btn" type="button" title="Ganti ke Bahasa Indonesia" onclick="window.toggleWeeklyLanguage ? window.toggleWeeklyLanguage() : null">
           <span class="lang-toggle-globe">
@@ -325,7 +333,33 @@
           <span data-i18n="sign_out">Sign Out</span>
         </button>
       </div>
-    </header>
+    </div>
+  </header>
+
+  <script>
+    function toggleWeeklyMobileMenu(e) {
+      if (e) {
+        if (typeof e.preventDefault === 'function') e.preventDefault();
+        if (typeof e.stopPropagation === 'function') e.stopPropagation();
+      }
+      var dropdown = document.getElementById('topbarUserDropdown');
+      var btn = document.getElementById('weeklyMobileMenuBtn');
+      if (!dropdown) return;
+      var isOpen = dropdown.classList.toggle('open');
+      if (btn) btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    }
+    window.toggleWeeklyMobileMenu = toggleWeeklyMobileMenu;
+
+    document.addEventListener('click', function(e) {
+      var dropdown = document.getElementById('topbarUserDropdown');
+      var btn = document.getElementById('weeklyMobileMenuBtn');
+      if (!dropdown || !btn) return;
+      if (dropdown.classList.contains('open') && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+        dropdown.classList.remove('open');
+        btn.setAttribute('aria-expanded', 'false');
+      }
+    });
+  </script>
 
     <!-- Student Class View -->
     <div id="classView" class="tab-content active">
@@ -2756,8 +2790,8 @@
     </div>
   </div>
 
-  <script type="module" src="weeklyI18n.js?v=444"></script>
-  <script type="module" src="weekly.js?v=444"></script>
+  <script type="module" src="weeklyI18n.js?v=445"></script>
+  <script type="module" src="weekly.js?v=445"></script>
   <script src="js/logo-motion.js?v=2" defer></script>
   <script type="module">import { trackCurrentPage } from './js/userActivity.js'; trackCurrentPage();</script>
 </body>

@@ -488,6 +488,17 @@ button, input, select, textarea {
 }
 
 /* Topbar User Profile & Logout */
+.topbar-user-wrapper {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.weekly-mobile-menu-btn {
+  display: none;
+}
+
 .topbar-user {
   display: flex;
   align-items: center;
@@ -4065,7 +4076,8 @@ select:focus {
     gap: 12px;
   }
 
-  .nav-tabs {
+  .nav-tabs,
+  .weekly-nav-shell {
     order: 3;
     width: 100%;
     overflow-x: auto;
@@ -4105,10 +4117,256 @@ select:focus {
   }
 
   .app-topbar {
-    padding: 12px 14px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
     border-radius: 14px;
     margin-bottom: 16px;
-    gap: 10px;
+    gap: 8px 0;
+  }
+
+  /* First line: Logo on the left, Menu button on the right */
+  .topbar-brand {
+    order: 1;
+    align-self: center;
+    display: inline-flex;
+    justify-content: flex-start;
+    flex: 0 0 auto;
+  }
+
+  .topbar-user-wrapper {
+    order: 2;
+    display: flex;
+    align-items: center;
+    position: relative;
+    margin-left: auto;
+    flex: 0 0 auto;
+  }
+
+  .weekly-mobile-menu-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #1e293b;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+    transition: all 0.15s ease;
+  }
+
+  .weekly-mobile-menu-btn:hover,
+  .weekly-mobile-menu-btn:focus,
+  .weekly-mobile-menu-btn[aria-expanded="true"] {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    color: #2563eb;
+    outline: none;
+  }
+
+  /* Dropdown menu showing switch language, profile, logout when menu button is clicked */
+  .topbar-user {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.18), 0 4px 10px -2px rgba(15, 23, 42, 0.08);
+    padding: 10px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    min-width: 210px;
+    max-width: calc(100vw - 24px);
+    z-index: 999999 !important;
+  }
+
+  .topbar-user.open {
+    display: flex !important;
+    animation: weeklyMenuFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes weeklyMenuFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-6px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .topbar-user.open > button {
+    width: 100% !important;
+    height: auto !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding: 10px 14px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    border-radius: 10px !important;
+    box-sizing: border-box !important;
+    text-align: left !important;
+  }
+
+  .topbar-user.open .user-email-btn span {
+    display: inline-block !important;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .topbar-user.open .user-email-btn svg,
+  .topbar-user.open .logout-btn svg {
+    margin-right: 8px !important;
+    flex-shrink: 0;
+  }
+
+  /* Second line: navigation made a bit smaller, left arrow on left, right arrow on right */
+  .weekly-nav-shell,
+  .nav-tabs {
+    order: 3;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    flex: 0 0 100%;
+  }
+
+  .weekly-nav-shell {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .weekly-nav-arrow,
+  .weekly-nav-arrow-left,
+  .weekly-nav-shell > button:first-child {
+    order: 1 !important;
+    padding: 4px 8px;
+    min-width: 26px;
+    height: 32px;
+    font-size: 14px;
+    line-height: 1;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .weekly-nav-shell .nav-tabs {
+    order: 2 !important;
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+    padding: 3px;
+    gap: 3px;
+    border-radius: 8px;
+  }
+
+  .weekly-nav-arrow-right,
+  .weekly-nav-shell > button:last-child {
+    order: 3 !important;
+    padding: 4px 8px;
+    min-width: 26px;
+    height: 32px;
+    font-size: 14px;
+    line-height: 1;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* Navigation tab items a bit smaller */
+  .tab-btn {
+    padding: 6px 10px;
+    font-size: 11.5px;
+    min-height: 32px;
+    border-radius: 7px;
+    gap: 5px;
+  }
+
+  .tab-btn .tab-icon svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  /* Compact Schedule Date Navigation Bar for Mobile */
+  .weekly-navigation {
+    gap: 3px !important;
+    padding: 4px 6px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    flex-wrap: nowrap !important;
+  }
+
+  .weekly-navigation button#weeklyPrevious,
+  .weekly-navigation button#weeklyNext {
+    padding: 4px 8px !important;
+    font-size: 13px !important;
+    min-width: 26px !important;
+    height: 32px !important;
+    line-height: 1 !important;
+    border-radius: 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+  }
+
+  .weekly-navigation .banner-date-badge {
+    margin: 0 !important;
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    height: 32px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    white-space: nowrap !important;
+    border-radius: 8px !important;
+    flex-shrink: 1 !important;
+    min-width: 0 !important;
+  }
+
+  .weekly-navigation .banner-date-badge .badge-icon svg {
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  .weekly-navigation .weekly-view-switch {
+    margin-left: 4px !important;
+    padding: 2px !important;
+    gap: 2px !important;
+    flex-shrink: 0 !important;
+    border-radius: 8px !important;
+  }
+
+  .weekly-navigation .weekly-view-switch button {
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+    min-height: 26px !important;
+    height: 26px !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
   }
 
   .brand-icon {
@@ -4123,10 +4381,6 @@ select:focus {
 
   .brand-subtitle {
     font-size: 10.5px;
-  }
-
-  .topbar-user {
-    gap: 6px;
   }
 
   .user-email-btn,
@@ -4283,19 +4537,21 @@ select:focus {
     display: none;
   }
 
-  .topbar-user .user-email-btn span {
-    display: none;
+  /* Dropdown buttons formatting on compact mobile */
+  .topbar-user.open .user-email-btn {
+    width: 100% !important;
+    height: auto !important;
+    padding: 10px 14px !important;
+    justify-content: flex-start !important;
   }
 
-  .topbar-user .user-email-btn {
-    padding: 8px;
-    width: 38px;
-    height: 38px;
-    justify-content: center;
+  .topbar-user.open .user-email-btn span {
+    display: inline-block !important;
+    max-width: 170px !important;
   }
 
-  .topbar-user .user-email-btn svg {
-    margin-right: 0 !important;
+  .topbar-user.open .user-email-btn svg {
+    margin-right: 8px !important;
   }
 
   .filter-controls-group {
@@ -4321,6 +4577,43 @@ select:focus {
 
   .reward-student-grid {
     grid-template-columns: 1fr !important;
+  }
+
+  .weekly-navigation {
+    padding: 3px 4px !important;
+    gap: 2px !important;
+  }
+
+  .weekly-navigation button#weeklyPrevious,
+  .weekly-navigation button#weeklyNext {
+    padding: 3px 6px !important;
+    min-width: 24px !important;
+    height: 28px !important;
+    font-size: 12px !important;
+  }
+
+  .weekly-navigation .banner-date-badge {
+    padding: 3px 6px !important;
+    font-size: 10.5px !important;
+    height: 28px !important;
+    gap: 3px !important;
+  }
+
+  .weekly-navigation .banner-date-badge .badge-icon svg {
+    width: 11px !important;
+    height: 11px !important;
+  }
+
+  .weekly-navigation .weekly-view-switch {
+    margin-left: 3px !important;
+    padding: 2px !important;
+  }
+
+  .weekly-navigation .weekly-view-switch button {
+    padding: 3px 6px !important;
+    font-size: 10px !important;
+    min-height: 24px !important;
+    height: 24px !important;
   }
 }
 

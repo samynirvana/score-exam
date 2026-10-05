@@ -1348,7 +1348,8 @@ if (weeklyNav) {
     const shell = document.createElement('div'); shell.className = 'weekly-nav-shell';
     weeklyNav.before(shell); shell.append(weeklyNav);
     [-1, 1].forEach(direction => {
-      const button = document.createElement('button'); button.type = 'button'; button.className = 'weekly-nav-arrow';
+      const button = document.createElement('button'); button.type = 'button';
+      button.className = direction < 0 ? 'weekly-nav-arrow weekly-nav-arrow-left' : 'weekly-nav-arrow weekly-nav-arrow-right';
       button.textContent = direction < 0 ? '‹' : '›'; button.setAttribute('aria-label', direction < 0 ? 'Scroll navigation left' : 'Scroll navigation right');
       button.onclick = () => weeklyNav.scrollBy({left: direction * 220, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'});
       if (direction < 0) shell.prepend(button); else shell.append(button);
@@ -1356,6 +1357,44 @@ if (weeklyNav) {
       weeklyNav.addEventListener('scroll', sync, {passive:true}); new ResizeObserver(sync).observe(weeklyNav); sync();
     });
   }
+}
+
+// Mobile user menu dropdown toggle
+export function toggleWeeklyMobileMenu(e) {
+  if (e) {
+    if (typeof e.preventDefault === 'function') e.preventDefault();
+    if (typeof e.stopPropagation === 'function') e.stopPropagation();
+  }
+  const dropdown = document.getElementById('topbarUserDropdown');
+  const btn = document.getElementById('weeklyMobileMenuBtn');
+  if (!dropdown) return;
+  const isOpen = dropdown.classList.toggle('open');
+  if (btn) btn.setAttribute('aria-expanded', String(isOpen));
+}
+window.toggleWeeklyMobileMenu = toggleWeeklyMobileMenu;
+
+const weeklyMobileMenuBtn = document.getElementById('weeklyMobileMenuBtn');
+const topbarUserDropdown = document.getElementById('topbarUserDropdown');
+if (topbarUserDropdown) {
+  if (weeklyMobileMenuBtn && !weeklyMobileMenuBtn.getAttribute('onclick')) {
+    weeklyMobileMenuBtn.addEventListener('click', toggleWeeklyMobileMenu);
+  }
+
+  document.addEventListener('click', (e) => {
+    const btn = document.getElementById('weeklyMobileMenuBtn');
+    if (!topbarUserDropdown.contains(e.target) && (!btn || !btn.contains(e.target))) {
+      topbarUserDropdown.classList.remove('open');
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  topbarUserDropdown.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      topbarUserDropdown.classList.remove('open');
+      const menuBtn = document.getElementById('weeklyMobileMenuBtn');
+      if (menuBtn) menuBtn.setAttribute('aria-expanded', 'false');
+    });
+  });
 }
 
 // Helper to update user email text according to active language
