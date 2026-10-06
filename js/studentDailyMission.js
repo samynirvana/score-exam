@@ -72,6 +72,31 @@ function isPastMissionDay(day) {
     return missionDate < today;
 }
 
+// Helper: Check whether a day's mission is accessible for the student (respecting teacher manual toggle)
+export function isDayAccessible(day) {
+    if (!day) return false;
+    const mission = weekMissions.find(m => (m.day || '').trim().toLowerCase() === day.trim().toLowerCase());
+    const isPast = isPastMissionDay(day);
+
+    // If teacher set an explicit access status override on this mission
+    if (mission && mission.accessStatus) {
+        if (mission.accessStatus === 'open') {
+            return true; // Explicitly unlocked by teacher
+        }
+        if (mission.accessStatus === 'closed') {
+            return false; // Explicitly locked by teacher
+        }
+    }
+
+    // Default behavior ("Auto"):
+    // Students cannot access the mission once it already moved to the next day
+    if (isPast) {
+        return false;
+    }
+
+    return true;
+}
+
 // Helper: Check if a mission document belongs to the active week
 function isMissionForCurrentWeek(data, weekKey, mondayDate) {
     const docWeekKey = (data.weekKey || '').trim();
@@ -244,7 +269,7 @@ function setupStudentDayPills() {
     container.querySelectorAll('.dm-day-pill').forEach(pill => {
         pill.addEventListener('click', () => {
             const day = pill.getAttribute('data-day');
-            if (!day || isPastMissionDay(day)) return;
+            if (!day || !isDayAccessible(day)) return;
             selectedDay = selectedDay === day ? null : day;
             capturedPhotoData = null;
             renderDayPills();
@@ -257,20 +282,25 @@ function setupStudentDayPills() {
 function renderDayPills() {
     const todayIndex = new Date().getDay(); // 1 = Mon ... 5 = Fri
     const todayName = (todayIndex >= 1 && todayIndex <= 5) ? DAYS_OF_WEEK[todayIndex - 1] : null;
-    if (selectedDay && isPastMissionDay(selectedDay)) selectedDay = null;
+    if (selectedDay && !isDayAccessible(selectedDay)) selectedDay = null;
 
     DAYS_OF_WEEK.forEach(day => {
         const pill = document.querySelector(`#dmStudentDayPills .dm-day-pill[data-day="${day}"]`);
         if (!pill) return;
 
+        const isAccessible = isDayAccessible(day);
         const isPast = isPastMissionDay(day);
-        const isExpanded = day === selectedDay && !isPast;
+        const isLocked = !isAccessible;
+        const isReopened = isPast && isAccessible;
+        const isExpanded = day === selectedDay && isAccessible;
+
         pill.classList.toggle('active', isExpanded);
         pill.classList.toggle('is-today', day === todayName);
-        pill.classList.toggle('is-past', isPast);
-        pill.setAttribute('aria-disabled', String(isPast));
+        pill.classList.toggle('is-past', isLocked);
+        pill.classList.toggle('is-reopened', isReopened);
+        pill.setAttribute('aria-disabled', String(isLocked));
         pill.setAttribute('aria-expanded', String(isExpanded));
-        pill.disabled = isPast;
+        pill.disabled = isLocked;
 
         const dayDate = getDayDate(currentWeekMonday, day);
         const dateSpan = pill.querySelector('.dm-day-date');
@@ -281,15 +311,21 @@ function renderDayPills() {
         const mission = weekMissions.find(m => (m.day || '').trim().toLowerCase() === day.trim().toLowerCase());
         const sub = studentSubmissions.find(s => (s.day || '').trim().toLowerCase() === day.trim().toLowerCase());
         const state = sub?.status === 'completed' ? 'complete'
-            : mission && isPast && !sub ? 'missed'
+            : mission && isLocked && !sub ? 'missed'
             : mission ? 'waiting' : 'empty';
         pill.classList.remove('dm-day-complete', 'dm-day-missed', 'dm-day-waiting');
         if (state !== 'empty') pill.classList.add(`dm-day-${state}`);
         const stateLabel = state === 'complete' ? 'approved by teacher'
             : state === 'missed' ? 'mission missed'
+            : isReopened ? 'mission reopened by teacher - open for submission'
             : state === 'waiting' ? (sub ? 'awaiting teacher approval or revision' : 'mission to complete')
             : 'no mission assigned';
         pill.setAttribute('aria-label', `${day}, ${dayDate.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}: ${stateLabel}`);
+        if (isReopened) {
+            pill.setAttribute('title', 'Reopened by Teacher: Open for submission!');
+        } else {
+            pill.removeAttribute('title');
+        }
     });
 }
 
@@ -319,7 +355,7 @@ function renderActiveMissionWorkspace() {
     const workspace = document.getElementById('dmActiveMissionWorkspace');
     if (!workspace) return;
 
-    if (!selectedDay || isPastMissionDay(selectedDay)) {
+    if (!selectedDay || !isDayAccessible(selectedDay)) {
         workspace.hidden = true;
         workspace.innerHTML = '';
         return;
@@ -456,6 +492,16 @@ function renderActiveMissionWorkspace() {
         `;
     }
 
+    const isReopenedToday = isPastMissionDay(selectedDay) && isDayAccessible(selectedDay);
+    const reopenedBannerHtml = isReopenedToday ? `
+        <div class="dm-reopened-banner" style="background: rgba(16, 185, 129, 0.1); border: 1.5px solid #10b981; color: #065f46; padding: 11px 16px; border-radius: 12px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; font-size: 13.5px; font-weight: 600;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+            <div>
+                <strong>Mission Reopened:</strong> Your teacher has temporarily unlocked access for ${selectedDay}. You can submit your mission now!
+            </div>
+        </div>
+    ` : '';
+
     workspace.innerHTML = `
         <div class="dm-mission-box">
             <div class="dm-mission-header">
@@ -467,6 +513,8 @@ function renderActiveMissionWorkspace() {
                     ${selectedDay}
                 </div>
             </div>
+
+            ${reopenedBannerHtml}
 
             ${mission.description ? `
                 <div class="dm-mission-desc">${escapeHtml(mission.description)}</div>
@@ -641,8 +689,8 @@ async function uploadPhotoToPicsdbDrive(dataUrl, customFileName) {
 
 // Submit or Update student's mission
 async function submitStudentMission() {
-    if (!selectedDay || isPastMissionDay(selectedDay)) {
-        alert('This daily mission is closed. Past days can no longer be submitted.');
+    if (!selectedDay || !isDayAccessible(selectedDay)) {
+        alert('This daily mission is closed. Submissions are currently locked.');
         return;
     }
     const mission = weekMissions.find(m => (m.day || '').trim().toLowerCase() === selectedDay.trim().toLowerCase());
@@ -693,8 +741,8 @@ async function submitStudentMission() {
             finalPhotoUrl = existingSub.photoUrl;
         }
 
-        if (isPastMissionDay(selectedDay)) {
-            alert('This daily mission is closed. Past days can no longer be submitted.');
+        if (!isDayAccessible(selectedDay)) {
+            alert('This daily mission is closed. Submissions are currently locked.');
             renderDayPills();
             renderActiveMissionWorkspace();
             return;

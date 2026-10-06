@@ -25,7 +25,7 @@
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="admin.css?v=431">
-    <link rel="stylesheet" href="dailyMission.css?v=440">
+    <link rel="stylesheet" href="dailyMission.css?v=460">
 </head>
 
 <body>
@@ -3062,6 +3062,43 @@
                                     <select id="dmMissionTargetClass" style="width: 100%; height: 42px; border-radius: 10px; border: 1.5px solid var(--border-color); padding: 0 14px; font-size: 14px; background: var(--bg-main); color: var(--text-dark);">
                                         <option value="all">All Classes</option>
                                     </select>
+                                </div>
+
+                                <!-- Student Access Control Toggle -->
+                                <div class="form-group" style="margin-bottom: 20px; background: rgba(99, 102, 241, 0.04); border: 1px solid var(--border-color); border-radius: 14px; padding: 14px 16px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                        <label class="dm-input-label" style="margin-bottom: 0;">Student Access Status:</label>
+                                        <span id="dmFormAccessStatusBadge" class="dm-access-badge dm-access-badge-scheduled">⚡ Auto (Default)</span>
+                                    </div>
+                                    <div class="dm-access-options-grid" id="dmAccessOptionsGrid">
+                                        <label class="dm-access-card-label" style="cursor: pointer; position: relative;">
+                                            <input type="radio" name="dmAccessOption" value="auto" checked style="position: absolute; opacity: 0; pointer-events: none;">
+                                            <div class="dm-access-choice-box selected" data-value="auto">
+                                                <div style="font-size: 18px; margin-bottom: 2px;">⚡</div>
+                                                <div style="font-size: 12.5px; font-weight: 800; color: var(--text-dark);">Auto (Default)</div>
+                                                <div style="font-size: 10.5px; color: var(--text-gray); margin-top: 2px; line-height: 1.3;">Closes when day passes</div>
+                                            </div>
+                                        </label>
+                                        <label class="dm-access-card-label" style="cursor: pointer; position: relative;">
+                                            <input type="radio" name="dmAccessOption" value="open" style="position: absolute; opacity: 0; pointer-events: none;">
+                                            <div class="dm-access-choice-box" data-value="open">
+                                                <div style="font-size: 18px; margin-bottom: 2px;">🔓</div>
+                                                <div style="font-size: 12.5px; font-weight: 800; color: #10b981;">Turn ON (Open)</div>
+                                                <div style="font-size: 10.5px; color: var(--text-gray); margin-top: 2px; line-height: 1.3;">Allow student access now</div>
+                                            </div>
+                                        </label>
+                                        <label class="dm-access-card-label" style="cursor: pointer; position: relative;">
+                                            <input type="radio" name="dmAccessOption" value="closed" style="position: absolute; opacity: 0; pointer-events: none;">
+                                            <div class="dm-access-choice-box" data-value="closed">
+                                                <div style="font-size: 18px; margin-bottom: 2px;">🔒</div>
+                                                <div style="font-size: 12.5px; font-weight: 800; color: #ef4444;">Turn OFF (Closed)</div>
+                                                <div style="font-size: 10.5px; color: var(--text-gray); margin-top: 2px; line-height: 1.3;">Lock access immediately</div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                    <div id="dmAccessHintText" style="font-size: 11.5px; color: var(--text-gray); margin-top: 8px; line-height: 1.4;">
+                                        By default, students cannot access this mission once the day has moved to the next day. Select <strong>Turn ON (Open)</strong> to manually reopen access for a couple of hours.
+                                    </div>
                                 </div>
 
                                 <div style="display: flex; gap: 10px; justify-content: flex-end;">

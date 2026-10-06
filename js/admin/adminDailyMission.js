@@ -62,6 +62,7 @@ export function initAdminDailyMission() {
     setupWeekControls();
     setupDayPills();
     setupTaskTypeSelector();
+    setupAccessControlSelector();
     setupFormButtons();
     setupFilterListeners();
     setupLightbox();
@@ -152,6 +153,140 @@ function selectAdminDay(day) {
         populateFormForEdit(existing);
     } else {
         resetMissionForm();
+    }
+}
+
+// Access Control Selector Setup & Helpers
+function setupAccessControlSelector() {
+    const container = document.getElementById('dmAccessOptionsGrid');
+    if (!container) return;
+
+    container.querySelectorAll('.dm-access-card-label').forEach(label => {
+        label.addEventListener('click', () => {
+            const radio = label.querySelector('input[type="radio"]');
+            if (radio) {
+                radio.checked = true;
+                updateAccessControlUI(radio.value);
+            }
+        });
+    });
+}
+
+function updateAccessControlUI(status) {
+    const val = status || 'auto';
+    document.querySelectorAll('#dmAccessOptionsGrid .dm-access-choice-box').forEach(box => {
+        box.classList.toggle('selected', box.getAttribute('data-value') === val);
+    });
+
+    const badge = document.getElementById('dmFormAccessStatusBadge');
+    if (badge) {
+        if (val === 'open') {
+            badge.className = 'dm-access-badge dm-access-badge-unlocked';
+            badge.innerHTML = '🔓 Turn ON (Open)';
+        } else if (val === 'closed') {
+            badge.className = 'dm-access-badge dm-access-badge-closed';
+            badge.innerHTML = '🔒 Turn OFF (Closed)';
+        } else {
+            badge.className = 'dm-access-badge dm-access-badge-scheduled';
+            badge.innerHTML = '⚡ Auto (Default)';
+        }
+    }
+
+    updateAccessHintText(selectedDay, val);
+}
+
+function updateAccessHintText(day, currentStatus) {
+    const hintEl = document.getElementById('dmAccessHintText');
+    if (!hintEl) return;
+    const dayDate = getDayDate(selectedWeekMonday, day);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const isPast = dayDate < today;
+    const isToday = dayDate.getTime() === today.getTime();
+
+    if (isPast) {
+        if (currentStatus === 'open') {
+            hintEl.innerHTML = `⚡ <strong>${day} is a past day, but currently MANUALLY UNLOCKED.</strong> Students can click and submit on studentdash right now. Select "Turn OFF" or "Auto" when you want to lock it again.`;
+            hintEl.style.color = '#059669';
+        } else {
+            hintEl.innerHTML = `🔒 <strong>${day} is a past day.</strong> By default, students cannot access it. Select <strong>Turn ON (Open)</strong> to manually reopen access for a couple of hours so students can submit.`;
+            hintEl.style.color = '#d97706';
+        }
+    } else if (isToday) {
+        if (currentStatus === 'closed') {
+            hintEl.innerHTML = `🔒 <strong>Today (${day}) is FORCE CLOSED.</strong> Students cannot access it until you set it to Auto or Turn ON.`;
+            hintEl.style.color = '#dc2626';
+        } else {
+            hintEl.innerHTML = `🟢 <strong>Today is ${day}.</strong> Under Auto (Default), students have active access. It will automatically lock when tomorrow arrives.`;
+            hintEl.style.color = 'var(--text-gray)';
+        }
+    } else {
+        hintEl.innerHTML = `📅 <strong>${day} is an upcoming day.</strong> Under Auto (Default), it will follow schedule and automatically lock when that day passes.`;
+        hintEl.style.color = 'var(--text-gray)';
+    }
+}
+
+export function getMissionAccessState(mission, day, monday) {
+    const accessStatus = mission?.accessStatus || 'auto';
+    const dayDate = getDayDate(monday, day);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const isPast = dayDate < today;
+    const isToday = dayDate.getTime() === today.getTime();
+
+    if (accessStatus === 'open') {
+        return {
+            status: 'open',
+            isAccessible: true,
+            label: isPast ? 'Manually Unlocked (Open)' : 'Open (Accessible)',
+            badgeClass: 'dm-access-badge-unlocked',
+            icon: '🔓',
+            isPast: isPast,
+            isOverride: true
+        };
+    } else if (accessStatus === 'closed') {
+        return {
+            status: 'closed',
+            isAccessible: false,
+            label: 'Force Closed (Locked)',
+            badgeClass: 'dm-access-badge-closed',
+            icon: '🔒',
+            isPast: isPast,
+            isOverride: true
+        };
+    } else {
+        // 'auto'
+        if (isPast) {
+            return {
+                status: 'auto',
+                isAccessible: false,
+                label: 'Auto-Closed (Past Day)',
+                badgeClass: 'dm-access-badge-closed',
+                icon: '🔒',
+                isPast: true,
+                isOverride: false
+            };
+        } else if (isToday) {
+            return {
+                status: 'auto',
+                isAccessible: true,
+                label: 'Auto-Open (Today)',
+                badgeClass: 'dm-access-badge-open',
+                icon: '🟢',
+                isPast: false,
+                isOverride: false
+            };
+        } else {
+            return {
+                status: 'auto',
+                isAccessible: true,
+                label: 'Scheduled (Upcoming)',
+                badgeClass: 'dm-access-badge-scheduled',
+                icon: '📅',
+                isPast: false,
+                isOverride: false
+            };
+        }
     }
 }
 
@@ -271,8 +406,20 @@ function updateAdminDayPillBadges() {
         const mission = currentWeekMissions.find(m => m.day === day);
         if (statusDot) {
             if (mission) {
-                statusDot.className = 'dm-day-status-dot dm-status-completed';
-                statusDot.innerText = 'Configured';
+                const accessState = getMissionAccessState(mission, day, selectedWeekMonday);
+                if (accessState.status === 'open' && accessState.isPast) {
+                    statusDot.className = 'dm-day-status-dot dm-status-unlocked';
+                    statusDot.innerHTML = '🔓 Unlocked';
+                    statusDot.title = 'Manually open for students to access';
+                } else if (!accessState.isAccessible) {
+                    statusDot.className = 'dm-day-status-dot dm-status-closed';
+                    statusDot.innerHTML = '🔒 Closed';
+                    statusDot.title = 'Locked for students (past day)';
+                } else {
+                    statusDot.className = 'dm-day-status-dot dm-status-completed';
+                    statusDot.innerText = 'Configured';
+                    statusDot.title = 'Configured & active';
+                }
             } else {
                 statusDot.className = 'dm-day-status-dot dm-status-empty';
                 statusDot.innerText = 'Empty';
@@ -299,19 +446,26 @@ function renderWeeklyOverviewList() {
                 general: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>General Task'
             };
             const typeLabel = iconMap[mission.taskType] || '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Mission';
+            const accessState = getMissionAccessState(mission, day, selectedWeekMonday);
+
+            const toggleBtnHtml = !accessState.isAccessible
+                ? `<button type="button" class="btn-primary dm-btn-toggle-access" style="padding: 6px 13px; font-size: 12px; background: #10b981; color: #fff; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);" onclick="window.toggleAdminDailyMissionAccess('${mission.id}', 'open')" title="Unlock student access so students can click & submit now"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>Turn ON Access</button>`
+                : `<button type="button" class="btn-primary dm-btn-toggle-access" style="padding: 6px 13px; font-size: 12px; background: ${accessState.status === 'open' ? '#f59e0b' : '#64748b'}; color: #fff; font-weight: 700; display: inline-flex; align-items: center; gap: 5px;" onclick="window.toggleAdminDailyMissionAccess('${mission.id}', '${accessState.status === 'open' ? 'auto' : 'closed'}')" title="Turn off student access"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Turn OFF Access</button>`;
 
             html += `
                 <div class="box" style="margin-bottom: 12px; padding: 14px 18px; border-left: 4px solid var(--dm-primary); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                     <div>
-                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;">
                             <strong style="font-size: 14.5px; color: var(--text-dark);">${day} (${dateStr})</strong>
                             <span class="dm-task-type-badge">${typeLabel}</span>
                             <span style="font-size: 12px; color: var(--text-gray); font-weight: 600;">Target: ${escapeHtml(mission.targetClass === 'all' ? 'All Classes' : mission.targetClass)}</span>
+                            <span class="dm-access-badge ${accessState.badgeClass}">${accessState.icon} ${accessState.label}</span>
                         </div>
                         <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text-dark);">${escapeHtml(mission.title)}</h4>
                         <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-gray); max-width: 540px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${escapeHtml(mission.description || '')}</p>
                     </div>
-                    <div style="display: flex; gap: 8px;">
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        ${toggleBtnHtml}
                         <button type="button" class="btn-primary" style="padding: 6px 14px; font-size: 12.5px; background: var(--dm-primary);" onclick="window.editAdminDailyMission('${mission.id}')">Edit</button>
                         <button type="button" class="btn-primary" style="padding: 6px 14px; font-size: 12.5px; background: #ef4444;" onclick="window.deleteAdminDailyMission('${mission.id}')">Delete</button>
                     </div>
@@ -345,6 +499,40 @@ window.editAdminDailyMission = function(missionId) {
     document.getElementById('dmMissionFormWrapper')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
+window.toggleAdminDailyMissionAccess = async function(missionId, targetStatus) {
+    const mission = currentWeekMissions.find(m => m.id === missionId);
+    if (!mission) return;
+
+    try {
+        let newStatus = targetStatus;
+        if (!newStatus) {
+            newStatus = (mission.accessStatus === 'open') ? 'auto' : 'open';
+        }
+
+        await updateDoc(doc(db, "daily_missions", missionId), {
+            accessStatus: newStatus,
+            updatedAt: new Date(),
+            updatedBy: auth.currentUser?.email || 'Teacher'
+        });
+
+        mission.accessStatus = newStatus;
+
+        updateAdminDayPillBadges();
+        renderWeeklyOverviewList();
+        if (editingMissionId === missionId) {
+            populateFormForEdit(mission);
+        }
+
+        const msg = newStatus === 'open' 
+            ? `🔓 ${mission.day}'s mission is now OPEN!\n\nStudents can now click and submit on their studentdash.`
+            : `🔒 ${mission.day}'s mission access has been turned OFF.\n\nStudents can no longer submit on studentdash.`;
+        alert(msg);
+    } catch (err) {
+        console.error("Error toggling mission access:", err);
+        alert("Failed to toggle access: " + err.message);
+    }
+};
+
 function populateFormForEdit(mission) {
     editingMissionId = mission.id;
     const titleInput = document.getElementById('dmMissionTitle');
@@ -368,6 +556,12 @@ function populateFormForEdit(mission) {
         card.classList.toggle('selected', card.getAttribute('data-type') === selectedTaskType);
     });
     updateTaskTypeFields();
+
+    // Access Status Option
+    const accessStatus = mission.accessStatus || 'auto';
+    const radio = document.querySelector(`input[name="dmAccessOption"][value="${accessStatus}"]`);
+    if (radio) radio.checked = true;
+    updateAccessControlUI(accessStatus);
 
     if (formHeading) formHeading.innerText = `Edit Mission for ${mission.day}`;
     if (saveBtn) saveBtn.innerText = `Update ${mission.day} Mission`;
@@ -393,6 +587,11 @@ function resetMissionForm() {
     });
     updateTaskTypeFields();
 
+    // Reset access option to 'auto'
+    const radio = document.querySelector('input[name="dmAccessOption"][value="auto"]');
+    if (radio) radio.checked = true;
+    updateAccessControlUI('auto');
+
     if (formHeading) formHeading.innerText = `Configure Mission for ${selectedDay}`;
     if (saveBtn) saveBtn.innerText = `Save ${selectedDay} Mission`;
 }
@@ -403,6 +602,7 @@ async function saveDailyMission() {
     const rawTargetClass = document.getElementById('dmMissionTargetClass')?.value || 'all';
     const targetClass = (!rawTargetClass || rawTargetClass.toLowerCase() === 'all' || rawTargetClass.toLowerCase() === 'all classes') ? 'all' : rawTargetClass.trim();
     const questionPrompt = document.getElementById('dmQuestionPromptInput')?.value.trim() || '';
+    const accessStatus = document.querySelector('input[name="dmAccessOption"]:checked')?.value || 'auto';
     const saveBtn = document.getElementById('dmSaveMissionBtn');
 
     if (!title) {
@@ -430,6 +630,7 @@ async function saveDailyMission() {
             taskType: selectedTaskType,
             questionPrompt: questionPrompt,
             targetClass: targetClass,
+            accessStatus: accessStatus,
             updatedAt: new Date(),
             updatedBy: auth.currentUser?.email || 'Teacher'
         };
