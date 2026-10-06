@@ -25,7 +25,7 @@
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="admin.css?v=431">
-    <link rel="stylesheet" href="dailyMission.css?v=460">
+    <link rel="stylesheet" href="dailyMission.css?v=461">
 </head>
 
 <body>
@@ -3181,6 +3181,12 @@
                         <div id="dmSubmissionsListContainer">
                             <!-- Injected by adminDailyMission.js -->
                         </div>
+
+                        <!-- Submissions Pagination (10 per page) -->
+                        <div id="dmSubmissionsPagination" class="dm-pagination-wrapper" style="display: none;">
+                            <div id="dmSubmissionsPageInfo" class="dm-pagination-info">Showing 0 submissions</div>
+                            <div id="dmSubmissionsPageButtons" class="dm-pagination-buttons"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -5358,7 +5364,7 @@
     </dialog>
 
     <script src="studentNav.js?v=464"></script>
-    <script type="module" src="admin.js?v=440"></script>
+    <script type="module" src="admin.js?v=441"></script>
 </body>
 
 </html>

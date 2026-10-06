@@ -1459,3 +1459,109 @@ body.dark-mode .dm-day-pill.is-reopened {
   border-color: #10b981 !important;
   background: rgba(16, 185, 129, 0.08) !important;
 }
+
+/* Daily Mission Student Submissions Pagination */
+.dm-pagination-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+  padding: 14px 20px;
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 14px;
+  box-shadow: var(--dm-card-shadow, 0 4px 12px rgba(0, 0, 0, 0.04));
+}
+
+body.dark-theme .dm-pagination-wrapper,
+body.dark-mode .dm-pagination-wrapper {
+  background: #1e293b;
+  border-color: #334155;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.dm-pagination-info {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-gray, #64748b);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+body.dark-theme .dm-pagination-info,
+body.dark-mode .dm-pagination-info {
+  color: #94a3b8;
+}
+
+.dm-pagination-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.dm-page-btn {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  box-shadow: none !important;
+  color: var(--text-dark, #2b3674) !important;
+  min-width: 34px !important;
+  height: 34px !important;
+  padding: 0 10px !important;
+  border-radius: 8px !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.18s ease !important;
+  transform: none !important;
+  outline: none !important;
+  font-family: inherit !important;
+}
+
+.dm-page-btn:hover:not(:disabled):not(.active) {
+  background: var(--dm-primary-light, rgba(99, 102, 241, 0.1)) !important;
+  border-color: var(--dm-primary-border, rgba(99, 102, 241, 0.25)) !important;
+  color: var(--dm-primary, #6366f1) !important;
+}
+
+.dm-page-btn.active {
+  background: var(--dm-purple-gradient, linear-gradient(135deg, #6366f1 0%, #a855f7 100%)) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35) !important;
+}
+
+.dm-page-btn:disabled {
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  color: var(--text-gray, #94a3b8) !important;
+}
+
+body.dark-theme .dm-page-btn,
+body.dark-mode .dm-page-btn {
+  color: #cbd5e1 !important;
+}
+
+body.dark-theme .dm-page-btn:hover:not(:disabled):not(.active),
+body.dark-mode .dm-page-btn:hover:not(:disabled):not(.active) {
+  background: rgba(99, 102, 241, 0.2) !important;
+  color: #a5b4fc !important;
+}
+
+body.dark-theme .dm-page-btn.active,
+body.dark-mode .dm-page-btn.active {
+  background: var(--dm-purple-gradient, linear-gradient(135deg, #6366f1 0%, #a855f7 100%)) !important;
+  color: #ffffff !important;
+}
+

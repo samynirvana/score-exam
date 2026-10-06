@@ -18,6 +18,8 @@ let activeAdminSubtab = 'planner'; // 'planner' or 'submissions'
 let submissionFilterDay = 'all';
 let submissionFilterStatus = 'all';
 let submissionFilterClass = 'all';
+let dmSubmissionsCurrentPage = 1;
+const DM_SUBMISSIONS_PER_PAGE = 10;
 
 // Helper: Calculate Monday of a given date
 export function getMonday(d) {
@@ -320,16 +322,19 @@ function setupFormButtons() {
 function setupFilterListeners() {
     document.getElementById('dmFilterDay')?.addEventListener('change', (e) => {
         submissionFilterDay = e.target.value;
+        dmSubmissionsCurrentPage = 1;
         renderSubmissions();
     });
 
     document.getElementById('dmFilterStatus')?.addEventListener('change', (e) => {
         submissionFilterStatus = e.target.value;
+        dmSubmissionsCurrentPage = 1;
         renderSubmissions();
     });
 
     document.getElementById('dmFilterClass')?.addEventListener('change', (e) => {
         submissionFilterClass = e.target.value;
+        dmSubmissionsCurrentPage = 1;
         renderSubmissions();
     });
 }
@@ -674,7 +679,10 @@ window.deleteAdminDailyMission = async function(missionId) {
 
 // --- SUBMISSIONS REVIEW & COMPLETION CHECKER ---
 
-export async function loadSubmissions() {
+export async function loadSubmissions(resetPage = true) {
+    if (resetPage) {
+        dmSubmissionsCurrentPage = 1;
+    }
     const weekKey = getWeekKey(selectedWeekMonday);
     const container = document.getElementById('dmSubmissionsListContainer');
     if (!container) return;
@@ -725,6 +733,10 @@ function renderSubmissions() {
     const container = document.getElementById('dmSubmissionsListContainer');
     if (!container) return;
 
+    const paginationWrapper = document.getElementById('dmSubmissionsPagination');
+    const pageInfo = document.getElementById('dmSubmissionsPageInfo');
+    const pageButtons = document.getElementById('dmSubmissionsPageButtons');
+
     let filtered = currentWeekSubmissions.filter(s => {
         if (submissionFilterDay !== 'all' && s.day !== submissionFilterDay) return false;
         if (submissionFilterStatus !== 'all' && (s.status || 'pending') !== submissionFilterStatus) return false;
@@ -733,6 +745,7 @@ function renderSubmissions() {
     });
 
     if (filtered.length === 0) {
+        if (paginationWrapper) paginationWrapper.style.display = 'none';
         container.innerHTML = `
             <div style="text-align: center; padding: 48px 20px; color: var(--text-gray); background: var(--bg-main); border-radius: 14px; border: 1.5px dashed var(--border-color);">
                 <div style="margin-bottom: 10px; display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 14px; background: rgba(99, 102, 241, 0.1); color: var(--dm-primary);">
@@ -745,8 +758,23 @@ function renderSubmissions() {
         return;
     }
 
+    // Pagination Calculation (10 items per page)
+    const totalSubmissions = filtered.length;
+    const totalPages = Math.ceil(totalSubmissions / DM_SUBMISSIONS_PER_PAGE) || 1;
+
+    if (dmSubmissionsCurrentPage > totalPages) {
+        dmSubmissionsCurrentPage = totalPages;
+    }
+    if (dmSubmissionsCurrentPage < 1) {
+        dmSubmissionsCurrentPage = 1;
+    }
+
+    const startIndex = (dmSubmissionsCurrentPage - 1) * DM_SUBMISSIONS_PER_PAGE;
+    const endIndex = Math.min(startIndex + DM_SUBMISSIONS_PER_PAGE, totalSubmissions);
+    const pageItems = filtered.slice(startIndex, endIndex);
+
     let html = '';
-    filtered.forEach(sub => {
+    pageItems.forEach(sub => {
         const status = sub.status || 'pending';
         let badgeHtml = '';
         if (status === 'completed') {
@@ -818,7 +846,74 @@ function renderSubmissions() {
     });
 
     container.innerHTML = html;
+
+    // Render Pagination Bar
+    if (paginationWrapper) {
+        paginationWrapper.style.display = 'flex';
+    }
+
+    if (pageInfo) {
+        pageInfo.innerHTML = `Showing <strong>${startIndex + 1}–${endIndex}</strong> of <strong>${totalSubmissions}</strong> submissions (Page ${dmSubmissionsCurrentPage} of ${totalPages})`;
+    }
+
+    if (pageButtons) {
+        if (totalPages <= 1) {
+            pageButtons.innerHTML = '';
+        } else {
+            let btnsHtml = `
+                <button type="button" class="dm-page-btn" ${dmSubmissionsCurrentPage === 1 ? 'disabled' : ''} onclick="window.goToDmSubmissionsPage(${dmSubmissionsCurrentPage - 1})" title="Previous Page">
+                    &larr; Prev
+                </button>
+            `;
+
+            let startP = Math.max(1, dmSubmissionsCurrentPage - 2);
+            let endP = Math.min(totalPages, startP + 4);
+            if (endP - startP < 4) {
+                startP = Math.max(1, endP - 4);
+            }
+
+            if (startP > 1) {
+                btnsHtml += `<button type="button" class="dm-page-btn" onclick="window.goToDmSubmissionsPage(1)">1</button>`;
+                if (startP > 2) {
+                    btnsHtml += `<span style="padding: 0 4px; color: var(--text-gray); font-size: 12px;">...</span>`;
+                }
+            }
+
+            for (let p = startP; p <= endP; p++) {
+                btnsHtml += `
+                    <button type="button" class="dm-page-btn ${p === dmSubmissionsCurrentPage ? 'active' : ''}" onclick="window.goToDmSubmissionsPage(${p})">
+                        ${p}
+                    </button>
+                `;
+            }
+
+            if (endP < totalPages) {
+                if (endP < totalPages - 1) {
+                    btnsHtml += `<span style="padding: 0 4px; color: var(--text-gray); font-size: 12px;">...</span>`;
+                }
+                btnsHtml += `<button type="button" class="dm-page-btn" onclick="window.goToDmSubmissionsPage(${totalPages})">${totalPages}</button>`;
+            }
+
+            btnsHtml += `
+                <button type="button" class="dm-page-btn" ${dmSubmissionsCurrentPage === totalPages ? 'disabled' : ''} onclick="window.goToDmSubmissionsPage(${dmSubmissionsCurrentPage + 1})" title="Next Page">
+                    Next &rarr;
+                </button>
+            `;
+
+            pageButtons.innerHTML = btnsHtml;
+        }
+    }
 }
+
+// Navigation between submission pages
+window.goToDmSubmissionsPage = function(page) {
+    dmSubmissionsCurrentPage = page;
+    renderSubmissions();
+    const container = document.getElementById('dmSubmissionsListContainer');
+    if (container) {
+        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+};
 
 // Give Completion (Approve)
 window.approveDmSubmission = async function(subId) {
