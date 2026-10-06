@@ -9,6 +9,12 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Classroom Timeline - Student Portal</title>
+    <script>
+        if (new URLSearchParams(location.search).get('embed') === '1') {
+            document.documentElement.classList.add('timeline-embedded');
+            document.documentElement.classList.add('timeline-embedded-' + (new URLSearchParams(location.search).get('panel') || 'chat'));
+        }
+    </script>
     <link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/d/1o_7O1hdx1SJOXfoFw9ZKxpl4zSOD_VYd">
 
     <!-- Google Fonts (Inter + Recommended Plus Jakarta Sans for Timeline Title) -->
@@ -22,7 +28,7 @@
     <link rel="stylesheet" href="style.css?v=412">
     <link rel="stylesheet" href="admin.css?v=412">
     <link rel="stylesheet" href="student.css?v=412">
-    <link rel="stylesheet" href="timeline.css?v=412">
+    <link rel="stylesheet" href="timeline.css?v=416">
 </head>
 
 <body>
@@ -387,12 +393,12 @@
     <div id="mentionPopup" class="mention-popup hidden"></div>
 
     <!-- FLOATING DIRECT MESSAGE LAUNCHER BUTTON (BOTTOM RIGHT) -->
-    <button id="dmFloatingBtn" class="dm-floating-btn" aria-label="Direct Message">
+    <button id="dmFloatingBtn" class="dm-floating-btn" aria-label="Chat Room">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
             stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
         </svg>
-        <span>Direct Message</span>
+        <span>Chat Room</span>
         <span id="dmUnreadTotalBadge" class="dm-unread-badge hidden">0</span>
     </button>
 
@@ -404,7 +410,7 @@
                 <div class="dm-status-dot"></div>
                 <div>
                     <div class="dm-user-name" id="dmHeaderUserName">Loading...</div>
-                    <div class="dm-subtitle">Direct Messages</div>
+                    <div class="dm-subtitle">Chat Room</div>
                 </div>
             </div>
             <div class="dm-header-actions">
@@ -466,7 +472,7 @@
         </div>
     </div>
 
-    <script type="module" src="timeline.js?v=410"></script>
+    <script type="module" src="timeline.js?v=420"></script>
     <script type="module" src="studentNav.js?v=451"></script>
 </body>
 

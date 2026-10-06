@@ -108,6 +108,87 @@ window.portalSession = {
 ['click', 'keydown', 'touchstart', 'scroll'].forEach(evtType => {
     window.addEventListener(evtType, () => touchAppSession(false), { passive: true });
 });
+
+// Keep Timeline communication one click away throughout the portal.
+(() => {
+    const page = window.location.pathname.split('/').pop().toLowerCase();
+    if (!['studentdash.html', 'profile.html', 'tools-gallery.html', 'scores.html', 'admin.html'].includes(page)) return;
+
+    const styles = document.createElement('link');
+    styles.rel = 'stylesheet';
+    styles.href = 'portalComms.css?v=6';
+    document.head.appendChild(styles);
+
+    const panel = document.createElement('section');
+    panel.className = 'portal-comms-panel';
+    panel.hidden = true;
+    panel.setAttribute('aria-label', 'Portal communications');
+    panel.innerHTML = '<div class="portal-comms-panel-header"><strong id="portalCommsTitle">Chat Room</strong><button type="button" class="portal-comms-close" aria-label="Close panel">&times;</button></div><iframe class="portal-comms-frame" title="Portal communications"></iframe>';
+    document.body.appendChild(panel);
+    const frame = panel.querySelector('iframe');
+    const panelTitle = panel.querySelector('#portalCommsTitle');
+    const controls = [];
+    let activePanel = null;
+    const closePanel = () => {
+        panel.hidden = true;
+        activePanel = null;
+        controls.forEach(control => control.setAttribute('aria-expanded', 'false'));
+    };
+    const togglePanel = kind => {
+        if (activePanel === kind && !panel.hidden) {
+            closePanel();
+            return;
+        }
+        const previousPanel = activePanel;
+        activePanel = kind;
+        panel.classList.toggle('portal-comms-notifications', kind === 'notifications');
+        panelTitle.textContent = kind === 'chat' ? 'Chat Room' : 'Notifications';
+        frame.title = panelTitle.textContent;
+        panel.hidden = false;
+        if (previousPanel !== kind) frame.src = `timeline.html?embed=1&panel=${kind}&v=5`;
+        controls.forEach(control => control.setAttribute('aria-expanded', String(control.dataset.panel === kind)));
+    };
+    panel.querySelector('.portal-comms-close').addEventListener('click', closePanel);
+    window.addEventListener('message', event => {
+        if (event.origin !== window.location.origin || event.source !== frame.contentWindow) return;
+        if (event.data?.type === 'portal-comms-close') closePanel();
+        if (event.data?.type === 'portal-comms-view-post' && typeof event.data.notifId === 'string') {
+            window.location.href = `timeline.html?notification=${encodeURIComponent(event.data.notifId)}`;
+        }
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && !panel.hidden) closePanel();
+    });
+
+    const makeNotificationButton = mobile => {
+        const notifications = document.createElement('button');
+        notifications.type = 'button';
+        notifications.className = 'portal-notification-link' + (mobile ? ' portal-notification-mobile' : '');
+        notifications.dataset.panel = 'notifications';
+        notifications.title = 'Notifications';
+        notifications.setAttribute('aria-label', 'Open notifications');
+        notifications.setAttribute('aria-expanded', 'false');
+        notifications.innerHTML = '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M10 21h4"></path></svg>';
+        notifications.addEventListener('click', () => togglePanel('notifications'));
+        controls.push(notifications);
+        return notifications;
+    };
+
+    const actions = document.querySelector('.desktop-user-actions');
+    if (actions) actions.prepend(makeNotificationButton(false));
+    document.body.appendChild(makeNotificationButton(true));
+
+    const chat = document.createElement('button');
+    chat.type = 'button';
+    chat.className = 'portal-chat-link';
+    chat.dataset.panel = 'chat';
+    chat.setAttribute('aria-label', 'Open Chat Room');
+    chat.setAttribute('aria-expanded', 'false');
+    chat.innerHTML = '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg><span>Chat Room</span>';
+    chat.addEventListener('click', () => togglePanel('chat'));
+    controls.push(chat);
+    document.body.appendChild(chat);
+})();
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
         checkSessionValidity();

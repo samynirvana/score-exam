@@ -46,7 +46,7 @@ export function getDayDate(monday, dayName) {
 // State
 let currentStudent = null;
 let currentWeekMonday = getMonday(new Date());
-let selectedDay = getCurrentOrMonday();
+let selectedDay = null;
 let weekMissions = [];
 let studentSubmissions = [];
 let capturedPhotoData = null;
@@ -65,13 +65,11 @@ window.previewSaturdayBonusPopup = () => {
     showSaturdayBonusModal(currentStudent?.name || 'Student');
 };
 
-// Determine default day: if today is Mon-Fri, pick today; else pick Monday
-function getCurrentOrMonday() {
-    const dayNum = new Date().getDay(); // 0 is Sun, 1 is Mon ... 5 is Fri, 6 is Sat
-    if (dayNum >= 1 && dayNum <= 5) {
-        return DAYS_OF_WEEK[dayNum - 1];
-    }
-    return 'Monday';
+function isPastMissionDay(day) {
+    const missionDate = getDayDate(currentWeekMonday, day);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return missionDate < today;
 }
 
 // Helper: Check if a mission document belongs to the active week
@@ -246,8 +244,8 @@ function setupStudentDayPills() {
     container.querySelectorAll('.dm-day-pill').forEach(pill => {
         pill.addEventListener('click', () => {
             const day = pill.getAttribute('data-day');
-            if (!day) return;
-            selectedDay = day;
+            if (!day || isPastMissionDay(day)) return;
+            selectedDay = selectedDay === day ? null : day;
             capturedPhotoData = null;
             renderDayPills();
             renderActiveMissionWorkspace();
@@ -259,13 +257,20 @@ function setupStudentDayPills() {
 function renderDayPills() {
     const todayIndex = new Date().getDay(); // 1 = Mon ... 5 = Fri
     const todayName = (todayIndex >= 1 && todayIndex <= 5) ? DAYS_OF_WEEK[todayIndex - 1] : null;
+    if (selectedDay && isPastMissionDay(selectedDay)) selectedDay = null;
 
     DAYS_OF_WEEK.forEach(day => {
         const pill = document.querySelector(`#dmStudentDayPills .dm-day-pill[data-day="${day}"]`);
         if (!pill) return;
 
-        pill.classList.toggle('active', day.toLowerCase() === selectedDay.toLowerCase());
+        const isPast = isPastMissionDay(day);
+        const isExpanded = day === selectedDay && !isPast;
+        pill.classList.toggle('active', isExpanded);
         pill.classList.toggle('is-today', day === todayName);
+        pill.classList.toggle('is-past', isPast);
+        pill.setAttribute('aria-disabled', String(isPast));
+        pill.setAttribute('aria-expanded', String(isExpanded));
+        pill.disabled = isPast;
 
         const dayDate = getDayDate(currentWeekMonday, day);
         const dateSpan = pill.querySelector('.dm-day-date');
@@ -273,30 +278,18 @@ function renderDayPills() {
             dateSpan.innerText = dayDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
         }
 
-        const statusDot = pill.querySelector('.dm-day-status-dot');
         const mission = weekMissions.find(m => (m.day || '').trim().toLowerCase() === day.trim().toLowerCase());
         const sub = studentSubmissions.find(s => (s.day || '').trim().toLowerCase() === day.trim().toLowerCase());
-
-        if (statusDot) {
-            if (sub) {
-                if (sub.status === 'completed') {
-                    statusDot.className = 'dm-day-status-dot dm-status-completed';
-                    statusDot.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1.5px; margin-right: 3px;"><polyline points="20 6 9 17 4 12"/></svg><span>Done</span>';
-                } else if (sub.status === 'revision') {
-                    statusDot.className = 'dm-day-status-dot dm-status-revision';
-                    statusDot.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1.5px; margin-right: 3px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span>Revise</span>';
-                } else {
-                    statusDot.className = 'dm-day-status-dot dm-status-pending';
-                    statusDot.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1.5px; margin-right: 3px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span>Review</span>';
-                }
-            } else if (mission) {
-                statusDot.className = 'dm-day-status-dot dm-status-ready';
-                statusDot.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1.5px; margin-right: 3px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span>Open</span>';
-            } else {
-                statusDot.className = 'dm-day-status-dot dm-status-empty';
-                statusDot.innerHTML = '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 3px;"><circle cx="12" cy="12" r="8"/></svg><span>None</span>';
-            }
-        }
+        const state = sub?.status === 'completed' ? 'complete'
+            : mission && isPast && !sub ? 'missed'
+            : mission ? 'waiting' : 'empty';
+        pill.classList.remove('dm-day-complete', 'dm-day-missed', 'dm-day-waiting');
+        if (state !== 'empty') pill.classList.add(`dm-day-${state}`);
+        const stateLabel = state === 'complete' ? 'approved by teacher'
+            : state === 'missed' ? 'mission missed'
+            : state === 'waiting' ? (sub ? 'awaiting teacher approval or revision' : 'mission to complete')
+            : 'no mission assigned';
+        pill.setAttribute('aria-label', `${day}, ${dayDate.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}: ${stateLabel}`);
     });
 }
 
@@ -312,7 +305,6 @@ function renderStreakProgress() {
 
     const streakCountEl = document.getElementById('dmStreakCompletedCount');
     const streakProgressFill = document.getElementById('dmStreakProgressFill');
-    const satBadge = document.getElementById('dmSaturdayStatusBadge');
 
     if (streakCountEl) streakCountEl.innerText = `${completedCount} / 5`;
     if (streakProgressFill) {
@@ -320,22 +312,20 @@ function renderStreakProgress() {
         streakProgressFill.style.width = `${pct}%`;
     }
 
-    if (satBadge) {
-        const rewardIconSvg = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><rect x="3" y="8" width="18" height="13" rx="2"></rect><path d="M12 8v13M3 13h18"></path><path d="M7.5 8a2.5 2.5 0 0 1 0-5c1.5 0 4.5 5 4.5 5s3-5 4.5-5a2.5 2.5 0 0 1 0 5"></path></svg>';
-        if (completedCount === 5) {
-            satBadge.innerHTML = `${rewardIconSvg} Weekly Reward: <strong>READY (+1.5 Pts)</strong>`;
-            satBadge.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
-        } else {
-            satBadge.innerHTML = `${rewardIconSvg} Weekly Reward +1.5 Pts`;
-            satBadge.style.background = 'var(--dm-gold-gradient)';
-        }
-    }
 }
 
 // Render active day's mission workspace
 function renderActiveMissionWorkspace() {
     const workspace = document.getElementById('dmActiveMissionWorkspace');
     if (!workspace) return;
+
+    if (!selectedDay || isPastMissionDay(selectedDay)) {
+        workspace.hidden = true;
+        workspace.innerHTML = '';
+        return;
+    }
+
+    workspace.hidden = false;
 
     const mission = weekMissions.find(m => (m.day || '').trim().toLowerCase() === selectedDay.trim().toLowerCase());
     const sub = studentSubmissions.find(s => (s.day || '').trim().toLowerCase() === selectedDay.trim().toLowerCase());
@@ -651,6 +641,10 @@ async function uploadPhotoToPicsdbDrive(dataUrl, customFileName) {
 
 // Submit or Update student's mission
 async function submitStudentMission() {
+    if (!selectedDay || isPastMissionDay(selectedDay)) {
+        alert('This daily mission is closed. Past days can no longer be submitted.');
+        return;
+    }
     const mission = weekMissions.find(m => (m.day || '').trim().toLowerCase() === selectedDay.trim().toLowerCase());
     if (!mission) return;
 
@@ -697,6 +691,13 @@ async function submitStudentMission() {
             finalPhotoUrl = await uploadPhotoToPicsdbDrive(capturedPhotoData);
         } else if (existingSub && existingSub.photoUrl) {
             finalPhotoUrl = existingSub.photoUrl;
+        }
+
+        if (isPastMissionDay(selectedDay)) {
+            alert('This daily mission is closed. Past days can no longer be submitted.');
+            renderDayPills();
+            renderActiveMissionWorkspace();
+            return;
         }
 
         const payload = {
@@ -753,6 +754,11 @@ export async function updateClaimBonusButtonState() {
     });
     const completedCount = completedDays.length;
     const isAllFiveDone = completedCount === 5;
+    document.querySelectorAll('#dmModalProgress [data-day]').forEach(star => {
+        const complete = completedDays.includes(star.dataset.day);
+        star.classList.toggle('complete', complete);
+        star.setAttribute('aria-label', `${star.dataset.day}: ${complete ? 'completed' : 'not completed'}`);
+    });
 
     const weekKey = getWeekKey(currentWeekMonday);
     const studentCode = currentStudent.code.toUpperCase().trim();
@@ -774,7 +780,7 @@ export async function updateClaimBonusButtonState() {
         claimBtn.style.opacity = "0.9";
         claimBtn.onclick = null;
         if (hintEl) {
-            hintEl.innerText = "You have already claimed your 1.5 behavior points for this week!";
+            hintEl.innerText = "Reward collected! Great work this week.";
             hintEl.style.color = "#10b981";
         }
     } else if (isAllFiveDone) {
@@ -784,7 +790,8 @@ export async function updateClaimBonusButtonState() {
         claimBtn.style.cursor = "pointer";
         claimBtn.style.opacity = "1";
         if (hintEl) {
-            hintEl.innerHTML = '<span style="color: #10b981; font-weight: 700;">All 5 missions completed!</span> Click above to receive +1.5 Behavior Points.';
+            hintEl.innerText = 'All 5 stars earned. Your reward is ready!';
+            hintEl.style.color = '#059669';
         }
         claimBtn.onclick = async () => {
             claimBtn.disabled = true;
@@ -801,7 +808,7 @@ export async function updateClaimBonusButtonState() {
         claimBtn.style.opacity = "0.65";
         claimBtn.onclick = null;
         if (hintEl) {
-            hintEl.innerText = `Streak: ${completedCount} / 5 completed. Complete all 5 daily missions from Monday to Friday to unlock!`;
+            hintEl.innerText = `${completedCount} of 5 stars earned. Keep going!`;
             hintEl.style.color = "var(--text-gray, #64748b)";
         }
     }

@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="style.css?v=379">
     <link rel="stylesheet" href="admin.css?v=388">
     <link rel="stylesheet" href="student.css?v=391">
-    <link rel="stylesheet" href="dailyMission.css?v=454">
+    <link rel="stylesheet" href="dailyMission.css?v=458">
 </head>
 
 <body>
@@ -465,15 +465,14 @@
                                     <div class="dm-header-row">
                                         <div class="dm-title-group">
                                             <div class="dm-icon-badge">
-                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="6"></circle><circle cx="12" cy="2"></circle></svg>
+                                                <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 16.5c-1.5 1.3-2 5-2 5s3.7-.5 5-2c.7-.8.7-2 0-2.7s-1.9-.7-3 0z"></path><path d="M12 15l-3-3a20 20 0 0 1 8.6-9.6L21.5 2.5l-.1 3.9A20 20 0 0 1 12 15z"></path><path d="M9 12l-3.5-.5L2 15l4.5 1.5M12 15l.5 3.5L9 22l-1.5-4.5"></path><circle cx="16" cy="8" r="1.5"></circle></svg>
                                             </div>
                                             <div>
                                                 <h2 class="dm-title">Daily Mission</h2>
-                                                <p class="dm-subtitle">Complete daily missions to maintain your streak and earn the Weekly Bonus Prize!</p>
                                             </div>
                                         </div>
 
-                                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                        <div class="dm-header-actions">
                                             <div class="dm-streak-container">
                                                 <span class="dm-streak-text">
                                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
@@ -484,48 +483,45 @@
                                                 </div>
                                             </div>
 
-                                            <div class="dm-saturday-badge" id="dmSaturdayStatusBadge" title="Complete all 5 days to unlock +1.5 Behavior Points!">
-                                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 2px;"><rect x="3" y="8" width="18" height="13" rx="2"></rect><path d="M12 8v13M3 13h18"></path><path d="M7.5 8a2.5 2.5 0 0 1 0-5c1.5 0 4.5 5 4.5 5s3-5 4.5-5a2.5 2.5 0 0 1 0 5"></path></svg> Weekly Reward +1.5 Pts
-                                            </div>
-
-                                            <!-- Button to preview/test the Saturday bonus popup -->
-                                            <button type="button" onclick="previewSaturdayBonusPopup()" style="background: none; border: 1px dashed var(--dm-primary-border); color: var(--dm-primary); font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 8px; cursor: pointer;" title="View Weekly Celebration Pop-up">
-                                                View Bonus
+                                            <button type="button" class="dm-reward-button" onclick="previewSaturdayBonusPopup()" title="View the weekly grand prize">
+                                                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="6"></circle><path d="m8 13-1 9 5-3 5 3-1-9"></path></svg>
+                                                <span><small>THE GRAND PRIZE</small>View Bonus <b>+1.5 Pts</b></span>
+                                                <span class="dm-reward-arrow" aria-hidden="true">↗</span>
                                             </button>
                                         </div>
                                     </div>
 
                                     <!-- Monday to Friday Interactive Day Pills -->
                                     <div class="dm-days-nav" id="dmStudentDayPills">
-                                        <div class="dm-day-pill" data-day="Monday">
+                                        <button type="button" class="dm-day-pill" data-day="Monday" aria-controls="dmActiveMissionWorkspace" aria-expanded="false">
+                                            <span class="dm-day-step">01</span>
                                             <span class="dm-day-name">Monday</span>
                                             <span class="dm-day-date">...</span>
-                                            <span class="dm-day-status-dot dm-status-empty">...</span>
-                                        </div>
-                                        <div class="dm-day-pill" data-day="Tuesday">
+                                        </button>
+                                        <button type="button" class="dm-day-pill" data-day="Tuesday" aria-controls="dmActiveMissionWorkspace" aria-expanded="false">
+                                            <span class="dm-day-step">02</span>
                                             <span class="dm-day-name">Tuesday</span>
                                             <span class="dm-day-date">...</span>
-                                            <span class="dm-day-status-dot dm-status-empty">...</span>
-                                        </div>
-                                        <div class="dm-day-pill" data-day="Wednesday">
+                                        </button>
+                                        <button type="button" class="dm-day-pill" data-day="Wednesday" aria-controls="dmActiveMissionWorkspace" aria-expanded="false">
+                                            <span class="dm-day-step">03</span>
                                             <span class="dm-day-name">Wednesday</span>
                                             <span class="dm-day-date">...</span>
-                                            <span class="dm-day-status-dot dm-status-empty">...</span>
-                                        </div>
-                                        <div class="dm-day-pill" data-day="Thursday">
+                                        </button>
+                                        <button type="button" class="dm-day-pill" data-day="Thursday" aria-controls="dmActiveMissionWorkspace" aria-expanded="false">
+                                            <span class="dm-day-step">04</span>
                                             <span class="dm-day-name">Thursday</span>
                                             <span class="dm-day-date">...</span>
-                                            <span class="dm-day-status-dot dm-status-empty">...</span>
-                                        </div>
-                                        <div class="dm-day-pill" data-day="Friday">
+                                        </button>
+                                        <button type="button" class="dm-day-pill" data-day="Friday" aria-controls="dmActiveMissionWorkspace" aria-expanded="false">
+                                            <span class="dm-day-step">05</span>
                                             <span class="dm-day-name">Friday</span>
                                             <span class="dm-day-date">...</span>
-                                            <span class="dm-day-status-dot dm-status-empty">...</span>
-                                        </div>
+                                        </button>
                                     </div>
 
                                     <!-- Active Day Mission Details Workspace -->
-                                    <div id="dmActiveMissionWorkspace">
+                                    <div id="dmActiveMissionWorkspace" hidden>
                                         <!-- Injected dynamically by studentDailyMission.js -->
                                     </div>
                                 </section>
@@ -608,6 +604,8 @@
     <!-- SATURDAY STREAK BONUS CELEBRATION MODAL -->
     <div id="saturdayBonusModal" class="dm-modal-backdrop" style="display: none;">
         <div class="dm-modal-card">
+            <div class="dm-modal-glow" aria-hidden="true"></div>
+            <div class="dm-sparkles" aria-hidden="true"><span>✦</span><span>✦</span><span>✦</span><span>✦</span><span>✦</span><span>✦</span></div>
             <!-- Modal Close Button -->
             <button type="button" class="dm-modal-close-btn" onclick="closeSaturdayBonusModal()" aria-label="Close">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -621,21 +619,29 @@
                 </svg>
             </div>
 
-            <span style="font-size: 12px; font-weight: 800; color: #f59e0b; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 6px;">WEEKLY BONUS</span>
+            <span class="dm-modal-eyebrow">WEEKLY BONUS</span>
             <h2 class="dm-modal-title">Perfect 5-Day Streak!</h2>
-            <p class="dm-modal-desc">
-                You will have a chance to get 1.5 behavior point when you successfully completed all 5 daily missions from Monday to Friday without missing any!
-            </p>
+            <div class="dm-reward-showcase">
+                <span class="dm-reward-plus">+</span><strong>1.5</strong>
+                <span class="dm-reward-unit">BEHAVIOR<br>POINTS</span>
+            </div>
+            <div class="dm-modal-progress" id="dmModalProgress" aria-label="Weekly mission progress">
+                <span data-day="Monday"><b>★</b><small>MON</small></span>
+                <span data-day="Tuesday"><b>★</b><small>TUE</small></span>
+                <span data-day="Wednesday"><b>★</b><small>WED</small></span>
+                <span data-day="Thursday"><b>★</b><small>THU</small></span>
+                <span data-day="Friday"><b>★</b><small>FRI</small></span>
+            </div>
 
             <button type="button" id="dmClaimBonusBtn" class="dm-modal-action-btn" disabled>
                 Claim the Bonus
             </button>
-            <div id="dmClaimStatusHint" style="margin-top: 12px; font-size: 12.5px; color: var(--text-gray, #64748b); font-weight: 600;"></div>
+            <div id="dmClaimStatusHint" class="dm-claim-hint"></div>
         </div>
     </div>
 
-    <script type="module" src="main.js?v=454"></script>
-    <script type="module" src="studentNav.js?v=454"></script>
+    <script type="module" src="main.js?v=458"></script>
+    <script type="module" src="studentNav.js?v=464"></script>
 </body>
 
 </html>

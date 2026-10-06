@@ -3,8 +3,25 @@ import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https:/
 import { db, auth } from "./firebase.js";
 import { escapeHtml, formatTimeAgo } from "./utils.js";
 
+function formatNotificationAge(timestamp) {
+    const time = new Date(timestamp).getTime();
+    if (!Number.isFinite(time)) return '';
+    const minutes = Math.max(0, Math.floor((Date.now() - time) / 60000));
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+}
+
 let currentUser = null; 
+const embeddedPanel = new URLSearchParams(window.location.search).get('embed') === '1';
+if (embeddedPanel && new URLSearchParams(window.location.search).get('panel') === 'notifications') {
+    const dropdown = document.getElementById('notifDropdown');
+    if (dropdown) document.body.appendChild(dropdown);
+}
 let unsubscribePosts = null; 
+let unsubscribeAllPosts = null;
 let unsubscribeNotifs = null; 
 let allUserNames = [];
 let unsubscribeStudents = null;
@@ -476,14 +493,48 @@ function isTimelineAdmin() {
         el.classList.toggle('hidden', !isAdmin);
     });
 
-    await fetchAllNames();
+    const requestedPanel = new URLSearchParams(window.location.search).get('panel');
+    // Session setup can begin before this module finishes declaring feed and chat state.
+    await Promise.resolve();
+    if (embeddedPanel) {
+        if (requestedPanel === 'chat') initDMSystem();
+        if (requestedPanel === 'notifications') {
+            loadNotifications();
+            const dropdown = document.getElementById('notifDropdown');
+            if (dropdown) dropdown.style.display = 'block';
+        } else {
+            document.getElementById('dmFloatingBtn')?.click();
+        }
+        return;
+    }
+
     listenStudentsDirectory();
     await renderTimelineTabs();
-    await populateClassDropdown();
     initTimelineImageUpload();
     loadPosts();
     loadNotifications();
     initDMSystem();
+    fetchAllNames().catch(error => console.warn('Could not load user directory:', error));
+    populateClassDropdown().catch(error => console.warn('Could not load class options:', error));
+    if (requestedPanel === 'chat' || requestedPanel === 'notifications') {
+        const buttonId = requestedPanel === 'chat' ? 'dmFloatingBtn' : 'notifToggleBtn';
+        document.getElementById(buttonId)?.click();
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete('panel');
+        window.history.replaceState(null, '', cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
+    }
+    const requestedNotification = new URLSearchParams(window.location.search).get('notification');
+    if (requestedNotification) {
+        try {
+            const notificationSnap = await getDoc(doc(db, 'timeline_notifications', requestedNotification));
+            if (notificationSnap.exists()) await window.openNotification(requestedNotification, notificationSnap.data().postId);
+        } catch (error) {
+            console.warn('Could not open notification post:', error);
+        }
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete('notification');
+        window.history.replaceState(null, '', cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
+    }
 }
 
 function updateComposerAvatar() {
@@ -754,7 +805,7 @@ function loadNotifications() {
             dropdown.innerHTML += `
                 <div class="notif-item ${readClass}" onclick="openNotification('${docSnap.id}', '${notif.postId}')">
                     ${safeMsg}
-                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${new Date(notif.timestamp).toLocaleString()}</div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${formatNotificationAge(notif.timestamp)}</div>
                 </div>
             `;
         });
@@ -775,8 +826,42 @@ document.getElementById('notifToggleBtn')?.addEventListener('click', () => {
 
 window.openNotification = async function(notifId, postId) {
     const notifDropdown = document.getElementById('notifDropdown');
-    if (notifDropdown) notifDropdown.style.display = 'none';
+    if (notifDropdown && !embeddedPanel) notifDropdown.style.display = 'none';
     try { await updateDoc(doc(db, "timeline_notifications", notifId), { read: true }); } catch(e) {}
+
+    if (embeddedPanel) {
+        const detail = document.createElement('div');
+        detail.className = 'embedded-notification-detail';
+        const back = document.createElement('button');
+        back.type = 'button';
+        back.className = 'embedded-notification-back-btn';
+        back.textContent = '← All notifications';
+        back.addEventListener('click', () => detail.remove());
+        detail.appendChild(back);
+        try {
+            const snap = await getDoc(doc(db, 'timeline_notifications', notifId));
+            if (snap.exists()) {
+                const message = document.createElement('p');
+                message.textContent = snap.data().message || 'Notification';
+                detail.appendChild(message);
+                const date = document.createElement('small');
+                date.textContent = formatNotificationAge(snap.data().timestamp);
+                detail.appendChild(date);
+            }
+        } catch (error) {
+            console.warn('Could not load notification detail:', error);
+        }
+        if (postId) {
+            const viewPost = document.createElement('button');
+            viewPost.type = 'button';
+            viewPost.className = 'embedded-notification-post-btn';
+            viewPost.textContent = 'View post';
+            viewPost.addEventListener('click', () => window.parent.postMessage({ type: 'portal-comms-view-post', notifId }, window.location.origin));
+            detail.appendChild(viewPost);
+        }
+        document.body.appendChild(detail);
+        return;
+    }
     
     // 1. Locate the post in allCachedPosts, or fetch directly from Firestore
     let post = allCachedPosts.find(p => p.id === postId);
@@ -1346,6 +1431,8 @@ let isLoadingMoreTimelinePosts = false;
 let currentTimelineTab = 'all'; // 'class' or 'all'
 let currentStaffSelectedClass = '';
 let allCachedPosts = [];
+let allClassPosts = [];
+let allPostsLoaded = false;
 let currentFirestoreLimit = 60;
 let hasMoreFirestorePosts = true;
 
@@ -1453,13 +1540,28 @@ function loadPosts(requestedLimit = currentFirestoreLimit) {
             allCachedPosts.push({ id: docSnap.id, ...docSnap.data() });
         });
         hasMoreFirestorePosts = snapshot.docs.length >= currentFirestoreLimit;
-        renderTimelineFeed(false);
+        if (currentTimelineTab === 'class') renderTimelineFeed(false);
     }, (err) => {
         console.error("Error loading timeline posts:", err);
     });
+
+    if (!unsubscribeAllPosts) {
+        const allPostsQuery = query(collection(db, "timeline_posts"), where("targetClass", "==", "All"));
+        unsubscribeAllPosts = onSnapshot(allPostsQuery, (snapshot) => {
+            allClassPosts = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+            allClassPosts.sort((a, b) => String(b.timestamp || '').localeCompare(String(a.timestamp || '')));
+            allPostsLoaded = true;
+            if (currentTimelineTab === 'all') renderTimelineFeed(false);
+        }, (err) => {
+            allPostsLoaded = true;
+            console.error("Error loading all-class timeline posts:", err);
+            if (currentTimelineTab === 'all') renderTimelineFeed(false);
+        });
+    }
 }
 
 function getFilteredTimelinePosts() {
+    if (currentTimelineTab === 'all') return allClassPosts;
     const isStaff = currentUser?.type === 'staff';
     const studentClass = (currentUser?.studentClass || '').trim();
 
@@ -1467,19 +1569,14 @@ function getFilteredTimelinePosts() {
         const postTarget = (post.targetClass || 'All').trim();
         const isAll = postTarget === 'All' || postTarget.toLowerCase() === 'all classes';
 
-        if (currentTimelineTab === 'all') {
-            // "put all classes post to all post"
-            return isAll;
+        // Class posts stay within their specific class tab.
+        const norm = s => (s || '').toLowerCase().replace(/^(grade|class)\s*/i, '').trim();
+        if (!isStaff) {
+            if (!studentClass || studentClass === 'Unassigned') return false;
+            return !isAll && (postTarget.toLowerCase() === studentClass.toLowerCase() || norm(postTarget) === norm(studentClass));
         } else {
-            // "specific class to that class"
-            const norm = s => (s || '').toLowerCase().replace(/^(grade|class)\s*/i, '').trim();
-            if (!isStaff) {
-                if (!studentClass || studentClass === 'Unassigned') return false;
-                return !isAll && (postTarget.toLowerCase() === studentClass.toLowerCase() || norm(postTarget) === norm(studentClass));
-            } else {
-                if (!currentStaffSelectedClass) return false;
-                return !isAll && (postTarget.toLowerCase() === currentStaffSelectedClass.toLowerCase() || norm(postTarget) === norm(currentStaffSelectedClass));
-            }
+            if (!currentStaffSelectedClass) return false;
+            return !isAll && (postTarget.toLowerCase() === currentStaffSelectedClass.toLowerCase() || norm(postTarget) === norm(currentStaffSelectedClass));
         }
     });
 }
@@ -1497,6 +1594,11 @@ function renderTimelineFeed(resetPagination = true) {
     const isStaff = currentUser?.type === 'staff';
     const studentClass = (currentUser?.studentClass || '').trim();
     const filtered = getFilteredTimelinePosts();
+
+    if (currentTimelineTab === 'all' && !allPostsLoaded) {
+        feed.innerHTML = '<div class="timeline-feed-loading">Loading posts...</div>';
+        return;
+    }
 
     if (filtered.length === 0) {
         const tabTitle = currentTimelineTab === 'all' 
@@ -1528,7 +1630,7 @@ function renderTimelineLoadMoreControl(feed, filtered) {
     if (existingEndMsg) existingEndMsg.remove();
 
     const hasMoreLocalPosts = filtered.length > currentRenderedLimit;
-    const canFetchMoreFromDb = hasMoreFirestorePosts;
+    const canFetchMoreFromDb = currentTimelineTab === 'class' && hasMoreFirestorePosts;
 
     if (hasMoreLocalPosts || canFetchMoreFromDb) {
         const container = document.createElement('div');
@@ -1578,7 +1680,7 @@ window.loadMoreTimelinePosts = async function () {
     const filtered = getFilteredTimelinePosts();
 
     // If we don't have enough posts in memory for the next batch and DB may have more, expand Firestore query
-    if (filtered.length <= currentRenderedLimit && hasMoreFirestorePosts) {
+    if (currentTimelineTab === 'class' && filtered.length <= currentRenderedLimit && hasMoreFirestorePosts) {
         const nextLimit = currentFirestoreLimit + 30;
         await new Promise((resolve) => {
             currentFirestoreLimit = nextLimit;
@@ -2025,10 +2127,16 @@ function initDMSystem() {
 
     closeBtn?.addEventListener('click', () => {
         widget?.classList.add('hidden');
+        if (embeddedPanel) window.parent.postMessage({ type: 'portal-comms-close' }, window.location.origin);
     });
 
-    newChatBtn?.addEventListener('click', () => {
+    newChatBtn?.addEventListener('click', async () => {
         showDMView('contacts');
+        if (!allUserDirectory.length) {
+            const list = document.getElementById('dmContactsList');
+            if (list) list.innerHTML = '<div class="dm-empty-state">Loading contacts...</div>';
+            await fetchAllNames();
+        }
         renderDMContactsList('');
     });
 
@@ -2225,7 +2333,7 @@ function subscribeDMThreads() {
             }
 
             if (threadsMap.size === 0) {
-                threadsListEl.innerHTML = `<div class="dm-empty-state">No conversations yet. Click "+ Add Chat" to start a direct message!</div>`;
+                threadsListEl.innerHTML = `<div class="dm-empty-state">No chats yet. Click "+ Add Chat" to start a chat room!</div>`;
                 return;
             }
 
@@ -2312,7 +2420,7 @@ function renderLocalDMThreads() {
     });
 
     if (threadsMap.size === 0) {
-        threadsListEl.innerHTML = `<div class="dm-empty-state">No conversations yet. Click "+ Add Chat" to start a direct message!</div>`;
+        threadsListEl.innerHTML = `<div class="dm-empty-state">No chats yet. Click "+ Add Chat" to start a chat room!</div>`;
         return;
     }
 
