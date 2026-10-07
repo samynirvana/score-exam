@@ -41,7 +41,8 @@ import {
   getLoggedInTeacherName,
   updateUniformBadges,
   sortWeeks,
-  formatModernDateRange
+  formatModernDateRange,
+  canAccessRewardView
 } from "./js/weekly/weeklyState.js";
 
 // Tab Modules
@@ -577,6 +578,11 @@ export function checkUserRoleAccess() {
     if (adminTab && adminTab.classList.contains('active')) {
       switchTab('classView', document.getElementById('btnClassView'));
     }
+
+    const rewardTab = document.getElementById('rewardView');
+    if (rewardTab && rewardTab.classList.contains('active') && !canAccessRewardView()) {
+      switchTab('classView', document.getElementById('btnClassView'));
+    }
   } else if (isAdminUser()) {
     if (teacherSelectContainer) teacherSelectContainer.style.display = 'flex';
     const reportTeacherSel = document.getElementById('reportTeacherSelect');
@@ -690,6 +696,10 @@ export function initDraggableNavTabs() {
 export function switchTab(tabId, targetBtn) {
   if (tabId === 'adminView' && !isAdminUser()) {
     alert("Access Denied: Only administrators can access the Admin Dashboard.");
+    return;
+  }
+  if (tabId === 'rewardView' && !canAccessRewardView()) {
+    alert("Access Denied: Character and skill reward can only be accessed by admin and home teacher.");
     return;
   }
   if (!isAdminUser() && weeklyTabPermissions[tabId] === false) {

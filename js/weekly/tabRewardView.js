@@ -7,7 +7,9 @@ import {
   appEntities,
   isAdminUser,
   isTeacherUser,
-  getLoggedInTeacherName
+  getLoggedInTeacherName,
+  isUserAdminOrTeacherLeader,
+  canAccessRewardView
 } from "./weeklyState.js";
 
 // ======================================================
@@ -94,6 +96,9 @@ onSnapshot(doc(db, "schedules", "assemblyRewards"), (docSnap) => {
 });
 
 function initRewardView() {
+  if (!canAccessRewardView()) {
+    return;
+  }
   populateRewardSelects();
   updateStudentsDatalist();
   renderRewardView();
@@ -215,14 +220,10 @@ function renderRewardView() {
   const theme = document.getElementById('rewardThemeSelect')?.value || 'Theme 1';
   const className = document.getElementById('rewardClassSelect')?.value || (appEntities.classes[0] || 'Grade 7A');
 
-  // Update Section Title & Badges
+  // Update Section Title
   const sectionTitle = document.getElementById('rewardSectionTitle');
   if (sectionTitle) {
     sectionTitle.textContent = `Character and Skill - ${className} (${theme})`;
-  }
-  const badgeText = document.getElementById('rewardClassBadgeText');
-  if (badgeText) {
-    badgeText.textContent = `${className} • ${theme}`;
   }
 
   const storageKey = getRewardStorageKey(year, theme, className);
@@ -257,6 +258,27 @@ function renderRewardView() {
 
   // Render Printable Sheet Table Body
   renderRewardPrintSheet(year, theme, className, record);
+
+  // Toggle button for Full Table: only shown for admin or teacher's leader
+  const btnToggleFullTable = document.getElementById('btnToggleFullRewardTable');
+  const masterCard = document.getElementById('rewardMasterLedgerCard');
+  const btnToggleText = document.getElementById('btnToggleFullRewardTableText');
+  const canViewFullTable = isUserAdminOrTeacherLeader();
+
+  if (btnToggleFullTable) {
+    if (canViewFullTable) {
+      btnToggleFullTable.style.display = 'inline-flex';
+      const isVisible = masterCard && masterCard.style.display !== 'none';
+      if (btnToggleText) {
+        btnToggleText.textContent = isVisible ? 'Hide Full Table' : 'Show Full Table';
+      }
+    } else {
+      btnToggleFullTable.style.display = 'none';
+      if (masterCard) {
+        masterCard.style.display = 'none';
+      }
+    }
+  }
 
   // Render Master Summary Ledger Table (All classes for this theme)
   renderRewardMasterLedger(year, theme);
@@ -719,5 +741,20 @@ document.getElementById('btnClearRewards')?.addEventListener('click', clearAssem
 document.getElementById('btnPrintRewardSheet')?.addEventListener('click', printAssemblyRewardSheet);
 document.getElementById('btnExportRewardExcel')?.addEventListener('click', exportAssemblyRewardsToExcel);
 
+document.getElementById('btnToggleFullRewardTable')?.addEventListener('click', () => {
+  const masterCard = document.getElementById('rewardMasterLedgerCard');
+  const btnToggleText = document.getElementById('btnToggleFullRewardTableText');
+  if (!masterCard) return;
 
-export { initRewardView, populateRewardSelects };
+  const isHidden = masterCard.style.display === 'none' || getComputedStyle(masterCard).display === 'none';
+  if (isHidden) {
+    masterCard.style.display = 'block';
+    if (btnToggleText) btnToggleText.textContent = 'Hide Full Table';
+    masterCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } else {
+    masterCard.style.display = 'none';
+    if (btnToggleText) btnToggleText.textContent = 'Show Full Table';
+  }
+});
+
+export { initRewardView, populateRewardSelects, canAccessRewardView };

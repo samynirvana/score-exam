@@ -349,6 +349,26 @@ export function canUserEditClass(className) {
   return !!(assignedClass && assignedClass === className);
 }
 
+export function isHomeTeacherUser() {
+  const teacherName = getLoggedInTeacherName();
+  if (!teacherName) return false;
+  return !!(appEntities.homeTeachers && appEntities.homeTeachers[teacherName]);
+}
+
+export function isUserAdminOrTeacherLeader() {
+  if (isAdminUser()) return true;
+  const tName = getLoggedInTeacherName();
+  if (tName && Array.isArray(appEntities.teacherLeaders) && appEntities.teacherLeaders.includes(tName)) return true;
+  if (currentUserRole === 'teacher_leader' || currentUserRole === 'admin') return true;
+  return false;
+}
+
+export function canAccessRewardView() {
+  if (isUserAdminOrTeacherLeader()) return true;
+  if (isHomeTeacherUser()) return true;
+  return false;
+}
+
 // Helper to retrieve slot assignments normalized as an array, prioritizing weekly overrides
 export function getSlotAssignments(className, day, slotId, viewCalPrefix = null) {
   const calPrefix = viewCalPrefix || getActiveCalendarPrefix('class');

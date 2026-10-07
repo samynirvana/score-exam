@@ -112,8 +112,8 @@ window.portalSession = {
 // Native Standalone Floating Chat Room & Real-time Notifications across all pages
 (() => {
     const page = window.location.pathname.split('/').pop().toLowerCase();
-    // Exclude landing index page
-    if (page === 'index.html' || page === '') return;
+    // Exclude landing index page and weekly schedule page
+    if (page === 'index.html' || page === '' || page === 'weekly.html' || page === 'weekly') return;
 
     if (!document.querySelector('link[href*="portalComms.css"]')) {
         const styles = document.createElement('link');

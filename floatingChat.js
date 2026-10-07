@@ -87,6 +87,9 @@ function resolveCurrentUser() {
 
 // Initialize Floating Chat System
 export function initFloatingChat() {
+    const page = window.location.pathname.split('/').pop().toLowerCase();
+    if (page === 'weekly.html' || page === 'weekly') return;
+
     // Avoid double initialization or collision with timeline.html's own built-in dmFloatingBtn
     if (document.getElementById('portalFloatingChatBtn') || document.getElementById('dmFloatingBtn')) return;
 

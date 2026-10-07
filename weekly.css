@@ -2707,6 +2707,55 @@ select:focus {
   border-top: 1px solid #f1f5f9;
 }
 
+.toggle-table-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 18px;
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  border-radius: 9px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.08);
+  font-family: inherit;
+}
+
+.toggle-table-btn:hover {
+  background-color: #dbeafe;
+  border-color: #3b82f6;
+  color: #1e40af;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(37, 99, 235, 0.16);
+}
+
+.toggle-table-btn:active {
+  transform: translateY(0);
+}
+
+body.dark-theme .toggle-table-btn {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #93c5fd;
+}
+
+body.dark-theme .toggle-table-btn:hover {
+  background-color: #334155;
+  border-color: #60a5fa;
+  color: #bfdbfe;
+}
+
+/* Ensure Chat Room is never displayed on weekly schedule */
+#portalFloatingChatBtn,
+#dmFloatingBtn,
+.portal-floating-chat-btn,
+.portal-chat-widget {
+  display: none !important;
+}
+
 /* Master All Classes Summary Ledger */
 .reward-master-ledger-card {
   background: #ffffff;
