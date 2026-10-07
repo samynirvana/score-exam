@@ -68,6 +68,19 @@ export function initAdminDailyMission() {
     setupFormButtons();
     setupFilterListeners();
     setupLightbox();
+    document.addEventListener('click', (event) => {
+        if (event.target.closest('.dm-mission-menu')) return;
+        document.querySelectorAll('#dmWeeklyOverviewCards .dm-mission-menu[open]').forEach(menu => {
+            menu.open = false;
+        });
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') return;
+        document.querySelectorAll('#dmWeeklyOverviewCards .dm-mission-menu[open]').forEach(menu => {
+            menu.open = false;
+            menu.querySelector('summary')?.focus();
+        });
+    });
 }
 
 // Called when admin switches to 'tab-daily-mission'
@@ -148,14 +161,23 @@ function selectAdminDay(day) {
     document.querySelectorAll('#dmAdminDayPills .dm-day-pill').forEach(p => {
         p.classList.toggle('active', p.getAttribute('data-day') === day);
     });
+}
 
-    // Check if a mission already exists for this day
-    const existing = currentWeekMissions.find(m => m.day === day);
-    if (existing) {
-        populateFormForEdit(existing);
-    } else {
-        resetMissionForm();
+function showMissionForm(day, mission = null) {
+    selectAdminDay(day);
+    if (mission) populateFormForEdit(mission);
+    else resetMissionForm();
+    const wrapper = document.getElementById('dmMissionFormWrapper');
+    if (wrapper) {
+        wrapper.hidden = false;
+        wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+}
+
+function hideMissionForm() {
+    const wrapper = document.getElementById('dmMissionFormWrapper');
+    if (wrapper) wrapper.hidden = true;
+    editingMissionId = null;
 }
 
 // Access Control Selector Setup & Helpers
@@ -184,48 +206,22 @@ function updateAccessControlUI(status) {
     if (badge) {
         if (val === 'open') {
             badge.className = 'dm-access-badge dm-access-badge-unlocked';
-            badge.innerHTML = '🔓 Turn ON (Open)';
+            badge.innerHTML = `${accessIcon('open')} Turn ON (Open)`;
         } else if (val === 'closed') {
             badge.className = 'dm-access-badge dm-access-badge-closed';
-            badge.innerHTML = '🔒 Turn OFF (Closed)';
+            badge.innerHTML = `${accessIcon('closed')} Turn OFF (Closed)`;
         } else {
             badge.className = 'dm-access-badge dm-access-badge-scheduled';
-            badge.innerHTML = '⚡ Auto (Default)';
+            badge.innerHTML = `${accessIcon('auto')} Auto (Default)`;
         }
     }
 
-    updateAccessHintText(selectedDay, val);
 }
 
-function updateAccessHintText(day, currentStatus) {
-    const hintEl = document.getElementById('dmAccessHintText');
-    if (!hintEl) return;
-    const dayDate = getDayDate(selectedWeekMonday, day);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const isPast = dayDate < today;
-    const isToday = dayDate.getTime() === today.getTime();
-
-    if (isPast) {
-        if (currentStatus === 'open') {
-            hintEl.innerHTML = `⚡ <strong>${day} is a past day, but currently MANUALLY UNLOCKED.</strong> Students can click and submit on studentdash right now. Select "Turn OFF" or "Auto" when you want to lock it again.`;
-            hintEl.style.color = '#059669';
-        } else {
-            hintEl.innerHTML = `🔒 <strong>${day} is a past day.</strong> By default, students cannot access it. Select <strong>Turn ON (Open)</strong> to manually reopen access for a couple of hours so students can submit.`;
-            hintEl.style.color = '#d97706';
-        }
-    } else if (isToday) {
-        if (currentStatus === 'closed') {
-            hintEl.innerHTML = `🔒 <strong>Today (${day}) is FORCE CLOSED.</strong> Students cannot access it until you set it to Auto or Turn ON.`;
-            hintEl.style.color = '#dc2626';
-        } else {
-            hintEl.innerHTML = `🟢 <strong>Today is ${day}.</strong> Under Auto (Default), students have active access. It will automatically lock when tomorrow arrives.`;
-            hintEl.style.color = 'var(--text-gray)';
-        }
-    } else {
-        hintEl.innerHTML = `📅 <strong>${day} is an upcoming day.</strong> Under Auto (Default), it will follow schedule and automatically lock when that day passes.`;
-        hintEl.style.color = 'var(--text-gray)';
-    }
+function accessIcon(kind) {
+    if (kind === 'auto') return '<svg class="dm-access-icon dm-icon-auto" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m13 2-9 11h7l-1 9 10-12h-7V2Z" fill="currentColor" stroke="currentColor" stroke-linejoin="round"/></svg>';
+    const open = kind === 'open';
+    return `<svg class="dm-access-icon dm-icon-${kind}" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="10" width="16" height="12" rx="2" stroke="currentColor" stroke-width="2"/><path d="${open ? 'M8 10V7a4 4 0 0 1 7.5-2' : 'M8 10V7a4 4 0 0 1 8 0v3'}" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="16" r="1.5" fill="currentColor"/></svg>`;
 }
 
 export function getMissionAccessState(mission, day, monday) {
@@ -317,6 +313,7 @@ function updateTaskTypeFields() {
 function setupFormButtons() {
     document.getElementById('dmSaveMissionBtn')?.addEventListener('click', saveDailyMission);
     document.getElementById('dmResetMissionBtn')?.addEventListener('click', resetMissionForm);
+    document.getElementById('dmCloseMissionFormBtn')?.addEventListener('click', hideMissionForm);
 }
 
 function setupFilterListeners() {
@@ -387,6 +384,7 @@ export async function refreshMissionData() {
         updateAdminDayPillBadges();
         renderWeeklyOverviewList();
         selectAdminDay(selectedDay);
+        hideMissionForm();
 
         if (activeAdminSubtab === 'submissions') {
             await loadSubmissions();
@@ -445,42 +443,46 @@ function renderWeeklyOverviewList() {
 
         if (mission) {
             const iconMap = {
-                photo: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Photo Mission',
-                opinion: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Opinion / Reflection',
-                question: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Q & A',
-                general: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>General Task'
+                photo: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>',
+                opinion: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+                question: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+                general: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>'
             };
-            const typeLabel = iconMap[mission.taskType] || '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Mission';
+            const typeLabel = iconMap[mission.taskType] || '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+            const typeName = { photo: 'Photo mission', opinion: 'Opinion or reflection', question: 'Questions and answers', general: 'General task' }[mission.taskType] || 'Mission';
             const accessState = getMissionAccessState(mission, day, selectedWeekMonday);
 
-            const toggleBtnHtml = !accessState.isAccessible
-                ? `<button type="button" class="btn-primary dm-btn-toggle-access" style="padding: 6px 13px; font-size: 12px; background: #10b981; color: #fff; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);" onclick="window.toggleAdminDailyMissionAccess('${mission.id}', 'open')" title="Unlock student access so students can click & submit now"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>Turn ON Access</button>`
-                : `<button type="button" class="btn-primary dm-btn-toggle-access" style="padding: 6px 13px; font-size: 12px; background: ${accessState.status === 'open' ? '#f59e0b' : '#64748b'}; color: #fff; font-weight: 700; display: inline-flex; align-items: center; gap: 5px;" onclick="window.toggleAdminDailyMissionAccess('${mission.id}', '${accessState.status === 'open' ? 'auto' : 'closed'}')" title="Turn off student access"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Turn OFF Access</button>`;
+            const accessAction = !accessState.isAccessible
+                ? `<button type="button" class="dm-menu-item" onclick="window.toggleAdminDailyMissionAccess('${mission.id}', 'open')">Turn on access</button>`
+                : `<button type="button" class="dm-menu-item" onclick="window.toggleAdminDailyMissionAccess('${mission.id}', '${accessState.status === 'open' ? 'auto' : 'closed'}')">Turn off access</button>`;
 
             html += `
-                <div class="box" style="margin-bottom: 12px; padding: 14px 18px; border-left: 4px solid var(--dm-primary); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                    <div>
-                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;">
-                            <strong style="font-size: 14.5px; color: var(--text-dark);">${day} (${dateStr})</strong>
-                            <span class="dm-task-type-badge">${typeLabel}</span>
+                <div class="box dm-schedule-card">
+                    <div class="dm-schedule-content">
+                        <div class="dm-schedule-meta">
+                            <strong style="font-size: 14.5px; color: var(--text-dark);">${day}, ${dateStr}</strong>
+                            <span class="dm-task-type-badge dm-icon-only" title="${typeName}" aria-label="${typeName}">${typeLabel}</span>
                             <span style="font-size: 12px; color: var(--text-gray); font-weight: 600;">Target: ${escapeHtml(mission.targetClass === 'all' ? 'All Classes' : mission.targetClass)}</span>
-                            <span class="dm-access-badge ${accessState.badgeClass}">${accessState.icon} ${accessState.label}</span>
+                            <span class="dm-access-badge dm-icon-only ${accessState.badgeClass}" title="${escapeHtml(accessState.label)}" aria-label="${escapeHtml(accessState.label)}">${accessIcon(accessState.isAccessible ? 'open' : 'closed')}</span>
                         </div>
                         <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text-dark);">${escapeHtml(mission.title)}</h4>
                         <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-gray); max-width: 540px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${escapeHtml(mission.description || '')}</p>
                     </div>
-                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                        ${toggleBtnHtml}
-                        <button type="button" class="btn-primary" style="padding: 6px 14px; font-size: 12.5px; background: var(--dm-primary);" onclick="window.editAdminDailyMission('${mission.id}')">Edit</button>
-                        <button type="button" class="btn-primary" style="padding: 6px 14px; font-size: 12.5px; background: #ef4444;" onclick="window.deleteAdminDailyMission('${mission.id}')">Delete</button>
-                    </div>
+                    <details class="dm-mission-menu">
+                        <summary aria-label="Settings for ${escapeHtml(day)} mission">Settings</summary>
+                        <div class="dm-mission-menu-panel">
+                            ${accessAction}
+                            <button type="button" class="dm-menu-item" onclick="window.editAdminDailyMission('${mission.id}')">Edit mission</button>
+                            <button type="button" class="dm-menu-item dm-menu-danger" onclick="window.deleteAdminDailyMission('${mission.id}')">Delete mission</button>
+                        </div>
+                    </details>
                 </div>
             `;
         } else {
             html += `
-                <div class="box" style="margin-bottom: 12px; padding: 12px 18px; border-left: 4px solid #cbd5e1; display: flex; justify-content: space-between; align-items: center;">
+                <div class="box dm-schedule-card dm-schedule-empty">
                     <div style="color: var(--text-gray);">
-                        <strong>${day} (${dateStr})</strong> — No mission configured yet.
+                        <strong>${day}, ${dateStr}</strong> — No mission configured yet.
                     </div>
                     <button type="button" class="btn-primary" style="padding: 6px 14px; font-size: 12px; background: var(--dm-primary-light); color: var(--dm-primary); border: 1px solid var(--dm-primary-border);" onclick="window.selectAdminDayTab('${day}')">+ Add Mission</button>
                 </div>
@@ -489,19 +491,24 @@ function renderWeeklyOverviewList() {
     });
 
     container.innerHTML = html;
+    container.querySelectorAll('.dm-mission-menu').forEach(menu => {
+        menu.addEventListener('toggle', () => {
+            menu.closest('.dm-schedule-card')?.classList.toggle('dm-menu-open', menu.open);
+            if (menu.open) container.querySelectorAll('.dm-mission-menu').forEach(other => {
+                if (other !== menu) other.open = false;
+            });
+        });
+    });
 }
 
 window.selectAdminDayTab = function(day) {
-    selectAdminDay(day);
-    document.getElementById('dmMissionFormWrapper')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    showMissionForm(day);
 };
 
 window.editAdminDailyMission = function(missionId) {
     const mission = currentWeekMissions.find(m => m.id === missionId);
     if (!mission) return;
-    selectAdminDay(mission.day);
-    populateFormForEdit(mission);
-    document.getElementById('dmMissionFormWrapper')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    showMissionForm(mission.day, mission);
 };
 
 window.toggleAdminDailyMissionAccess = async function(missionId, targetStatus) {

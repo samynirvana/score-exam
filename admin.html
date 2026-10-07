@@ -25,7 +25,7 @@
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="admin.css?v=431">
-    <link rel="stylesheet" href="dailyMission.css?v=461">
+    <link rel="stylesheet" href="dailyMission.css?v=466">
 </head>
 
 <body>
@@ -2948,21 +2948,20 @@
                 <!-- TAB 5b: Daily Mission -->
                 <div id="tab-daily-mission" class="tab-content">
                     <!-- Top Header & Week Navigator -->
-                    <div class="box" style="margin-bottom: 20px; padding: 20px 24px; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%); border: 1.5px solid var(--dm-primary-border);">
+                    <div class="box dm-planner-header" style="margin-bottom: 20px; padding: 20px 24px; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%); border: 1.5px solid var(--dm-primary-border);">
                         <div>
                             <div style="display: flex; align-items: center; gap: 10px;">
                                 <div class="dm-icon-badge" style="width: 40px; height: 40px; border-radius: 10px;">
                                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
                                 </div>
                                 <div>
-                                    <h3 style="margin: 0; font-size: 19px; font-weight: 800; color: var(--text-dark);">Daily Mission Planner & Checker</h3>
-                                    <p style="margin: 2px 0 0 0; font-size: 13px; color: var(--text-gray);">Set daily missions for Monday–Friday and check student submissions to grant completions.</p>
+                                    <h3 style="margin: 0; font-size: 19px; font-weight: 800; color: var(--text-dark);">Daily Mission</h3>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Week Navigation Controls -->
-                        <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="dm-week-controls" style="display: flex; align-items: center; gap: 10px;">
                             <button type="button" id="dmPrevWeekBtn" class="btn-primary" style="background: var(--bg-main); color: var(--text-dark); border: 1px solid var(--border-color); padding: 8px 14px; font-size: 13px; font-weight: 700;">◀ Prev Week</button>
                             <span id="dmCurrentWeekLabel" style="font-size: 14px; font-weight: 800; color: var(--dm-primary); padding: 6px 14px; background: var(--card-bg); border-radius: 10px; border: 1px solid var(--border-color);">Week of Oct 5 – Oct 9, 2026</span>
                             <button type="button" id="dmNextWeekBtn" class="btn-primary" style="background: var(--bg-main); color: var(--text-dark); border: 1px solid var(--border-color); padding: 8px 14px; font-size: 13px; font-weight: 700;">Next Week ▶</button>
@@ -2974,11 +2973,11 @@
                     <div class="dm-subtab-bar">
                         <button type="button" id="dmSubtabPlannerBtn" class="dm-subtab-btn active">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                            <span>1. Mission Settings (Mon–Fri)</span>
+                            <span>Plan missions</span>
                         </button>
                         <button type="button" id="dmSubtabSubmissionsBtn" class="dm-subtab-btn">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                            <span>2. Check Submissions & Give Completion</span>
+                            <span>Review submissions</span>
                         </button>
                     </div>
 
@@ -3016,7 +3015,8 @@
                         <!-- 2-Column Grid: Form & Weekly Overview -->
                         <div class="dm-admin-grid">
                             <!-- Left: Configure Mission Form -->
-                            <div class="box" id="dmMissionFormWrapper">
+                            <div class="box" id="dmMissionFormWrapper" hidden>
+                                <button type="button" id="dmCloseMissionFormBtn" class="dm-form-close" aria-label="Close mission form">✕</button>
                                 <h3 id="dmFormHeading" style="margin-top: 0; margin-bottom: 14px; color: var(--text-dark); font-size: 17px; font-weight: 800;">Configure Mission for Monday</h3>
                                 
                                 <div class="form-group" style="margin-bottom: 14px;">
@@ -3068,13 +3068,13 @@
                                 <div class="form-group" style="margin-bottom: 20px; background: rgba(99, 102, 241, 0.04); border: 1px solid var(--border-color); border-radius: 14px; padding: 14px 16px;">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                                         <label class="dm-input-label" style="margin-bottom: 0;">Student Access Status:</label>
-                                        <span id="dmFormAccessStatusBadge" class="dm-access-badge dm-access-badge-scheduled">⚡ Auto (Default)</span>
+                                        <span id="dmFormAccessStatusBadge" class="dm-access-badge dm-access-badge-scheduled">Auto (Default)</span>
                                     </div>
                                     <div class="dm-access-options-grid" id="dmAccessOptionsGrid">
                                         <label class="dm-access-card-label" style="cursor: pointer; position: relative;">
                                             <input type="radio" name="dmAccessOption" value="auto" checked style="position: absolute; opacity: 0; pointer-events: none;">
                                             <div class="dm-access-choice-box selected" data-value="auto">
-                                                <div style="font-size: 18px; margin-bottom: 2px;">⚡</div>
+                                                <svg class="dm-access-icon dm-icon-auto" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m13 2-9 11h7l-1 9 10-12h-7V2Z" fill="currentColor" stroke="currentColor" stroke-linejoin="round"/></svg>
                                                 <div style="font-size: 12.5px; font-weight: 800; color: var(--text-dark);">Auto (Default)</div>
                                                 <div style="font-size: 10.5px; color: var(--text-gray); margin-top: 2px; line-height: 1.3;">Closes when day passes</div>
                                             </div>
@@ -3082,7 +3082,7 @@
                                         <label class="dm-access-card-label" style="cursor: pointer; position: relative;">
                                             <input type="radio" name="dmAccessOption" value="open" style="position: absolute; opacity: 0; pointer-events: none;">
                                             <div class="dm-access-choice-box" data-value="open">
-                                                <div style="font-size: 18px; margin-bottom: 2px;">🔓</div>
+                                                <svg class="dm-access-icon dm-icon-open" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="10" width="16" height="12" rx="2" stroke="currentColor" stroke-width="2"/><path d="M8 10V7a4 4 0 0 1 7.5-2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="16" r="1.5" fill="currentColor"/></svg>
                                                 <div style="font-size: 12.5px; font-weight: 800; color: #10b981;">Turn ON (Open)</div>
                                                 <div style="font-size: 10.5px; color: var(--text-gray); margin-top: 2px; line-height: 1.3;">Allow student access now</div>
                                             </div>
@@ -3090,14 +3090,11 @@
                                         <label class="dm-access-card-label" style="cursor: pointer; position: relative;">
                                             <input type="radio" name="dmAccessOption" value="closed" style="position: absolute; opacity: 0; pointer-events: none;">
                                             <div class="dm-access-choice-box" data-value="closed">
-                                                <div style="font-size: 18px; margin-bottom: 2px;">🔒</div>
+                                                <svg class="dm-access-icon dm-icon-closed" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="10" width="16" height="12" rx="2" stroke="currentColor" stroke-width="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="16" r="1.5" fill="currentColor"/></svg>
                                                 <div style="font-size: 12.5px; font-weight: 800; color: #ef4444;">Turn OFF (Closed)</div>
                                                 <div style="font-size: 10.5px; color: var(--text-gray); margin-top: 2px; line-height: 1.3;">Lock access immediately</div>
                                             </div>
                                         </label>
-                                    </div>
-                                    <div id="dmAccessHintText" style="font-size: 11.5px; color: var(--text-gray); margin-top: 8px; line-height: 1.4;">
-                                        By default, students cannot access this mission once the day has moved to the next day. Select <strong>Turn ON (Open)</strong> to manually reopen access for a couple of hours.
                                     </div>
                                 </div>
 
@@ -3109,8 +3106,7 @@
 
                             <!-- Right: Overview of All 5 Days for Current Week -->
                             <div class="box">
-                                <h3 style="margin-top: 0; margin-bottom: 14px; color: var(--text-dark); font-size: 17px; font-weight: 800;">Missions Schedule for Selected Week</h3>
-                                <p style="font-size: 13px; color: var(--text-gray); margin-bottom: 16px;">Students who complete all 5 daily missions will unlock a Weekly Bonus of +1.5 Behavior Points!</p>
+                                <h3 style="margin-top: 0; margin-bottom: 14px; color: var(--text-dark); font-size: 17px; font-weight: 800;">Mission Schedule</h3>
                                 
                                 <div id="dmWeeklyOverviewCards">
                                     <!-- JS will inject 5 day cards here -->
