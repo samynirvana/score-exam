@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
+
 /* ==========================================================================
    1. COLOR VARIABLES & THEME DEFINITIONS
    ========================================================================== */
@@ -2197,6 +2199,7 @@ body.dark-mode .desktop-user-actions svg.theme-icon-moon {
     flex-direction: column !important;
     overflow: hidden !important;
     transition: all 0.25s ease !important;
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
 }
 
 .dm-popup-widget.hidden {
@@ -2474,6 +2477,104 @@ html.timeline-embedded-notifications #notifDropdown {
     flex-shrink: 0 !important;
 }
 
+/* --- Class Group Accordion for Contacts --- */
+.dm-class-group {
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+.dm-class-group-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    padding: 11px 14px !important;
+    background: var(--card-bg) !important;
+    border: none !important;
+    cursor: pointer !important;
+    user-select: none !important;
+    text-align: left !important;
+    transition: background 0.18s ease !important;
+}
+
+.dm-class-group-header:hover {
+    background: var(--comment-bg) !important;
+}
+
+.dm-class-group.is-expanded > .dm-class-group-header {
+    background: var(--comment-bg) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+.dm-class-group-title-wrap {
+    display: flex !important;
+    align-items: center !important;
+    gap: 9px !important;
+    min-width: 0 !important;
+}
+
+.dm-class-group-icon {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 26px !important;
+    height: 26px !important;
+    border-radius: 7px !important;
+    background: rgba(30, 94, 255, 0.1) !important;
+    color: #1e5eff !important;
+    flex-shrink: 0 !important;
+}
+
+.dm-class-group-icon.staff-icon {
+    background: rgba(16, 185, 129, 0.12) !important;
+    color: #10b981 !important;
+}
+
+.dm-class-group-name {
+    font-size: 13.5px !important;
+    font-weight: 700 !important;
+    color: var(--text-main) !important;
+    font-family: 'DM Sans', -apple-system, sans-serif !important;
+}
+
+.dm-class-group-badge {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    padding: 2px 7px !important;
+    border-radius: 999px !important;
+    background: rgba(148, 163, 184, 0.2) !important;
+    color: var(--text-muted) !important;
+}
+
+.dm-class-group-arrow-wrap {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: var(--text-muted) !important;
+    flex-shrink: 0 !important;
+}
+
+.dm-group-arrow {
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    transform: rotate(0deg) !important;
+}
+
+.dm-class-group.is-expanded .dm-group-arrow {
+    transform: rotate(90deg) !important;
+    color: #1e5eff !important;
+}
+
+.dm-class-group-content {
+    background: var(--card-bg) !important;
+}
+
+.dm-class-group-content.hidden {
+    display: none !important;
+}
+
+.dm-class-group-content .dm-contact-item {
+    padding-left: 20px !important;
+}
+
 .dm-search-bar {
     padding: 8px 12px !important;
     display: flex !important;
@@ -2580,81 +2681,545 @@ html.timeline-embedded-notifications #notifDropdown {
     background: var(--comment-bg) !important;
 }
 
+/* Messages Stream & Row Layout */
 .dm-messages-stream {
     flex: 1 !important;
     overflow-y: auto !important;
-    padding: 12px !important;
+    padding: 16px 14px !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: 8px !important;
+    gap: 14px !important;
+    scroll-behavior: smooth !important;
 }
 
+@keyframes dmMessageSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.dm-message-row {
+    display: flex !important;
+    align-items: flex-end !important;
+    gap: 8px !important;
+    width: 100% !important;
+    animation: dmMessageSlideIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+}
+
+.dm-message-row.sent {
+    justify-content: flex-end !important;
+}
+
+.dm-message-row.received {
+    justify-content: flex-start !important;
+}
+
+/* Avatar Column */
+.dm-msg-avatar-col {
+    flex-shrink: 0 !important;
+    margin-bottom: 2px !important;
+}
+
+.dm-chat-avatar {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    border-radius: 50% !important;
+    overflow: hidden !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+}
+
+.dm-chat-avatar .avatar-circle-img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+}
+
+.dm-chat-avatar .avatar-fallback {
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+    color: #ffffff !important;
+}
+
+/* Content Column */
+.dm-msg-content-col {
+    display: flex !important;
+    flex-direction: column !important;
+    max-width: 78% !important;
+}
+
+.dm-message-row.sent .dm-msg-content-col {
+    align-items: flex-end !important;
+}
+
+.dm-message-row.received .dm-msg-content-col {
+    align-items: flex-start !important;
+}
+
+/* Sender Name */
+.dm-msg-sender-name {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    color: var(--text-muted, #94a3b8) !important;
+    margin-bottom: 4px !important;
+    padding: 0 4px !important;
+    letter-spacing: 0.2px !important;
+}
+
+.dm-msg-sender-name.me {
+    color: #1e5eff !important;
+}
+
+body.dark-theme .dm-msg-sender-name.me,
+body.dark-mode .dm-msg-sender-name.me {
+    color: #38bdf8 !important;
+}
+
+/* Bubble Wrap & Actions */
+.dm-msg-bubble-wrap {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    position: relative !important;
+}
+
+.dm-message-row.sent .dm-msg-bubble-wrap {
+    flex-direction: row !important;
+}
+
+/* Message Bubble */
 .dm-message-bubble {
-    max-width: 80% !important;
-    padding: 8px 12px !important;
-    border-radius: 14px !important;
-    font-size: 13px !important;
-    line-height: 1.4 !important;
+    padding: 8px 14px !important;
+    border-radius: 16px !important;
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    font-size: 15px !important;
+    line-height: 1.45 !important;
     word-break: break-word !important;
+    transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+.dm-message-bubble:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08) !important;
 }
 
 .dm-msg-sent {
-    align-self: flex-end !important;
-    background: #1e5eff !important;
+    background: linear-gradient(135deg, #1e5eff 0%, #2563eb 100%) !important;
     color: #ffffff !important;
-    border-bottom-right-radius: 3px !important;
+    border-bottom-right-radius: 4px !important;
 }
 
 .dm-msg-received {
-    align-self: flex-start !important;
-    background: var(--comment-bg) !important;
-    color: var(--text-main) !important;
-    border: 1px solid var(--border-color) !important;
-    border-bottom-left-radius: 3px !important;
+    background: var(--comment-bg, #f1f5f9) !important;
+    color: var(--text-main, #0f172a) !important;
+    border: 1px solid var(--border-color, #e2e8f0) !important;
+    border-bottom-left-radius: 4px !important;
+}
+
+body.dark-theme .dm-msg-received,
+body.dark-mode .dm-msg-received {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f1f5f9 !important;
+}
+
+/* Emoji 2x to 3x Big Sizing */
+.dm-message-bubble.dm-msg-emoji-only {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    font-size: 38px !important; /* ~3x the normal 13px size! */
+    line-height: 1.2 !important;
+    padding: 2px 4px !important;
+    letter-spacing: 2px !important;
+    transform: none !important;
+}
+
+.dm-message-bubble.dm-msg-emoji-only:hover {
+    transform: scale(1.08) !important;
+    box-shadow: none !important;
+}
+
+/* Delete Message Button for Sent Messages */
+.dm-msg-delete-btn {
+    width: 26px !important;
+    height: 26px !important;
+    border-radius: 50% !important;
+    border: none !important;
+    background: transparent !important;
+    color: var(--text-muted, #94a3b8) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    opacity: 0 !important;
+    transform: scale(0.85) !important;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    flex-shrink: 0 !important;
+    padding: 0 !important;
+}
+
+.dm-message-row:hover .dm-msg-delete-btn {
+    opacity: 0.75 !important;
+    transform: scale(1) !important;
+}
+
+.dm-msg-delete-btn:hover {
+    opacity: 1 !important;
+    background: rgba(239, 68, 68, 0.12) !important;
+    color: #ef4444 !important;
+    transform: scale(1.12) !important;
+}
+
+/* Meta: Time and Read Status */
+.dm-msg-meta {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    margin-top: 3px !important;
+    padding: 0 4px !important;
 }
 
 .dm-msg-time {
-    font-size: 9.5px !important;
+    font-size: 10px !important;
     opacity: 0.75 !important;
-    margin-top: 3px !important;
-    text-align: right !important;
+    color: var(--text-muted, #94a3b8) !important;
+}
+
+.dm-read-status {
+    display: inline-flex !important;
+    align-items: center !important;
+    line-height: 1 !important;
+    vertical-align: middle !important;
+}
+
+/* Attachment Preview Bar */
+.dm-attachment-preview-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--card-bg, #ffffff);
+    border-top: 1px solid var(--border-color, #e2e8f0);
+    animation: dmAttachmentSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.dm-attachment-preview-bar.hidden,
+#dmAttachmentPreviewBar.hidden {
+    display: none !important;
+}
+
+body.dark-theme .dm-attachment-preview-bar,
+body.dark-mode .dm-attachment-preview-bar {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+@keyframes dmAttachmentSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dm-attachment-preview-content {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    overflow: hidden !important;
+}
+
+.dm-attachment-thumb-wrap {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+    background: rgba(99, 102, 241, 0.1) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+}
+
+.dm-attached-thumb-img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+}
+
+.dm-attachment-details {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+    overflow: hidden !important;
+}
+
+.dm-attachment-name {
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    color: var(--text-main, #0f172a) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 180px !important;
+}
+
+body.dark-theme .dm-attachment-name,
+body.dark-mode .dm-attachment-name {
+    color: #f1f5f9 !important;
+}
+
+.dm-attachment-status {
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    color: var(--text-muted, #94a3b8) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+}
+
+.dm-attachment-cancel-btn {
+    width: 26px !important;
+    height: 26px !important;
+    border-radius: 50% !important;
+    border: none !important;
+    background: rgba(148, 163, 184, 0.15) !important;
+    color: var(--text-muted, #64748b) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: all 0.18s ease !important;
+    flex-shrink: 0 !important;
+}
+
+.dm-attachment-cancel-btn:hover {
+    background: rgba(239, 68, 68, 0.15) !important;
+    color: #ef4444 !important;
+    transform: scale(1.1) !important;
+}
+
+.dm-uploading-spinner {
+    width: 11px;
+    height: 11px;
+    border: 2px solid rgba(99, 102, 241, 0.25);
+    border-top-color: #6366f1;
+    border-radius: 50%;
+    animation: dmSpin 0.75s linear infinite;
+    display: inline-block;
+}
+
+@keyframes dmSpin {
+    to { transform: rotate(360deg); }
+}
+
+/* Image Attachment Bubble: Small Border & Clean Framing */
+.dm-message-bubble.dm-msg-bubble-image-only {
+    padding: 3px !important;
+    background: #1e5eff !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    display: inline-flex !important;
+    max-width: 260px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+.dm-message-row.received .dm-message-bubble.dm-msg-bubble-image-only {
+    background: var(--bg-main, #f1f5f9) !important;
+    border-color: var(--border-color, #e2e8f0) !important;
+}
+
+body.dark-theme .dm-message-row.received .dm-message-bubble.dm-msg-bubble-image-only,
+body.dark-mode .dm-message-row.received .dm-message-bubble.dm-msg-bubble-image-only {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+}
+
+.dm-attachment-image-container {
+    position: relative;
+    border-radius: 11px;
+    overflow: hidden;
+    cursor: pointer;
+    line-height: 0;
+    max-width: 254px;
+}
+
+.dm-attachment-preview.dm-clickable-img {
+    display: block !important;
+    width: 100% !important;
+    max-width: 254px !important;
+    max-height: 240px !important;
+    object-fit: cover !important;
+    border-radius: 11px !important;
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), filter 0.18s ease !important;
+    cursor: pointer !important;
+}
+
+.dm-attachment-image-container:hover .dm-clickable-img {
+    filter: brightness(0.96);
+    transform: scale(1.015);
+}
+
+/* Fullscreen Lightbox Modal for Chat Images */
+.chat-lightbox-modal {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 999999 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    animation: chatLightboxFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+}
+
+.chat-lightbox-modal.hidden {
+    display: none !important;
+}
+
+.chat-lightbox-backdrop {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: rgba(10, 15, 30, 0.85) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    cursor: pointer !important;
+}
+
+.chat-lightbox-dialog {
+    position: relative !important;
+    z-index: 2 !important;
+    max-width: 90vw !important;
+    max-height: 90vh !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    animation: chatLightboxZoom 0.24s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+}
+
+.chat-lightbox-dialog img {
+    max-width: 88vw !important;
+    max-height: 85vh !important;
+    object-fit: contain !important;
+    border-radius: 14px !important;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55) !important;
+    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+    background: #0f172a !important;
+}
+
+.chat-lightbox-close-btn {
+    position: absolute !important;
+    top: -16px !important;
+    right: -16px !important;
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 50% !important;
+    background: #0f172a !important;
+    color: #ffffff !important;
+    border: 2px solid rgba(255, 255, 255, 0.3) !important;
+    font-size: 22px !important;
+    line-height: 1 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
+    transition: transform 0.15s ease, background-color 0.15s ease !important;
+}
+
+.chat-lightbox-close-btn:hover {
+    background: #ef4444 !important;
+    transform: scale(1.1) !important;
+}
+
+@keyframes chatLightboxFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes chatLightboxZoom {
+    from { opacity: 0; transform: scale(0.92); }
+    to { opacity: 1; transform: scale(1); }
 }
 
 .dm-message-input-bar {
     display: flex !important;
     align-items: center !important;
     gap: 8px !important;
-    padding: 8px 12px !important;
+    padding: 10px 12px !important;
     border-top: 1px solid var(--border-color) !important;
     background: var(--card-bg) !important;
 }
 
 .dm-message-input-bar input {
     flex: 1 !important;
-    padding: 6px 12px !important;
-    font-size: 13px !important;
-    border-radius: 18px !important;
+    padding: 8px 14px !important;
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    font-size: 15px !important;
+    border-radius: 20px !important;
     border: 1px solid var(--border-color) !important;
     background: var(--input-bg) !important;
     color: var(--text-main) !important;
     outline: none !important;
-    height: 34px !important;
-    min-height: 34px !important;
+    height: 40px !important;
+    min-height: 40px !important;
     margin: 0 !important;
+    transition: border-color 0.2s, box-shadow 0.2s !important;
 }
 
-.dm-message-input-bar button {
-    background: #1e5eff !important;
+.dm-message-input-bar input:focus {
+    border-color: #1e5eff !important;
+    box-shadow: 0 0 0 3px rgba(30, 94, 255, 0.18) !important;
+}
+
+.dm-message-input-bar button[type="submit"] {
+    background: linear-gradient(135deg, #1e5eff 0%, #2563eb 100%) !important;
     color: #ffffff !important;
     border: none !important;
-    border-radius: 18px !important;
-    padding: 0 14px !important;
-    font-size: 12px !important;
+    border-radius: 20px !important;
+    padding: 0 16px !important;
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    font-size: 13.5px !important;
     font-weight: 700 !important;
-    height: 34px !important;
-    min-height: 34px !important;
+    height: 40px !important;
+    min-height: 40px !important;
     width: auto !important;
     cursor: pointer !important;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    box-shadow: 0 2px 6px rgba(30, 94, 255, 0.25) !important;
+}
+
+.dm-message-input-bar button[type="submit"]:hover {
+    transform: translateY(-1.5px) !important;
+    box-shadow: 0 4px 12px rgba(30, 94, 255, 0.35) !important;
+}
+
+.dm-message-input-bar button[type="submit"]:active {
+    transform: translateY(0) scale(0.97) !important;
 }
 
 .dm-empty-state {

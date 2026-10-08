@@ -1,6 +1,5 @@
-// firebase.js - Centralized Firebase Initializations
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getStorage } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
@@ -17,8 +16,16 @@ export const firebaseConfig = {
 // Initialize or reuse main Firebase App
 export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Main portal & student database ("mrsyamdb")
-export const db = getFirestore(app, "mrsyamdb");
+// Main portal & student database ("mrsyamdb") with persistent local cache
+let mainDbInstance;
+try {
+    mainDbInstance = initializeFirestore(app, {
+        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    }, "mrsyamdb");
+} catch (e) {
+    mainDbInstance = getFirestore(app, "mrsyamdb");
+}
+export const db = mainDbInstance;
 
 // Default database instance (used for weekly schedule / academicCalendar)
 export const defaultDb = getFirestore(app);

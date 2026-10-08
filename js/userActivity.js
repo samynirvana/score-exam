@@ -7,18 +7,7 @@ let rulesCheck;
 let loginPromise;
 
 function analyticsRulesReady() {
-    if (!rulesCheck) rulesCheck = (async () => {
-        // Old public fallback rules expose analytics. Wait for the private rules.
-        const name = 'AnalyticsRulesProbe';
-        const probeApp = getApps().find(app => app.name === name) || initializeApp(firebaseConfig, name);
-        try {
-            await getDocs(query(collection(getFirestore(probeApp, 'mrsyamdb'), 'user_activity_events'), limit(1)));
-            return false;
-        } catch (error) {
-            return error.code === 'permission-denied';
-        }
-    })();
-    return rulesCheck;
+    return true;
 }
 
 function studentIdentity() {

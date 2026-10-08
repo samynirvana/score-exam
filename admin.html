@@ -25,7 +25,7 @@
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="admin.css?v=431">
-    <link rel="stylesheet" href="dailyMission.css?v=466">
+    <link rel="stylesheet" href="dailyMission.css?v=468">
 </head>
 
 <body>
@@ -2947,38 +2947,45 @@
 
                 <!-- TAB 5b: Daily Mission -->
                 <div id="tab-daily-mission" class="tab-content">
-                    <!-- Top Header & Week Navigator -->
-                    <div class="box dm-planner-header" style="margin-bottom: 20px; padding: 20px 24px; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%); border: 1.5px solid var(--dm-primary-border);">
-                        <div>
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <div class="dm-icon-badge" style="width: 40px; height: 40px; border-radius: 10px;">
-                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+                    <!-- Modern Unified Subtab Bar & Minimalist Week Selector -->
+                    <div class="dm-top-navbar">
+                        <div class="dm-subtab-bar">
+                            <button type="button" id="dmSubtabPlannerBtn" class="dm-subtab-btn active">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                <span>Plan missions</span>
+                            </button>
+                            <button type="button" id="dmSubtabSubmissionsBtn" class="dm-subtab-btn">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                <span>Review submissions</span>
+                            </button>
+                            <button type="button" id="dmSubtabProgressBtn" class="dm-subtab-btn">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10"></path><path d="M12 20V4"></path><path d="M6 20v-6"></path></svg>
+                                <span>Students progress</span>
+                            </button>
+                        </div>
+
+                        <!-- Minimalist Week Navigator Widget -->
+                        <div class="dm-week-nav-widget">
+                            <div class="dm-week-pill-cluster">
+                                <button type="button" id="dmPrevWeekBtn" class="dm-week-arrow-btn" title="Previous Week" aria-label="Previous Week">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                                </button>
+                                
+                                <div class="dm-week-date-pill">
+                                    <svg class="dm-week-cal-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                    <span id="dmCurrentWeekLabel">Oct 5 – Oct 9, 2026</span>
                                 </div>
-                                <div>
-                                    <h3 style="margin: 0; font-size: 19px; font-weight: 800; color: var(--text-dark);">Daily Mission</h3>
-                                </div>
+
+                                <button type="button" id="dmNextWeekBtn" class="dm-week-arrow-btn" title="Next Week" aria-label="Next Week">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                </button>
                             </div>
-                        </div>
 
-                        <!-- Week Navigation Controls -->
-                        <div class="dm-week-controls" style="display: flex; align-items: center; gap: 10px;">
-                            <button type="button" id="dmPrevWeekBtn" class="btn-primary" style="background: var(--bg-main); color: var(--text-dark); border: 1px solid var(--border-color); padding: 8px 14px; font-size: 13px; font-weight: 700;">◀ Prev Week</button>
-                            <span id="dmCurrentWeekLabel" style="font-size: 14px; font-weight: 800; color: var(--dm-primary); padding: 6px 14px; background: var(--card-bg); border-radius: 10px; border: 1px solid var(--border-color);">Week of Oct 5 – Oct 9, 2026</span>
-                            <button type="button" id="dmNextWeekBtn" class="btn-primary" style="background: var(--bg-main); color: var(--text-dark); border: 1px solid var(--border-color); padding: 8px 14px; font-size: 13px; font-weight: 700;">Next Week ▶</button>
-                            <button type="button" id="dmThisWeekBtn" class="btn-primary" style="background: var(--dm-primary); color: #ffffff; padding: 8px 16px; font-size: 13px; font-weight: 700;">This Week</button>
+                            <button type="button" id="dmThisWeekBtn" class="dm-this-week-btn" title="Jump to Current Week">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                <span>This Week</span>
+                            </button>
                         </div>
-                    </div>
-
-                    <!-- Subtabs Bar -->
-                    <div class="dm-subtab-bar">
-                        <button type="button" id="dmSubtabPlannerBtn" class="dm-subtab-btn active">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                            <span>Plan missions</span>
-                        </button>
-                        <button type="button" id="dmSubtabSubmissionsBtn" class="dm-subtab-btn">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                            <span>Review submissions</span>
-                        </button>
                     </div>
 
                     <!-- SUBTAB 1: PLANNER & MISSION SETTINGS -->
@@ -3182,6 +3189,111 @@
                         <div id="dmSubmissionsPagination" class="dm-pagination-wrapper" style="display: none;">
                             <div id="dmSubmissionsPageInfo" class="dm-pagination-info">Showing 0 submissions</div>
                             <div id="dmSubmissionsPageButtons" class="dm-pagination-buttons"></div>
+                        </div>
+                    </div>
+
+                    <!-- SUBTAB 3: STUDENTS PROGRESS TABLE (STREAKS & COMPLETION) -->
+                    <div id="dmProgressView" style="display: none;">
+                        <!-- Top Summary Statistics Cards -->
+                        <div class="box" style="margin-bottom: 20px; padding: 22px 24px; border-radius: 16px;">
+                            <div class="dm-progress-stats-grid">
+                                <div class="dm-progress-stat-card">
+                                    <div class="dm-progress-stat-icon" style="background: rgba(99, 102, 241, 0.12); color: #6366f1;">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                                    </div>
+                                    <div class="dm-progress-stat-info">
+                                        <span class="dm-progress-stat-label">Total Students</span>
+                                        <strong id="dmStatProgressTotalStudents" class="dm-progress-stat-value">0</strong>
+                                    </div>
+                                </div>
+                                <div class="dm-progress-stat-card">
+                                    <div class="dm-progress-stat-icon" style="background: rgba(16, 185, 129, 0.12); color: #10b981;">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                    </div>
+                                    <div class="dm-progress-stat-info">
+                                        <span class="dm-progress-stat-label">Perfect Streaks (5/5)</span>
+                                        <strong id="dmStatProgressPerfectStreaks" class="dm-progress-stat-value" style="color: #10b981;">0</strong>
+                                    </div>
+                                </div>
+                                <div class="dm-progress-stat-card">
+                                    <div class="dm-progress-stat-icon" style="background: rgba(245, 158, 11, 0.12); color: #f59e0b;">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                                    </div>
+                                    <div class="dm-progress-stat-info">
+                                        <span class="dm-progress-stat-label">Active (1–4 Days)</span>
+                                        <strong id="dmStatProgressActiveStreaks" class="dm-progress-stat-value" style="color: #f59e0b;">0</strong>
+                                    </div>
+                                </div>
+                                <div class="dm-progress-stat-card">
+                                    <div class="dm-progress-stat-icon" style="background: rgba(148, 163, 184, 0.15); color: #64748b;">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                                    </div>
+                                    <div class="dm-progress-stat-info">
+                                        <span class="dm-progress-stat-label">No Submissions (0/5)</span>
+                                        <strong id="dmStatProgressZeroStreaks" class="dm-progress-stat-value" style="color: #64748b;">0</strong>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Filter & Search Toolbar -->
+                            <div class="dm-progress-toolbar">
+                                <div class="dm-progress-filter-item dm-search-item">
+                                    <label class="dm-progress-filter-label">Search Student:</label>
+                                    <div class="dm-search-input-wrap">
+                                        <svg class="dm-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                        <input type="text" id="dmProgressSearchInput" placeholder="Search student name..." autocomplete="off">
+                                    </div>
+                                </div>
+
+                                <div class="dm-progress-filter-item">
+                                    <label class="dm-progress-filter-label">Class Filter:</label>
+                                    <select id="dmProgressFilterClass">
+                                        <option value="all">All Classes</option>
+                                    </select>
+                                </div>
+
+                                <div class="dm-progress-filter-item">
+                                    <label class="dm-progress-filter-label">Streak Order / Status:</label>
+                                    <select id="dmProgressFilterStreak">
+                                        <option value="highest">Highest Streak First (5 → 0)</option>
+                                        <option value="lowest">Lowest Streak First (0 → 5)</option>
+                                        <option value="perfect">Perfect Streaks Only (5/5)</option>
+                                        <option value="active">Active In-Progress (1–4)</option>
+                                        <option value="inactive">Not Started (0/5)</option>
+                                    </select>
+                                </div>
+
+                                <div class="dm-progress-count-pill" id="dmProgressResultsCount">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                                    <span>Showing 0 students</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Progress Table Container -->
+                        <div class="box" style="padding: 0; overflow: hidden; border-radius: 16px; border: 1px solid var(--border-color);">
+                            <div class="dm-progress-table-responsive">
+                                <table class="dm-progress-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 28%;">Student</th>
+                                            <th style="width: 14%;">Class</th>
+                                            <th style="width: 24%;">Week Progress (M–F)</th>
+                                            <th style="width: 18%;">Streak Level</th>
+                                            <th style="width: 16%; text-align: center;">Weekly Bonus</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="dmProgressTableBody">
+                                        <!-- Injected by adminDailyMission.js -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Progress Pagination -->
+                        <div id="dmProgressPagination" class="dm-pagination-wrapper" style="display: none; margin-top: 16px;">
+                            <div id="dmProgressPageInfo" class="dm-pagination-info">Showing 0 of 0</div>
+                            <div id="dmProgressPageButtons" class="dm-pagination-buttons"></div>
                         </div>
                     </div>
                 </div>
@@ -5359,7 +5471,7 @@
         <div id="studentAttendanceRecords" class="student-att-records"></div>
     </dialog>
 
-    <script src="studentNav.js?v=464"></script>
+    <script src="studentNav.js?v=470"></script>
     <script type="module" src="admin.js?v=441"></script>
 </body>
 

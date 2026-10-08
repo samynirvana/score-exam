@@ -64,32 +64,25 @@ const checkLocalSessionExpired = () => {
     return false;
 };
 
-// Check maintenance status
-async function checkMaintenanceStatus() {
-    try {
-        let snap = await getDoc(doc(db, "system_settings", "maintenance"));
-        if (!snap.exists()) {
-            snap = await getDoc(doc(db, "config", "maintenance"));
-        }
-        if (snap.exists()) {
-            const data = snap.data();
-            return !!data.enabled;
-        }
-    } catch (e) {
-        console.warn("Could not check maintenance status:", e);
-    }
-    return localStorage.getItem('maintenanceMode') === 'true';
-}
+// Check maintenance status via cached live listener
+let liveMaintenanceStatus = localStorage.getItem('maintenanceMode') === 'true';
 
-// Maintenance live listener
 try {
     onSnapshot(doc(db, "system_settings", "maintenance"), (snap) => {
-        if (snap.exists() && snap.data().enabled && !auth.currentUser) {
-            window.location.replace("maintenance.html");
+        if (snap.exists()) {
+            liveMaintenanceStatus = !!snap.data().enabled;
+            localStorage.setItem('maintenanceMode', liveMaintenanceStatus ? 'true' : 'false');
+            if (liveMaintenanceStatus && !auth.currentUser) {
+                window.location.replace("maintenance.html");
+            }
         }
     });
 } catch (e) {
     console.warn("Live maintenance listener error:", e);
+}
+
+function checkMaintenanceStatus() {
+    return liveMaintenanceStatus;
 }
 
 // Daily quote update

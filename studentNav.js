@@ -118,11 +118,11 @@ window.portalSession = {
     if (!document.querySelector('link[href*="portalComms.css"]')) {
         const styles = document.createElement('link');
         styles.rel = 'stylesheet';
-        styles.href = 'portalComms.css?v=20';
+        styles.href = 'portalComms.css?v=28';
         document.head.appendChild(styles);
     }
 
-    import('./floatingChat.js?v=20')
+    import('./floatingChat.js?v=26')
         .then(({ initFloatingChat }) => initFloatingChat())
         .catch(err => console.warn('Floating chat load note:', err));
 })();

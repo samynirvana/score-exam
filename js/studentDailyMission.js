@@ -135,6 +135,7 @@ function isClassMatchForStudent(data, student) {
 // Initialize Student Daily Mission Component
 export async function initStudentDailyMission(studentData, onBonusAwardedCallback) {
     if (!studentData || !studentData.code) return;
+    const isFirstTime = !currentStudent || (currentStudent.code !== studentData.code);
     currentStudent = studentData;
     bonusAwardedCallback = onBonusAwardedCallback;
 
@@ -144,7 +145,9 @@ export async function initStudentDailyMission(studentData, onBonusAwardedCallbac
         isUiSetup = true;
     }
 
-    startRealtimeMissionListeners();
+    if (isFirstTime || !missionUnsubscribe) {
+        startRealtimeMissionListeners();
+    }
 }
 
 // Start real-time sync for missions and submissions
@@ -165,13 +168,17 @@ export function startRealtimeMissionListeners() {
 
     console.log(`[DailyMission] Setting up real-time listener for weekKey: "${weekKey}", student: "${studentCode}"`);
 
-    // 1. Listen for daily_missions changes in real time
+    // 1. Listen for daily_missions changes in real time (scoped to current week to prevent full collection reads)
     try {
-        missionUnsubscribe = onSnapshot(collection(db, "daily_missions"), (snap) => {
+        const missionQuery = query(
+            collection(db, "daily_missions"),
+            where("weekKey", "==", weekKey)
+        );
+        missionUnsubscribe = onSnapshot(missionQuery, (snap) => {
             weekMissions = [];
             snap.forEach(d => {
                 const data = d.data();
-                if (isMissionForCurrentWeek(data, weekKey, currentWeekMonday) && isClassMatchForStudent(data, currentStudent)) {
+                if (isClassMatchForStudent(data, currentStudent)) {
                     weekMissions.push({ id: d.id, ...data });
                 }
             });
@@ -180,9 +187,8 @@ export function startRealtimeMissionListeners() {
             renderStreakProgress();
             renderActiveMissionWorkspace();
             updateClaimBonusButtonState();
-            checkAndAwardSaturdayBonus(bonusAwardedCallback);
         }, (err) => {
-            console.error("[DailyMission] Realtime listener error for missions:", err);
+            console.warn("[DailyMission] Scoped missions listener fallback:", err);
             loadStudentWeekMissionsOnce();
         });
     } catch (err) {
@@ -812,12 +818,14 @@ export async function updateClaimBonusButtonState() {
     const studentCode = currentStudent.code.toUpperCase().trim();
     let alreadyClaimed = false;
 
-    try {
-        const rewardRef = doc(db, "daily_mission_rewards", `${studentCode}_${weekKey}`);
-        const rewardSnap = await getDoc(rewardRef);
-        alreadyClaimed = rewardSnap.exists();
-    } catch (e) {
-        console.warn("Could not check daily_mission_rewards:", e);
+    if (isAllFiveDone) {
+        try {
+            const rewardRef = doc(db, "daily_mission_rewards", `${studentCode}_${weekKey}`);
+            const rewardSnap = await getDoc(rewardRef);
+            alreadyClaimed = rewardSnap.exists();
+        } catch (e) {
+            console.warn("Could not check daily_mission_rewards:", e);
+        }
     }
 
     if (alreadyClaimed) {

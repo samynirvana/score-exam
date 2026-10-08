@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
+
 /* ==========================================================================
    PORTAL COMMUNICATIONS (STANDALONE NATIVE FLOATING CHAT & NOTIFICATIONS)
    ========================================================================== */
@@ -115,7 +117,7 @@
   border-radius: 18px;
   background: var(--card-bg, #ffffff);
   box-shadow: 0 16px 48px rgba(15, 23, 42, 0.22);
-  font-family: 'Outfit', 'Plus Jakarta Sans', -apple-system, sans-serif;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   transform-origin: bottom right;
 }
@@ -412,6 +414,124 @@ body.dark-mode .portal-search-bar input {
   background: rgba(30, 94, 255, 0.08);
 }
 
+/* --- Class Group Accordion for Portal Floating Chat Contacts --- */
+.portal-class-group {
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+}
+
+.portal-class-group-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  padding: 11px 14px !important;
+  background: var(--card-bg, #ffffff) !important;
+  border: none !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  text-align: left !important;
+  transition: background-color 0.18s ease !important;
+}
+
+.portal-class-group-header:hover {
+  background: var(--bg-main, #f8fafc) !important;
+}
+
+.portal-class-group.is-expanded > .portal-class-group-header {
+  background: var(--bg-main, #f8fafc) !important;
+  border-bottom: 1px solid var(--border-color, #e2e8f0) !important;
+}
+
+body.dark-theme .portal-class-group-header,
+body.dark-mode .portal-class-group-header {
+  background: #1e293b !important;
+}
+
+body.dark-theme .portal-class-group-header:hover,
+body.dark-mode .portal-class-group-header:hover,
+body.dark-theme .portal-class-group.is-expanded > .portal-class-group-header,
+body.dark-mode .portal-class-group.is-expanded > .portal-class-group-header {
+  background: #24334a !important;
+  border-bottom-color: #334155 !important;
+}
+
+.portal-class-group-title-wrap {
+  display: flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+  min-width: 0 !important;
+}
+
+.portal-class-group-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 26px !important;
+  height: 26px !important;
+  border-radius: 7px !important;
+  background: rgba(30, 94, 255, 0.1) !important;
+  color: #1e5eff !important;
+  flex-shrink: 0 !important;
+}
+
+.portal-class-group-icon.staff-icon {
+  background: rgba(16, 185, 129, 0.12) !important;
+  color: #10b981 !important;
+}
+
+.portal-class-group-name {
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  color: var(--text-dark, #0f172a) !important;
+  font-family: 'DM Sans', -apple-system, sans-serif !important;
+}
+
+body.dark-theme .portal-class-group-name,
+body.dark-mode .portal-class-group-name {
+  color: #ffffff !important;
+}
+
+.portal-class-group-badge {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  padding: 2px 7px !important;
+  border-radius: 999px !important;
+  background: rgba(148, 163, 184, 0.2) !important;
+  color: var(--text-gray, #64748b) !important;
+}
+
+body.dark-theme .portal-class-group-badge,
+body.dark-mode .portal-class-group-badge {
+  color: #94a3b8 !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.portal-class-group-arrow-wrap {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-gray, #94a3b8) !important;
+  flex-shrink: 0 !important;
+}
+
+.portal-group-arrow {
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  transform: rotate(0deg) !important;
+}
+
+.portal-class-group.is-expanded .portal-group-arrow {
+  transform: rotate(90deg) !important;
+  color: #1e5eff !important;
+}
+
+.portal-class-group-content.hidden {
+  display: none !important;
+}
+
+.portal-class-group-content .portal-contact-item {
+  padding-left: 20px !important;
+}
+
 /* Chat Partner Top Bar */
 .portal-chatroom-bar {
   padding: 8px 12px;
@@ -469,24 +589,134 @@ body.dark-mode .portal-messages-stream {
   background: #1e293b;
 }
 
+.portal-message-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+  width: 100%;
+  animation: portalMsgSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.portal-message-row.sent {
+  justify-content: flex-end;
+}
+
+.portal-message-row.received {
+  justify-content: flex-start;
+}
+
+@keyframes portalMsgSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.portal-msg-avatar-col {
+  flex-shrink: 0;
+  margin-bottom: 2px;
+}
+
+.portal-chat-msg-avatar {
+  width: 28px !important;
+  height: 28px !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  border-radius: 50% !important;
+}
+
+.portal-msg-content-col {
+  display: flex;
+  flex-direction: column;
+  max-width: 80%;
+  min-width: 0;
+}
+
+.portal-message-row.sent .portal-msg-content-col {
+  align-items: flex-end;
+}
+
+.portal-message-row.received .portal-msg-content-col {
+  align-items: flex-start;
+}
+
+.portal-msg-sender-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 3px;
+  padding: 0 4px;
+}
+
+.portal-msg-sender-name.me {
+  color: #1e5eff;
+  font-weight: 800;
+}
+
+body.dark-theme .portal-msg-sender-name,
+body.dark-mode .portal-msg-sender-name {
+  color: #94a3b8;
+}
+
+body.dark-theme .portal-msg-sender-name.me,
+body.dark-mode .portal-msg-sender-name.me {
+  color: #60a5fa;
+}
+
+.portal-msg-bubble-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+.portal-msg-delete-btn {
+  opacity: 0;
+  transform: scale(0.85);
+  transition: opacity 0.18s ease, transform 0.18s ease, color 0.18s ease;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.portal-message-row.sent:hover .portal-msg-delete-btn {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.portal-msg-delete-btn:hover {
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.12);
+}
+
 .portal-msg-bubble {
-  max-width: 82%;
-  padding: 8px 12px;
+  padding: 8px 14px;
   border-radius: 14px;
-  font-size: 13px;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 15px !important;
   line-height: 1.45;
   word-break: break-word;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .portal-msg-sent {
-  align-self: flex-end;
   background: #1e5eff;
   color: #ffffff;
   border-bottom-right-radius: 3px;
 }
 
 .portal-msg-received {
-  align-self: flex-start;
   background: var(--bg-main, #f1f5f9);
   color: var(--text-dark, #0f172a);
   border: 1px solid var(--border-color, #e2e8f0);
@@ -500,11 +730,167 @@ body.dark-mode .portal-msg-received {
   border-color: #334155;
 }
 
+/* Image Attachment Bubble: Small Border & Clean Framing */
+.portal-msg-bubble.portal-msg-bubble-image-only {
+  padding: 3px !important;
+  background: #1e5eff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 14px !important;
+  overflow: hidden !important;
+  display: inline-flex !important;
+  max-width: 260px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+.portal-message-row.received .portal-msg-bubble.portal-msg-bubble-image-only {
+  background: var(--bg-main, #f1f5f9) !important;
+  border-color: var(--border-color, #e2e8f0) !important;
+}
+
+body.dark-theme .portal-message-row.received .portal-msg-bubble.portal-msg-bubble-image-only,
+body.dark-mode .portal-message-row.received .portal-msg-bubble.portal-msg-bubble-image-only {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+.portal-attachment-image-container {
+  position: relative;
+  border-radius: 11px;
+  overflow: hidden;
+  cursor: pointer;
+  line-height: 0;
+  max-width: 254px;
+}
+
+.portal-attachment-img.portal-clickable-img {
+  display: block !important;
+  width: 100% !important;
+  max-width: 254px !important;
+  max-height: 240px !important;
+  object-fit: cover !important;
+  border-radius: 11px !important;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), filter 0.18s ease !important;
+  cursor: pointer !important;
+}
+
+.portal-attachment-image-container:hover .portal-clickable-img {
+  filter: brightness(0.96);
+  transform: scale(1.015);
+}
+
+/* Fullscreen Lightbox Modal for Chat Images */
+.chat-lightbox-modal {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 999999 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  animation: chatLightboxFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+}
+
+.chat-lightbox-modal.hidden {
+  display: none !important;
+}
+
+.chat-lightbox-backdrop {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: rgba(10, 15, 30, 0.85) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  cursor: pointer !important;
+}
+
+.chat-lightbox-dialog {
+  position: relative !important;
+  z-index: 2 !important;
+  max-width: 90vw !important;
+  max-height: 90vh !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  animation: chatLightboxZoom 0.24s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+}
+
+.chat-lightbox-dialog img {
+  max-width: 88vw !important;
+  max-height: 85vh !important;
+  object-fit: contain !important;
+  border-radius: 14px !important;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  background: #0f172a !important;
+}
+
+.chat-lightbox-close-btn {
+  position: absolute !important;
+  top: -16px !important;
+  right: -16px !important;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 50% !important;
+  background: #0f172a !important;
+  color: #ffffff !important;
+  border: 2px solid rgba(255, 255, 255, 0.3) !important;
+  font-size: 22px !important;
+  line-height: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
+  transition: transform 0.15s ease, background-color 0.15s ease !important;
+}
+
+.chat-lightbox-close-btn:hover {
+  background: #ef4444 !important;
+  transform: scale(1.1) !important;
+}
+
+/* Large Emoji Styling */
+.portal-msg-emoji-only {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 2px 4px !important;
+  font-size: 2.7rem !important;
+  line-height: 1.15 !important;
+  animation: portalEmojiPop 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275) both !important;
+}
+
+@keyframes portalEmojiPop {
+  0% { transform: scale(0.4); opacity: 0; }
+  70% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.portal-msg-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  padding: 0 2px;
+}
+
 .portal-msg-time {
   font-size: 9.5px;
-  opacity: 0.75;
-  margin-top: 3px;
-  text-align: right;
+  color: #94a3b8;
+}
+
+.portal-read-status {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  vertical-align: middle;
 }
 
 /* Attachments */
@@ -536,6 +922,124 @@ body.dark-mode .portal-msg-received {
   font-weight: 600;
   text-decoration: underline;
   word-break: break-all;
+}
+
+/* Attachment Preview Bar in Floating Chat */
+.portal-attachment-preview-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--card-bg, #ffffff);
+  border-top: 1px solid var(--border-color, #e2e8f0);
+  animation: portalAttachmentSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.portal-attachment-preview-bar.hidden,
+#portalAttachmentPreviewBar.hidden {
+  display: none !important;
+}
+
+body.dark-theme .portal-attachment-preview-bar,
+body.dark-mode .portal-attachment-preview-bar {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+@keyframes portalAttachmentSlideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.portal-attachment-preview-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.portal-attachment-thumb-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(99, 102, 241, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.portal-attached-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.portal-attachment-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.portal-attachment-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-dark, #0f172a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+body.dark-theme .portal-attachment-name,
+body.dark-mode .portal-attachment-name {
+  color: #f1f5f9;
+}
+
+.portal-attachment-status {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.portal-attachment-cancel-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(148, 163, 184, 0.15);
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  flex-shrink: 0;
+}
+
+.portal-attachment-cancel-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  transform: scale(1.1);
+}
+
+.portal-uploading-spinner {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border: 2px solid #cbd5e1;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: portalSpin 0.7s linear infinite;
+}
+
+@keyframes portalSpin {
+  to { transform: rotate(360deg); }
 }
 
 /* Message Compose Bar */
@@ -579,14 +1083,15 @@ body.dark-mode .portal-msg-compose-bar {
 
 .portal-msg-compose-bar input[type="text"] {
   flex: 1;
-  padding: 6px 12px;
-  font-size: 13px;
-  border-radius: 18px;
+  padding: 7px 14px;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 15px !important;
+  border-radius: 20px;
   border: 1px solid var(--border-color, #cbd5e1);
   background: var(--bg-main, #f8fafc);
   color: var(--text-dark, #0f172a);
   outline: none;
-  height: 34px;
+  height: 38px;
 }
 
 body.dark-theme .portal-msg-compose-bar input[type="text"],
@@ -600,11 +1105,12 @@ body.dark-mode .portal-msg-compose-bar input[type="text"] {
   background: #1e5eff;
   color: #ffffff;
   border: none;
-  border-radius: 18px;
-  padding: 0 14px;
-  font-size: 12.5px;
+  border-radius: 20px;
+  padding: 0 16px;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 13.5px !important;
   font-weight: 700;
-  height: 34px;
+  height: 38px;
   cursor: pointer;
   flex-shrink: 0;
   transition: background-color 0.15s ease;

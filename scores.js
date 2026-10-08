@@ -54,7 +54,7 @@ async function fetchQuizTypeCatalog() {
         const cached = localStorage.getItem(cacheKey);
         const cachedTime = localStorage.getItem(cacheTimeKey);
         const now = Date.now();
-        if (cached && cachedTime && (now - Number(cachedTime) < 60 * 60 * 1000)) {
+        if (cached && cachedTime && (now - Number(cachedTime) < 24 * 60 * 60 * 1000)) {
             try {
                 quizTypeCatalog = JSON.parse(cached);
                 return;

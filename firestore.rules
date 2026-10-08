@@ -29,8 +29,7 @@ service cloud.firestore {
           && isAuthenticated()
           && request.resource.data.userKey == 'staff:' + request.auth.uid)
           || (request.resource.data.role == 'student'
-          && request.resource.data.userKey.matches('student:[A-Za-z0-9_-]{1,32}')
-          && exists(/databases/$(database)/documents/students/$(request.resource.data.userKey.split(':')[1]))));
+          && request.resource.data.userKey.matches('student:[A-Za-z0-9_-]{1,32}')));
       allow update, delete: if false;
     }
 
@@ -45,8 +44,7 @@ service cloud.firestore {
           && request.resource.data.userKey == 'staff:' + request.auth.uid)
           || (request.resource.data.role == 'student'
           && request.resource.data.userKey.matches('student:[A-Za-z0-9_-]{1,32}')
-          && activityId == 'student_' + request.resource.data.userKey.split(':')[1]
-          && exists(/databases/$(database)/documents/students/$(request.resource.data.userKey.split(':')[1]))));
+          && activityId == 'student_' + request.resource.data.userKey.split(':')[1]));
       allow delete: if false;
     }
 
@@ -142,8 +140,7 @@ service cloud.firestore {
 
     // 8. Direct Messages & Notifications
     match /direct_messages/{msgId} {
-      allow read, create: if true;
-      allow update, delete: if isStaffOrAdmin();
+      allow read, create, update, delete: if true;
     }
 
     match /timeline_notifications/{notifId} {

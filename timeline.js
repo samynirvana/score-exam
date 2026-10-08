@@ -2042,31 +2042,90 @@ let unsubscribeDMThreads = null;
 
 let pendingDMAttachment = null;
 
+function clearDMAttachmentPreview() {
+    pendingDMAttachment = null;
+    const previewBar = document.getElementById('dmAttachmentPreviewBar');
+    const attachmentInput = document.getElementById('dmAttachmentInput');
+    const thumbWrap = document.getElementById('dmAttachmentThumbWrap');
+    const nameEl = document.getElementById('dmAttachmentPreviewName');
+    const statusEl = document.getElementById('dmAttachmentPreviewStatus');
+    const btn = document.getElementById('dmAttachmentBtn');
+    if (previewBar) {
+        previewBar.classList.add('hidden');
+        previewBar.style.display = 'none';
+    }
+    if (attachmentInput) attachmentInput.value = '';
+    if (thumbWrap) thumbWrap.innerHTML = '';
+    if (nameEl) nameEl.textContent = '';
+    if (statusEl) statusEl.textContent = '';
+    if (btn) {
+        btn.classList.remove('has-attachment');
+        btn.disabled = false;
+        btn.title = 'Attach a file';
+    }
+}
+
 async function uploadDMAttachment(file) {
     if (!file || !currentUser) return;
     if (file.size > 25 * 1024 * 1024) return alert('Files must be 25MB or smaller.');
+
+    const previewBar = document.getElementById('dmAttachmentPreviewBar');
+    const thumbWrap = document.getElementById('dmAttachmentThumbWrap');
+    const nameEl = document.getElementById('dmAttachmentPreviewName');
+    const statusEl = document.getElementById('dmAttachmentPreviewStatus');
+    const btn = document.getElementById('dmAttachmentBtn');
+
+    if (previewBar && thumbWrap && nameEl && statusEl) {
+        nameEl.innerText = file.name;
+        statusEl.innerHTML = `<span class="dm-uploading-spinner"></span> Attaching...`;
+        if (file.type && file.type.startsWith('image/')) {
+            const tempUrl = URL.createObjectURL(file);
+            thumbWrap.innerHTML = `<img src="${tempUrl}" class="dm-attached-thumb-img" alt="preview">`;
+        } else {
+            thumbWrap.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>`;
+        }
+        previewBar.style.display = 'flex';
+        previewBar.classList.remove('hidden');
+    }
+
     const scriptUrl = timelineDriveConfig.scriptUrl || localStorage.getItem('timelineDriveScriptUrl') || localStorage.getItem('googleDriveScriptUrl') || '';
-    if (!scriptUrl) return alert('Google Drive upload is not configured yet.');
+    if (btn) btn.disabled = true;
+
     const reader = new FileReader();
     reader.onload = async event => {
         const base64Data = String(event.target.result).split(',')[1];
-        const folderId = timelineDriveConfig.folderId || localStorage.getItem('timelineDriveFolderId') || '';
-        const btn = document.getElementById('dmAttachmentBtn');
-        if (btn) btn.disabled = true;
-        try {
-            const response = await fetch(scriptUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ fileName: file.name, mimeType: file.type || 'application/octet-stream', base64Data, folderName: 'TimelineDB', folderId, type: 'direct_message' }) });
-            const body = await response.text();
-            let result = {};
-            try { result = JSON.parse(body); } catch (_) {}
-            const url = result.url || result.directUrl || result.viewUrl || (result.fileId ? `https://drive.google.com/uc?export=download&id=${result.fileId}` : '');
-            if (!url) throw new Error('The upload service did not return a file URL.');
-            pendingDMAttachment = { url, fileName: file.name, mimeType: file.type || 'application/octet-stream' };
+        const dataUrl = event.target.result;
+        let finalUrl = '';
+
+        if (scriptUrl) {
+            try {
+                const folderId = timelineDriveConfig.folderId || localStorage.getItem('timelineDriveFolderId') || '';
+                const response = await fetch(scriptUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ fileName: file.name, mimeType: file.type || 'application/octet-stream', base64Data, folderName: 'TimelineDB', folderId, type: 'direct_message' }) });
+                const body = await response.text();
+                let result = {};
+                try { result = JSON.parse(body); } catch (_) {}
+                finalUrl = result.url || result.directUrl || result.viewUrl || (result.fileId ? `https://drive.google.com/uc?export=download&id=${result.fileId}` : '');
+            } catch (err) {
+                console.warn("Drive upload failed, using data URL fallback for preview:", err);
+            }
+        }
+
+        if (!finalUrl && file.size <= 2 * 1024 * 1024) {
+            finalUrl = dataUrl;
+        }
+
+        if (finalUrl) {
+            pendingDMAttachment = { url: finalUrl, fileName: file.name, mimeType: file.type || 'application/octet-stream' };
             if (btn) btn.title = `Attached: ${file.name}`;
             btn?.classList.add('has-attachment');
-        } catch (error) {
-            alert('Could not upload this file to TimelineDB.');
-            console.warn('DM attachment upload failed', error);
-        } finally { if (btn) btn.disabled = false; }
+            if (statusEl) {
+                statusEl.innerHTML = `<span style="color: #10b981; font-weight: 700;">✓ Ready to send</span>`;
+            }
+        } else {
+            alert('Could not attach this file. Please ensure the file is under 2MB or cloud upload is configured.');
+            clearDMAttachmentPreview();
+        }
+        if (btn) btn.disabled = false;
     };
     reader.readAsDataURL(file);
 }
@@ -2074,14 +2133,58 @@ async function uploadDMAttachment(file) {
 function renderDMAttachment(attachment) {
     if (!attachment?.url) return '';
     const url = escapeHtml(attachment.url);
-    const name = escapeHtml(attachment.fileName || 'Download attachment');
+    const name = escapeHtml(attachment.fileName || 'Attachment');
     const type = String(attachment.mimeType || '');
+    if (type.startsWith('image/')) {
+        return `
+            <div class="dm-attachment-image-container" onclick="window.openChatImagePreview('${url}', '${name}')">
+                <img class="dm-attachment-preview dm-clickable-img" src="${url}" alt="${name}" loading="lazy">
+            </div>
+        `;
+    }
     let preview = '';
-    if (type.startsWith('image/')) preview = `<img class="dm-attachment-preview" src="${url}" alt="${name}" loading="lazy">`;
-    else if (type.startsWith('audio/')) preview = `<audio class="dm-attachment-media" controls src="${url}"></audio>`;
+    if (type.startsWith('audio/')) preview = `<audio class="dm-attachment-media" controls src="${url}"></audio>`;
     else if (type.startsWith('video/')) preview = `<video class="dm-attachment-media" controls src="${url}"></video>`;
-    return `<div class="dm-attachment">${preview}<a href="${url}" target="_blank" rel="noopener" download="${name}">${name}</a><button type="button" class="dm-download-btn" data-download-url="${url}" data-download-name="${name}" title="Download">⇩</button></div>`;
+    return `<div class="dm-attachment">${preview}<a href="${url}" target="_blank" rel="noopener" download="${name}">📎 ${name}</a><button type="button" class="dm-download-btn" data-download-url="${url}" data-download-name="${name}" title="Download">⇩</button></div>`;
 }
+
+window.openChatImagePreview = function(url, alt) {
+    let modal = document.getElementById('chatImageLightboxModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'chatImageLightboxModal';
+        modal.className = 'chat-lightbox-modal';
+        modal.innerHTML = `
+            <div class="chat-lightbox-backdrop" onclick="window.closeChatImagePreview()"></div>
+            <div class="chat-lightbox-dialog">
+                <button type="button" class="chat-lightbox-close-btn" onclick="window.closeChatImagePreview()" title="Close">&times;</button>
+                <img id="chatLightboxImg" src="" alt="Preview">
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    const img = modal.querySelector('#chatLightboxImg');
+    if (img) {
+        img.src = url;
+        img.alt = alt || 'Preview';
+    }
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+};
+
+window.closeChatImagePreview = function() {
+    const modal = document.getElementById('chatImageLightboxModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+    document.body.style.overflow = '';
+};
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        window.closeChatImagePreview?.();
+    }
+});
 
 document.addEventListener('click', event => {
     const button = event.target.closest('.dm-download-btn');
@@ -2099,6 +2202,7 @@ function initDMSystem() {
 
     const nameEl = document.getElementById('dmHeaderUserName');
     if (nameEl) nameEl.innerText = currentUser.name;
+    clearDMAttachmentPreview();
 
     const floatBtn = document.getElementById('dmFloatingBtn');
     const widget = document.getElementById('dmPopupWidget');
@@ -2115,6 +2219,10 @@ function initDMSystem() {
 
     attachmentBtn?.addEventListener('click', () => attachmentInput?.click());
     attachmentInput?.addEventListener('change', event => { uploadDMAttachment(event.target.files?.[0]); event.target.value = ''; });
+    document.getElementById('dmCancelAttachmentBtn')?.addEventListener('click', () => {
+        clearDMAttachmentPreview();
+    });
+
     emojiBtn?.addEventListener('click', event => { event.stopPropagation(); emojiPicker?.classList.toggle('hidden'); });
     emojiPicker?.querySelectorAll('button').forEach(button => button.addEventListener('click', () => { const input = document.getElementById('dmMessageInput'); if (input) { input.value += button.textContent; input.focus(); } emojiPicker.classList.add('hidden'); }));
 
@@ -2147,6 +2255,7 @@ function initDMSystem() {
     leaveBtn?.addEventListener('click', () => {
         if (unsubscribeDMMessages) unsubscribeDMMessages();
         currentChatPartner = null;
+        clearDMAttachmentPreview();
         showDMView('threads');
     });
 
@@ -2158,7 +2267,15 @@ function initDMSystem() {
         e.preventDefault();
         const input = document.getElementById('dmMessageInput');
         const text = input ? input.value.trim() : '';
-        if ((!text && !pendingDMAttachment) || !currentChatPartner || !currentUser) return;
+        const attachment = pendingDMAttachment;
+        if ((!text && !attachment) || !currentChatPartner || !currentUser) return;
+
+        // Immediately clear input and attachment preview so it never stays or hangs!
+        if (input) {
+            input.value = '';
+            input.focus();
+        }
+        clearDMAttachmentPreview();
 
         const newMsgDoc = {
             participants: [currentUser.code, currentChatPartner.code].sort(),
@@ -2167,7 +2284,7 @@ function initDMSystem() {
             receiverCode: currentChatPartner.code,
             receiverName: currentChatPartner.name,
             message: text,
-            attachment: pendingDMAttachment || null,
+            attachment: attachment || null,
             timestamp: new Date().toISOString(),
             read: false
         };
@@ -2180,11 +2297,6 @@ function initDMSystem() {
             renderLocalDMMessagesStream();
             renderLocalDMThreads();
         }
-
-        if (input) input.value = '';
-        pendingDMAttachment = null;
-        attachmentBtn?.classList.remove('has-attachment');
-        if (attachmentBtn) attachmentBtn.title = 'Attach a file';
     });
 
     window.deleteDMChatroom = async function(partnerCode, partnerName) {
@@ -2253,6 +2365,35 @@ function saveLocalDM(msgDoc) {
     list.push(msgDoc);
     sessionStorage.setItem('local_direct_messages', JSON.stringify(list));
 }
+
+function deleteLocalDMMessage(id) {
+    if (!id) return;
+    const list = getLocalDMMessages().filter(m => m.docId !== id && m.timestamp !== id);
+    try {
+        sessionStorage.setItem('local_direct_messages', JSON.stringify(list));
+    } catch(e) {}
+}
+
+window.deleteSingleDMMessage = async function(docId) {
+    if (!docId) return;
+    const ok = confirm("Delete this message?");
+    if (!ok) return;
+
+    try {
+        await deleteDoc(doc(db, "direct_messages", docId));
+    } catch (err) {
+        console.warn("Could not delete message from Firestore, trying local storage:", err);
+    }
+    deleteLocalDMMessage(docId);
+
+    const el = document.querySelector(`.dm-message-row[data-msg-id="${docId}"]`);
+    if (el) {
+        el.style.transition = 'all 0.22s ease';
+        el.style.opacity = '0';
+        el.style.transform = 'scale(0.85)';
+        setTimeout(() => el.remove(), 220);
+    }
+};
 
 function showDMView(viewName) {
     const threadsView = document.getElementById('dmThreadsView');
@@ -2473,54 +2614,152 @@ function renderLocalDMThreads() {
     });
 }
 
+function getContactGroupName(contact) {
+    if (!contact) return 'Other Students';
+    if (contact.role === 'Teacher' || contact.role === 'Super Admin' || contact.role === 'Admin' || contact.studentClass === 'Staff' || contact.studentClass === 'Teachers & Staff') {
+        return 'Teachers & Staff';
+    }
+    const c = (contact.studentClass || '').trim();
+    if (!c || c.toLowerCase() === 'student' || c.toLowerCase() === 'unassigned') {
+        return 'Other Students';
+    }
+    return c;
+}
+
+function sortClassGroups(a, b) {
+    if (a === 'Teachers & Staff') return -1;
+    if (b === 'Teachers & Staff') return 1;
+    if (a === 'Other Students') return 1;
+    if (b === 'Other Students') return -1;
+    return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+}
+
 function renderDMContactsList(filterStr) {
     const listEl = document.getElementById('dmContactsList');
     if (!listEl) return;
 
+    const query = (filterStr || '').trim().toLowerCase();
     const filtered = allUserDirectory.filter(u => {
-        if (u.code === currentUser.code) return false; 
-        if (!filterStr) return true;
-        return u.name.toLowerCase().includes(filterStr) || u.role.toLowerCase().includes(filterStr);
+        if (currentUser && u.code === currentUser.code) return false; 
+        if (!query) return true;
+        const nameMatch = (u.name || '').toLowerCase().includes(query);
+        const roleMatch = (u.role || '').toLowerCase().includes(query);
+        const classMatch = (u.studentClass || '').toLowerCase().includes(query);
+        return nameMatch || roleMatch || classMatch;
     });
 
     if (filtered.length === 0) {
-        listEl.innerHTML = `<div class="dm-empty-state">No contacts found matching "${filterStr}".</div>`;
+        listEl.innerHTML = `<div class="dm-empty-state">No contacts found matching "${escapeHtml(filterStr)}".</div>`;
         return;
     }
 
-    listEl.innerHTML = '';
+    // Group contacts by class
+    const groupsMap = new Map();
     filtered.forEach(contact => {
-        const fullContactName = contact.name || 'User';
-        const nickName = formatNickname(fullContactName);
-        const initial = escapeHtml(nickName ? nickName.charAt(0).toUpperCase() : '?');
-        const safeContactName = escapeHtml(nickName);
-        const safeFullName = escapeHtml(fullContactName);
-        const safeRole = escapeHtml(contact.role || 'User');
-        const safeClass = contact.studentClass ? ' • ' + escapeHtml(contact.studentClass) : '';
-        const dmPhoto = getUserPhotoUrl(contact.code, fullContactName, contact.photoUrl);
-        const dmAvatarHTML = dmPhoto 
-            ? `<div class="dm-contact-avatar"><img src="${escapeHtml(dmPhoto)}" alt="Avatar" class="avatar-circle-img" onerror="this.parentElement.innerHTML='${initial}'"></div>`
-            : `<div class="dm-contact-avatar">${initial}</div>`;
+        const grp = getContactGroupName(contact);
+        if (!groupsMap.has(grp)) {
+            groupsMap.set(grp, []);
+        }
+        groupsMap.get(grp).push(contact);
+    });
 
-        const item = document.createElement('div');
-        item.className = 'dm-contact-item';
-        item.innerHTML = `
-            ${dmAvatarHTML}
-            <div class="dm-contact-info">
-                <div class="dm-contact-name" title="${safeFullName}">${safeContactName}</div>
-                <div class="dm-preview-text">${safeRole}${safeClass}</div>
+    const sortedGroupNames = Array.from(groupsMap.keys()).sort(sortClassGroups);
+
+    listEl.innerHTML = '';
+    const isSearching = !!query;
+
+    sortedGroupNames.forEach((groupName) => {
+        const members = groupsMap.get(groupName);
+        members.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+        const groupWrapper = document.createElement('div');
+        groupWrapper.className = `dm-class-group ${isSearching ? 'is-expanded' : ''}`;
+        groupWrapper.setAttribute('data-group-name', groupName);
+
+        const isStaffGroup = groupName === 'Teachers & Staff';
+        const groupIconSvg = isStaffGroup 
+            ? `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`
+            : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>`;
+
+        const headerBtn = document.createElement('button');
+        headerBtn.type = 'button';
+        headerBtn.className = 'dm-class-group-header';
+        headerBtn.setAttribute('aria-expanded', isSearching ? 'true' : 'false');
+        headerBtn.innerHTML = `
+            <div class="dm-class-group-title-wrap">
+                <span class="dm-class-group-icon ${isStaffGroup ? 'staff-icon' : ''}">${groupIconSvg}</span>
+                <span class="dm-class-group-name">${escapeHtml(groupName)}</span>
+                <span class="dm-class-group-badge">${members.length}</span>
             </div>
-            <button class="dm-new-chat-btn">Chat</button>
+            <span class="dm-class-group-arrow-wrap">
+                <svg class="dm-group-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m9 18 6-6-6-6"/>
+                </svg>
+            </span>
         `;
 
-        item.onclick = () => openDMChatroom(contact);
-        listEl.appendChild(item);
+        const contentEl = document.createElement('div');
+        contentEl.className = `dm-class-group-content ${isSearching ? '' : 'hidden'}`;
+
+        members.forEach(contact => {
+            const fullContactName = contact.name || 'User';
+            const nickName = formatNickname(fullContactName);
+            const initial = escapeHtml(nickName ? nickName.charAt(0).toUpperCase() : '?');
+            const safeContactName = escapeHtml(nickName);
+            const safeFullName = escapeHtml(fullContactName);
+            const safeRole = escapeHtml(contact.role || 'User');
+            const safeClass = contact.studentClass && contact.studentClass !== 'Staff' && contact.studentClass !== 'Teachers & Staff' 
+                ? ' • ' + escapeHtml(contact.studentClass) 
+                : '';
+            const dmPhoto = getUserPhotoUrl(contact.code, fullContactName, contact.photoUrl);
+            const dmAvatarHTML = dmPhoto 
+                ? `<div class="dm-contact-avatar"><img src="${escapeHtml(dmPhoto)}" alt="Avatar" class="avatar-circle-img" onerror="this.parentElement.innerHTML='${initial}'"></div>`
+                : `<div class="dm-contact-avatar">${initial}</div>`;
+
+            const item = document.createElement('div');
+            item.className = 'dm-contact-item';
+            item.innerHTML = `
+                ${dmAvatarHTML}
+                <div class="dm-contact-info">
+                    <div class="dm-contact-name" title="${safeFullName}">${safeContactName}</div>
+                    <div class="dm-preview-text">${safeRole}${safeClass}</div>
+                </div>
+                <button type="button" class="dm-new-chat-btn">Chat</button>
+            `;
+
+            item.onclick = (e) => {
+                e.stopPropagation();
+                openDMChatroom(contact);
+            };
+            contentEl.appendChild(item);
+        });
+
+        // Click to toggle accordion (minimize or expand)
+        headerBtn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const willBeExpanded = contentEl.classList.contains('hidden');
+            if (willBeExpanded) {
+                contentEl.classList.remove('hidden');
+                groupWrapper.classList.add('is-expanded');
+                headerBtn.setAttribute('aria-expanded', 'true');
+            } else {
+                contentEl.classList.add('hidden');
+                groupWrapper.classList.remove('is-expanded');
+                headerBtn.setAttribute('aria-expanded', 'false');
+            }
+        };
+
+        groupWrapper.appendChild(headerBtn);
+        groupWrapper.appendChild(contentEl);
+        listEl.appendChild(groupWrapper);
     });
 }
 
 function openDMChatroom(partner) {
     if (!partner || !currentUser) return;
     currentChatPartner = partner;
+    clearDMAttachmentPreview();
 
     const nameEl = document.getElementById('dmChatPartnerName');
     const roleEl = document.getElementById('dmChatPartnerRole');
@@ -2532,6 +2771,85 @@ function openDMChatroom(partner) {
 
     showDMView('chatroom');
     subscribeDMMessagesStream();
+}
+
+function isEmojiOnly(str) {
+    if (!str) return false;
+    const trimmed = str.trim();
+    if (!trimmed) return false;
+    try {
+        const clean = trimmed.replace(/[\s\uFE0F\u200D]/g, '');
+        if (!clean) return false;
+        const emojiRegex = /^(\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Emoji_Modifier})+$/u;
+        return emojiRegex.test(clean) && Array.from(clean).length <= 6;
+    } catch (e) {
+        return /^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F900}-\u{1F9FF}\s]+$/u.test(trimmed);
+    }
+}
+
+function renderSingleDMMessageHTML(data) {
+    const isSent = data.senderCode === currentUser.code;
+    const msgClass = isSent ? 'sent' : 'received';
+    const timeStr = formatTimeAgo(data.timestamp);
+    const rawMsg = data.message || '';
+    const safeMessage = escapeHtml(rawMsg);
+    const isEmoji = isEmojiOnly(rawMsg);
+    const isImageOnly = data.attachment?.url && String(data.attachment?.mimeType || '').startsWith('image/') && !safeMessage;
+
+    // Sender Name: if sent by me, write "Me", else senderName
+    const senderName = isSent ? 'Me' : escapeHtml(data.senderName || currentChatPartner.name);
+
+    // Profile photo & initials avatar
+    const senderCode = isSent ? currentUser.code : (data.senderCode || currentChatPartner.code);
+    const senderExplicitName = isSent ? currentUser.name : (data.senderName || currentChatPartner.name);
+    const avatarHtml = renderAvatarHTML(senderExplicitName, senderCode, null, false, 'dm-chat-avatar');
+
+    // Read status for outgoing messages: two blue checkmarks if read, two grey checkmarks if sent
+    const isRead = !!data.read;
+    const checkmarkColor = isRead ? '#38bdf8' : '#94a3b8';
+    const checkmarkTitle = isRead ? 'Read' : 'Sent';
+    const readStatusHtml = isSent ? `
+        <span class="dm-read-status" title="${checkmarkTitle}" aria-label="${checkmarkTitle}">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${checkmarkColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 6L7 17l-5-5"/>
+                <path d="M22 10l-7.5 7.5-1.5-1.5"/>
+            </svg>
+        </span>
+    ` : '';
+
+    // Delete message button (only for messages sent by me)
+    const deleteBtnHtml = (isSent && data.docId) ? `
+        <button type="button" class="dm-msg-delete-btn" title="Delete message" aria-label="Delete message" onclick="window.deleteSingleDMMessage('${escapeHtml(data.docId)}')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
+        </button>
+    ` : '';
+
+    return `
+        <div class="dm-message-row ${msgClass}" data-msg-id="${escapeHtml(data.docId || '')}">
+            ${!isSent ? `<div class="dm-msg-avatar-col">${avatarHtml}</div>` : ''}
+
+            <div class="dm-msg-content-col">
+                <div class="dm-msg-sender-name ${isSent ? 'me' : ''}">
+                    ${senderName}
+                </div>
+
+                <div class="dm-msg-bubble-wrap">
+                    ${isSent ? deleteBtnHtml : ''}
+                    <div class="dm-message-bubble ${isSent ? 'dm-msg-sent' : 'dm-msg-received'} ${isEmoji ? 'dm-msg-emoji-only' : ''} ${isImageOnly ? 'dm-msg-bubble-image-only' : ''}">
+                        ${safeMessage ? `<div>${safeMessage}</div>` : ''}
+                        ${renderDMAttachment(data.attachment)}
+                    </div>
+                </div>
+
+                <div class="dm-msg-meta">
+                    <span class="dm-msg-time">${timeStr}</span>
+                    ${readStatusHtml}
+                </div>
+            </div>
+
+            ${isSent ? `<div class="dm-msg-avatar-col">${avatarHtml}</div>` : ''}
+        </div>
+    `;
 }
 
 function subscribeDMMessagesStream() {
@@ -2570,27 +2888,14 @@ function subscribeDMMessagesStream() {
 
             messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
-            streamEl.innerHTML = '';
+            let html = '';
             messages.forEach(data => {
                 if (data.docId && !data.read && data.receiverCode === currentUser.code) {
                     updateDoc(doc(db, "direct_messages", data.docId), { read: true }).catch(() => {});
                 }
-
-                const isSent = data.senderCode === currentUser.code;
-                const msgClass = isSent ? 'dm-msg-sent' : 'dm-msg-received';
-                const timeStr = formatTimeAgo(data.timestamp);
-                const safeMessage = escapeHtml(data.message || '');
-
-                const div = document.createElement('div');
-                div.className = `dm-message-bubble ${msgClass}`;
-                div.innerHTML = `
-                    ${safeMessage ? `<div>${safeMessage}</div>` : ''}
-                    ${renderDMAttachment(data.attachment)}
-                    <div class="dm-msg-time">${timeStr}</div>
-                `;
-                streamEl.appendChild(div);
+                html += renderSingleDMMessageHTML(data);
             });
-
+            streamEl.innerHTML = html;
             streamEl.scrollTop = streamEl.scrollHeight;
         }, (err) => {
             renderLocalDMMessagesStream();
@@ -2618,22 +2923,10 @@ function renderLocalDMMessagesStream() {
 
     localMsgs.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
-    streamEl.innerHTML = '';
+    let html = '';
     localMsgs.forEach(data => {
-        const isSent = data.senderCode === currentUser.code;
-        const msgClass = isSent ? 'dm-msg-sent' : 'dm-msg-received';
-        const timeStr = formatTimeAgo(data.timestamp);
-        const safeMessage = escapeHtml(data.message || '');
-
-        const div = document.createElement('div');
-        div.className = `dm-message-bubble ${msgClass}`;
-        div.innerHTML = `
-            ${safeMessage ? `<div>${safeMessage}</div>` : ''}
-            ${renderDMAttachment(data.attachment)}
-            <div class="dm-msg-time">${timeStr}</div>
-        `;
-        streamEl.appendChild(div);
+        html += renderSingleDMMessageHTML(data);
     });
-
+    streamEl.innerHTML = html;
     streamEl.scrollTop = streamEl.scrollHeight;
 }

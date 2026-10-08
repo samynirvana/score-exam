@@ -14,12 +14,22 @@ let selectedTaskType = 'photo';
 let editingMissionId = null;
 let currentWeekMissions = [];
 let currentWeekSubmissions = [];
-let activeAdminSubtab = 'planner'; // 'planner' or 'submissions'
+let activeAdminSubtab = 'planner'; // 'planner', 'submissions', or 'progress'
 let submissionFilterDay = 'all';
 let submissionFilterStatus = 'all';
 let submissionFilterClass = 'all';
 let dmSubmissionsCurrentPage = 1;
 const DM_SUBMISSIONS_PER_PAGE = 10;
+
+// Subtab 3: Student Progress State
+let progressFilterClass = 'all';
+let progressFilterStreak = 'highest';
+let progressSearchQuery = '';
+let dmProgressCurrentPage = 1;
+const DM_PROGRESS_PER_PAGE = 15;
+let cachedAllStudents = null;
+let currentWeekProgressData = [];
+let currentWeekRewardsMap = new Map();
 
 // Helper: Calculate Monday of a given date
 export function getMonday(d) {
@@ -93,27 +103,31 @@ export async function loadDailyMissionTab() {
 function setupSubtabButtons() {
     const btnPlanner = document.getElementById('dmSubtabPlannerBtn');
     const btnSubmissions = document.getElementById('dmSubtabSubmissionsBtn');
+    const btnProgress = document.getElementById('dmSubtabProgressBtn');
     const viewPlanner = document.getElementById('dmPlannerView');
     const viewSubmissions = document.getElementById('dmSubmissionsView');
+    const viewProgress = document.getElementById('dmProgressView');
 
-    if (btnPlanner && btnSubmissions) {
-        btnPlanner.addEventListener('click', () => {
-            activeAdminSubtab = 'planner';
-            btnPlanner.classList.add('active');
-            btnSubmissions.classList.remove('active');
-            if (viewPlanner) viewPlanner.style.display = 'block';
-            if (viewSubmissions) viewSubmissions.style.display = 'none';
-        });
+    const switchSubtab = async (subtab) => {
+        activeAdminSubtab = subtab;
+        btnPlanner?.classList.toggle('active', subtab === 'planner');
+        btnSubmissions?.classList.toggle('active', subtab === 'submissions');
+        btnProgress?.classList.toggle('active', subtab === 'progress');
 
-        btnSubmissions.addEventListener('click', async () => {
-            activeAdminSubtab = 'submissions';
-            btnSubmissions.classList.add('active');
-            btnPlanner.classList.remove('active');
-            if (viewPlanner) viewPlanner.style.display = 'none';
-            if (viewSubmissions) viewSubmissions.style.display = 'block';
+        if (viewPlanner) viewPlanner.style.display = subtab === 'planner' ? 'block' : 'none';
+        if (viewSubmissions) viewSubmissions.style.display = subtab === 'submissions' ? 'block' : 'none';
+        if (viewProgress) viewProgress.style.display = subtab === 'progress' ? 'block' : 'none';
+
+        if (subtab === 'submissions') {
             await loadSubmissions();
-        });
-    }
+        } else if (subtab === 'progress') {
+            await loadStudentProgress(true);
+        }
+    };
+
+    btnPlanner?.addEventListener('click', () => switchSubtab('planner'));
+    btnSubmissions?.addEventListener('click', () => switchSubtab('submissions'));
+    btnProgress?.addEventListener('click', () => switchSubtab('progress'));
 }
 
 function setupWeekControls() {
@@ -139,7 +153,7 @@ function setupWeekControls() {
 function renderWeekHeader() {
     const label = document.getElementById('dmCurrentWeekLabel');
     if (label) {
-        label.innerText = `Week of ${formatWeekLabel(selectedWeekMonday)}`;
+        label.innerText = formatWeekLabel(selectedWeekMonday);
     }
 }
 
@@ -334,19 +348,40 @@ function setupFilterListeners() {
         dmSubmissionsCurrentPage = 1;
         renderSubmissions();
     });
+
+    // Subtab 3: Student Progress Filters
+    document.getElementById('dmProgressFilterClass')?.addEventListener('change', (e) => {
+        progressFilterClass = e.target.value;
+        dmProgressCurrentPage = 1;
+        renderStudentProgress();
+    });
+
+    document.getElementById('dmProgressFilterStreak')?.addEventListener('change', (e) => {
+        progressFilterStreak = e.target.value;
+        dmProgressCurrentPage = 1;
+        renderStudentProgress();
+    });
+
+    document.getElementById('dmProgressSearchInput')?.addEventListener('input', (e) => {
+        progressSearchQuery = (e.target.value || '').trim().toLowerCase();
+        dmProgressCurrentPage = 1;
+        renderStudentProgress();
+    });
 }
 
 // Populate classes from Firestore students
 async function populateClassDropdowns() {
     const classSelect = document.getElementById('dmMissionTargetClass');
     const filterClassSelect = document.getElementById('dmFilterClass');
-    if (!classSelect) return;
+    const progressFilterClassSelect = document.getElementById('dmProgressFilterClass');
+    if (!classSelect && !progressFilterClassSelect) return;
 
     try {
         const snap = await getDocs(collection(db, "students"));
+        cachedAllStudents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
         const classes = new Set();
-        snap.forEach(d => {
-            const data = d.data();
+        cachedAllStudents.forEach(data => {
             const cls = data.studentClass || data.class;
             if (cls) classes.add(cls.trim());
         });
@@ -360,9 +395,12 @@ async function populateClassDropdowns() {
             optsHtml += `<option value="${escapeHtml(cls)}">${escapeHtml(cls)}</option>`;
         });
 
-        classSelect.innerHTML = optsHtml;
+        if (classSelect) classSelect.innerHTML = optsHtml;
         if (filterClassSelect) {
-            filterClassSelect.innerHTML = `<option value="all">All Classes</option>` + sorted.map(cls => `<option value="${escapeHtml(cls)}">${escapeHtml(cls)}</option>`).join('');
+            filterClassSelect.innerHTML = optsHtml;
+        }
+        if (progressFilterClassSelect) {
+            progressFilterClassSelect.innerHTML = optsHtml;
         }
     } catch (err) {
         console.error("Error populating mission classes:", err);
@@ -388,6 +426,8 @@ export async function refreshMissionData() {
 
         if (activeAdminSubtab === 'submissions') {
             await loadSubmissions();
+        } else if (activeAdminSubtab === 'progress') {
+            await loadStudentProgress(false);
         }
     } catch (err) {
         console.error("Error loading daily missions:", err);
@@ -1010,3 +1050,331 @@ function formatTimestamp(raw) {
         return 'Recently';
     }
 }
+
+// --- SUBTAB 3: STUDENTS PROGRESS & STREAK TABLE ---
+
+export async function loadStudentProgress(resetPage = true) {
+    if (resetPage) {
+        dmProgressCurrentPage = 1;
+    }
+    const weekKey = getWeekKey(selectedWeekMonday);
+    const tbody = document.getElementById('dmProgressTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="5" style="text-align: center; padding: 48px 20px; color: var(--text-gray);">
+                <div style="display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: rgba(99, 102, 241, 0.1); color: var(--dm-primary); margin-bottom: 12px;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                </div>
+                <div style="font-size: 14px; font-weight: 700; color: var(--text-dark);">Calculating student streaks for Week of ${formatWeekLabel(selectedWeekMonday)}...</div>
+            </td>
+        </tr>
+    `;
+
+    try {
+        // 1. Ensure students are cached
+        if (!cachedAllStudents || cachedAllStudents.length === 0) {
+            const snap = await getDocs(collection(db, "students"));
+            cachedAllStudents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        }
+
+        // 2. Fetch submissions for the selected week
+        const subSnap = await getDocs(query(
+            collection(db, "daily_mission_submissions"),
+            where("weekKey", "==", weekKey)
+        ));
+        const weekSubmissions = subSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // 3. Fetch rewards for the selected week
+        const rewardSnap = await getDocs(query(
+            collection(db, "daily_mission_rewards"),
+            where("weekKey", "==", weekKey)
+        ));
+        const rewardedSet = new Set();
+        rewardSnap.forEach(d => {
+            const data = d.data();
+            const sc = (data.studentCode || d.id.split('_')[0] || '').toUpperCase().trim();
+            if (sc) rewardedSet.add(sc);
+            rewardedSet.add(d.id);
+        });
+
+        // 4. Build student progress records
+        currentWeekProgressData = cachedAllStudents.map(student => {
+            const code = (student.studentCode || student.code || student.id || '').toUpperCase().trim();
+            const name = student.studentName || student.name || code || 'Student';
+            const studentClass = (student.studentClass || student.class || 'Unassigned').trim();
+
+            const daysStatus = {};
+            let completedCount = 0;
+
+            DAYS_OF_WEEK.forEach(day => {
+                const sub = weekSubmissions.find(s => 
+                    (s.studentCode || '').toUpperCase().trim() === code &&
+                    (s.day || '').trim().toLowerCase() === day.toLowerCase()
+                );
+
+                if (sub) {
+                    const st = sub.status || 'pending';
+                    daysStatus[day] = st;
+                    if (st === 'completed') {
+                        completedCount++;
+                    }
+                } else {
+                    daysStatus[day] = 'empty';
+                }
+            });
+
+            const isClaimed = rewardedSet.has(code) || rewardedSet.has(`${code}_${weekKey}`);
+
+            return {
+                id: student.id,
+                code,
+                name,
+                studentClass,
+                daysStatus,
+                streak: completedCount, // 0 to 5
+                isClaimed
+            };
+        });
+
+        renderStudentProgress();
+    } catch (err) {
+        console.error("Error loading student progress:", err);
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" style="text-align: center; color: #ef4444; padding: 24px;">
+                    Failed to load students progress: ${escapeHtml(err.message)}
+                </td>
+            </tr>
+        `;
+    }
+}
+
+export function renderStudentProgress() {
+    const tbody = document.getElementById('dmProgressTableBody');
+    if (!tbody) return;
+
+    const countPill = document.getElementById('dmProgressResultsCount');
+    const paginationWrapper = document.getElementById('dmProgressPagination');
+    const pageInfo = document.getElementById('dmProgressPageInfo');
+    const pageButtons = document.getElementById('dmProgressPageButtons');
+
+    // Filter by class for statistics calculation
+    const classFiltered = currentWeekProgressData.filter(s => {
+        if (progressFilterClass !== 'all' && s.studentClass !== progressFilterClass) return false;
+        return true;
+    });
+
+    // Update Top Summary Stats
+    const totalStudents = classFiltered.length;
+    const perfectCount = classFiltered.filter(s => s.streak === 5).length;
+    const activeCount = classFiltered.filter(s => s.streak >= 1 && s.streak <= 4).length;
+    const zeroCount = classFiltered.filter(s => s.streak === 0).length;
+
+    const elTotal = document.getElementById('dmStatProgressTotalStudents');
+    const elPerfect = document.getElementById('dmStatProgressPerfectStreaks');
+    const elActive = document.getElementById('dmStatProgressActiveStreaks');
+    const elZero = document.getElementById('dmStatProgressZeroStreaks');
+
+    if (elTotal) elTotal.innerText = totalStudents;
+    if (elPerfect) elPerfect.innerText = perfectCount;
+    if (elActive) elActive.innerText = activeCount;
+    if (elZero) elZero.innerText = zeroCount;
+
+    // Filter by search query & streak status
+    let filtered = classFiltered.filter(s => {
+        if (progressSearchQuery) {
+            const matchesName = s.name.toLowerCase().includes(progressSearchQuery);
+            const matchesCode = s.code.toLowerCase().includes(progressSearchQuery);
+            if (!matchesName && !matchesCode) return false;
+        }
+
+        if (progressFilterStreak === 'perfect') return s.streak === 5;
+        if (progressFilterStreak === 'active') return s.streak >= 1 && s.streak <= 4;
+        if (progressFilterStreak === 'inactive') return s.streak === 0;
+
+        return true;
+    });
+
+    // Sort Order (highest streak first or lowest streak first)
+    if (progressFilterStreak === 'lowest') {
+        filtered.sort((a, b) => a.streak - b.streak || a.name.localeCompare(b.name));
+    } else {
+        filtered.sort((a, b) => b.streak - a.streak || a.name.localeCompare(b.name));
+    }
+
+    if (countPill) {
+        countPill.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg><span>Showing ${filtered.length} of ${totalStudents} students</span>`;
+    }
+
+    if (filtered.length === 0) {
+        if (paginationWrapper) paginationWrapper.style.display = 'none';
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" style="text-align: center; padding: 50px 20px; color: var(--text-gray);">
+                    <div style="display: inline-flex; align-items: center; justify-content: center; width: 50px; height: 50px; border-radius: 14px; background: rgba(99, 102, 241, 0.1); color: var(--dm-primary); margin-bottom: 12px;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    </div>
+                    <div style="font-size: 15px; font-weight: 700; color: var(--text-dark); margin-bottom: 4px;">No students match criteria</div>
+                    <div style="font-size: 13px;">Try switching the class filter, streak order, or search keyword.</div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    // Pagination
+    const totalPages = Math.ceil(filtered.length / DM_PROGRESS_PER_PAGE);
+    if (dmProgressCurrentPage > totalPages) dmProgressCurrentPage = totalPages;
+    if (dmProgressCurrentPage < 1) dmProgressCurrentPage = 1;
+
+    const startIndex = (dmProgressCurrentPage - 1) * DM_PROGRESS_PER_PAGE;
+    const pageItems = filtered.slice(startIndex, startIndex + DM_PROGRESS_PER_PAGE);
+
+    if (paginationWrapper) {
+        if (totalPages > 1) {
+            paginationWrapper.style.display = 'flex';
+            if (pageInfo) {
+                pageInfo.innerText = `Showing ${startIndex + 1}–${Math.min(startIndex + DM_PROGRESS_PER_PAGE, filtered.length)} of ${filtered.length}`;
+            }
+            if (pageButtons) {
+                let btnHtml = '';
+                const prevIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><polyline points="15 18 9 12 15 6"/></svg>`;
+                const nextIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-left: 4px;"><polyline points="9 18 15 12 9 6"/></svg>`;
+                btnHtml += `<button type="button" class="dm-page-btn" ${dmProgressCurrentPage === 1 ? 'disabled style="opacity: 0.5;"' : ''} onclick="window.setDmProgressPage(${dmProgressCurrentPage - 1})">${prevIcon}Prev</button>`;
+                for (let p = 1; p <= totalPages; p++) {
+                    btnHtml += `<button type="button" class="dm-page-btn ${p === dmProgressCurrentPage ? 'active' : ''}" onclick="window.setDmProgressPage(${p})">${p}</button>`;
+                }
+                btnHtml += `<button type="button" class="dm-page-btn" ${dmProgressCurrentPage === totalPages ? 'disabled style="opacity: 0.5;"' : ''} onclick="window.setDmProgressPage(${dmProgressCurrentPage + 1})">Next${nextIcon}</button>`;
+                pageButtons.innerHTML = btnHtml;
+            }
+        } else {
+            paginationWrapper.style.display = 'none';
+        }
+    }
+
+    // Palette for avatar backgrounds
+    const avatarGradients = [
+        'linear-gradient(135deg, #6366f1, #8b5cf6)',
+        'linear-gradient(135deg, #ec4899, #f43f5e)',
+        'linear-gradient(135deg, #10b981, #059669)',
+        'linear-gradient(135deg, #3b82f6, #06b6d4)',
+        'linear-gradient(135deg, #f59e0b, #d97706)',
+        'linear-gradient(135deg, #8b5cf6, #d946ef)'
+    ];
+
+    const getInitials = (str) => {
+        if (!str) return 'S';
+        const parts = str.trim().split(/\s+/);
+        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+        return str.substring(0, 2).toUpperCase();
+    };
+
+    let rowsHtml = '';
+    pageItems.forEach((student) => {
+        const hash = (student.name.charCodeAt(0) || 0) + (student.code.charCodeAt(0) || 0);
+        const avatarBg = avatarGradients[hash % avatarGradients.length];
+        const initials = getInitials(student.name);
+
+        // Day chips (Mon - Fri) with colorful SVG icons
+        let dayChipsHtml = '<div class="dm-week-days-row">';
+        DAYS_OF_WEEK.forEach(day => {
+            const status = student.daysStatus[day] || 'empty';
+            let iconSvg = '';
+            let titleText = `${day}: No submission`;
+
+            if (status === 'completed') {
+                iconSvg = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+                titleText = `${day}: Completed (Approved)`;
+            } else if (status === 'pending') {
+                iconSvg = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+                titleText = `${day}: Submitted (Pending Review)`;
+            } else if (status === 'revision') {
+                iconSvg = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+                titleText = `${day}: Needs Revision`;
+            } else {
+                iconSvg = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+            }
+
+            dayChipsHtml += `<span class="dm-day-chip ${status}" title="${titleText}" aria-label="${titleText}">${iconSvg}</span>`;
+        });
+        dayChipsHtml += '</div>';
+
+        // Streak Progress bar and status tag
+        const pct = (student.streak / 5) * 100;
+        let streakTag = '';
+        let barFillGradient = '';
+        let flameColor = '#f59e0b';
+
+        if (student.streak === 5) {
+            streakTag = `<span class="dm-streak-status-tag" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">Perfect</span>`;
+            barFillGradient = 'linear-gradient(90deg, #10b981, #059669)';
+            flameColor = '#10b981';
+        } else if (student.streak >= 3) {
+            streakTag = `<span class="dm-streak-status-tag" style="background: rgba(99, 102, 241, 0.15); color: #6366f1;">On Track</span>`;
+            barFillGradient = 'linear-gradient(90deg, #6366f1, #8b5cf6)';
+            flameColor = '#6366f1';
+        } else if (student.streak >= 1) {
+            streakTag = `<span class="dm-streak-status-tag" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">Starting</span>`;
+            barFillGradient = 'linear-gradient(90deg, #f59e0b, #fbbf24)';
+            flameColor = '#f59e0b';
+        } else {
+            streakTag = `<span class="dm-streak-status-tag" style="background: rgba(148, 163, 184, 0.15); color: #64748b;">Not Started</span>`;
+            barFillGradient = '#cbd5e1';
+            flameColor = '#94a3b8';
+        }
+
+        const streakFlameSvg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${flameColor}" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>`;
+
+        // Weekly Bonus status
+        let bonusBadgeHtml = '';
+        if (student.isClaimed) {
+            bonusBadgeHtml = `<span class="dm-bonus-badge dm-bonus-claimed"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>Claimed (+1.5)</span>`;
+        } else if (student.streak === 5) {
+            bonusBadgeHtml = `<span class="dm-bonus-badge dm-bonus-eligible"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>Ready to Claim</span>`;
+        } else {
+            bonusBadgeHtml = `<span class="dm-bonus-badge dm-bonus-pending"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>In Progress</span>`;
+        }
+
+        rowsHtml += `
+            <tr>
+                <td>
+                    <div class="dm-student-cell">
+                        <div class="dm-student-avatar" style="background: ${avatarBg};">
+                            ${escapeHtml(initials)}
+                        </div>
+                        <div class="dm-student-name">${escapeHtml(student.name)}</div>
+                    </div>
+                </td>
+                <td>
+                    <span class="dm-class-badge">${escapeHtml(student.studentClass)}</span>
+                </td>
+                <td>
+                    ${dayChipsHtml}
+                </td>
+                <td>
+                    <div class="dm-streak-cell">
+                        <div class="dm-streak-header">
+                            <span class="dm-streak-number">${streakFlameSvg} <b>${student.streak}</b> / 5</span>
+                            ${streakTag}
+                        </div>
+                        <div class="dm-streak-bar-track">
+                            <div class="dm-streak-bar-fill" style="width: ${pct}%; background: ${barFillGradient};"></div>
+                        </div>
+                    </div>
+                </td>
+                <td style="text-align: center;">
+                    ${bonusBadgeHtml}
+                </td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = rowsHtml;
+}
+
+window.setDmProgressPage = function(page) {
+    dmProgressCurrentPage = page;
+    renderStudentProgress();
+};

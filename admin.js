@@ -4232,24 +4232,16 @@ async function deleteQuiz(id, title = '') {
         // 3. Clean up legacy or matching exam_scores & scores
         if (normTitle) {
             try {
-                const examSnap = await getDocs(collection(db, "exam_scores"));
+                const examSnap = await getDocs(query(collection(db, "exam_scores"), where("examName", "==", resolvedTitle)));
                 examSnap.forEach(d => {
-                    const data = d.data();
-                    const eName = (data.examName || data.title || '').trim().toLowerCase();
-                    if (eName === normTitle) {
-                        deletePromises.push(deleteDoc(doc(db, "exam_scores", d.id)));
-                    }
+                    deletePromises.push(deleteDoc(doc(db, "exam_scores", d.id)));
                 });
             } catch (e) { }
 
             try {
-                const scoresSnap = await getDocs(collection(db, "scores"));
+                const scoresSnap = await getDocs(query(collection(db, "scores"), where("examName", "==", resolvedTitle)));
                 scoresSnap.forEach(d => {
-                    const data = d.data();
-                    const sName = (data.examName || data.title || '').trim().toLowerCase();
-                    if (sName === normTitle) {
-                        deletePromises.push(deleteDoc(doc(db, "scores", d.id)));
-                    }
+                    deletePromises.push(deleteDoc(doc(db, "scores", d.id)));
                 });
             } catch (e) { }
         }
@@ -6550,25 +6542,21 @@ async function deleteSystemRecord(collectionName, docId) {
                     });
 
                     // Remove all associated student score records in exam_scores and legacy scores
-                    const allScores = await getDocs(collection(db, "exam_scores"));
+                    const allScores = await getDocs(query(collection(db, "exam_scores"), where("examName", "==", examTitle)));
                     const deletePromises = [];
                     allScores.forEach(sDoc => {
                         const sData = sDoc.data();
-                        const sTitle = (sData.examName || sData.quizName || "").trim().toLowerCase();
                         const sSubj = (sData.subject || "").trim().toLowerCase();
-                        if (sTitle === examTitle.toLowerCase() && (!examSubject || sSubj === examSubject.toLowerCase())) {
+                        if (!examSubject || sSubj === examSubject.toLowerCase()) {
                             deletePromises.push(deleteDoc(sDoc.ref));
                         }
                     });
 
                     // Also clean up legacy scores collection
                     try {
-                        const legScores = await getDocs(collection(db, "scores"));
+                        const legScores = await getDocs(query(collection(db, "scores"), where("examName", "==", examTitle)));
                         legScores.forEach(lDoc => {
-                            const lTitle = (lDoc.data().quizTitle || lDoc.data().examName || "").trim().toLowerCase();
-                            if (lTitle === examTitle.toLowerCase()) {
-                                deletePromises.push(deleteDoc(lDoc.ref));
-                            }
+                            deletePromises.push(deleteDoc(lDoc.ref));
                         });
                     } catch (le) { }
 
