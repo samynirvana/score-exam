@@ -267,7 +267,7 @@ export function renderTeacherAdministrationView() {
     const activeThemeData = themeSub[tadminActiveTheme] || {};
     let html = '';
 
-    TADMIN_THEME_CATEGORIES.forEach(cat => {
+    TADMIN_THEME_CATEGORIES.forEach((cat, catIdx) => {
       const files = getCategoryFiles(activeThemeData[cat.key]);
       const hasFiles = files.length > 0;
       const allVerified = hasFiles && files.every(f => f.verified === true);
@@ -275,39 +275,41 @@ export function renderTeacherAdministrationView() {
 
       let statusBadge = '';
       if (!hasFiles) {
-        statusBadge = `<span class="tadmin-status-badge missing">⚠️ Missing</span>`;
+        statusBadge = `<span class="tadmin-status-badge missing"><span class="badge-dot"></span>Missing</span>`;
       } else if (allVerified) {
-        statusBadge = `<span class="tadmin-status-badge verified">✅ Verified (${files.length})</span>`;
+        statusBadge = `<span class="tadmin-status-badge verified"><span class="badge-dot"></span>Verified (${files.length})</span>`;
       } else if (someVerified) {
-        statusBadge = `<span class="tadmin-status-badge pending">⏳ Partial (${files.filter(f => f.verified).length}/${files.length})</span>`;
+        statusBadge = `<span class="tadmin-status-badge pending"><span class="badge-dot"></span>Partial (${files.filter(f => f.verified).length}/${files.length})</span>`;
       } else {
-        statusBadge = `<span class="tadmin-status-badge pending">⏳ Pending (${files.length})</span>`;
+        statusBadge = `<span class="tadmin-status-badge pending"><span class="badge-dot"></span>Pending (${files.length})</span>`;
       }
 
       let fileInfoHtml = '';
       if (hasFiles) {
-        fileInfoHtml = `<div class="tadmin-files-list" style="display: flex; flex-direction: column; gap: 8px; margin: 10px 0;">`;
+        fileInfoHtml = `<div class="tadmin-files-list">`;
         files.forEach((f, idx) => {
           const fileId = f.id || `idx_${idx}`;
           const isFVerified = f.verified === true;
           const hasNotes = !!(f.notes && f.notes.trim());
           fileInfoHtml += `
-            <div class="tadmin-file-box ${isFVerified ? 'verified-box' : ''}" style="margin: 0; padding: 8px 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: ${isFVerified ? '#f0fdf4' : '#ffffff'}; border-color: ${isFVerified ? '#86efac' : '#cbd5e1'}; border-radius: 8px; position: relative;">
-              <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${isFVerified ? '#16a34a' : '#2563eb'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                </svg>
-                <div class="tadmin-file-info" style="min-width: 0; flex: 1;">
-                  <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 2px;">
-                    ${f.subject ? `<span style="font-size: 10px; font-weight: 700; background: #e0e7ff; color: #3730a3; padding: 1px 6px; border-radius: 4px;">${escapeHtml(f.subject)}</span>` : ''}
-                    ${f.className ? `<span style="font-size: 10px; font-weight: 700; background: #fef3c7; color: #92400e; padding: 1px 6px; border-radius: 4px;">${escapeHtml(f.className)}</span>` : ''}
-                    ${isFVerified ? `<span style="font-size: 9.5px; font-weight: 700; color: #15803d; background: #dcfce7; padding: 1px 6px; border-radius: 4px;">✓ Verified</span>` : ''}
-                    ${hasNotes ? `<span style="font-size: 9.5px; font-weight: 600; color: #b45309; background: #fef3c7; padding: 1px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 2px;" title="${escapeHtml(f.notes)}">📝 Note</span>` : ''}
+            <div class="tadmin-file-box ${isFVerified ? 'verified-box' : ''}">
+              <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
+                <div class="tadmin-file-icon-wrap ${isFVerified ? 'verified' : ''}">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                </div>
+                <div class="tadmin-file-info">
+                  <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 3px;">
+                    ${f.subject ? `<span class="tadmin-tag-subject">${escapeHtml(f.subject)}</span>` : ''}
+                    ${f.className ? `<span class="tadmin-tag-class">${escapeHtml(f.className)}</span>` : ''}
+                    ${isFVerified ? `<span class="tadmin-tag-verified">✓ Verified</span>` : ''}
+                    ${hasNotes ? `<span class="tadmin-tag-note" title="${escapeHtml(f.notes)}">📝 Note</span>` : ''}
                   </div>
-                  <p class="tadmin-file-name" title="${escapeHtml(f.fileName || 'Document')}" style="font-size: 11.5px; margin: 0; font-weight: 600; color: #1e293b;">${escapeHtml(f.fileName || 'Document')}</p>
-                  <p class="tadmin-file-date" style="font-size: 10px; color: #94a3b8; margin: 1px 0 0 0;">${f.uploadedAt ? new Date(f.uploadedAt).toLocaleDateString() : '-'}</p>
-                  ${hasNotes ? `<div style="margin-top: 4px; padding: 4px 8px; background: #fffbeb; border-left: 3px solid #f59e0b; border-radius: 4px; font-size: 11px; color: #92400e; line-height: 1.3;">${escapeHtml(f.notes)}</div>` : ''}
+                  <p class="tadmin-file-name" title="${escapeHtml(f.fileName || 'Document')}">${escapeHtml(f.fileName || 'Document')}</p>
+                  <p class="tadmin-file-date">${f.uploadedAt ? new Date(f.uploadedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}</p>
+                  ${hasNotes ? `<div class="tadmin-note-bubble">${escapeHtml(f.notes)}</div>` : ''}
                 </div>
               </div>
 
@@ -321,29 +323,22 @@ export function renderTeacherAdministrationView() {
                   </svg>
                 </button>
                 <div class="tadmin-kebab-menu">
-                  <!-- 1. View file -->
                   <button type="button" class="tadmin-kebab-item"
                     onclick="window.closeAllTadminKebabs(); window.openAdminDocPreview('${escapeHtml(f.fileUrl)}', '${escapeHtml(f.fileName || cat.title)}', '${escapeHtml(cat.title)} - ${escapeHtml(f.subject || '')} (${escapeHtml(f.className || '')})', '${escapeHtml(teacher)}')">
                     <span>👁️</span> <span>View file</span>
                   </button>
 
-                  <!-- 2. Verify/Disprove (Admin only) -->
                   ${isSuperAdmin ? `
                     <button type="button" class="tadmin-kebab-item"
                       onclick="window.closeAllTadminKebabs(); window.toggleAdminChecklistStatus('${cat.key}', 'theme', '${tadminActiveTheme}', ${!isFVerified}, '${fileId}')">
                       <span>${isFVerified ? '↩️' : '✅'}</span> <span>${isFVerified ? 'Disprove' : 'Verify'}</span>
                     </button>
-                  ` : ''}
-
-                  <!-- 3. Notes (Admin only) -->
-                  ${isSuperAdmin ? `
                     <button type="button" class="tadmin-kebab-item"
                       onclick="window.closeAllTadminKebabs(); window.openAdminFileNotesModal('${cat.key}', 'theme', '${tadminActiveTheme}', '${fileId}', '${escapeHtml(f.fileName || cat.title)}')">
                       <span>📝</span> <span>Notes</span>
                     </button>
                   ` : ''}
 
-                  <!-- 4. Delete file -->
                   <button type="button" class="tadmin-kebab-item danger"
                     onclick="window.closeAllTadminKebabs(); window.deleteAdminUploadedFile('${cat.key}', 'theme', '${tadminActiveTheme}', '${fileId}')">
                     <span>🗑️</span> <span>Delete file</span>
@@ -356,34 +351,51 @@ export function renderTeacherAdministrationView() {
         fileInfoHtml += `</div>`;
       } else {
         fileInfoHtml = `
-          <div class="tadmin-file-box" style="justify-content: center; color: #94a3b8; font-size: 12px; margin: 10px 0;">
-            <span>No file uploaded yet for ${tadminActiveTheme}</span>
+          <div class="tadmin-empty-box" onclick="window.openAdminUploadModal('${cat.key}', 'theme', '${tadminActiveTheme}', '${escapeHtml(cat.title)} (${tadminActiveTheme})')" title="Click to upload for ${tadminActiveTheme}">
+            <div class="tadmin-empty-box-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+            </div>
+            <div class="tadmin-empty-box-text">
+              <span class="tadmin-empty-box-title">No file uploaded yet</span>
+              <span class="tadmin-empty-box-sub">Click here or button below to upload for ${tadminActiveTheme}</span>
+            </div>
           </div>
         `;
       }
 
       // Actions: "+ Upload File" button allows adding files anytime
       const uploadBtnHtml = `
-        <button type="button" class="tadmin-btn-upload" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;"
+        <button type="button" class="tadmin-btn-upload"
           onclick="window.openAdminUploadModal('${cat.key}', 'theme', '${tadminActiveTheme}', '${escapeHtml(cat.title)} (${tadminActiveTheme})')">
-          <span>⬆</span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
           <span>Upload File</span>
         </button>
       `;
 
       html += `
-        <div class="tadmin-card ${allVerified ? 'is-verified' : (hasFiles ? 'is-pending' : '')}">
-          <div>
+        <div class="tadmin-card ${allVerified ? 'is-verified' : (hasFiles ? 'is-pending' : '')}" style="animation-delay: ${catIdx * 60}ms;">
+          <div class="tadmin-card-inner-top">
             <div class="tadmin-card-head">
               <div class="tadmin-card-num-title">
-                <h4 class="tadmin-card-title">${cat.num}. ${escapeHtml(cat.title)}</h4>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="tadmin-cat-num-badge">${cat.num}</span>
+                  <h4 class="tadmin-card-title">${escapeHtml(cat.title)}</h4>
+                </div>
                 <p class="tadmin-card-subtitle">${escapeHtml(cat.subtitle)}</p>
               </div>
               ${statusBadge}
             </div>
             ${fileInfoHtml}
           </div>
-          <div class="tadmin-card-actions" style="margin-top: 8px;">
+          <div class="tadmin-card-actions">
             ${uploadBtnHtml}
           </div>
         </div>
@@ -404,7 +416,7 @@ export function renderTeacherAdministrationView() {
     const activeSemData = semSub[tadminActiveSemester] || {};
     let html = '';
 
-    TADMIN_SEMESTER_CATEGORIES.forEach(cat => {
+    TADMIN_SEMESTER_CATEGORIES.forEach((cat, catIdx) => {
       const files = getCategoryFiles(activeSemData[cat.key]);
       const hasFiles = files.length > 0;
       const allVerified = hasFiles && files.every(f => f.verified === true);
@@ -412,39 +424,41 @@ export function renderTeacherAdministrationView() {
 
       let statusBadge = '';
       if (!hasFiles) {
-        statusBadge = `<span class="tadmin-status-badge missing">⚠️ Missing</span>`;
+        statusBadge = `<span class="tadmin-status-badge missing"><span class="badge-dot"></span>Missing</span>`;
       } else if (allVerified) {
-        statusBadge = `<span class="tadmin-status-badge verified">✅ Verified (${files.length})</span>`;
+        statusBadge = `<span class="tadmin-status-badge verified"><span class="badge-dot"></span>Verified (${files.length})</span>`;
       } else if (someVerified) {
-        statusBadge = `<span class="tadmin-status-badge pending">⏳ Partial (${files.filter(f => f.verified).length}/${files.length})</span>`;
+        statusBadge = `<span class="tadmin-status-badge pending"><span class="badge-dot"></span>Partial (${files.filter(f => f.verified).length}/${files.length})</span>`;
       } else {
-        statusBadge = `<span class="tadmin-status-badge pending">⏳ Pending (${files.length})</span>`;
+        statusBadge = `<span class="tadmin-status-badge pending"><span class="badge-dot"></span>Pending (${files.length})</span>`;
       }
 
       let fileInfoHtml = '';
       if (hasFiles) {
-        fileInfoHtml = `<div class="tadmin-files-list" style="display: flex; flex-direction: column; gap: 8px; margin: 10px 0;">`;
+        fileInfoHtml = `<div class="tadmin-files-list">`;
         files.forEach((f, idx) => {
           const fileId = f.id || `idx_${idx}`;
           const isFVerified = f.verified === true;
           const hasNotes = !!(f.notes && f.notes.trim());
           fileInfoHtml += `
-            <div class="tadmin-file-box ${isFVerified ? 'verified-box' : ''}" style="margin: 0; padding: 8px 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: ${isFVerified ? '#f0fdf4' : '#ffffff'}; border-color: ${isFVerified ? '#86efac' : '#cbd5e1'}; border-radius: 8px; position: relative;">
-              <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${isFVerified ? '#16a34a' : '#2563eb'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                </svg>
-                <div class="tadmin-file-info" style="min-width: 0; flex: 1;">
-                  <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 2px;">
-                    ${f.subject ? `<span style="font-size: 10px; font-weight: 700; background: #e0e7ff; color: #3730a3; padding: 1px 6px; border-radius: 4px;">${escapeHtml(f.subject)}</span>` : ''}
-                    ${f.className ? `<span style="font-size: 10px; font-weight: 700; background: #fef3c7; color: #92400e; padding: 1px 6px; border-radius: 4px;">${escapeHtml(f.className)}</span>` : ''}
-                    ${isFVerified ? `<span style="font-size: 9.5px; font-weight: 700; color: #15803d; background: #dcfce7; padding: 1px 6px; border-radius: 4px;">✓ Verified</span>` : ''}
-                    ${hasNotes ? `<span style="font-size: 9.5px; font-weight: 600; color: #b45309; background: #fef3c7; padding: 1px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 2px;" title="${escapeHtml(f.notes)}">📝 Note</span>` : ''}
+            <div class="tadmin-file-box ${isFVerified ? 'verified-box' : ''}">
+              <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
+                <div class="tadmin-file-icon-wrap ${isFVerified ? 'verified' : ''}">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                </div>
+                <div class="tadmin-file-info">
+                  <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 3px;">
+                    ${f.subject ? `<span class="tadmin-tag-subject">${escapeHtml(f.subject)}</span>` : ''}
+                    ${f.className ? `<span class="tadmin-tag-class">${escapeHtml(f.className)}</span>` : ''}
+                    ${isFVerified ? `<span class="tadmin-tag-verified">✓ Verified</span>` : ''}
+                    ${hasNotes ? `<span class="tadmin-tag-note" title="${escapeHtml(f.notes)}">📝 Note</span>` : ''}
                   </div>
-                  <p class="tadmin-file-name" title="${escapeHtml(f.fileName || 'Document')}" style="font-size: 11.5px; margin: 0; font-weight: 600; color: #1e293b;">${escapeHtml(f.fileName || 'Document')}</p>
-                  <p class="tadmin-file-date" style="font-size: 10px; color: #94a3b8; margin: 1px 0 0 0;">${f.uploadedAt ? new Date(f.uploadedAt).toLocaleDateString() : '-'}</p>
-                  ${hasNotes ? `<div style="margin-top: 4px; padding: 4px 8px; background: #fffbeb; border-left: 3px solid #f59e0b; border-radius: 4px; font-size: 11px; color: #92400e; line-height: 1.3;">${escapeHtml(f.notes)}</div>` : ''}
+                  <p class="tadmin-file-name" title="${escapeHtml(f.fileName || 'Document')}">${escapeHtml(f.fileName || 'Document')}</p>
+                  <p class="tadmin-file-date">${f.uploadedAt ? new Date(f.uploadedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}</p>
+                  ${hasNotes ? `<div class="tadmin-note-bubble">${escapeHtml(f.notes)}</div>` : ''}
                 </div>
               </div>
 
@@ -458,29 +472,22 @@ export function renderTeacherAdministrationView() {
                   </svg>
                 </button>
                 <div class="tadmin-kebab-menu">
-                  <!-- 1. View file -->
                   <button type="button" class="tadmin-kebab-item"
                     onclick="window.closeAllTadminKebabs(); window.openAdminDocPreview('${escapeHtml(f.fileUrl)}', '${escapeHtml(f.fileName || cat.title)}', '${escapeHtml(cat.title)} - ${escapeHtml(f.subject || '')} (${escapeHtml(f.className || '')})', '${escapeHtml(teacher)}')">
                     <span>👁️</span> <span>View file</span>
                   </button>
 
-                  <!-- 2. Verify/Disprove (Admin only) -->
                   ${isSuperAdmin ? `
                     <button type="button" class="tadmin-kebab-item"
                       onclick="window.closeAllTadminKebabs(); window.toggleAdminChecklistStatus('${cat.key}', 'semester', '${tadminActiveSemester}', ${!isFVerified}, '${fileId}')">
                       <span>${isFVerified ? '↩️' : '✅'}</span> <span>${isFVerified ? 'Disprove' : 'Verify'}</span>
                     </button>
-                  ` : ''}
-
-                  <!-- 3. Notes (Admin only) -->
-                  ${isSuperAdmin ? `
                     <button type="button" class="tadmin-kebab-item"
                       onclick="window.closeAllTadminKebabs(); window.openAdminFileNotesModal('${cat.key}', 'semester', '${tadminActiveSemester}', '${fileId}', '${escapeHtml(f.fileName || cat.title)}')">
                       <span>📝</span> <span>Notes</span>
                     </button>
                   ` : ''}
 
-                  <!-- 4. Delete file -->
                   <button type="button" class="tadmin-kebab-item danger"
                     onclick="window.closeAllTadminKebabs(); window.deleteAdminUploadedFile('${cat.key}', 'semester', '${tadminActiveSemester}', '${fileId}')">
                     <span>🗑️</span> <span>Delete file</span>
@@ -493,34 +500,51 @@ export function renderTeacherAdministrationView() {
         fileInfoHtml += `</div>`;
       } else {
         fileInfoHtml = `
-          <div class="tadmin-file-box" style="justify-content: center; color: #94a3b8; font-size: 12px; margin: 10px 0;">
-            <span>No file uploaded yet for ${tadminActiveSemester}</span>
+          <div class="tadmin-empty-box" onclick="window.openAdminUploadModal('${cat.key}', 'semester', '${tadminActiveSemester}', '${escapeHtml(cat.title)} (${tadminActiveSemester})')" title="Click to upload for ${tadminActiveSemester}">
+            <div class="tadmin-empty-box-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+            </div>
+            <div class="tadmin-empty-box-text">
+              <span class="tadmin-empty-box-title">No file uploaded yet</span>
+              <span class="tadmin-empty-box-sub">Click here or button below to upload for ${tadminActiveSemester}</span>
+            </div>
           </div>
         `;
       }
 
       // Actions
       const uploadBtnHtml = `
-        <button type="button" class="tadmin-btn-upload" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;"
+        <button type="button" class="tadmin-btn-upload"
           onclick="window.openAdminUploadModal('${cat.key}', 'semester', '${tadminActiveSemester}', '${escapeHtml(cat.title)} (${tadminActiveSemester})')">
-          <span>⬆</span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
           <span>Upload File</span>
         </button>
       `;
 
       html += `
-        <div class="tadmin-card ${allVerified ? 'is-verified' : (hasFiles ? 'is-pending' : '')}">
-          <div>
+        <div class="tadmin-card ${allVerified ? 'is-verified' : (hasFiles ? 'is-pending' : '')}" style="animation-delay: ${(catIdx + 4) * 60}ms;">
+          <div class="tadmin-card-inner-top">
             <div class="tadmin-card-head">
               <div class="tadmin-card-num-title">
-                <h4 class="tadmin-card-title">${cat.num}. ${escapeHtml(cat.title)}</h4>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="tadmin-cat-num-badge">${cat.num}</span>
+                  <h4 class="tadmin-card-title">${escapeHtml(cat.title)}</h4>
+                </div>
                 <p class="tadmin-card-subtitle">${escapeHtml(cat.subtitle)}</p>
               </div>
               ${statusBadge}
             </div>
             ${fileInfoHtml}
           </div>
-          <div class="tadmin-card-actions" style="margin-top: 8px;">
+          <div class="tadmin-card-actions">
             ${uploadBtnHtml}
           </div>
         </div>
@@ -540,9 +564,25 @@ export function renderTeacherAdministrationView() {
   if (rqList) {
     if (reviewQuestions.length === 0) {
       rqList.innerHTML = `
-        <div style="grid-column: 1/-1; padding: 24px; text-align: center; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px; color: #64748b;">
-          <p style="margin: 0 0 6px 0; font-weight: 600;">No review questions added yet.</p>
-          <span style="font-size: 12px;">Teachers can upload whatever quizzes, practice sheets, or review packages needed using the "Upload File" button above.</span>
+        <div class="tadmin-empty-state-card" style="grid-column: 1/-1;">
+          <div class="tadmin-empty-icon-wrap">
+            <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="12" y1="18" x2="12" y2="12" />
+              <line x1="9" y1="15" x2="15" y2="15" />
+            </svg>
+          </div>
+          <h4 class="tadmin-empty-title">No Review Questions Added Yet</h4>
+          <p class="tadmin-empty-desc">Teachers can easily upload quizzes, practice questions, or review packages directly to their folder in "Meeting Koordinasi".</p>
+          <button type="button" class="tadmin-btn-empty-upload" onclick="window.openAddReviewQuestionModal()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            <span>Upload Review Material</span>
+          </button>
         </div>
       `;
     } else {
@@ -552,21 +592,23 @@ export function renderTeacherAdministrationView() {
         const hasFile = !!(rq.fileUrl || rq.fileName);
         const statusBadge = hasFile
           ? (isVerified
-            ? `<span class="tadmin-status-badge verified">✅ Verified</span>`
-            : `<span class="tadmin-status-badge pending">⏳ Pending Check</span>`)
-          : `<span class="tadmin-status-badge missing">⚠️ Missing</span>`;
+            ? `<span class="tadmin-status-badge verified"><span class="badge-dot"></span>Verified</span>`
+            : `<span class="tadmin-status-badge pending"><span class="badge-dot"></span>Pending</span>`)
+          : `<span class="tadmin-status-badge missing"><span class="badge-dot"></span>Missing</span>`;
 
         let fileMeta = '';
         if (hasFile) {
           fileMeta = `
-            <div class="tadmin-file-box">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-              </svg>
+            <div class="tadmin-file-box ${isVerified ? 'verified-box' : ''}">
+              <div class="tadmin-file-icon-wrap ${isVerified ? 'verified' : ''}">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
+              </div>
               <div class="tadmin-file-info">
                 <p class="tadmin-file-name" title="${escapeHtml(rq.fileName || rq.title)}">${escapeHtml(rq.fileName || rq.title)}</p>
-                <p class="tadmin-file-date">${rq.uploadedAt ? new Date(rq.uploadedAt).toLocaleDateString() : '-'}</p>
+                <p class="tadmin-file-date">${rq.uploadedAt ? new Date(rq.uploadedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}</p>
               </div>
             </div>
           `;
@@ -576,7 +618,7 @@ export function renderTeacherAdministrationView() {
         if (hasFile) {
           actionsHtml += `
             <button type="button" class="tadmin-btn-preview" onclick="window.openAdminDocPreview('${escapeHtml(rq.fileUrl)}', '${escapeHtml(rq.fileName || rq.title)}', '${escapeHtml(rq.title)}', '${escapeHtml(teacher)}')">
-              👁️ Preview
+              <span>👁️</span> <span>Preview</span>
             </button>
           `;
         }
@@ -589,25 +631,28 @@ export function renderTeacherAdministrationView() {
           `;
         }
         actionsHtml += `
-          <button type="button" class="tadmin-btn-upload" style="color: #dc2626; border-color: #fca5a5;" onclick="window.deleteAdminReviewQuestionItem('${rq.id || idx}')" title="Delete this review question item">
-            🗑️
+          <button type="button" class="tadmin-btn-delete-rq" onclick="window.deleteAdminReviewQuestionItem('${rq.id || idx}')" title="Delete this review question item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
           </button>
         `;
 
         html += `
-          <div class="tadmin-rq-card ${isVerified ? 'is-verified' : ''}">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
+          <div class="tadmin-rq-card ${isVerified ? 'is-verified' : ''}" style="animation-delay: ${(idx + 8) * 50}ms;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
               <div>
-                <h4 style="margin: 0; font-size: 14px; font-weight: 700; color: #0f172a;">${escapeHtml(rq.title)}</h4>
-                <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
-                  ${rq.grade ? `<span>Class: <strong>${escapeHtml(rq.grade)}</strong></span> &bull; ` : ''}
-                  ${rq.subject ? `<span>Subject: <strong>${escapeHtml(rq.subject)}</strong></span>` : ''}
+                <h4 style="margin: 0; font-size: 14.5px; font-weight: 700; color: #0f172a; line-height: 1.3;">${escapeHtml(rq.title)}</h4>
+                <div style="font-size: 11px; color: #64748b; margin-top: 4px; display: flex; gap: 6px; flex-wrap: wrap;">
+                  ${rq.grade ? `<span class="tadmin-tag-class">${escapeHtml(rq.grade)}</span>` : ''}
+                  ${rq.subject ? `<span class="tadmin-tag-subject">${escapeHtml(rq.subject)}</span>` : ''}
                 </div>
               </div>
               ${statusBadge}
             </div>
             ${fileMeta}
-            <div class="tadmin-card-actions" style="margin-top: 8px;">
+            <div class="tadmin-card-actions" style="margin-top: 10px;">
               ${actionsHtml}
             </div>
           </div>
@@ -843,7 +888,6 @@ function setupTadminUploadModal() {
     e.preventDefault();
     const submitBtn = document.getElementById('btnSubmitTadminUpload');
     if (submitBtn && submitBtn.disabled) return; // Prevent double submit
-    if (submitBtn) submitBtn.disabled = true;
 
     const categoryKey = document.getElementById('tadminUploadCategoryKey').value;
     const scopeType = document.getElementById('tadminUploadScopeType').value;
@@ -860,37 +904,42 @@ function setupTadminUploadModal() {
 
     if (!year || !teacher) {
       alert("Missing school year or teacher name.");
+      if (submitBtn) submitBtn.disabled = false;
       return;
     }
 
     if (!subject) {
       alert("Please select a Subject.");
+      if (submitBtn) submitBtn.disabled = false;
       return;
     }
 
     if (!className) {
       alert("Please select a Class.");
+      if (submitBtn) submitBtn.disabled = false;
+      return;
+    }
+
+    const file = fileInput?.files?.[0];
+    if (!file && !driveLink) {
+      alert("Please select a file to upload or paste a direct Google Drive link.");
+      if (submitBtn) submitBtn.disabled = false;
       return;
     }
 
     let fileUrl = driveLink;
     let fileName = '';
 
-    const file = fileInput?.files?.[0];
-    if (!file && !driveLink) {
-      alert("Please select a file to upload or paste a direct Google Drive link.");
-      return;
-    }
+    if (submitBtn) submitBtn.disabled = true;
 
-    if (file) {
-      fileName = file.name;
-      if (progress) progress.style.display = 'block';
-      if (progressText) progressText.textContent = `Reading ${file.name}...`;
-      if (submitBtn) submitBtn.disabled = true;
+    try {
+      if (file) {
+        fileName = file.name;
+        if (progress) progress.style.display = 'block';
+        if (progressText) progressText.textContent = `Reading ${file.name}...`;
 
-      try {
         const base64Data = await readFileAsBase64(file);
-        if (progressText) progressText.textContent = `Uploading to Google Drive (Folder: Meeting Koordinasi)...`;
+        if (progressText) progressText.textContent = `Uploading to Google Drive (Meeting Koordinasi / ${teacher})...`;
 
         const scriptUrl = localStorage.getItem('meetingDriveScriptUrl') || localStorage.getItem('googleDriveScriptUrl') || '';
         const folderId = localStorage.getItem('meetingDriveFolderId') || '';
@@ -905,6 +954,9 @@ function setupTadminUploadModal() {
               base64Data: base64Data,
               targetFolder: "Meeting Koordinasi",
               folderName: "Meeting Koordinasi",
+              subFolder: teacher,
+              teacherName: teacher,
+              teacher: teacher,
               folderId: folderId,
               type: "teacher_administration"
             })
@@ -940,19 +992,11 @@ function setupTadminUploadModal() {
             throw new Error("Google Drive Webhook script is not configured in Admin Dashboard > Google Drive. Please configure it or enter a direct link.");
           }
         }
-      } catch (uploadErr) {
-        console.error("Upload error:", uploadErr);
-        alert("Upload Error: " + uploadErr.message);
-        if (progress) progress.style.display = 'none';
-        if (submitBtn) submitBtn.disabled = false;
-        return;
+      } else {
+        fileName = driveLink.split('/').pop().split('?')[0] || 'Cloud Document';
       }
-    } else {
-      fileName = driveLink.split('/').pop().split('?')[0] || 'Cloud Document';
-    }
 
-    // Save to Firestore (Appends to array to support multiple files per category/subject/class)
-    try {
+      // Save to Firestore (Appends to array to support multiple files per category/subject/class)
       const recordKey = getTadminRecordKey(year, teacher);
       const record = getTeacherRecord(year, teacher);
 
@@ -990,9 +1034,9 @@ function setupTadminUploadModal() {
       renderTeacherAdministrationView();
       renderTeacherAdminOverviewTable();
       alert(`Administration document for ${subject} (${className}) uploaded successfully!`);
-    } catch (saveErr) {
-      console.error("Save error:", saveErr);
-      alert("Error saving document to database: " + saveErr.message);
+    } catch (err) {
+      console.error("Upload error:", err);
+      alert("Error: " + err.message);
     } finally {
       if (progress) progress.style.display = 'none';
       if (submitBtn) submitBtn.disabled = false;
@@ -1061,11 +1105,17 @@ window.openAdminUploadModal = function(categoryKey, scopeType, scopeValue, displ
   const fileInput = document.getElementById('tadminFileInput');
   const linkInput = document.getElementById('tadminDriveLinkInput');
   const progress = document.getElementById('tadminUploadProgress');
+  const submitBtn = document.getElementById('btnSubmitTadminUpload');
 
+  if (submitBtn) submitBtn.disabled = false;
   if (catInput) catInput.value = categoryKey;
   if (scopeTypeInput) scopeTypeInput.value = scopeType;
   if (scopeValInput) scopeValInput.value = scopeValue;
-  if (badge) badge.textContent = `${displayTitle} — Meeting Koordinasi`;
+
+  const teacher = document.getElementById('tadminTeacherSelect')?.value || '';
+  if (badge) {
+    badge.innerHTML = `<span style="color:#2563eb; font-weight:700;">${escapeHtml(displayTitle)}</span> <span style="color:#64748b; font-weight:500;">&bull; Folder: Meeting Koordinasi / <strong>${escapeHtml(teacher || 'Teacher')}</strong></span>`;
+  }
   if (fileInput) fileInput.value = '';
   if (linkInput) linkInput.value = '';
   if (progress) progress.style.display = 'none';
@@ -1137,32 +1187,42 @@ function setupTadminReviewQuestionModal() {
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const submitBtn = document.getElementById('btnSubmitTadminAddRQ');
+    if (submitBtn && submitBtn.disabled) return;
+
     const title = document.getElementById('tadminRQTitleInput').value.trim();
     const grade = document.getElementById('tadminRQGradeInput').value.trim();
     const subject = document.getElementById('tadminRQSubjectInput').value.trim();
     const fileInput = document.getElementById('tadminRQFileInput');
     const driveLink = document.getElementById('tadminRQDriveLinkInput').value.trim();
     const progress = document.getElementById('tadminRQProgress');
-    const submitBtn = document.getElementById('btnSubmitTadminAddRQ');
 
     const year = document.getElementById('tadminYearSelect')?.value || '';
     const teacher = document.getElementById('tadminTeacherSelect')?.value || '';
 
     if (!title) {
-      alert("Please enter a title for this review questions item.");
+      alert("Please enter a topic or title for this review questions item.");
+      if (submitBtn) submitBtn.disabled = false;
+      return;
+    }
+
+    const file = fileInput?.files?.[0];
+    if (!file && !driveLink) {
+      alert("Please select a file to upload or enter a link.");
+      if (submitBtn) submitBtn.disabled = false;
       return;
     }
 
     let fileUrl = driveLink;
     let fileName = '';
 
-    const file = fileInput?.files?.[0];
-    if (file) {
-      fileName = file.name;
-      if (progress) progress.style.display = 'block';
-      if (submitBtn) submitBtn.disabled = true;
+    if (submitBtn) submitBtn.disabled = true;
 
-      try {
+    try {
+      if (file) {
+        fileName = file.name;
+        if (progress) progress.style.display = 'block';
+
         const base64Data = await readFileAsBase64(file);
         const scriptUrl = localStorage.getItem('meetingDriveScriptUrl') || localStorage.getItem('googleDriveScriptUrl') || '';
         const folderId = localStorage.getItem('meetingDriveFolderId') || '';
@@ -1177,6 +1237,9 @@ function setupTadminReviewQuestionModal() {
               base64Data: base64Data,
               targetFolder: "Meeting Koordinasi",
               folderName: "Meeting Koordinasi",
+              subFolder: teacher,
+              teacherName: teacher,
+              teacher: teacher,
               folderId: folderId,
               type: "teacher_administration"
             })
@@ -1186,23 +1249,18 @@ function setupTadminReviewQuestionModal() {
           let resJson;
           try { resJson = JSON.parse(resText); } catch (e) {}
 
-          if (resJson && resJson.status === 'success' && (resJson.photoUrl || resJson.fileUrl)) {
-            fileUrl = resJson.photoUrl || resJson.fileUrl;
+          if (resJson && resJson.status === 'success' && (resJson.photoUrl || resJson.fileUrl || resJson.url)) {
+            fileUrl = resJson.photoUrl || resJson.fileUrl || resJson.url;
           } else if (file.size < 800000) {
             fileUrl = `data:${file.type};base64,${base64Data}`;
           }
         } else if (file.size < 800000) {
           fileUrl = `data:${file.type};base64,${base64Data}`;
         }
-      } catch (err) {
-        console.warn("RQ file upload error:", err);
-      } finally {
-        if (progress) progress.style.display = 'none';
-        if (submitBtn) submitBtn.disabled = false;
+      } else {
+        fileName = driveLink.split('/').pop().split('?')[0] || 'Cloud Document';
       }
-    }
 
-    try {
       const recordKey = getTadminRecordKey(year, teacher);
       const record = getTeacherRecord(year, teacher);
       if (!Array.isArray(record.reviewQuestions)) record.reviewQuestions = [];
@@ -1233,6 +1291,9 @@ function setupTadminReviewQuestionModal() {
     } catch (err) {
       console.error("Save RQ error:", err);
       alert("Error adding review question item: " + err.message);
+    } finally {
+      if (progress) progress.style.display = 'none';
+      if (submitBtn) submitBtn.disabled = false;
     }
   });
 }
@@ -1240,6 +1301,11 @@ function setupTadminReviewQuestionModal() {
 window.openAddReviewQuestionModal = function() {
   const modal = document.getElementById('tadminAddReviewQuestionModal');
   const form = document.getElementById('tadminAddReviewQuestionForm');
+  const submitBtn = document.getElementById('btnSubmitTadminAddRQ');
+  const progress = document.getElementById('tadminRQProgress');
+
+  if (submitBtn) submitBtn.disabled = false;
+  if (progress) progress.style.display = 'none';
   if (form) form.reset();
   if (modal) modal.style.display = 'flex';
 };

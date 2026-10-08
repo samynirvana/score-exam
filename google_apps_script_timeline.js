@@ -96,6 +96,21 @@ function doPost(e) {
       }
     }
 
+    // Check if a subFolder is specified (e.g. Teacher's Name for Teacher Administration)
+    var subFolderName = (data.subFolder || data.teacherName || data.teacher || data.subFolderName || "").trim();
+    if (subFolderName && targetFolder) {
+      try {
+        var subFolders = targetFolder.getFoldersByName(subFolderName);
+        if (subFolders.hasNext()) {
+          targetFolder = subFolders.next();
+        } else {
+          targetFolder = targetFolder.createFolder(subFolderName);
+        }
+      } catch (subErr) {
+        // If subfolder lookup/creation fails, continue saving to parent targetFolder
+      }
+    }
+
     // Check if a file with the same name already exists in the target folder
     // If found, safely trash the old file so the new binary file replaces it cleanly without corruption
     var existingFiles = targetFolder.getFilesByName(fileName);

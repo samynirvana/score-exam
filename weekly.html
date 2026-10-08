@@ -17,7 +17,7 @@
     rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=375">
   <link rel="stylesheet" href="student.css?v=393">
-  <link rel="stylesheet" href="weekly.css?v=447">
+  <link rel="stylesheet" href="weekly.css?v=448">
   <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 </head>
 
@@ -2557,16 +2557,17 @@
 
   <!-- Teacher Administration: File Upload Modal -->
   <div id="tadminUploadModal" class="modal-overlay" style="display: none; z-index: 10500;">
-    <div class="login-card" style="max-width: 500px; text-align: left;">
+    <div class="login-card" style="max-width: 520px; text-align: left;">
       <div class="login-header">
-        <div class="login-icon" style="background: #eff6ff; border-color: #bfdbfe; margin: 0 0 10px 0;">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <div class="login-icon" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-color: #bfdbfe; margin: 0 0 10px 0;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
             <polyline points="17 8 12 3 7 8" />
             <line x1="12" y1="3" x2="12" y2="15" />
           </svg>
         </div>
-        <h2 id="tadminUploadModalTitle" style="font-size: 19px; margin-bottom: 4px;">Upload</h2>
+        <h2 id="tadminUploadModalTitle" style="font-size: 20px; font-weight: 800; margin-bottom: 4px; color: #0f172a;">Upload Administration Document</h2>
+        <p style="font-size: 13px; color: #64748b; margin: 0;">Files upload directly to Google Drive folder <strong>Meeting Koordinasi</strong> in your personal teacher folder.</p>
       </div>
 
       <form id="tadminUploadForm">
@@ -2574,44 +2575,45 @@
         <input type="hidden" id="tadminUploadScopeType">
         <input type="hidden" id="tadminUploadScopeValue">
 
-        <div class="form-group" style="margin-bottom: 12px;">
-          <label style="font-weight: 600; font-size: 12px; color: #475569;">Category</label>
-          <div id="tadminUploadTargetBadge" style="padding: 8px 12px; background: #f1f5f9; border-radius: 8px; font-size: 13px; font-weight: 700; color: #1e293b;">
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label style="font-weight: 700; font-size: 12px; color: #475569;">Target Destination</label>
+          <div id="tadminUploadTargetBadge" style="padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 13px; font-weight: 600; color: #1e293b;">
             -
           </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
           <div class="form-group">
-            <label for="tadminUploadSubjectSelect" style="font-weight: 600; font-size: 12px; color: #475569;">Subject</label>
+            <label for="tadminUploadSubjectSelect" style="font-weight: 700; font-size: 12px; color: #475569;">Subject</label>
             <select id="tadminUploadSubjectSelect" class="form-control" required></select>
           </div>
           <div class="form-group">
-            <label for="tadminUploadClassSelect" style="font-weight: 600; font-size: 12px; color: #475569;">Class</label>
+            <label for="tadminUploadClassSelect" style="font-weight: 700; font-size: 12px; color: #475569;">Grade / Class</label>
             <select id="tadminUploadClassSelect" class="form-control" required></select>
           </div>
         </div>
 
         <!-- File Picker -->
-        <div class="form-group" style="margin-bottom: 12px;">
-          <label for="tadminFileInput" style="font-weight: 600; font-size: 12px; color: #475569;">Select File</label>
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label for="tadminFileInput" style="font-weight: 700; font-size: 12px; color: #475569;">Choose Document File</label>
           <input type="file" id="tadminFileInput" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.webp">
+          <small style="font-size: 11px; color: #94a3b8; display: block; margin-top: 4px;">Supports PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), and images.</small>
         </div>
 
         <!-- Or Google Drive Direct Link -->
         <div class="form-group" style="margin-bottom: 16px;">
-          <label for="tadminDriveLinkInput" style="font-weight: 600; font-size: 12px; color: #475569;">Link</label>
+          <label for="tadminDriveLinkInput" style="font-weight: 700; font-size: 12px; color: #475569;">Or Direct Google Drive / Docs Link (Optional)</label>
           <input type="url" id="tadminDriveLinkInput" class="form-control" placeholder="https://docs.google.com/... or https://drive.google.com/...">
         </div>
 
-        <div id="tadminUploadProgress" style="display: none; margin-bottom: 14px; padding: 10px; border-radius: 8px; background: #eff6ff; border: 1px solid #bfdbfe; font-size: 12px; color: #1d4ed8; text-align: center;">
+        <div id="tadminUploadProgress" style="display: none; margin-bottom: 14px; padding: 12px; border-radius: 10px; background: #eff6ff; border: 1px solid #bfdbfe; font-size: 12.5px; font-weight: 600; color: #1d4ed8; text-align: center;">
           <span class="status-dot" style="background: #2563eb; display: inline-block; animation: pulse 1.5s infinite;"></span>
           <span id="tadminUploadProgressText">Uploading to Google Drive (Meeting Koordinasi)...</span>
         </div>
 
         <div style="display: flex; gap: 10px; margin-top: 20px;">
           <button type="button" id="btnCancelTadminUpload" class="login-btn" style="background: #e2e8f0; color: #334155; flex: 1;">Cancel</button>
-          <button type="submit" id="btnSubmitTadminUpload" class="login-btn" style="flex: 1.5;">Upload & Save</button>
+          <button type="submit" id="btnSubmitTadminUpload" class="login-btn" style="flex: 1.5; background: linear-gradient(135deg, #2563eb, #1d4ed8); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);">Upload & Save</button>
         </div>
       </form>
     </div>
@@ -2619,54 +2621,55 @@
 
   <!-- Teacher Administration: Add Review Question Item Modal -->
   <div id="tadminAddReviewQuestionModal" class="modal-overlay" style="display: none; z-index: 10500;">
-    <div class="login-card" style="max-width: 500px; text-align: left;">
+    <div class="login-card" style="max-width: 520px; text-align: left;">
       <div class="login-header">
-        <div class="login-icon" style="background: #eff6ff; border-color: #bfdbfe; margin: 0 0 10px 0;">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <div class="login-icon" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-color: #bfdbfe; margin: 0 0 10px 0;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
             <polyline points="14 2 14 8 20 8" />
             <line x1="12" y1="18" x2="12" y2="12" />
             <line x1="9" y1="15" x2="15" y2="15" />
           </svg>
         </div>
-        <h2 style="font-size: 19px; margin-bottom: 4px;">Upload</h2>
+        <h2 style="font-size: 20px; font-weight: 800; margin-bottom: 4px; color: #0f172a;">Upload Review Material</h2>
+        <p style="font-size: 13px; color: #64748b; margin: 0;">Upload quizzes, worksheets, or test packages to Google Drive folder <strong>Meeting Koordinasi</strong>.</p>
       </div>
 
       <form id="tadminAddReviewQuestionForm">
-        <div class="form-group" style="margin-bottom: 12px;">
-          <label for="tadminRQTitleInput">Topic</label>
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label for="tadminRQTitleInput" style="font-weight: 700; font-size: 12px; color: #475569;">Topic / Review Title</label>
           <input type="text" id="tadminRQTitleInput" class="form-control" placeholder="e.g. Mid-Term Review Questions Grade 8, Quiz Bab 3..." required>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
           <div class="form-group">
-            <label for="tadminRQGradeInput">Class</label>
+            <label for="tadminRQGradeInput" style="font-weight: 700; font-size: 12px; color: #475569;">Grade / Class</label>
             <input type="text" id="tadminRQGradeInput" class="form-control" placeholder="e.g. Grade 7, Grade 10">
           </div>
           <div class="form-group">
-            <label for="tadminRQSubjectInput">Subject</label>
+            <label for="tadminRQSubjectInput" style="font-weight: 700; font-size: 12px; color: #475569;">Subject</label>
             <input type="text" id="tadminRQSubjectInput" class="form-control" placeholder="e.g. Mathematics, Science">
           </div>
         </div>
 
-        <div class="form-group" style="margin-bottom: 12px;">
-          <label for="tadminRQFileInput" style="font-weight: 600; font-size: 12px; color: #475569;">Upload File</label>
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label for="tadminRQFileInput" style="font-weight: 700; font-size: 12px; color: #475569;">Select File</label>
           <input type="file" id="tadminRQFileInput" class="form-control" accept=".docx,.doc,.xlsx,.xls,.pptx,.ppt,.jpg,.jpeg,.png,.webp,.pdf">
         </div>
 
         <div class="form-group" style="margin-bottom: 16px;">
-          <label for="tadminRQDriveLinkInput">Or Link</label>
+          <label for="tadminRQDriveLinkInput" style="font-weight: 700; font-size: 12px; color: #475569;">Or Google Drive Link</label>
           <input type="url" id="tadminRQDriveLinkInput" class="form-control" placeholder="https://docs.google.com/... or https://drive.google.com/...">
         </div>
 
-        <div id="tadminRQProgress" style="display: none; margin-bottom: 14px; padding: 10px; border-radius: 8px; background: #eff6ff; border: 1px solid #bfdbfe; font-size: 12px; color: #1d4ed8; text-align: center;">
+        <div id="tadminRQProgress" style="display: none; margin-bottom: 14px; padding: 12px; border-radius: 10px; background: #eff6ff; border: 1px solid #bfdbfe; font-size: 12.5px; font-weight: 600; color: #1d4ed8; text-align: center;">
           <span class="status-dot" style="background: #2563eb; display: inline-block; animation: pulse 1.5s infinite;"></span>
           <span>Uploading to Google Drive (Meeting Koordinasi)...</span>
         </div>
 
         <div style="display: flex; gap: 10px; margin-top: 20px;">
           <button type="button" id="btnCancelTadminAddRQ" class="login-btn" style="background: #e2e8f0; color: #334155; flex: 1;">Cancel</button>
-          <button type="submit" id="btnSubmitTadminAddRQ" class="login-btn" style="flex: 1.5;">Upload &amp; Save</button>
+          <button type="submit" id="btnSubmitTadminAddRQ" class="login-btn" style="flex: 1.5; background: linear-gradient(135deg, #2563eb, #1d4ed8); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);">Upload &amp; Save</button>
         </div>
       </form>
     </div>
@@ -2792,8 +2795,8 @@
     </div>
   </div>
 
-  <script type="module" src="weeklyI18n.js?v=447"></script>
-  <script type="module" src="weekly.js?v=447"></script>
+  <script type="module" src="weeklyI18n.js?v=448"></script>
+  <script type="module" src="weekly.js?v=448"></script>
   <script src="js/logo-motion.js?v=2" defer></script>
   <script type="module">import { trackCurrentPage } from './js/userActivity.js'; trackCurrentPage();</script>
   <script type="module" src="studentNav.js?v=466"></script>
