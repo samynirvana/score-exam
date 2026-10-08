@@ -17,7 +17,7 @@
     rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=375">
   <link rel="stylesheet" href="student.css?v=393">
-  <link rel="stylesheet" href="weekly.css?v=446">
+  <link rel="stylesheet" href="weekly.css?v=447">
   <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 </head>
 
@@ -2157,8 +2157,11 @@
 
             <!-- Manage Existing Schedules Section -->
             <div class="admin-card" style="margin-top: 24px;">
-              <div class="admin-card-header">
+              <div class="admin-card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                 <h3 class="admin-card-title">Schedule Setting</h3>
+                <button type="button" id="btnSyncMasterToWeekly" class="action-btn" style="height: 32px; padding: 0 12px; font-size: 12px; font-weight: 600; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;" title="Apply this class master schedule across Theme 1, 2, 3, 4">
+                  <span>🔄 Sync Class to All Themes</span>
+                </button>
               </div>
 
               <div class="filter-controls-group" style="margin-bottom: 18px; display: flex; gap: 16px;">
@@ -2789,8 +2792,8 @@
     </div>
   </div>
 
-  <script type="module" src="weeklyI18n.js?v=446"></script>
-  <script type="module" src="weekly.js?v=446"></script>
+  <script type="module" src="weeklyI18n.js?v=447"></script>
+  <script type="module" src="weekly.js?v=447"></script>
   <script src="js/logo-motion.js?v=2" defer></script>
   <script type="module">import { trackCurrentPage } from './js/userActivity.js'; trackCurrentPage();</script>
   <script type="module" src="studentNav.js?v=466"></script>

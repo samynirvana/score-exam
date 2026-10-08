@@ -984,6 +984,7 @@ onSnapshot(doc(db, "schedules", "weeklyOverrides"), (docSnap) => {
   if (!isClassEditMode) {
     renderClassSchedule();
     renderTeacherView();
+    renderManageScheduleTable();
     renderEntityTables();
   }
 });

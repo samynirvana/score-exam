@@ -19,7 +19,9 @@ import {
   sortWeeks,
   formatModernDateRange,
   getActiveCalendarPrefix,
+  getMasterSlotAssignments,
   getSlotAssignments,
+  syncClassWeeklySlot,
   syncClassWeeklyOverrides
 } from "./weeklyState.js";
 import { renderClassSchedule, getSubjectGroupType } from "./tabClassView.js";
@@ -1007,7 +1009,11 @@ function renderManageScheduleTable() {
   timeSlots.forEach(slot => {
     if (slot.isBreak) return;
 
-    const slotAssignments = getSlotAssignments(selectedClass, selectedDay, slot.id);
+    // Prioritize master schedule assignments; fallback to weekly overrides if present
+    let slotAssignments = getMasterSlotAssignments(selectedClass, selectedDay, slot.id);
+    if (slotAssignments.length === 0) {
+      slotAssignments = getSlotAssignments(selectedClass, selectedDay, slot.id);
+    }
 
     slotAssignments.forEach((assignment, index) => {
       entryCount++;
@@ -1019,14 +1025,14 @@ function renderManageScheduleTable() {
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td style="padding: 8px;"><strong>Period ${slot.period}</strong><br><small>${timeText}</small></td>
-        <td style="padding: 8px;">${assignment.subject}</td>
-        <td style="padding: 8px;">${assignment.teacher}</td>
+        <td style="padding: 8px;">${escapeHtml(assignment.subject)}</td>
+        <td style="padding: 8px;">${escapeHtml(assignment.teacher)}</td>
         <td style="padding: 8px; text-align: center;">
           <div class="kebab-menu">
-            <button class="kebab-btn">⋮</button>
+            <button class="kebab-btn" type="button">⋮</button>
             <div class="kebab-dropdown">
-              <button class="edit-slot-btn" data-slot="${slot.id}" data-index="${index}">Edit</button>
-              <button class="delete-slot-btn" data-slot="${slot.id}" data-index="${index}" style="color: #ef4444;">Delete</button>
+              <button class="edit-slot-btn" type="button" data-slot="${slot.id}" data-index="${index}">Edit</button>
+              <button class="delete-slot-btn" type="button" data-slot="${slot.id}" data-index="${index}" style="color: #ef4444;">Delete</button>
             </div>
           </div>
         </td>
@@ -1069,7 +1075,10 @@ function renderManageScheduleTable() {
 }
 
 async function editSlotAssignment(className, day, slotId, index) {
-  const currentAssignments = getSlotAssignments(className, day, slotId);
+  let currentAssignments = getMasterSlotAssignments(className, day, slotId);
+  if (currentAssignments.length === 0) {
+    currentAssignments = getSlotAssignments(className, day, slotId);
+  }
   const target = currentAssignments[index];
   if (!target) return;
 
@@ -1085,14 +1094,16 @@ async function editSlotAssignment(className, day, slotId, index) {
   const cleanTeacher = newTeacher.trim() || target.teacher;
 
   currentAssignments[index] = { subject: cleanSubject, teacher: cleanTeacher };
+  if (!masterSchedules[className]) masterSchedules[className] = {};
+  if (!masterSchedules[className][day]) masterSchedules[className][day] = {};
   masterSchedules[className][day][slotId] = currentAssignments;
+  masterSchedules[className][day][String(slotId)] = currentAssignments;
 
-  const year = document.getElementById('classYearSelect')?.value || document.getElementById('adminYearSelect')?.value || '2026-2027';
-  syncClassWeeklyOverrides(className, year);
+  syncClassWeeklySlot(className, day, slotId, currentAssignments);
 
   try {
     await setDoc(doc(db, "schedules", "masterSchedules"), masterSchedules);
-    await setDoc(doc(db, "schedules", "weeklyOverrides"), weeklyOverrides, { merge: true });
+    await setDoc(doc(db, "schedules", "weeklyOverrides"), weeklyOverrides);
     alert("Schedule updated successfully across all themes!");
     renderManageScheduleTable();
     renderClassSchedule();
@@ -1104,25 +1115,33 @@ async function editSlotAssignment(className, day, slotId, index) {
 }
 
 async function deleteSlotAssignment(className, day, slotId, index) {
-  const currentAssignments = getSlotAssignments(className, day, slotId);
+  let currentAssignments = getMasterSlotAssignments(className, day, slotId);
+  if (currentAssignments.length === 0) {
+    currentAssignments = getSlotAssignments(className, day, slotId);
+  }
   const target = currentAssignments[index];
   if (!target) return;
 
   if (confirm(`Are you sure you want to remove ${target.subject} (${target.teacher}) from Period ${timeSlots[slotId]?.period || slotId}?`)) {
     currentAssignments.splice(index, 1);
 
+    if (!masterSchedules[className]) masterSchedules[className] = {};
+    if (!masterSchedules[className][day]) masterSchedules[className][day] = {};
+
     if (currentAssignments.length === 0) {
       delete masterSchedules[className][day][slotId];
+      delete masterSchedules[className][day][String(slotId)];
     } else {
       masterSchedules[className][day][slotId] = currentAssignments;
+      masterSchedules[className][day][String(slotId)] = currentAssignments;
     }
 
-    const year = document.getElementById('classYearSelect')?.value || document.getElementById('adminYearSelect')?.value || '2026-2027';
-    syncClassWeeklyOverrides(className, year);
+    // Sync slot removal across all weeklyOverrides for this class
+    syncClassWeeklySlot(className, day, slotId, currentAssignments);
 
     try {
       await setDoc(doc(db, "schedules", "masterSchedules"), masterSchedules);
-      await setDoc(doc(db, "schedules", "weeklyOverrides"), weeklyOverrides, { merge: true });
+      await setDoc(doc(db, "schedules", "weeklyOverrides"), weeklyOverrides);
       alert("Assignment removed successfully across all themes!");
       renderManageScheduleTable();
       renderClassSchedule();
@@ -1220,9 +1239,12 @@ document.getElementById('assignSlotForm')?.addEventListener('submit', async (e) 
           masterAssignments.push({ subject, teacher });
         }
         masterSchedules[className][day][currentSlotId] = masterAssignments;
+        masterSchedules[className][day][String(currentSlotId)] = masterAssignments;
       } else {
         masterSchedules[className][day][currentSlotId] = [{ subject, teacher }];
+        masterSchedules[className][day][String(currentSlotId)] = [{ subject, teacher }];
       }
+      syncClassWeeklySlot(className, day, currentSlotId, masterSchedules[className][day][currentSlotId]);
       filledCount++;
     }
     currentSlotId++;
@@ -1233,7 +1255,7 @@ document.getElementById('assignSlotForm')?.addEventListener('submit', async (e) 
 
   try {
     await setDoc(doc(db, "schedules", "masterSchedules"), masterSchedules);
-    await setDoc(doc(db, "schedules", "weeklyOverrides"), weeklyOverrides, { merge: true });
+    await setDoc(doc(db, "schedules", "weeklyOverrides"), weeklyOverrides);
     renderClassSchedule();
     renderTeacherView();
     renderManageScheduleTable();
@@ -1241,6 +1263,32 @@ document.getElementById('assignSlotForm')?.addEventListener('submit', async (e) 
     alert(`Successfully assigned ${subject} (${teacher}) to ${className} on ${day}! (Applied across Theme 1, 2, 3, 4)`);
   } catch (err) {
     alert("Error updating schedule: " + err.message);
+  }
+});
+
+// Sync master schedule for selected class to all weekly themes
+document.getElementById('btnSyncMasterToWeekly')?.addEventListener('click', async () => {
+  const classSelect = document.getElementById('manageClassSelect');
+  const selectedClass = classSelect?.value;
+  if (!selectedClass) {
+    alert("Please select a class first.");
+    return;
+  }
+  if (!confirm(`Sync the master schedule for ${selectedClass} across all weekly themes?\n\nThis will apply master schedule assignments and clean up removed slots across Theme 1, 2, 3, and 4.`)) {
+    return;
+  }
+  try {
+    const year = document.getElementById('adminYearSelect')?.value || document.getElementById('classYearSelect')?.value || '2026-2027';
+    syncClassWeeklyOverrides(selectedClass, year);
+    await setDoc(doc(db, "schedules", "masterSchedules"), masterSchedules);
+    await setDoc(doc(db, "schedules", "weeklyOverrides"), weeklyOverrides);
+    renderManageScheduleTable();
+    renderClassSchedule();
+    renderTeacherView();
+    renderEntityTables();
+    alert(`Successfully synced ${selectedClass} master schedule to all themes!`);
+  } catch (err) {
+    alert("Failed to sync schedule: " + err.message);
   }
 });
 

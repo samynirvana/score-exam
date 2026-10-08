@@ -369,6 +369,26 @@ export function canAccessRewardView() {
   return false;
 }
 
+// Helper to retrieve slot assignments directly from master schedule
+export function getMasterSlotAssignments(className, day, slotId) {
+  if (!masterSchedules || !masterSchedules[className] || !masterSchedules[className][day]) {
+    return [];
+  }
+  const entry = masterSchedules[className][day][slotId] !== undefined
+    ? masterSchedules[className][day][slotId]
+    : masterSchedules[className][day][String(slotId)];
+
+  if (!entry) return [];
+  const result = Array.isArray(entry) ? entry : [entry];
+
+  return result.map(item => {
+    if (item && item.subject === 'Library/Pramuka') {
+      return { ...item, subject: 'Pramuka' };
+    }
+    return item;
+  });
+}
+
 // Helper to retrieve slot assignments normalized as an array, prioritizing weekly overrides
 export function getSlotAssignments(className, day, slotId, viewCalPrefix = null) {
   const calPrefix = viewCalPrefix || getActiveCalendarPrefix('class');
@@ -382,7 +402,9 @@ export function getSlotAssignments(className, day, slotId, viewCalPrefix = null)
       ? overrideObj.schedule
       : overrideObj;
     if (scheduleMap && scheduleMap[day]) {
-      const overrideVal = scheduleMap[day][slotId];
+      const overrideVal = scheduleMap[day][slotId] !== undefined
+        ? scheduleMap[day][slotId]
+        : scheduleMap[day][String(slotId)];
       if (overrideVal !== undefined) {
         if (!overrideVal || overrideVal.length === 0) result = [];
         else if (Array.isArray(overrideVal)) result = overrideVal;
@@ -392,7 +414,9 @@ export function getSlotAssignments(className, day, slotId, viewCalPrefix = null)
   }
 
   if (result === null) {
-    const entry = masterSchedules[className]?.[day]?.[slotId];
+    const entry = masterSchedules[className]?.[day]?.[slotId] !== undefined
+      ? masterSchedules[className]?.[day]?.[slotId]
+      : masterSchedules[className]?.[day]?.[String(slotId)];
     if (!entry) result = [];
     else if (Array.isArray(entry)) result = entry;
     else result = [entry];
@@ -465,14 +489,103 @@ export function updateUniformBadges(selectedClass, calPrefix = null) {
   });
 }
 
-// Synchronize helper (preserved for backwards-compatibility with callers; does not overwrite manual weekly edits)
+// Synchronize a single specific slot across all weeklyOverrides for a class
+export function syncClassWeeklySlot(className, day, slotId, assignments) {
+  if (!weeklyOverrides || typeof weeklyOverrides !== 'object') return;
+
+  const targetAssignments = (assignments && assignments.length > 0)
+    ? JSON.parse(JSON.stringify(assignments))
+    : null;
+
+  Object.keys(weeklyOverrides).forEach(key => {
+    if (key === className || key.endsWith(`_${className}`)) {
+      const overrideObj = weeklyOverrides[key];
+      if (!overrideObj) return;
+
+      const scheduleMap = (overrideObj && typeof overrideObj.schedule === 'object')
+        ? overrideObj.schedule
+        : overrideObj;
+
+      if (scheduleMap && scheduleMap[day]) {
+        if (!targetAssignments) {
+          delete scheduleMap[day][slotId];
+          delete scheduleMap[day][String(slotId)];
+        } else {
+          scheduleMap[day][slotId] = JSON.parse(JSON.stringify(targetAssignments));
+          scheduleMap[day][String(slotId)] = scheduleMap[day][slotId];
+        }
+      }
+
+      if (overrideObj[day] && typeof overrideObj[day] === 'object' && overrideObj[day] !== scheduleMap[day]) {
+        if (!targetAssignments) {
+          delete overrideObj[day][slotId];
+          delete overrideObj[day][String(slotId)];
+        } else {
+          overrideObj[day][slotId] = JSON.parse(JSON.stringify(targetAssignments));
+          overrideObj[day][String(slotId)] = overrideObj[day][slotId];
+        }
+      }
+    }
+  });
+
+  setWeeklyOverrides({ ...weeklyOverrides });
+}
+
+// Synchronize master schedule of a class across all weekly themes in weeklyOverrides
 export function syncClassWeeklyOverrides(className, academicYear = '2026-2027') {
-  return false;
+  if (!weeklyOverrides || typeof weeklyOverrides !== 'object') return false;
+  const classMaster = masterSchedules[className];
+  if (!classMaster) return false;
+
+  const days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
+  let modified = false;
+
+  Object.keys(weeklyOverrides).forEach(key => {
+    if (key === className || key.endsWith(`_${className}`)) {
+      const overrideObj = weeklyOverrides[key];
+      if (!overrideObj) return;
+
+      const scheduleMap = (overrideObj && typeof overrideObj.schedule === 'object')
+        ? overrideObj.schedule
+        : overrideObj;
+
+      days.forEach(day => {
+        if (!scheduleMap[day]) scheduleMap[day] = {};
+        timeSlots.forEach(slot => {
+          if (!slot.isBreak) {
+            const masterVal = classMaster[day]?.[slot.id] !== undefined
+              ? classMaster[day]?.[slot.id]
+              : classMaster[day]?.[String(slot.id)];
+
+            if (masterVal && (!Array.isArray(masterVal) || masterVal.length > 0)) {
+              scheduleMap[day][slot.id] = JSON.parse(JSON.stringify(Array.isArray(masterVal) ? masterVal : [masterVal]));
+              scheduleMap[day][String(slot.id)] = scheduleMap[day][slot.id];
+              modified = true;
+            } else {
+              if (scheduleMap[day][slot.id] !== undefined || scheduleMap[day][String(slot.id)] !== undefined) {
+                delete scheduleMap[day][slot.id];
+                delete scheduleMap[day][String(slot.id)];
+                modified = true;
+              }
+            }
+          }
+        });
+      });
+    }
+  });
+
+  if (modified) {
+    setWeeklyOverrides({ ...weeklyOverrides });
+  }
+  return modified;
 }
 
 // Automatically sync all classes' weekly overrides for the active academic year
 export async function syncAllClassesWeeklyOverrides(academicYear = '2026-2027') {
-  return;
+  if (!masterSchedules || typeof masterSchedules !== 'object') return;
+  Object.keys(masterSchedules).forEach(cls => {
+    syncClassWeeklyOverrides(cls, academicYear);
+  });
 }
 
 // Generate material key distinguishing teacher when multiple teachers instruct the same subject
