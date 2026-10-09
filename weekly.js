@@ -85,6 +85,7 @@ import {
 } from "./js/weekly/tabScheduleBuilder.js";
 import {
   initTeacherAdministrationView,
+  populateTeacherAdminSelects,
   exportTeacherAdministrationToExcel
 } from "./js/weekly/tabTeacherAdministration.js";
 
@@ -722,6 +723,7 @@ export function switchTab(tabId, targetBtn) {
   } else if (tabId === 'teacherSchedulesView') {
     initTeacherSchedulesView();
   } else if (tabId === 'adminAdministrationView') {
+    populateTeacherAdminSelects();
     initTeacherAdministrationView();
   } else if (tabId === 'rewardView') {
     initRewardView();
@@ -799,6 +801,9 @@ export function populateCalendarSelects() {
   }
   if (typeof populateRewardSelects === 'function') {
     populateRewardSelects();
+  }
+  if (typeof populateTeacherAdminSelects === 'function') {
+    populateTeacherAdminSelects();
   }
 }
 
@@ -959,6 +964,9 @@ onSnapshot(doc(db, "config", "appEntities"), (docSnap) => {
   renderTeacherView();
   renderEntityTables();
   checkUserRoleAccess();
+  if (typeof populateTeacherAdminSelects === 'function') {
+    populateTeacherAdminSelects();
+  }
 });
 
 onSnapshot(doc(db, "schedules", "masterSchedules"), async (docSnap) => {
@@ -973,6 +981,9 @@ onSnapshot(doc(db, "schedules", "masterSchedules"), async (docSnap) => {
   renderClassSchedule();
   renderTeacherView();
   renderManageScheduleTable();
+  if (typeof populateTeacherAdminSelects === 'function') {
+    populateTeacherAdminSelects();
+  }
   renderEntityTables();
   checkUserRoleAccess();
 });

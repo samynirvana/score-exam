@@ -5,6 +5,7 @@ import {
   auth,
   academicCalendar,
   appEntities,
+  masterSchedules,
   isAdminUser,
   getLoggedInTeacherName
 } from "./weeklyState.js";
@@ -31,6 +32,14 @@ const TADMIN_SEMESTER_CATEGORIES = [
   { key: 'achievement', num: 8, title: 'Achievement', subtitle: '' }
 ];
 
+const TADMIN_ICONS = {
+  view: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`,
+  verify: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`,
+  disprove: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>`,
+  notes: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`,
+  delete: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`
+};
+
 let teacherAdministrationData = {};
 let tadminActiveTheme = 'Theme 1';
 let tadminActiveSemester = 'Semester 1';
@@ -56,6 +65,99 @@ try {
   console.warn("Error setting up teacherAdministration snapshot:", err);
 }
 
+export function populateTeacherAdminSelects() {
+  const yearSelect = document.getElementById('tadminYearSelect');
+  const teacherSelect = document.getElementById('tadminTeacherSelect');
+
+  // 1. Sync School Year with database (academicCalendar)
+  if (yearSelect) {
+    let years = Object.keys(academicCalendar || {});
+    if (years.length === 0) {
+      years = ['2024 - 2025', '2025 - 2026', '2026 - 2027'];
+    }
+    const currentVal = yearSelect.value;
+    yearSelect.innerHTML = years.map(y => `<option value="${escapeHtml(y)}">${escapeHtml(y)}</option>`).join('');
+
+    // Align with active year across app if available
+    const activeAppYear = document.getElementById('classYearSelect')?.value
+      || document.getElementById('teacherYearSelect')?.value
+      || document.getElementById('meetingYearSelect')?.value;
+
+    if (currentVal && years.includes(currentVal)) {
+      yearSelect.value = currentVal;
+    } else if (activeAppYear && years.includes(activeAppYear)) {
+      yearSelect.value = activeAppYear;
+    } else if (years.length > 0) {
+      yearSelect.value = years[0];
+    }
+  }
+
+  // 2. Sync Teachers with database (appEntities + homeTeachers + masterSchedules)
+  if (teacherSelect) {
+    const isSuperAdmin = isAdminUser();
+    const loggedInTeacher = getLoggedInTeacherName();
+
+    let teachers = (appEntities && Array.isArray(appEntities.teachers)) ? [...appEntities.teachers] : [];
+    if (appEntities?.homeTeachers && typeof appEntities.homeTeachers === 'object') {
+      Object.keys(appEntities.homeTeachers).forEach(t => {
+        if (t && !teachers.includes(t)) teachers.push(t);
+      });
+    }
+    if (masterSchedules && typeof masterSchedules === 'object') {
+      const days = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"];
+      Object.values(masterSchedules).forEach(classObj => {
+        if (classObj && typeof classObj === 'object') {
+          days.forEach(day => {
+            if (classObj[day] && typeof classObj[day] === 'object') {
+              Object.values(classObj[day]).forEach(slot => {
+                if (slot && typeof slot === 'object' && slot.teacher && typeof slot.teacher === 'string') {
+                  const tTrimmed = slot.teacher.trim();
+                  if (tTrimmed && !teachers.includes(tTrimmed)) teachers.push(tTrimmed);
+                }
+              });
+            }
+          });
+        }
+      });
+    }
+
+    if (teachers.length === 0) {
+      teachers = ['Mr. Syam', 'Teacher Sample'];
+    }
+
+    teachers = [...new Set(teachers.map(t => (t || '').trim()).filter(Boolean))];
+    teachers.sort((a, b) => a.localeCompare(b));
+
+    const currentVal = teacherSelect.value;
+    teacherSelect.innerHTML = teachers.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+
+    if (isSuperAdmin) {
+      teacherSelect.disabled = false;
+      const group = document.getElementById('tadminTeacherFilterGroup');
+      if (group) group.style.display = 'flex';
+
+      if (currentVal && teachers.includes(currentVal)) {
+        teacherSelect.value = currentVal;
+      } else if (loggedInTeacher && teachers.includes(loggedInTeacher)) {
+        teacherSelect.value = loggedInTeacher;
+      } else if (teachers.length > 0) {
+        teacherSelect.value = teachers[0];
+      }
+    } else {
+      if (loggedInTeacher && teachers.includes(loggedInTeacher)) {
+        teacherSelect.value = loggedInTeacher;
+      } else if (loggedInTeacher) {
+        const opt = document.createElement('option');
+        opt.value = loggedInTeacher;
+        opt.textContent = loggedInTeacher;
+        teacherSelect.appendChild(opt);
+        teacherSelect.value = loggedInTeacher;
+      }
+      teacherSelect.disabled = true;
+    }
+  }
+}
+
 export function initTeacherAdministrationView() {
   isTadminInitialized = true;
   setupTeacherAdminControls();
@@ -69,48 +171,27 @@ function setupTeacherAdminControls() {
   const catFilter = document.getElementById('tadminCategoryFilter');
   const statusFilter = document.getElementById('tadminStatusFilter');
 
-  // Populate Year Select
-  if (yearSelect && yearSelect.options.length === 0) {
-    const years = Object.keys(academicCalendar || {});
-    if (years.length === 0) {
-      years.push('2024 - 2025', '2025 - 2026', '2026 - 2027');
-    }
-    yearSelect.innerHTML = years.map(y => `<option value="${escapeHtml(y)}">${escapeHtml(y)}</option>`).join('');
-    // Default to active year or first
-    const activeCalYear = document.getElementById('classYearSelect')?.value;
-    if (activeCalYear && years.includes(activeCalYear)) {
-      yearSelect.value = activeCalYear;
-    }
+  populateTeacherAdminSelects();
+
+  if (yearSelect && !yearSelect._hasListener) {
+    yearSelect._hasListener = true;
     yearSelect.addEventListener('change', () => {
+      const selectedYear = yearSelect.value;
+      // Sync across other school year selects in the app
+      ['classYearSelect', 'teacherYearSelect', 'meetingYearSelect', 'teacherScheduleYearSelect', 'rewardYearSelect'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.value !== selectedYear) {
+          const hasOption = Array.from(el.options).some(o => o.value === selectedYear);
+          if (hasOption) el.value = selectedYear;
+        }
+      });
       renderTeacherAdministrationView();
       renderTeacherAdminOverviewTable();
     });
   }
 
-  // Populate Teacher Select
-  if (teacherSelect) {
-    const isSuperAdmin = isAdminUser();
-    const loggedInTeacher = getLoggedInTeacherName();
-
-    let teachers = (appEntities && Array.isArray(appEntities.teachers)) ? [...appEntities.teachers] : [];
-    if (teachers.length === 0) {
-      teachers = ['Mr. Syam', 'Teacher Sample'];
-    }
-    teachers.sort((a, b) => a.localeCompare(b));
-
-    teacherSelect.innerHTML = teachers.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
-
-    if (isSuperAdmin) {
-      teacherSelect.disabled = false;
-      const group = document.getElementById('tadminTeacherFilterGroup');
-      if (group) group.style.display = 'flex';
-    } else {
-      if (loggedInTeacher) {
-        teacherSelect.value = loggedInTeacher;
-      }
-      teacherSelect.disabled = true;
-    }
-
+  if (teacherSelect && !teacherSelect._hasListener) {
+    teacherSelect._hasListener = true;
     teacherSelect.addEventListener('change', () => {
       renderTeacherAdministrationView();
     });
@@ -305,7 +386,7 @@ export function renderTeacherAdministrationView() {
                     ${f.subject ? `<span class="tadmin-tag-subject">${escapeHtml(f.subject)}</span>` : ''}
                     ${f.className ? `<span class="tadmin-tag-class">${escapeHtml(f.className)}</span>` : ''}
                     ${isFVerified ? `<span class="tadmin-tag-verified">✓ Verified</span>` : ''}
-                    ${hasNotes ? `<span class="tadmin-tag-note" title="${escapeHtml(f.notes)}">📝 Note</span>` : ''}
+                    ${hasNotes ? `<span class="tadmin-tag-note" title="${escapeHtml(f.notes)}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px; margin-right:3px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>Note</span>` : ''}
                   </div>
                   <p class="tadmin-file-name" title="${escapeHtml(f.fileName || 'Document')}">${escapeHtml(f.fileName || 'Document')}</p>
                   <p class="tadmin-file-date">${f.uploadedAt ? new Date(f.uploadedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}</p>
@@ -325,23 +406,23 @@ export function renderTeacherAdministrationView() {
                 <div class="tadmin-kebab-menu">
                   <button type="button" class="tadmin-kebab-item"
                     onclick="window.closeAllTadminKebabs(); window.openAdminDocPreview('${escapeHtml(f.fileUrl)}', '${escapeHtml(f.fileName || cat.title)}', '${escapeHtml(cat.title)} - ${escapeHtml(f.subject || '')} (${escapeHtml(f.className || '')})', '${escapeHtml(teacher)}')">
-                    <span>👁️</span> <span>View file</span>
+                    ${TADMIN_ICONS.view} <span>View file</span>
                   </button>
 
                   ${isSuperAdmin ? `
                     <button type="button" class="tadmin-kebab-item"
                       onclick="window.closeAllTadminKebabs(); window.toggleAdminChecklistStatus('${cat.key}', 'theme', '${tadminActiveTheme}', ${!isFVerified}, '${fileId}')">
-                      <span>${isFVerified ? '↩️' : '✅'}</span> <span>${isFVerified ? 'Disprove' : 'Verify'}</span>
+                      ${isFVerified ? TADMIN_ICONS.disprove : TADMIN_ICONS.verify} <span>${isFVerified ? 'Disprove' : 'Verify'}</span>
                     </button>
                     <button type="button" class="tadmin-kebab-item"
                       onclick="window.closeAllTadminKebabs(); window.openAdminFileNotesModal('${cat.key}', 'theme', '${tadminActiveTheme}', '${fileId}', '${escapeHtml(f.fileName || cat.title)}')">
-                      <span>📝</span> <span>Notes</span>
+                      ${TADMIN_ICONS.notes} <span>Notes</span>
                     </button>
                   ` : ''}
 
                   <button type="button" class="tadmin-kebab-item danger"
                     onclick="window.closeAllTadminKebabs(); window.deleteAdminUploadedFile('${cat.key}', 'theme', '${tadminActiveTheme}', '${fileId}')">
-                    <span>🗑️</span> <span>Delete file</span>
+                    ${TADMIN_ICONS.delete} <span>Delete file</span>
                   </button>
                 </div>
               </div>
@@ -454,7 +535,7 @@ export function renderTeacherAdministrationView() {
                     ${f.subject ? `<span class="tadmin-tag-subject">${escapeHtml(f.subject)}</span>` : ''}
                     ${f.className ? `<span class="tadmin-tag-class">${escapeHtml(f.className)}</span>` : ''}
                     ${isFVerified ? `<span class="tadmin-tag-verified">✓ Verified</span>` : ''}
-                    ${hasNotes ? `<span class="tadmin-tag-note" title="${escapeHtml(f.notes)}">📝 Note</span>` : ''}
+                    ${hasNotes ? `<span class="tadmin-tag-note" title="${escapeHtml(f.notes)}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px; margin-right:3px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>Note</span>` : ''}
                   </div>
                   <p class="tadmin-file-name" title="${escapeHtml(f.fileName || 'Document')}">${escapeHtml(f.fileName || 'Document')}</p>
                   <p class="tadmin-file-date">${f.uploadedAt ? new Date(f.uploadedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}</p>
@@ -474,23 +555,23 @@ export function renderTeacherAdministrationView() {
                 <div class="tadmin-kebab-menu">
                   <button type="button" class="tadmin-kebab-item"
                     onclick="window.closeAllTadminKebabs(); window.openAdminDocPreview('${escapeHtml(f.fileUrl)}', '${escapeHtml(f.fileName || cat.title)}', '${escapeHtml(cat.title)} - ${escapeHtml(f.subject || '')} (${escapeHtml(f.className || '')})', '${escapeHtml(teacher)}')">
-                    <span>👁️</span> <span>View file</span>
+                    ${TADMIN_ICONS.view} <span>View file</span>
                   </button>
 
                   ${isSuperAdmin ? `
                     <button type="button" class="tadmin-kebab-item"
                       onclick="window.closeAllTadminKebabs(); window.toggleAdminChecklistStatus('${cat.key}', 'semester', '${tadminActiveSemester}', ${!isFVerified}, '${fileId}')">
-                      <span>${isFVerified ? '↩️' : '✅'}</span> <span>${isFVerified ? 'Disprove' : 'Verify'}</span>
+                      ${isFVerified ? TADMIN_ICONS.disprove : TADMIN_ICONS.verify} <span>${isFVerified ? 'Disprove' : 'Verify'}</span>
                     </button>
                     <button type="button" class="tadmin-kebab-item"
                       onclick="window.closeAllTadminKebabs(); window.openAdminFileNotesModal('${cat.key}', 'semester', '${tadminActiveSemester}', '${fileId}', '${escapeHtml(f.fileName || cat.title)}')">
-                      <span>📝</span> <span>Notes</span>
+                      ${TADMIN_ICONS.notes} <span>Notes</span>
                     </button>
                   ` : ''}
 
                   <button type="button" class="tadmin-kebab-item danger"
                     onclick="window.closeAllTadminKebabs(); window.deleteAdminUploadedFile('${cat.key}', 'semester', '${tadminActiveSemester}', '${fileId}')">
-                    <span>🗑️</span> <span>Delete file</span>
+                    ${TADMIN_ICONS.delete} <span>Delete file</span>
                   </button>
                 </div>
               </div>
@@ -618,7 +699,7 @@ export function renderTeacherAdministrationView() {
         if (hasFile) {
           actionsHtml += `
             <button type="button" class="tadmin-btn-preview" onclick="window.openAdminDocPreview('${escapeHtml(rq.fileUrl)}', '${escapeHtml(rq.fileName || rq.title)}', '${escapeHtml(rq.title)}', '${escapeHtml(teacher)}')">
-              <span>👁️</span> <span>Preview</span>
+              ${TADMIN_ICONS.view} <span>Preview</span>
             </button>
           `;
         }
@@ -944,8 +1025,13 @@ function setupTadminUploadModal() {
         const scriptUrl = localStorage.getItem('meetingDriveScriptUrl') || localStorage.getItem('googleDriveScriptUrl') || '';
         const folderId = localStorage.getItem('meetingDriveFolderId') || '';
 
-        if (scriptUrl) {
-          const response = await fetch(scriptUrl, {
+        if (!scriptUrl) {
+          throw new Error("Google Drive Webhook script is not configured. Please configure it in Admin Dashboard > Scripting.");
+        }
+
+        let response;
+        try {
+          response = await fetch(scriptUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({
@@ -961,39 +1047,35 @@ function setupTadminUploadModal() {
               type: "teacher_administration"
             })
           });
+        } catch (fetchErr) {
+          throw new Error("Failed to connect to Google Drive script: " + fetchErr.message);
+        }
 
-          const resText = await response.text();
-          let resJson;
-          try {
-            resJson = JSON.parse(resText);
-          } catch (pe) {
-            console.warn("Raw script response:", resText);
-          }
+        const resText = await response.text();
+        let resJson;
+        try {
+          resJson = JSON.parse(resText);
+        } catch (pe) {
+          console.warn("Raw script response:", resText);
+        }
 
-          if (resJson && resJson.status === 'success') {
-            if (resJson.fileId) {
-              fileUrl = `https://drive.google.com/file/d/${resJson.fileId}/view`;
-            } else {
-              fileUrl = resJson.url || resJson.fileUrl || resJson.photoUrl || resJson.viewUrl || resJson.directUrl || '';
-            }
-          }
-          if (!fileUrl) {
-            console.warn("Drive webhook returned non-success, using data URL fallback:", resJson);
-            if (file.size < 800000) {
-              fileUrl = `data:${file.type};base64,${base64Data}`;
-            } else {
-              throw new Error(resJson?.message || "Google Drive upload script did not return a valid file URL.");
-            }
-          }
-        } else {
-          if (file.size < 800000) {
-            fileUrl = `data:${file.type};base64,${base64Data}`;
+        if (resJson && resJson.status === 'success') {
+          if (resJson.fileId) {
+            fileUrl = `https://drive.google.com/file/d/${resJson.fileId}/view`;
           } else {
-            throw new Error("Google Drive Webhook script is not configured in Admin Dashboard > Google Drive. Please configure it or enter a direct link.");
+            fileUrl = resJson.url || resJson.fileUrl || resJson.viewUrl || resJson.photoUrl || resJson.directUrl || '';
           }
+        }
+
+        if (!fileUrl || fileUrl.startsWith('data:')) {
+          throw new Error(resJson?.message || "Failed to upload file to Google Drive. Upload canceled.");
         }
       } else {
         fileName = driveLink.split('/').pop().split('?')[0] || 'Cloud Document';
+      }
+
+      if (fileUrl && fileUrl.startsWith('data:')) {
+        throw new Error("Direct upload to Firebase is disabled. All uploads must be stored in Google Drive.");
       }
 
       // Save to Firestore (Appends to array to support multiple files per category/subject/class)
@@ -1026,6 +1108,8 @@ function setupTadminUploadModal() {
         record.semesterSubmissions[scopeValue][categoryKey] = existing;
       }
 
+      // Sanitize record to prevent Firestore from exceeding 1MB document limit
+      sanitizeTadminRecord(record);
       teacherAdministrationData[recordKey] = record;
       await setDoc(doc(db, "schedules", "teacherAdministration"), { [recordKey]: record }, { merge: true });
 
@@ -1055,6 +1139,39 @@ function readFileAsBase64(file) {
     reader.onerror = error => reject(error);
     reader.readAsDataURL(file);
   });
+}
+
+function sanitizeTadminRecord(rec) {
+  if (!rec) return;
+  const cleanList = (list) => {
+    if (!Array.isArray(list)) return;
+    list.forEach(item => {
+      if (item && typeof item.fileUrl === 'string' && item.fileUrl.startsWith('data:')) {
+        item.fileUrl = '';
+        if (!item.notes) item.notes = '';
+        if (!item.notes.includes('[Local file stripped]')) {
+          item.notes = (item.notes ? item.notes + ' ' : '') + '[Local file stripped to stay under Firestore limit. Please re-upload to Google Drive.]';
+        }
+      }
+    });
+  };
+  if (rec.themeSubmissions) {
+    Object.values(rec.themeSubmissions).forEach(themeObj => {
+      if (themeObj && typeof themeObj === 'object') {
+        Object.values(themeObj).forEach(catFiles => cleanList(catFiles));
+      }
+    });
+  }
+  if (rec.semesterSubmissions) {
+    Object.values(rec.semesterSubmissions).forEach(semObj => {
+      if (semObj && typeof semObj === 'object') {
+        Object.values(semObj).forEach(catFiles => cleanList(catFiles));
+      }
+    });
+  }
+  if (Array.isArray(rec.reviewQuestions)) {
+    cleanList(rec.reviewQuestions);
+  }
 }
 
 // Delete an individual uploaded file from a theme/semester category
@@ -1227,8 +1344,13 @@ function setupTadminReviewQuestionModal() {
         const scriptUrl = localStorage.getItem('meetingDriveScriptUrl') || localStorage.getItem('googleDriveScriptUrl') || '';
         const folderId = localStorage.getItem('meetingDriveFolderId') || '';
 
-        if (scriptUrl) {
-          const response = await fetch(scriptUrl, {
+        if (!scriptUrl) {
+          throw new Error("Google Drive Webhook script is not configured. Please configure it in Admin Dashboard > Scripting.");
+        }
+
+        let response;
+        try {
+          response = await fetch(scriptUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({
@@ -1244,21 +1366,31 @@ function setupTadminReviewQuestionModal() {
               type: "teacher_administration"
             })
           });
+        } catch (fetchErr) {
+          throw new Error("Failed to connect to Google Drive script: " + fetchErr.message);
+        }
 
-          const resText = await response.text();
-          let resJson;
-          try { resJson = JSON.parse(resText); } catch (e) {}
+        const resText = await response.text();
+        let resJson;
+        try { resJson = JSON.parse(resText); } catch (e) {}
 
-          if (resJson && resJson.status === 'success' && (resJson.photoUrl || resJson.fileUrl || resJson.url)) {
-            fileUrl = resJson.photoUrl || resJson.fileUrl || resJson.url;
-          } else if (file.size < 800000) {
-            fileUrl = `data:${file.type};base64,${base64Data}`;
+        if (resJson && resJson.status === 'success') {
+          if (resJson.fileId) {
+            fileUrl = `https://drive.google.com/file/d/${resJson.fileId}/view`;
+          } else {
+            fileUrl = resJson.url || resJson.fileUrl || resJson.viewUrl || resJson.photoUrl || resJson.directUrl || '';
           }
-        } else if (file.size < 800000) {
-          fileUrl = `data:${file.type};base64,${base64Data}`;
+        }
+
+        if (!fileUrl || fileUrl.startsWith('data:')) {
+          throw new Error(resJson?.message || "Failed to upload file to Google Drive. Upload canceled.");
         }
       } else {
         fileName = driveLink.split('/').pop().split('?')[0] || 'Cloud Document';
+      }
+
+      if (fileUrl && fileUrl.startsWith('data:')) {
+        throw new Error("Direct upload to Firebase is disabled. All uploads must be stored in Google Drive.");
       }
 
       const recordKey = getTadminRecordKey(year, teacher);
@@ -1279,6 +1411,7 @@ function setupTadminReviewQuestionModal() {
       };
 
       record.reviewQuestions.push(newItem);
+      sanitizeTadminRecord(record);
       teacherAdministrationData[recordKey] = record;
       await setDoc(doc(db, "schedules", "teacherAdministration"), { [recordKey]: record }, { merge: true });
 
