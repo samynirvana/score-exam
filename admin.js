@@ -3736,6 +3736,24 @@ document.addEventListener('focusin', function (e) {
 // Internal reference for admin.js function calls
 const activateCard = window.activateCard;
 
+// Function to dynamically auto-number all section divider cards (Section 1, Section 2, Section 3...)
+window.updateSectionDividerNumbers = function () {
+    const container = document.getElementById('quizBlocksContainer');
+    if (!container) return;
+    const headerBlocks = container.querySelectorAll('.quiz-block[data-type="header"], .quiz-header-block');
+    let count = 0;
+    headerBlocks.forEach(block => {
+        count++;
+        const badgeLabel = block.querySelector('.quiz-section-badge-label');
+        if (!badgeLabel) return;
+        const isCustom = block.dataset.customSectionLabel === 'true';
+        const currentText = badgeLabel.innerText.trim();
+        if (!isCustom || !currentText || currentText === 'SECTION / PART DIVIDER' || /^Section\s*\d*$/i.test(currentText)) {
+            badgeLabel.innerText = `Section ${count}`;
+        }
+    });
+};
+
 // Main function to create new blocks
 function addBlock(type) {
     const container = document.getElementById('quizBlocksContainer');
@@ -3745,7 +3763,7 @@ function addBlock(type) {
     const blockId = 'block_' + blockCounter;
 
     const blockDiv = document.createElement('div');
-    blockDiv.className = 'gform-card quiz-block';
+    blockDiv.className = 'gform-card quiz-block' + (type === 'header' ? ' quiz-header-block' : '');
     blockDiv.dataset.type = type;
     blockDiv.dataset.blockId = blockId;
     blockDiv.setAttribute('onclick', 'activateCard(this)');
@@ -3758,6 +3776,10 @@ function addBlock(type) {
         activeBlock.after(blockDiv);
     } else {
         container.appendChild(blockDiv);
+    }
+
+    if (typeof updateSectionDividerNumbers === 'function') {
+        updateSectionDividerNumbers();
     }
 
     activateCard(blockDiv);
@@ -3839,6 +3861,50 @@ window.clearBlockImage = function (btn) {
     if (mediaContainer) mediaContainer.style.display = 'none';
 };
 
+// --- CARD FOOTER: MORE OPTIONS POP-UP HANDLERS ---
+window.toggleCardMoreMenu = function (btn) {
+    const container = btn.closest('.card-more-options-container');
+    if (!container) return;
+    const menu = container.querySelector('.card-more-menu-dropdown');
+    if (!menu) return;
+
+    const isVisible = menu.style.display === 'flex' || menu.style.display === 'block';
+
+    // Close any other open more menus
+    window.closeAllCardMoreMenus();
+
+    if (!isVisible) {
+        menu.style.display = 'flex';
+        btn.classList.add('is-open');
+    }
+};
+
+window.closeAllCardMoreMenus = function () {
+    document.querySelectorAll('.card-more-menu-dropdown').forEach(m => {
+        m.style.display = 'none';
+    });
+    document.querySelectorAll('.btn-card-more-options').forEach(b => {
+        b.classList.remove('is-open');
+    });
+};
+
+window.updateCardPointsDisplay = function (input) {
+    if (!input) return;
+    let val = parseInt(input.value);
+    if (isNaN(val) || val < 0) {
+        input.value = 0;
+    }
+};
+
+// Global click listener to close card more menus on outside click
+document.addEventListener('click', function (e) {
+    if (!e.target.closest('.card-more-options-container')) {
+        if (typeof window.closeAllCardMoreMenus === 'function') {
+            window.closeAllCardMoreMenus();
+        }
+    }
+});
+
 // Generates the inner HTML template for a given block type
 function getBlockInnerHtml(type, blockId) {
     const dragHandleHtml = `<div style="text-align: center; color: #94a3b8; cursor: grab; margin-top: -12px; margin-bottom: 8px; display: flex; justify-content: center;"><svg width="20" height="12" viewBox="0 0 20 12" fill="currentColor"><circle cx="4" cy="3" r="1.5"/><circle cx="10" cy="3" r="1.5"/><circle cx="16" cy="3" r="1.5"/><circle cx="4" cy="9" r="1.5"/><circle cx="10" cy="9" r="1.5"/><circle cx="16" cy="9" r="1.5"/></svg></div>`;
@@ -3858,27 +3924,65 @@ function getBlockInnerHtml(type, blockId) {
             </div>
             ` : ''}
 
-            <div style="display: flex; align-items: center; gap: 10px;">
-                ${showPointsAndImage ? `
-                <div title="Points for this question" style="display: inline-flex; align-items: center; gap: 5px; background: var(--bg-hover, #f8fafc); border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px; padding: 3px 8px; font-size: 12px;">
-                    <span style="font-weight: 700; color: var(--text-gray, #64748b); font-size: 11.5px;">pts:</span>
-                    <input type="number" class="blk-points" value="1" min="0" style="width: 32px; border: none; background: transparent; font-size: 12.5px; font-weight: 800; text-align: center; outline: none; color: var(--text-dark, #0f172a); padding: 0;">
+            <!-- More Options Button & Pop-up -->
+            <div class="card-more-options-container" style="position: relative;">
+                <button type="button" class="btn-card-more-options" onclick="event.stopPropagation(); toggleCardMoreMenu(this)" title="More Options">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <circle cx="12" cy="5" r="2"></circle>
+                        <circle cx="12" cy="12" r="2"></circle>
+                        <circle cx="12" cy="19" r="2"></circle>
+                    </svg>
+                    <span>More Options</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left: 1px;">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </button>
+
+                <!-- Pop-up dropdown with Set Point, Duplicate, Delete -->
+                <div class="card-more-menu-dropdown" style="display: none;" onclick="event.stopPropagation()">
+                    ${showPointsAndImage ? `
+                    <div class="more-menu-item more-menu-points-item">
+                        <div class="more-menu-item-left">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12 6 12 12 16 14"></polyline>
+                            </svg>
+                            <span>Set Point</span>
+                        </div>
+                        <div class="more-menu-points-badge">
+                            <span class="pts-label">pts:</span>
+                            <input type="number" class="blk-points" value="1" min="0" 
+                                   title="Points for this question"
+                                   onclick="event.stopPropagation(); this.select();" 
+                                   onchange="updateCardPointsDisplay(this)">
+                        </div>
+                    </div>
+                    <div class="more-menu-divider"></div>
+                    ` : `
+                    <input type="hidden" class="blk-points" value="0">
+                    `}
+
+                    <button type="button" class="more-menu-item more-menu-btn-action" onclick="event.stopPropagation(); closeAllCardMoreMenus(); duplicateBlock(this)">
+                        <div class="more-menu-item-left">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            <span>Duplicate</span>
+                        </div>
+                    </button>
+
+                    <button type="button" class="more-menu-item more-menu-btn-action more-menu-item-delete" onclick="event.stopPropagation(); closeAllCardMoreMenus(); deleteBlock(this)">
+                        <div class="more-menu-item-left">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 6h18"></path>
+                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                            </svg>
+                            <span>Delete</span>
+                        </div>
+                    </button>
                 </div>
-                <div style="width: 1px; height: 16px; background: var(--border-color, #e2e8f0);"></div>
-                ` : ''}
-                <button class="icon-btn duplicate" type="button" title="Duplicate Block" onclick="event.stopPropagation(); duplicateBlock(this)">
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                    </svg>
-                </button>
-                <button class="icon-btn delete" type="button" title="Delete Block" onclick="event.stopPropagation(); deleteBlock(this)">
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 6h18"></path>
-                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                    </svg>
-                </button>
             </div>
         </div>
     `;
@@ -4050,13 +4154,44 @@ function getBlockInnerHtml(type, blockId) {
             ${getCardFooterHtml(false)}
         `;
     } else if (type === 'header') {
+        const existingHeaders = document.querySelectorAll('#quizBlocksContainer .quiz-block[data-type="header"], #quizBlocksContainer .quiz-header-block');
+        const sectionNum = existingHeaders.length + 1;
         return `
+            <div class="quiz-section-rainbow-bar"></div>
             ${dragHandleHtml}
-            <div class="gform-question-header">
-                <div class="gform-q-input blk-prompt" contenteditable="true" data-placeholder="Header / Section Title" style="font-size: 20px; font-weight: 500; background: transparent; border-bottom: 2px solid #673ab7;"></div>
-            </div>
-            <div class="gform-question-header">
-                <div class="gform-desc-input blk-desc" contenteditable="true" data-placeholder="Description (Optional)" style="font-size: 14px; width: 100%;"></div>
+            <div class="quiz-section-divider-inner">
+                <div class="quiz-section-badge-pill" title="Click text to edit section name (e.g. Section 1, Part A)">
+                    <span class="quiz-section-sparkle">✦</span>
+                    <span class="quiz-section-badge-label" 
+                          contenteditable="true" 
+                          spellcheck="false"
+                          data-placeholder="Section Name"
+                          onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+                          oninput="const b=this.closest('.quiz-block'); if(b) b.dataset.customSectionLabel='true';">Section ${sectionNum}</span>
+                    <span class="quiz-section-pulse-beacon"></span>
+                </div>
+                
+                <div class="quiz-section-divider-lines">
+                    <span class="divider-line-wing"></span>
+                    <span class="divider-line-icon">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                        </svg>
+                    </span>
+                    <span class="divider-line-wing"></span>
+                </div>
+
+                <div class="quiz-section-title-wrap">
+                    <div class="gform-q-input blk-prompt quiz-section-title-input" 
+                         contenteditable="true" 
+                         data-placeholder="Part / Section Title (e.g. Part 2 of The Quiz)"></div>
+                </div>
+
+                <div class="quiz-section-desc-wrap">
+                    <div class="gform-desc-input blk-desc quiz-section-desc-input" 
+                         contenteditable="true" 
+                         data-placeholder="Section instructions or description (Optional)..."></div>
+                </div>
             </div>
             ${getCardFooterHtml(false)}
         `;
@@ -4074,7 +4209,7 @@ window.duplicateBlock = function (btnElement) {
 
     // Create cloned card element
     const clonedDiv = document.createElement('div');
-    clonedDiv.className = 'gform-card quiz-block';
+    clonedDiv.className = 'gform-card quiz-block' + (type === 'header' ? ' quiz-header-block' : '');
     clonedDiv.dataset.type = type;
     clonedDiv.dataset.blockId = newBlockId;
     clonedDiv.setAttribute('onclick', 'activateCard(this)');
@@ -4094,6 +4229,18 @@ window.duplicateBlock = function (btnElement) {
     const destDesc = clonedDiv.querySelector('.blk-desc');
     if (srcDesc && destDesc) {
         destDesc.innerHTML = srcDesc.innerHTML;
+    }
+
+    // Copy Section Badge Label (if header)
+    if (type === 'header') {
+        const srcBadgeLabel = sourceCard.querySelector('.quiz-section-badge-label');
+        const destBadgeLabel = clonedDiv.querySelector('.quiz-section-badge-label');
+        if (srcBadgeLabel && destBadgeLabel) {
+            destBadgeLabel.innerText = srcBadgeLabel.innerText;
+            if (sourceCard.dataset.customSectionLabel === 'true') {
+                clonedDiv.dataset.customSectionLabel = 'true';
+            }
+        }
     }
 
     // Copy Image URL & Title
@@ -4162,6 +4309,10 @@ window.duplicateBlock = function (btnElement) {
     // Insert cloned block directly below the source card
     sourceCard.after(clonedDiv);
 
+    if (typeof updateSectionDividerNumbers === 'function') {
+        updateSectionDividerNumbers();
+    }
+
     // Activate the new block and position floating toolbar
     activateCard(clonedDiv);
     clonedDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -4173,6 +4324,9 @@ window.deleteBlock = function (btnElement) {
 
     const prevCard = card.previousElementSibling || card.nextElementSibling || document.querySelector('.title-card');
     card.remove();
+    if (typeof updateSectionDividerNumbers === 'function') {
+        updateSectionDividerNumbers();
+    }
     if (prevCard) {
         activateCard(prevCard);
     }
@@ -4339,9 +4493,17 @@ window.openQuizPreviewModal = function () {
         const points = pointsNode ? (parseInt(pointsNode.value) || 1) : 1;
 
         if (type === 'header') {
-            const prompt = el.querySelector('.blk-prompt')?.innerText.trim() || 'Section';
+            const prompt = el.querySelector('.blk-prompt')?.innerText.trim() || '';
             const desc = el.querySelector('.blk-desc')?.innerText.trim() || '';
-            items.push({ type, text: prompt, description: desc });
+            const sectionLabel = el.querySelector('.quiz-section-badge-label')?.innerText.trim() || '';
+            items.push({ 
+                type, 
+                text: prompt, 
+                title: prompt, 
+                prompt: prompt, 
+                description: desc, 
+                sectionLabel 
+            });
         } else if (type === 'passage') {
             const prompt = el.querySelector('.blk-prompt')?.innerText.trim() || 'Reading Passage';
             const desc = el.querySelector('.blk-desc')?.innerText.trim() || '';
@@ -4439,6 +4601,7 @@ window.openQuizPreviewModal = function () {
     }
 
     let questionNumber = 0;
+    let sectionNumber = 0;
 
     items.forEach((item, idx) => {
         const card = document.createElement('div');
@@ -4456,11 +4619,29 @@ window.openQuizPreviewModal = function () {
         };
 
         if (item.type === 'header') {
-            card.style.borderLeft = '5px solid #2563eb';
-            card.style.background = '#f8fafc';
+            sectionNumber++;
+            const displayLabel = item.sectionLabel || `Section ${sectionNumber}`;
+            card.className = 'preview-student-card preview-section-divider-card';
             card.innerHTML = `
-                <h3 style="margin: 0 0 6px 0; font-size: 18px; font-weight: 800; color: var(--text-dark, #0f172a);">${escapeHtml(item.text || 'Section')}</h3>
-                ${item.description ? `<p style="margin: 0; font-size: 14px; line-height: 1.55; color: #64748b;">${escapeHtml(item.description)}</p>` : ''}
+                <div class="preview-section-rainbow-bar"></div>
+                <div class="preview-section-inner">
+                    <div class="quiz-section-badge-pill">
+                        <span class="quiz-section-sparkle">✦</span>
+                        <span class="quiz-section-badge-label">${escapeHtml(displayLabel)}</span>
+                        <span class="quiz-section-pulse-beacon"></span>
+                    </div>
+                    <div class="quiz-section-divider-lines">
+                        <span class="divider-line-wing"></span>
+                        <span class="divider-line-icon">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                            </svg>
+                        </span>
+                        <span class="divider-line-wing"></span>
+                    </div>
+                    ${(item.text || item.title) ? `<h3 class="preview-section-title">${escapeHtml(item.text || item.title)}</h3>` : ''}
+                    ${item.description ? `<p class="preview-section-desc">${escapeHtml(item.description)}</p>` : ''}
+                </div>
             `;
         } else if (item.type === 'passage') {
             card.style.borderLeft = '5px solid #10b981';
@@ -5054,9 +5235,13 @@ async function editQuiz(id) {
             if (type === 'header') {
                 const promptNode = block.querySelector('.blk-prompt');
                 const descNode = block.querySelector('.blk-desc');
-                if (promptNode) promptNode.innerText = item.text || item.prompt || '';
+                const labelNode = block.querySelector('.quiz-section-badge-label');
+                if (promptNode) promptNode.innerText = item.text || item.prompt || item.title || '';
                 if (descNode) descNode.innerText = item.description || '';
-
+                if (labelNode && item.sectionLabel) {
+                    labelNode.innerText = item.sectionLabel;
+                    block.dataset.customSectionLabel = 'true';
+                }
             } else if (type === 'passage') {
                 const promptNode = block.querySelector('.blk-prompt');
                 const descNode = block.querySelector('.blk-desc');
@@ -5120,6 +5305,10 @@ async function editQuiz(id) {
                 if (block.querySelector('.blk-points')) block.querySelector('.blk-points').value = item.points || 1;
             }
         });
+
+        if (typeof updateSectionDividerNumbers === 'function') {
+            updateSectionDividerNumbers();
+        }
 
         const saveBtn = document.getElementById('saveQuizBtn');
         if (saveBtn) {
@@ -8950,12 +9139,14 @@ async function saveQuiz() {
         if (type === 'header') {
             const titleText = el.querySelector('.blk-prompt') ? el.querySelector('.blk-prompt').innerText.trim() : '';
             const descText = el.querySelector('.blk-desc') ? el.querySelector('.blk-desc').innerText.trim() : '';
+            const sectionLabel = el.querySelector('.quiz-section-badge-label') ? el.querySelector('.quiz-section-badge-label').innerText.trim() : '';
             items.push({ 
                 type, 
                 title: titleText || 'Section', 
                 prompt: titleText || 'Section', 
                 text: titleText, 
-                description: descText 
+                description: descText,
+                sectionLabel: sectionLabel
             });
 
         } else if (type === 'passage') {

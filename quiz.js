@@ -1511,6 +1511,7 @@ function renderQuizForm(quiz) {
 
     const items = quiz.items || quiz.questions || [];
     let questionCounter = 0;
+    let sectionCounter = 0;
 
     items.forEach((item, idx) => {
         const div = document.createElement('div');
@@ -1518,11 +1519,29 @@ function renderQuizForm(quiz) {
 
         // 1. Header / Section Instructions
         if (item.type === 'header') {
-            div.style.background = "var(--bg-body, #f8fafc)";
-            div.style.borderLeft = "5px solid var(--primary-blue, #1e5eff)";
+            sectionCounter++;
+            const displayLabel = item.sectionLabel || `Section ${sectionCounter}`;
+            div.className = "question-card quiz-header-section-card";
             div.innerHTML = `
-                <h3 style="margin: 0 0 6px 0; font-size: 18px; font-weight: 700; color: var(--text-dark);">${escapeHtml(item.text || item.title || 'Section')}</h3>
-                ${item.description ? `<p style="margin:0; font-size:14px; line-height: 1.5; color:var(--text-gray);">${escapeHtml(item.description)}</p>` : ''}
+                <div class="preview-section-rainbow-bar"></div>
+                <div class="preview-section-inner">
+                    <div class="quiz-section-badge-pill">
+                        <span class="quiz-section-sparkle">✦</span>
+                        <span class="quiz-section-badge-label">${escapeHtml(displayLabel)}</span>
+                        <span class="quiz-section-pulse-beacon"></span>
+                    </div>
+                    <div class="quiz-section-divider-lines">
+                        <span class="divider-line-wing"></span>
+                        <span class="divider-line-icon">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                            </svg>
+                        </span>
+                        <span class="divider-line-wing"></span>
+                    </div>
+                    ${(item.text || item.title) ? `<h3 class="preview-section-title">${escapeHtml(item.text || item.title)}</h3>` : ''}
+                    ${item.description ? `<p class="preview-section-desc">${escapeHtml(item.description)}</p>` : ''}
+                </div>
             `;
         } 
         // 2. Reading Passage
