@@ -40,6 +40,17 @@
   transform: translateY(0);
 }
 
+.portal-chat-link.disabled-quiz-chat,
+.portal-chat-link[disabled] {
+  background: #64748b !important;
+  color: #e2e8f0 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  box-shadow: none !important;
+  opacity: 0.75 !important;
+  transform: none !important;
+}
+
 .portal-unread-badge {
   background: #ef4444;
   color: #ffffff;

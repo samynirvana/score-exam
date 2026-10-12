@@ -231,19 +231,41 @@ export function initFloatingChat() {
 
 // Construct Native DOM
 function buildChatDOM() {
+    const page = window.location.pathname.split('/').pop().toLowerCase();
+    const isQuizPage = (page === 'quiz.html' || page === 'quiz');
+
     // 1. Floating Chat Button
     const chatBtn = document.createElement('button');
     chatBtn.type = 'button';
     chatBtn.id = 'portalFloatingChatBtn';
-    chatBtn.className = 'portal-chat-link';
-    chatBtn.setAttribute('aria-label', 'Open Chat Room');
-    chatBtn.innerHTML = `
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-        </svg>
-        <span>Chat Room</span>
-        <span id="portalChatUnreadBadge" class="portal-unread-badge hidden">0</span>
-    `;
+    chatBtn.className = 'portal-chat-link' + (isQuizPage ? ' disabled-quiz-chat' : '');
+    chatBtn.setAttribute('aria-label', isQuizPage ? 'Chat is disabled' : 'Open Chat Room');
+
+    if (isQuizPage) {
+        chatBtn.disabled = true;
+        chatBtn.setAttribute('disabled', 'true');
+        chatBtn.setAttribute('aria-disabled', 'true');
+        chatBtn.title = "Chat is disabled during quiz";
+        chatBtn.style.pointerEvents = 'none';
+        chatBtn.style.cursor = 'not-allowed';
+        chatBtn.style.opacity = '0.75';
+        chatBtn.style.background = '#64748b';
+        chatBtn.innerHTML = `
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                <line x1="2" y1="2" x2="22" y2="22"></line>
+            </svg>
+            <span>Chat is disabled</span>
+        `;
+    } else {
+        chatBtn.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <span>Chat Room</span>
+            <span id="portalChatUnreadBadge" class="portal-unread-badge hidden">0</span>
+        `;
+    }
     document.body.appendChild(chatBtn);
 
     // 2. Notification Button
@@ -425,16 +447,27 @@ function setupWidgetEvents() {
     const closeNotifBtn = document.getElementById('portalCloseNotifBtn');
 
     // Toggle Chat Widget
-    chatBtn?.addEventListener('click', () => {
-        const isHidden = widget.classList.contains('hidden');
-        if (isHidden) {
-            widget.classList.remove('hidden');
-            document.getElementById('portalNotifPanel')?.classList.add('hidden');
-            showChatView('threads');
-        } else {
-            widget.classList.add('hidden');
-        }
-    });
+    const page = window.location.pathname.split('/').pop().toLowerCase();
+    const isQuizPage = (page === 'quiz.html' || page === 'quiz');
+
+    if (!isQuizPage) {
+        chatBtn?.addEventListener('click', () => {
+            const isHidden = widget.classList.contains('hidden');
+            if (isHidden) {
+                widget.classList.remove('hidden');
+                document.getElementById('portalNotifPanel')?.classList.add('hidden');
+                showChatView('threads');
+            } else {
+                widget.classList.add('hidden');
+            }
+        });
+    } else {
+        chatBtn?.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        });
+    }
 
     closeBtn?.addEventListener('click', () => {
         widget?.classList.add('hidden');

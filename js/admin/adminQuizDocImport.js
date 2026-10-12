@@ -66,12 +66,86 @@ window.handleQuizDocFileSelect = async function (event) {
     }
 };
 
+// Helper: Convert Mammoth HTML to structured text preserving list numbering (<ol><li> -> "1. ...", "2. ...")
+function convertDocxHtmlToText(html) {
+    if (!html) return '';
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const lines = [];
+
+    function walk(node) {
+        if (!node) return;
+        const tag = (node.nodeName || '').toUpperCase();
+
+        if (tag === 'OL') {
+            const listItems = Array.from(node.children).filter(el => el.nodeName.toUpperCase() === 'LI');
+            listItems.forEach((li, idx) => {
+                const liText = (li.innerText || li.textContent || '').trim();
+                if (liText) {
+                    // If the list item already has a typed number, keep it; otherwise prepend number
+                    if (/^\d{1,3}[\.\)\:\-]\s*/.test(liText)) {
+                        lines.push(liText);
+                    } else {
+                        lines.push(`${idx + 1}. ${liText}`);
+                    }
+                }
+            });
+            return;
+        }
+
+        if (tag === 'UL') {
+            const listItems = Array.from(node.children).filter(el => el.nodeName.toUpperCase() === 'LI');
+            listItems.forEach(li => {
+                const liText = (li.innerText || li.textContent || '').trim();
+                if (liText) lines.push(liText);
+            });
+            return;
+        }
+
+        if (['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(tag)) {
+            if (node.querySelector('ol, ul')) {
+                Array.from(node.childNodes).forEach(walk);
+            } else {
+                const text = (node.innerText || node.textContent || '').trim();
+                if (text) lines.push(text);
+            }
+            return;
+        }
+
+        if (tag === 'TR') {
+            const cells = Array.from(node.querySelectorAll('td, th')).map(c => (c.innerText || c.textContent || '').trim());
+            if (cells.some(c => c)) lines.push(cells.join(' '));
+            return;
+        }
+
+        Array.from(node.childNodes).forEach(walk);
+    }
+
+    Array.from(doc.body.childNodes).forEach(walk);
+    return lines.join('\n');
+}
+
 // 3. Extract text from .docx using Mammoth.js
 async function extractTextFromDocx(file) {
     if (typeof mammoth === 'undefined') {
         throw new Error("Mammoth.js library is not loaded. Please ensure you are connected to the internet.");
     }
     const arrayBuffer = await file.arrayBuffer();
+
+    // Strategy 1: Convert to HTML to preserve Word's automatic numbered lists (<ol><li>)
+    try {
+        const htmlResult = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer.slice(0) });
+        if (htmlResult && htmlResult.value) {
+            const convertedText = convertDocxHtmlToText(htmlResult.value);
+            if (convertedText && convertedText.trim()) {
+                return convertedText;
+            }
+        }
+    } catch (err) {
+        console.warn("Mammoth HTML conversion fallback to raw text:", err);
+    }
+
+    // Strategy 2: Fallback to extractRawText
     const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
     return result.value || '';
 }
@@ -142,6 +216,12 @@ function analyzeAndParseQuizDocument(rawText, fileName) {
     // Passage marker: e.g. "Read the following passage...", "Passage 1:", "Reading Comprehension"
     const passageMarkerRegex = /^(?:Read (?:the )?(?:following|text|passage|story)|Passage\s*(?:\d+)?\:|Reading Comprehension)/i;
 
+    // Section marker: e.g. "Part I Fill in the Blank Questions", "Section A", "Part 2"
+    const sectionMarkerRegex = /^(?:Part\s+[IVX0-9]+|Section\s+[A-Z0-9]+|Chapter\s+\d+|Unit\s+\d+)[\:\.\-\s]/i;
+
+    // Blank pattern marker: 3+ underscores, 4+ dots, or bracketed underscores
+    const blankPatternRegex = /(?:_{3,}|\.{4,}|\([_\s]{3,}\))/;
+
     const items = [];
     let currentItem = null;
     let globalAnswerKeys = {}; // maps question number (1-based) to answer string
@@ -157,10 +237,17 @@ function analyzeAndParseQuizDocument(rawText, fileName) {
             continue;
         }
         if (inAnswerKeySection) {
-            // Parse patterns like "1. A", "1:B", "1.A, 2.B"
-            const matches = line.matchAll(/(\d{1,3})\s*[\.\:\-]?\s*([A-Ea-e])/g);
-            for (const match of matches) {
-                globalAnswerKeys[parseInt(match[1], 10)] = match[2].toUpperCase();
+            // Parse patterns like "1. A", "1: B", "1. is reading", "1. A 2. B"
+            const matches = [...line.matchAll(/(\d{1,3})\s*[\.\:\-]\s*([^\n\r,;]+?)(?=(?:\s+\d{1,3}[\.\:\-]|$))/g)];
+            if (matches.length > 0) {
+                for (const match of matches) {
+                    globalAnswerKeys[parseInt(match[1], 10)] = match[2].trim();
+                }
+            } else {
+                const singleMatch = line.match(/^(\d{1,3})\s*[\.\:\-]\s*(.+)$/);
+                if (singleMatch) {
+                    globalAnswerKeys[parseInt(singleMatch[1], 10)] = singleMatch[2].trim();
+                }
             }
         } else {
             cleanedLines.push(line);
@@ -180,6 +267,15 @@ function analyzeAndParseQuizDocument(rawText, fileName) {
                 textLines: [],
                 isPassageCollecting: true
             };
+            continue;
+        }
+
+        // 1b. Check for Part / Section headers (e.g. "Part I Fill in the Blank Questions")
+        if (sectionMarkerRegex.test(line)) {
+            if (currentItem) {
+                items.push(finalizeParsedItem(currentItem, items.length + 1, globalAnswerKeys));
+                currentItem = null;
+            }
             continue;
         }
 
@@ -204,7 +300,7 @@ function analyzeAndParseQuizDocument(rawText, fileName) {
             continue;
         }
 
-        // 3. Check for New Question Number
+        // 3. Check for New Question Number (e.g. "1. She ____________ ...")
         const qMatch = line.match(questionNumberRegex);
         if (qMatch) {
             // Commit previous question
@@ -218,6 +314,21 @@ function analyzeAndParseQuizDocument(rawText, fileName) {
                 prompt: qPrompt,
                 options: [],
                 type: 'mcq', // default candidate, can be converted to fill or essay
+                lines: []
+            };
+            continue;
+        }
+
+        // 3b. Fallback: Check for Unnumbered Fill-in-the-blank line (e.g. line containing blanks)
+        if (blankPatternRegex.test(line) && !line.match(/^(?:name|date|class|score|student)\b/i)) {
+            if (currentItem) {
+                items.push(finalizeParsedItem(currentItem, items.length + 1, globalAnswerKeys));
+            }
+            currentItem = {
+                num: items.length + 1,
+                prompt: line,
+                options: [],
+                type: 'fill',
                 lines: []
             };
             continue;
@@ -306,10 +417,12 @@ function finalizeParsedItem(rawItem, fallbackIndex, globalAnswerKeys) {
     } else {
         // No options found: is it Fill-in-the-blank or Essay?
         const prompt = rawItem.prompt || '';
-        if (prompt.includes('___') || prompt.includes('....') || prompt.match(/\([_\s]{3,}\)/)) {
+        if (rawItem.type === 'fill' || prompt.includes('___') || prompt.includes('....') || prompt.match(/\([_\s]{3,}\)/)) {
             type = 'fill';
             if (rawItem.explicitAnswer) {
                 answers = [rawItem.explicitAnswer];
+            } else if (globalAnswerKeys[qNum]) {
+                answers = [globalAnswerKeys[qNum]];
             }
         } else {
             type = 'essay';

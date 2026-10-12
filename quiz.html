@@ -131,6 +131,19 @@
             }
         }
 
+        /* Disabled floating chat in quiz */
+        #portalFloatingChatBtn.disabled-quiz-chat,
+        #portalFloatingChatBtn[disabled],
+        .portal-chat-link.disabled-quiz-chat {
+            background: #64748b !important;
+            color: #e2e8f0 !important;
+            cursor: not-allowed !important;
+            pointer-events: none !important;
+            box-shadow: none !important;
+            opacity: 0.75 !important;
+            transform: none !important;
+        }
+
         /* --- QUIZ DASHBOARD HUB UNIFIED WRAPPER LAYOUT --- */
         #quizDashboardSection {
             max-width: 860px;
@@ -1286,6 +1299,9 @@
                     </div>
                 </div>
 
+                <!-- DYNAMIC LIVE QUIZ LOBBY BANNER (Shows in real-time when teacher opens lobby) -->
+                <div id="liveLobbyBannerSection" class="hidden" style="margin-bottom: 20px;"></div>
+
                 <!-- Start Quiz CTA Card (Directly Below Student Name) -->
                 <div class="start-quiz-cta-card" id="startQuizCtaCard">
                     <div class="cta-content-left">
@@ -1391,47 +1407,53 @@
             </div>
 
             <!-- LIVE QUIZ WAITING ROOM MODAL -->
-            <div id="liveQuizWaitingModal" class="modal-overlay hidden" style="background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); z-index: 2500;">
-                <div class="modal-card" style="max-width: 520px; text-align: center; padding: 36px 28px; border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);">
-                    <div style="width: 76px; height: 76px; border-radius: 50%; background: linear-gradient(135deg, #1e5eff 0%, #3b82f6 100%); color: #ffffff; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto; box-shadow: 0 10px 25px rgba(30, 94, 255, 0.35); position: relative;">
-                        <span style="position: absolute; width: 100%; height: 100%; border-radius: 50%; border: 2px solid #3b82f6; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite; opacity: 0.6;"></span>
-                        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"></path>
-                            <path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"></path>
-                            <circle cx="12" cy="12" r="2"></circle>
-                            <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"></path>
-                            <path d="M19.1 4.9C23 8.8 23 15.2 19.1 19.1"></path>
-                        </svg>
+            <div id="liveQuizWaitingModal" class="modal-overlay hidden" style="background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(8px); z-index: 2500;">
+                <div class="modal-card" style="max-width: 420px; width: 90%; text-align: center; padding: 28px 24px; border-radius: 20px; box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.35); background: var(--bg-card, #ffffff); border: 1px solid var(--border-color, #e2e8f0);">
+                    
+                    <!-- 1. Connection Status -->
+                    <div style="display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 700; color: #059669; margin-bottom: 14px; background: rgba(16, 185, 129, 0.08); padding: 6px 14px; border-radius: 999px; border: 1px solid rgba(16, 185, 129, 0.25);">
+                        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981; animation: pulse 1.5s infinite;"></span>
+                        <span>You are connected to the Live Quiz</span>
                     </div>
 
-                    <span style="display: inline-block; padding: 4px 14px; border-radius: 999px; background: #e0f2fe; color: #0284c7; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">
-                        Live Quiz Lobby
-                    </span>
-
-                    <h2 id="liveWaitingTitle" style="margin: 0 0 6px 0; font-size: 22px; font-weight: 800; color: var(--text-dark, #0f172a);">
-                        Waiting for Teacher to Start
+                    <!-- 2. Title of the Quiz -->
+                    <h2 id="liveWaitingTitle" style="margin: 0 0 8px 0; font-size: 21px; font-weight: 800; color: var(--text-dark, #0f172a); letter-spacing: -0.3px; line-height: 1.3;">
+                        Quiz Title
                     </h2>
-                    <p id="liveWaitingSubject" style="margin: 0 0 20px 0; font-size: 14px; color: var(--text-gray, #64748b);">
-                        Subject: General
-                    </p>
 
-                    <div style="background: var(--bg-hover, #f8fafc); border: 1.5px dashed #cbd5e1; border-radius: 16px; padding: 18px; margin-bottom: 24px;">
-                        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; color: #1e5eff; font-weight: 700; font-size: 14px; margin-bottom: 6px;">
-                            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981; animation: pulse 1.5s infinite;"></span>
-                            <span>You are connected to the live session</span>
-                        </div>
-                        <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.5;">
-                            All students will begin the quiz simultaneously when your teacher starts the timer. Please do not close or leave this page.
+                    <!-- 3. Person Join -->
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--text-gray, #64748b); margin-bottom: 16px;">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        <span id="liveWaitingParticipantsCount">1 student joined</span>
+                    </div>
+
+                    <!-- 4. Wait for teacher message -->
+                    <div style="background: var(--bg-hover, #f8fafc); border-radius: 12px; padding: 12px 14px; border: 1px solid var(--border-color, #e2e8f0); margin-bottom: 20px;">
+                        <p style="margin: 0; font-size: 13px; font-weight: 600; color: var(--text-dark, #334155); display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12 6 12 12 16 14"></polyline>
+                            </svg>
+                            <span>Wait for the teacher to start the Quiz</span>
                         </p>
                     </div>
 
                     <!-- Countdown overlay (when teacher clicks start) -->
-                    <div id="liveStartingCountdownBox" class="hidden" style="margin-bottom: 20px;">
-                        <div style="font-size: 13px; font-weight: 700; color: #10b981; text-transform: uppercase; letter-spacing: 1px;">Starting in</div>
-                        <div id="liveStartingCountdownNumber" style="font-size: 48px; font-weight: 900; color: #10b981; line-height: 1; margin: 6px 0;">3</div>
+                    <div id="liveStartingCountdownBox" class="hidden" style="margin-bottom: 18px;">
+                        <div style="font-size: 12px; font-weight: 800; color: #10b981; text-transform: uppercase; letter-spacing: 1px;">Starting in</div>
+                        <div id="liveStartingCountdownNumber" style="font-size: 42px; font-weight: 900; color: #10b981; line-height: 1; margin: 4px 0;">3</div>
                     </div>
 
-                    <button type="button" id="exitLiveWaitingBtn" style="background: transparent; border: 1px solid #cbd5e1; color: #64748b; padding: 10px 22px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer;">
+                    <!-- 5. Button to Exit the Waiting Room -->
+                    <button type="button" id="exitLiveWaitingBtn" 
+                        onmouseenter="this.style.background='rgba(148, 163, 184, 0.1)'; this.style.borderColor='#94a3b8'; this.style.color='var(--text-dark, #0f172a)';" 
+                        onmouseleave="this.style.background='transparent'; this.style.borderColor='var(--border-color, #cbd5e1)'; this.style.color='var(--text-gray, #64748b)';"
+                        style="width: 100%; background: transparent; border: 1.5px solid var(--border-color, #cbd5e1); color: var(--text-gray, #64748b); padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s ease;">
                         Exit Waiting Room
                     </button>
                 </div>
@@ -1448,7 +1470,10 @@
                             Anti-Cheat Monitored
                         </span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 16px;">
+                    <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                        <div id="studentSubmitStatusBadge" style="display: none; align-items: center; gap: 5px; color: #ef4444; font-size: 12px; font-weight: 700; background: #fee2e2; padding: 4px 10px; border-radius: 999px;">
+                            <span id="studentSubmitStatusBadgeText">🔒 Submissions Locked</span>
+                        </div>
                         <div id="studentWarningBadge" style="display: none; align-items: center; gap: 5px; color: #ef4444; font-size: 12px; font-weight: 700; background: #fee2e2; padding: 4px 10px; border-radius: 999px;">
                             <span>⚠️ Tab switches: <span id="studentWarningCount">0</span></span>
                         </div>
@@ -1469,6 +1494,12 @@
                 </div>
 
                 <form id="quizForm"></form>
+
+                <!-- Live Quiz Submission Locked Notice -->
+                <div id="liveSubmitLockedNotice" class="hidden" style="margin-top: 14px; margin-bottom: 10px; padding: 14px 18px; background: #fff7ed; border: 1.5px solid #fed7aa; border-radius: 12px; color: #9a3412; font-size: 13.5px; font-weight: 600; display: flex; align-items: center; gap: 10px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    <span>Submissions are currently locked by the teacher. You can keep reviewing and answering questions. Submissions will unlock when the teacher enables them or when time expires.</span>
+                </div>
 
                 <button id="submitQuizBtn"
                     style="background: #10b981; padding: 16px; font-size: 16px; font-weight: 700; margin-top: 10px; margin-bottom: 40px; width: 100%; border-radius: 12px; border: none; color: #ffffff; cursor: pointer; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);">
@@ -1501,7 +1532,7 @@
         </main>
     </div>
 
-    <script type="module" src="quiz.js?v=428"></script>
+    <script type="module" src="quiz.js?v=429"></script>
     <script type="module" src="studentNav.js?v=470"></script>
 </body>
 

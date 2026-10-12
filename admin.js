@@ -1634,14 +1634,17 @@ async function processBulkPhotoFiles(files) {
 // --- GOOGLE DRIVE SCRIPT SETTINGS (PERMANENT FIRESTORE CONFIG) ---
 window.loadAdminDriveSettings = async function () {
     try {
-        let profileUrl = localStorage.getItem('profileDriveScriptUrl') || localStorage.getItem('googleDriveScriptUrl') || '';
+        let profileUrl = localStorage.getItem('profileDriveScriptUrl') || '';
         let profileFolderId = localStorage.getItem('profileDriveFolderId') || '';
 
-        let timelineUrl = localStorage.getItem('timelineDriveScriptUrl') || localStorage.getItem('googleDriveScriptUrl') || '';
+        let timelineUrl = localStorage.getItem('timelineDriveScriptUrl') || '';
         let timelineFolderId = localStorage.getItem('timelineDriveFolderId') || '';
 
-        let weeklyUrl = localStorage.getItem('meetingDriveScriptUrl') || localStorage.getItem('weeklyDriveScriptUrl') || '';
+        let weeklyUrl = localStorage.getItem('meetingDriveScriptUrl') || '';
         let weeklyFolderId = localStorage.getItem('meetingDriveFolderId') || '';
+
+        let reviewUrl = localStorage.getItem('reviewDriveScriptUrl') || '';
+        let reviewFolderId = localStorage.getItem('reviewDriveFolderId') || '';
 
         // Try loading from Firestore system_settings/google_drive first, then googleDrive
         try {
@@ -1652,14 +1655,18 @@ window.loadAdminDriveSettings = async function () {
 
             if (snap.exists()) {
                 const data = snap.data();
-                profileUrl = data.profileScriptUrl || data.scriptUrlProfile || profileUrl || data.scriptUrl;
-                profileFolderId = data.profileFolderId || data.folderIdProfile || profileFolderId;
+                profileUrl = data.profileScriptUrl || data.scriptUrlProfile || profileUrl || '';
+                profileFolderId = data.profileFolderId || data.folderIdProfile || profileFolderId || '';
 
-                timelineUrl = data.timelineScriptUrl || data.scriptUrlTimeline || timelineUrl || data.scriptUrl;
-                timelineFolderId = data.timelineFolderId || data.folderIdTimeline || timelineFolderId || data.folderId;
+                timelineUrl = data.timelineScriptUrl || data.scriptUrlTimeline || timelineUrl || data.scriptUrl || '';
+                timelineFolderId = data.timelineFolderId || data.folderIdTimeline || timelineFolderId || data.folderId || '';
 
-                weeklyUrl = data.weeklyScriptUrl || data.scriptUrlWeekly || data.meetingScriptUrl || weeklyUrl;
-                weeklyFolderId = data.weeklyFolderId || data.folderIdWeekly || data.meetingFolderId || weeklyFolderId;
+                weeklyUrl = data.weeklyScriptUrl || data.scriptUrlWeekly || data.meetingScriptUrl || weeklyUrl || '';
+                weeklyFolderId = data.weeklyFolderId || data.folderIdWeekly || data.meetingFolderId || weeklyFolderId || '';
+
+                // Strictly load Review script - DO NOT fallback to data.scriptUrl or other scripts
+                reviewUrl = data.reviewScriptUrl || data.scriptUrlReview || reviewUrl || '';
+                reviewFolderId = data.reviewFolderId || data.folderIdReview || reviewFolderId || '';
             }
         } catch (fErr) {
             console.warn("Could not fetch Firestore system_settings/google_drive:", fErr);
@@ -1671,6 +1678,8 @@ window.loadAdminDriveSettings = async function () {
         const inTimelineFolderId = document.getElementById('folderIdTimeline');
         const inWeeklyUrl = document.getElementById('scriptUrlWeekly');
         const inWeeklyFolderId = document.getElementById('folderIdWeekly');
+        const inReviewUrl = document.getElementById('scriptUrlReview');
+        const inReviewFolderId = document.getElementById('folderIdReview');
 
         if (inProfileUrl) inProfileUrl.value = profileUrl;
         if (inProfileFolderId) inProfileFolderId.value = profileFolderId;
@@ -1679,13 +1688,17 @@ window.loadAdminDriveSettings = async function () {
         if (inWeeklyUrl) inWeeklyUrl.value = weeklyUrl;
         if (inWeeklyFolderId) inWeeklyFolderId.value = weeklyFolderId;
 
+        // For Review URL & Folder ID: only set if field isn't actively being edited by user
+        if (inReviewUrl && reviewUrl) inReviewUrl.value = reviewUrl;
+        if (inReviewFolderId && reviewFolderId) inReviewFolderId.value = reviewFolderId;
+
         const bulkScriptInput = document.getElementById('googleDriveScriptUrl');
-        if (bulkScriptInput) bulkScriptInput.value = profileUrl;
+        if (bulkScriptInput) bulkScriptInput.value = profileUrl || '';
 
         // Synchronize local storage
         if (profileUrl) {
-            localStorage.setItem('googleDriveScriptUrl', profileUrl);
             localStorage.setItem('profileDriveScriptUrl', profileUrl);
+            if (!localStorage.getItem('googleDriveScriptUrl')) localStorage.setItem('googleDriveScriptUrl', profileUrl);
         }
         if (profileFolderId) localStorage.setItem('profileDriveFolderId', profileFolderId);
 
@@ -1695,8 +1708,63 @@ window.loadAdminDriveSettings = async function () {
         if (weeklyUrl) localStorage.setItem('meetingDriveScriptUrl', weeklyUrl);
         if (weeklyFolderId) localStorage.setItem('meetingDriveFolderId', weeklyFolderId);
 
+        if (reviewUrl) localStorage.setItem('reviewDriveScriptUrl', reviewUrl);
+        if (reviewFolderId) localStorage.setItem('reviewDriveFolderId', reviewFolderId);
+
     } catch (e) {
         console.warn("Could not load Google Drive settings from Firestore:", e);
+    }
+};
+
+window.saveReviewDriveSettings = async function () {
+    const inReviewUrl = document.getElementById('scriptUrlReview');
+    const inReviewFolderId = document.getElementById('folderIdReview');
+    const msgEl = document.getElementById('reviewScriptSaveMsg');
+
+    const reviewUrl = inReviewUrl ? inReviewUrl.value.trim() : '';
+    const reviewFolderId = inReviewFolderId ? inReviewFolderId.value.trim() : '';
+
+    if (!reviewUrl) {
+        alert("Please paste your Google Apps Script Web App URL first.");
+        return;
+    }
+
+    try {
+        if (msgEl) {
+            msgEl.innerText = "Saving...";
+            msgEl.style.color = "#d97706";
+        }
+
+        const payload = {
+            reviewScriptUrl: reviewUrl,
+            scriptUrlReview: reviewUrl,
+            reviewFolderId: reviewFolderId,
+            folderIdReview: reviewFolderId,
+            reviewFolderName: reviewFolderId || "Review",
+            updatedAt: new Date().toISOString(),
+            updatedBy: auth.currentUser?.email || 'admin'
+        };
+
+        await setDoc(doc(db, "system_settings", "google_drive"), payload, { merge: true });
+        await setDoc(doc(db, "system_settings", "googleDrive"), payload, { merge: true });
+
+        localStorage.setItem('reviewDriveScriptUrl', reviewUrl);
+        localStorage.setItem('reviewDriveFolderId', reviewFolderId);
+
+        if (msgEl) {
+            msgEl.innerText = "✅ Saved to Firestore!";
+            msgEl.style.color = "#16a34a";
+            setTimeout(() => { if (msgEl) msgEl.innerText = ""; }, 4000);
+        }
+
+        alert("Quiz Review Script URL & Google Drive Folder ID saved successfully!");
+    } catch (e) {
+        console.error("Error saving review drive settings:", e);
+        if (msgEl) {
+            msgEl.innerText = "❌ Error: " + e.message;
+            msgEl.style.color = "#ef4444";
+        }
+        alert("Failed to save: " + e.message);
     }
 };
 
@@ -1709,6 +1777,9 @@ window.saveAdminDriveSettings = async function () {
 
     const weeklyUrl = document.getElementById('scriptUrlWeekly')?.value.trim() || '';
     const weeklyFolderId = document.getElementById('folderIdWeekly')?.value.trim() || '';
+
+    const reviewUrl = document.getElementById('scriptUrlReview')?.value.trim() || '';
+    const reviewFolderId = document.getElementById('folderIdReview')?.value.trim() || 'Review';
 
     const msgEl = document.getElementById('scriptingSaveMsg');
 
@@ -1723,7 +1794,7 @@ window.saveAdminDriveSettings = async function () {
             timelineScriptUrl: timelineUrl,
             timelineFolderId: timelineFolderId,
             timelineFolderName: "TimelineDB",
-            scriptUrl: timelineUrl, // fallback
+            scriptUrl: timelineUrl || reviewUrl, // fallback
             folderId: timelineFolderId,
 
             // 3. Weekly / Meeting coordination reports (Meeting Coordination)
@@ -1731,6 +1802,12 @@ window.saveAdminDriveSettings = async function () {
             weeklyFolderId: weeklyFolderId,
             weeklyFolderName: "Meeting Coordination",
             meetingScriptUrl: weeklyUrl,
+
+            // 4. Quiz review files & student uploads (Review)
+            reviewScriptUrl: reviewUrl,
+            scriptUrlReview: reviewUrl,
+            reviewFolderId: reviewFolderId,
+            reviewFolderName: "Review",
 
             updatedAt: new Date().toISOString(),
             updatedBy: auth.currentUser?.email || 'admin'
@@ -1745,7 +1822,6 @@ window.saveAdminDriveSettings = async function () {
             localStorage.setItem('googleDriveScriptUrl', profileUrl);
             localStorage.setItem('profileDriveScriptUrl', profileUrl);
         } else {
-            localStorage.removeItem('googleDriveScriptUrl');
             localStorage.removeItem('profileDriveScriptUrl');
         }
         if (profileFolderId) {
@@ -1776,16 +1852,30 @@ window.saveAdminDriveSettings = async function () {
             localStorage.removeItem('meetingDriveFolderId');
         }
 
+        if (reviewUrl) {
+            localStorage.setItem('reviewDriveScriptUrl', reviewUrl);
+            if (!localStorage.getItem('googleDriveScriptUrl')) {
+                localStorage.setItem('googleDriveScriptUrl', reviewUrl);
+            }
+        } else {
+            localStorage.removeItem('reviewDriveScriptUrl');
+        }
+        if (reviewFolderId) {
+            localStorage.setItem('reviewDriveFolderId', reviewFolderId);
+        } else {
+            localStorage.removeItem('reviewDriveFolderId');
+        }
+
         const bulkScriptInput = document.getElementById('googleDriveScriptUrl');
-        if (bulkScriptInput) bulkScriptInput.value = profileUrl;
+        if (bulkScriptInput) bulkScriptInput.value = profileUrl || reviewUrl;
 
         if (msgEl) {
-            msgEl.innerText = "✅ All 3 Google Drive Scripts saved permanently to Firestore!";
+            msgEl.innerText = "✅ All 4 Google Drive Scripts saved permanently to Firestore!";
             msgEl.style.color = "#16a34a";
             setTimeout(() => { if (msgEl) msgEl.innerText = ""; }, 4000);
         }
 
-        alert("All 3 Google Drive script configurations have been saved successfully to Firestore and applied across the app!");
+        alert("All 4 Google Drive script configurations have been saved successfully to Firestore and applied across the app!");
     } catch (err) {
         console.error("Error saving scripts to Firestore:", err);
         if (msgEl) {
@@ -1794,6 +1884,144 @@ window.saveAdminDriveSettings = async function () {
         }
         alert("Failed to save settings: " + err.message);
     }
+};
+
+window.copyQuizReviewScriptCode = function () {
+    const scriptCode = `/**
+ * ==============================================================================
+ * GOOGLE APPS SCRIPT: Automated Quiz File & Image Uploader to Google Drive
+ * ==============================================================================
+ * FOLDER HIERARCHY: Review / [Quiz Name] / [Class Name] / [Student Name] - [File]
+ */
+
+function doPost(e) {
+  try {
+    if (!e || !e.postData || !e.postData.contents) {
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "error",
+        message: "No POST payload received."
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    var data = JSON.parse(e.postData.contents);
+    var base64Data = data.base64Data;
+    var originalFileName = data.fileName || ("quiz_upload_" + new Date().getTime() + ".pdf");
+    var mimeType = data.mimeType || "application/octet-stream";
+
+    if (!base64Data) {
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "error",
+        message: "Missing base64Data in payload."
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    var rootFolder = null;
+    var rawFolderId = (data.folderId || data.folderIdReview || data.rootFolder || "").toString().trim();
+    var extractedFolderId = extractFolderId(rawFolderId);
+
+    if (extractedFolderId) {
+      try {
+        rootFolder = DriveApp.getFolderById(extractedFolderId);
+      } catch (idErr) {
+        Logger.log("Folder by ID not found (" + extractedFolderId + "): " + idErr.toString());
+      }
+    }
+
+    if (!rootFolder) {
+      var rootFolderName = (data.rootFolder && !extractedFolderId ? data.rootFolder : (data.folderName || "Review")).trim();
+      var safeRootName = rootFolderName.replace(/[/\\\\?%*:|"<>]/g, "_");
+      rootFolder = getOrCreateFolder(DriveApp.getRootFolder(), safeRootName);
+    }
+
+    var quizTitle = (data.quizTitle || "General Quiz").trim();
+    var className = (data.className || "General Class").trim();
+    var studentName = (data.studentName || "Student").trim();
+    var studentCode = (data.studentCode || "").trim();
+
+    var safeQuizName = quizTitle.replace(/[/\\\\?%*:|"<>]/g, "_");
+    var safeClassName = className.replace(/[/\\\\?%*:|"<>]/g, "_");
+    var safeStudentName = studentName.replace(/[/\\\\?%*:|"<>]/g, "_");
+
+    var quizFolder = getOrCreateFolder(rootFolder, safeQuizName);
+    var classFolder = getOrCreateFolder(quizFolder, safeClassName);
+
+    var prefix = safeStudentName + (studentCode ? (" - " + studentCode) : "");
+    var targetFileName = prefix + " - " + originalFileName;
+
+    var decodedBytes = Utilities.base64Decode(base64Data);
+    var blob = Utilities.newBlob(decodedBytes, mimeType, targetFileName);
+
+    var existingFiles = classFolder.getFilesByName(targetFileName);
+    while (existingFiles.hasNext()) {
+      existingFiles.next().setTrashed(true);
+    }
+
+    var createdFile = classFolder.createFile(blob);
+    try {
+      createdFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (shareErr) {}
+
+    var fileId = createdFile.getId();
+    var webViewLink = createdFile.getUrl();
+    var directPreviewUrl = "https://lh3.googleusercontent.com/d/" + fileId;
+
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "success",
+      fileId: fileId,
+      fileName: targetFileName,
+      fileUrl: webViewLink,
+      previewUrl: directPreviewUrl,
+      folderPath: rootFolder.getName() + "/" + safeQuizName + "/" + safeClassName
+    })).setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "error",
+      error: err.toString(),
+      message: err.message
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function extractFolderId(val) {
+  if (!val) return "";
+  var str = val.toString().trim();
+  var match = str.match(/\\/folders\\/([a-zA-Z0-9_-]+)/);
+  if (match && match[1]) return match[1];
+  var matchId = str.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (matchId && matchId[1]) return matchId[1];
+  if (/^[a-zA-Z0-9_-]{15,50}$/.test(str) && str.toLowerCase() !== "review") {
+    return str;
+  }
+  return "";
+}
+
+function getOrCreateFolder(parentFolder, folderName) {
+  var folders = parentFolder.getFoldersByName(folderName);
+  if (folders.hasNext()) {
+    return folders.next();
+  }
+  return parentFolder.createFolder(folderName);
+}
+
+function doGet(e) {
+  return ContentService.createTextOutput(JSON.stringify({
+    status: "online",
+    service: "Quiz Review File Uploader Web App",
+    time: new Date().toISOString()
+  })).setMimeType(ContentService.MimeType.JSON);
+}`;
+
+    navigator.clipboard.writeText(scriptCode).then(() => {
+        const btnText = document.getElementById('copyQuizScriptBtnText');
+        if (btnText) {
+            const orig = btnText.innerText;
+            btnText.innerText = "✓ Copied Code!";
+            setTimeout(() => { if (btnText) btnText.innerText = orig; }, 2500);
+        }
+    }).catch(() => {
+        alert("Please copy the script code from google_apps_script_quiz_review.js");
+    });
 };
 
 window.toggleDriveScriptSettings = async function () {
@@ -3545,41 +3773,137 @@ function getTypeSelectHtml(currentType) {
             <option value="mcq" ${currentType === 'mcq' ? 'selected' : ''}>Multiple Choice</option>
             <option value="fill" ${currentType === 'fill' ? 'selected' : ''}>Fill in the Blank</option>
             <option value="essay" ${currentType === 'essay' ? 'selected' : ''}>Essay / Paragraph</option>
+            <option value="fileupload" ${currentType === 'fileupload' ? 'selected' : ''}>File Upload / Link</option>
+            <option value="image" ${currentType === 'image' ? 'selected' : ''}>Image with Title</option>
             <option value="passage" ${currentType === 'passage' ? 'selected' : ''}>Reading Passage</option>
         </select>
     `;
 }
 
+// Image handling helper functions
+// Image handling helper functions
+window.toggleBlockImageSection = function (btn) {
+    const block = btn.closest('.quiz-block');
+    if (!block) return;
+    const mediaContainer = block.querySelector('.blk-media-container');
+    if (!mediaContainer) return;
+    const isHidden = mediaContainer.style.display === 'none' || !mediaContainer.style.display;
+    mediaContainer.style.display = isHidden ? 'block' : 'none';
+    if (isHidden) {
+        const input = mediaContainer.querySelector('.blk-img');
+        if (input) input.focus();
+    }
+};
+
+window.handleBlockImageChange = function (input) {
+    const block = input.closest('.quiz-block');
+    if (!block) return;
+    const rawVal = input.value.trim();
+    const convertedUrl = convertDriveUrl(rawVal);
+    const mediaContainer = block.querySelector('.blk-media-container');
+    const container = block.querySelector('.blk-img-preview-container');
+    const imgEl = block.querySelector('.blk-img-preview');
+    const titleEl = block.querySelector('.blk-img-preview-title');
+    const titleInput = block.querySelector('.blk-img-title');
+
+    if (convertedUrl && imgEl && container) {
+        if (mediaContainer) mediaContainer.style.display = 'block';
+        imgEl.src = convertedUrl;
+        imgEl.onload = () => { container.style.display = 'block'; };
+        imgEl.onerror = () => { container.style.display = 'none'; };
+        if (titleEl) titleEl.innerText = titleInput ? titleInput.value.trim() : '';
+    } else if (container) {
+        container.style.display = 'none';
+    }
+};
+
+window.handleBlockImageTitleChange = function (input) {
+    const block = input.closest('.quiz-block');
+    if (!block) return;
+    const titleEl = block.querySelector('.blk-img-preview-title');
+    if (titleEl) titleEl.innerText = input.value.trim();
+};
+
+window.clearBlockImage = function (btn) {
+    const block = btn.closest('.quiz-block');
+    if (!block) return;
+    const mediaContainer = block.querySelector('.blk-media-container');
+    const imgInput = block.querySelector('.blk-img');
+    const titleInput = block.querySelector('.blk-img-title');
+    const container = block.querySelector('.blk-img-preview-container');
+    const imgEl = block.querySelector('.blk-img-preview');
+    if (imgInput) imgInput.value = '';
+    if (titleInput) titleInput.value = '';
+    if (imgEl) imgEl.src = '';
+    if (container) container.style.display = 'none';
+    if (mediaContainer) mediaContainer.style.display = 'none';
+};
+
 // Generates the inner HTML template for a given block type
 function getBlockInnerHtml(type, blockId) {
-    const dragHandleHtml = `<div style="text-align: center; color: #94a3b8; cursor: grab; margin-top: -12px; margin-bottom: 6px; display: flex; justify-content: center;"><svg width="20" height="12" viewBox="0 0 20 12" fill="currentColor"><circle cx="4" cy="3" r="1.5"/><circle cx="10" cy="3" r="1.5"/><circle cx="16" cy="3" r="1.5"/><circle cx="4" cy="9" r="1.5"/><circle cx="10" cy="9" r="1.5"/><circle cx="16" cy="9" r="1.5"/></svg></div>`;
+    const dragHandleHtml = `<div style="text-align: center; color: #94a3b8; cursor: grab; margin-top: -12px; margin-bottom: 8px; display: flex; justify-content: center;"><svg width="20" height="12" viewBox="0 0 20 12" fill="currentColor"><circle cx="4" cy="3" r="1.5"/><circle cx="10" cy="3" r="1.5"/><circle cx="16" cy="3" r="1.5"/><circle cx="4" cy="9" r="1.5"/><circle cx="10" cy="9" r="1.5"/><circle cx="16" cy="9" r="1.5"/></svg></div>`;
 
-    const cardFooterActionsHtml = `
-        <div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px; width: 100%;">
-            <button class="icon-btn duplicate" type="button" title="Duplicate Question" onclick="event.stopPropagation(); duplicateBlock(this)">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-            </button>
-            <button class="icon-btn delete" type="button" title="Delete Block" onclick="event.stopPropagation(); deleteBlock(this)">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 6h18"></path>
-                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                    <line x1="10" y1="11" x2="10" y2="17"></line>
-                    <line x1="14" y1="11" x2="14" y2="17"></line>
-                </svg>
-            </button>
+    const getCardFooterHtml = (showPointsAndImage = true) => `
+        <div class="gform-card-footer" style="display: flex; align-items: center; justify-content: ${showPointsAndImage ? 'space-between' : 'flex-end'}; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-color, #e2e8f0); gap: 12px; flex-wrap: wrap;">
+            ${showPointsAndImage ? `
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <button type="button" class="btn-toggle-img" onclick="toggleBlockImageSection(this)" style="background: transparent; border: 1.5px dashed #cbd5e1; color: #64748b; padding: 6px 12px; border-radius: 8px; font-size: 12.5px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                        <polyline points="21 15 16 10 5 21"></polyline>
+                    </svg>
+                    <span>Image (Optional)</span>
+                </button>
+            </div>
+            ` : ''}
+
+            <div style="display: flex; align-items: center; gap: 10px;">
+                ${showPointsAndImage ? `
+                <div title="Points for this question" style="display: inline-flex; align-items: center; gap: 5px; background: var(--bg-hover, #f8fafc); border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px; padding: 3px 8px; font-size: 12px;">
+                    <span style="font-weight: 700; color: var(--text-gray, #64748b); font-size: 11.5px;">pts:</span>
+                    <input type="number" class="blk-points" value="1" min="0" style="width: 32px; border: none; background: transparent; font-size: 12.5px; font-weight: 800; text-align: center; outline: none; color: var(--text-dark, #0f172a); padding: 0;">
+                </div>
+                <div style="width: 1px; height: 16px; background: var(--border-color, #e2e8f0);"></div>
+                ` : ''}
+                <button class="icon-btn duplicate" type="button" title="Duplicate Block" onclick="event.stopPropagation(); duplicateBlock(this)">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                </button>
+                <button class="icon-btn delete" type="button" title="Delete Block" onclick="event.stopPropagation(); deleteBlock(this)">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 6h18"></path>
+                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                    </svg>
+                </button>
+            </div>
         </div>
     `;
 
-    const mediaAndPointsHtml = `
-        <div style="display: flex; gap: 10px; margin-top: 15px; margin-bottom: 15px;">
-            <input type="text" class="gform-opt-input blk-img" placeholder="Optional: Google Drive Image URL" style="flex: 1; border: 1px solid #dadce0; padding: 8px; border-radius: 4px; font-size: 13px;">
-            <div style="display: flex; align-items: center; gap: 8px; background: #f8fafc; padding: 0 10px; border-radius: 4px; border: 1px solid #dadce0;">
-                <label style="font-size: 13px; font-weight: bold; color: #5f6368; margin: 0;">Points:</label>
-                <input type="number" class="blk-points" value="1" min="0" style="width: 50px; border: none; background: transparent; font-size: 14px; text-align: center; outline: none;">
+    const mediaContainerHtml = `
+        <div class="blk-media-container" style="display: none; margin: 12px 0 14px 0; background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: #4338ca;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                        <polyline points="21 15 16 10 5 21"></polyline>
+                    </svg>
+                    <span>Question Image (Optional)</span>
+                </div>
+                <button type="button" onclick="clearBlockImage(this)" title="Remove Image" style="background: none; border: none; color: #ef4444; font-size: 11.5px; font-weight: 700; cursor: pointer; padding: 0;">✕ Remove</button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <input type="text" class="blk-img" placeholder="Paste Image URL or Google Drive link" oninput="handleBlockImageChange(this)" style="width: 100%; border: 1.5px solid #cbd5e1; padding: 8px 12px; border-radius: 8px; font-size: 13px; box-sizing: border-box; background: #ffffff; color: var(--text-dark, #0f172a);">
+                <input type="text" class="blk-img-title" placeholder="Image Title / Caption (e.g. Figure 1: Plant Cell Diagram)" oninput="handleBlockImageTitleChange(this)" style="width: 100%; border: 1.5px solid #cbd5e1; padding: 8px 12px; border-radius: 8px; font-size: 13px; box-sizing: border-box; background: #ffffff; color: var(--text-dark, #0f172a);">
+            </div>
+            <!-- Live Preview -->
+            <div class="blk-img-preview-container" style="display: none; margin-top: 10px; text-align: center; position: relative; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                <div class="blk-img-preview-title" style="font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 6px;"></div>
+                <img class="blk-img-preview" src="" style="max-height: 240px; max-width: 100%; border-radius: 8px; border: 1px solid #e2e8f0; object-fit: contain;">
             </div>
         </div>
     `;
@@ -3593,13 +3917,13 @@ function getBlockInnerHtml(type, blockId) {
                 ${getTypeSelectHtml('mcq')}
             </div>
             
-            ${mediaAndPointsHtml}
+            ${mediaContainerHtml}
             
-            <div class="options-container">
+            <div class="options-container" style="margin-top: 8px;">
                 ${[1, 2, 3, 4].map((num, i) => `
-                    <div class="gform-opt-row">
+                    <div class="gform-opt-row" style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
                         <input type="radio" name="${blockId}_correct" value="${i}" onchange="this.closest('.quiz-block').querySelector('.blk-correct').value = this.value" ${i === 0 ? 'checked' : ''} title="Mark as correct answer">
-                        <input type="text" class="gform-opt-input blk-opt${i}" placeholder="Option ${num}" required>
+                        <input type="text" class="gform-opt-input blk-opt${i}" placeholder="Option ${num}" required style="flex: 1; border: none; border-bottom: 1px solid #cbd5e1; padding: 8px 4px; font-size: 14px; background: transparent;">
                         <button class="icon-btn delete" title="Remove Option" onclick="this.closest('.gform-opt-row').remove(); window.reindexMCQOptions(this.closest('.quiz-block'))">
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                         </button>
@@ -3609,17 +3933,15 @@ function getBlockInnerHtml(type, blockId) {
             
             <input type="hidden" class="blk-correct" value="0">
             
-            <div class="gform-opt-row" style="margin-top: 8px;">
-                <input type="radio" disabled>
-                <span class="gform-add-opt" onclick="addOptionToMCQ(this, '${blockId}')" style="color: #1a73e8; cursor:pointer; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <div class="gform-opt-row" style="margin-top: 10px;">
+                <input type="radio" disabled style="opacity: 0.4;">
+                <span class="gform-add-opt" onclick="addOptionToMCQ(this, '${blockId}')" style="color: #4338ca; cursor:pointer; font-weight: 600; font-size: 13.5px; display: inline-flex; align-items: center; gap: 6px;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                     Add option
                 </span>
             </div>
 
-            <div class="gform-card-footer">
-                ${cardFooterActionsHtml}
-            </div>
+            ${getCardFooterHtml(true)}
         `;
     } else if (type === 'fill') {
         return `
@@ -3630,16 +3952,15 @@ function getBlockInnerHtml(type, blockId) {
                 ${getTypeSelectHtml('fill')}
             </div>
             
-            ${mediaAndPointsHtml}
+            ${mediaContainerHtml}
             
-            <div style="margin-top: 15px;">
-                <input type="text" class="gform-opt-input blk-answer" placeholder="Correct Answer(s) separated by commas" style="width: 100%; border: 1px solid #dadce0; padding: 10px; border-radius: 4px; box-sizing: border-box;">
-                <small style="color: #70757a; display: block; margin-top: 5px;">Separate multiple acceptable variations with commas (e.g., Paris, paris)</small>
+            <div style="margin-top: 14px;">
+                <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 6px;">Accepted Answer(s):</label>
+                <input type="text" class="blk-answer" placeholder="e.g. read, is reading" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; font-size: 14px; box-sizing: border-box; background: #ffffff; color: #0f172a; outline: none; transition: border-color 0.2s;">
+                <span style="display: block; font-size: 12px; color: #64748b; margin-top: 5px;">Separate multiple acceptable variations with commas (e.g. <code>is reading, read</code>). Auto-graded case-insensitively.</span>
             </div>
             
-            <div class="gform-card-footer">
-                ${cardFooterActionsHtml}
-            </div>
+            ${getCardFooterHtml(true)}
         `;
     } else if (type === 'essay') {
         return `
@@ -3650,15 +3971,72 @@ function getBlockInnerHtml(type, blockId) {
                 ${getTypeSelectHtml('essay')}
             </div>
             
-            ${mediaAndPointsHtml}
+            ${mediaContainerHtml}
             
-            <div style="margin-top: 15px;">
-                <textarea disabled placeholder="Long answer text will be written here by the student" style="width: 100%; border: 1px dotted #dadce0; padding: 10px; border-radius: 4px; background: #f8fafc; resize: none; box-sizing: border-box;"></textarea>
+            <div style="margin-top: 14px;">
+                <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 6px;">Student Response Preview:</label>
+                <textarea disabled placeholder="Students will type their full response / essay here..." style="width: 100%; border: 1.5px dashed #cbd5e1; padding: 12px 14px; border-radius: 8px; background: #f8fafc; resize: none; box-sizing: border-box; font-size: 13.5px; color: #64748b; min-height: 85px;"></textarea>
             </div>
             
-            <div class="gform-card-footer">
-                ${cardFooterActionsHtml}
+            ${getCardFooterHtml(true)}
+        `;
+    } else if (type === 'fileupload') {
+        return `
+            ${dragHandleHtml}
+            
+            <div class="gform-question-header">
+                <div class="gform-q-input blk-prompt" contenteditable="true" data-placeholder="File Upload / Link Task Prompt (e.g. Upload your completed essay or paste Google Docs link)"></div>
+                ${getTypeSelectHtml('fileupload')}
             </div>
+            
+            ${mediaContainerHtml}
+            
+            <div style="background: #ffffff; border: 1.5px dashed #cbd5e1; border-radius: 10px; padding: 16px; margin-top: 12px; text-align: center;">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 8px; color: #4f46e5; margin-bottom: 6px;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <span style="font-weight: 800; font-size: 14px;">Student File Upload & Google Drive Review Auto-Sync</span>
+                </div>
+                <p style="margin: 0 0 10px 0; font-size: 12.5px; color: #64748b;">
+                    Students will upload files or paste links. Uploaded files will be automatically organized into your Google Drive: <br>
+                    <strong style="color: #1e1b4b;">Review / [Quiz Name] / [Class] / [Student File]</strong>
+                </p>
+                <div style="display: inline-flex; align-items: center; gap: 10px; background: #f8fafc; padding: 6px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 12px; color: #334155; font-weight: 600;">
+                    <span>Submission Mode:</span>
+                    <select class="blk-upload-mode" style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 8px; font-size: 12px; font-weight: 700; color: #1e1b4b; background: #ffffff; cursor: pointer;">
+                        <option value="both" selected>File Upload or Link (Recommended)</option>
+                        <option value="file_only">File Upload Only</option>
+                        <option value="link_only">Link Only</option>
+                    </select>
+                </div>
+            </div>
+            
+            ${getCardFooterHtml(true)}
+        `;
+    } else if (type === 'image') {
+        return `
+            ${dragHandleHtml}
+            <div class="gform-question-header">
+                <div class="gform-q-input blk-prompt" contenteditable="true" data-placeholder="Image Title / Heading (e.g., Figure 1: Architectural Blueprint)" style="font-size: 17px; font-weight: 700; border-bottom: 2px solid #6366f1;"></div>
+                ${getTypeSelectHtml('image')}
+            </div>
+            
+            <div style="margin: 12px 0;">
+                <input type="text" class="blk-img" placeholder="Paste Image URL or Google Drive link" oninput="handleBlockImageChange(this)" style="width: 100%; border: 1.5px solid #cbd5e1; padding: 8px 12px; border-radius: 8px; font-size: 13px; box-sizing: border-box; background: #ffffff; color: var(--text-dark, #0f172a); margin-bottom: 8px;">
+                <input type="text" class="blk-img-title" placeholder="Optional caption or subtitle" oninput="handleBlockImageTitleChange(this)" style="width: 100%; border: 1.5px solid #cbd5e1; padding: 8px 12px; border-radius: 8px; font-size: 13px; box-sizing: border-box; background: #ffffff; color: var(--text-dark, #0f172a);">
+            </div>
+            
+            <!-- Live Preview -->
+            <div class="blk-img-preview-container" style="display: none; margin-top: 10px; text-align: center; position: relative; background: #ffffff; padding: 12px; border-radius: 10px; border: 1px dashed #cbd5e1;">
+                <div class="blk-img-preview-title" style="font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 6px;"></div>
+                <img class="blk-img-preview" src="" style="max-height: 280px; max-width: 100%; border-radius: 8px; border: 1px solid #e2e8f0; object-fit: contain;">
+                <button type="button" onclick="clearBlockImage(this)" title="Remove Image" style="position: absolute; top: 8px; right: 8px; background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 11.5px; font-weight: 700;">✕ Remove</button>
+            </div>
+
+            ${getCardFooterHtml(false)}
         `;
     } else if (type === 'passage') {
         return `
@@ -3669,9 +4047,7 @@ function getBlockInnerHtml(type, blockId) {
             <div style="margin-top: 12px;">
                 <div class="gform-desc-input blk-desc" contenteditable="true" data-placeholder="Type or paste reading passage text here..." style="min-height: 80px; font-size: 14px; line-height: 1.6; border: 1px solid #dadce0; border-radius: 6px; padding: 12px; background: #ffffff;"></div>
             </div>
-            <div class="gform-card-footer">
-                ${cardFooterActionsHtml}
-            </div>
+            ${getCardFooterHtml(false)}
         `;
     } else if (type === 'header') {
         return `
@@ -3682,9 +4058,7 @@ function getBlockInnerHtml(type, blockId) {
             <div class="gform-question-header">
                 <div class="gform-desc-input blk-desc" contenteditable="true" data-placeholder="Description (Optional)" style="font-size: 14px; width: 100%;"></div>
             </div>
-            <div class="gform-card-footer">
-                ${cardFooterActionsHtml}
-            </div>
+            ${getCardFooterHtml(false)}
         `;
     }
 }
@@ -3722,11 +4096,24 @@ window.duplicateBlock = function (btnElement) {
         destDesc.innerHTML = srcDesc.innerHTML;
     }
 
-    // Copy Image URL
+    // Copy Image URL & Title
     const srcImg = sourceCard.querySelector('.blk-img');
     const destImg = clonedDiv.querySelector('.blk-img');
     if (srcImg && destImg) {
         destImg.value = srcImg.value;
+    }
+    const srcImgTitle = sourceCard.querySelector('.blk-img-title');
+    const destImgTitle = clonedDiv.querySelector('.blk-img-title');
+    if (srcImgTitle && destImgTitle) {
+        destImgTitle.value = srcImgTitle.value;
+    }
+    if (destImg && destImg.value) {
+        handleBlockImageChange(destImg);
+    }
+    const srcUploadMode = sourceCard.querySelector('.blk-upload-mode');
+    const destUploadMode = clonedDiv.querySelector('.blk-upload-mode');
+    if (srcUploadMode && destUploadMode) {
+        destUploadMode.value = srcUploadMode.value;
     }
 
     // Copy Points
@@ -3822,6 +4209,9 @@ window.switchBlockType = function (selectElement) {
     const imgNode = blockDiv.querySelector('.blk-img');
     const savedImg = imgNode ? imgNode.value : '';
 
+    const imgTitleNode = blockDiv.querySelector('.blk-img-title');
+    const savedImgTitle = imgTitleNode ? imgTitleNode.value : '';
+
     const pointsNode = blockDiv.querySelector('.blk-points');
     const savedPoints = pointsNode ? pointsNode.value : '1';
 
@@ -3838,12 +4228,19 @@ window.switchBlockType = function (selectElement) {
     // Re-render block internal HTML
     blockDiv.innerHTML = getBlockInnerHtml(newType, blockId);
 
-    // Restore saved question text, image URL, and points
+    // Restore saved question text, image URL, image title, and points
     const newPromptNode = blockDiv.querySelector('.blk-prompt');
     if (newPromptNode) newPromptNode.innerText = savedPrompt;
 
     const newImgNode = blockDiv.querySelector('.blk-img');
     if (newImgNode) newImgNode.value = savedImg;
+
+    const newImgTitleNode = blockDiv.querySelector('.blk-img-title');
+    if (newImgTitleNode) newImgTitleNode.value = savedImgTitle;
+
+    if (newImgNode && newImgNode.value) {
+        handleBlockImageChange(newImgNode);
+    }
 
     const newPointsNode = blockDiv.querySelector('.blk-points');
     if (newPointsNode) newPointsNode.value = savedPoints;
@@ -3901,6 +4298,469 @@ document.getElementById('quizTitle')?.addEventListener('input', function (e) {
 });
 
 window.addBlock = addBlock;
+
+// ==========================================
+// QUIZ STUDENT PREVIEW SYSTEM
+// ==========================================
+window._quizPreviewItems = [];
+
+window.openQuizPreviewModal = function () {
+    const modal = document.getElementById('quizPreviewModal');
+    if (!modal) return;
+
+    // 1. Gather Quiz Metadata from Editor Fields
+    const title = (document.getElementById('quizTitle')?.value || document.getElementById('gform-main-title')?.innerText || 'Untitled Quiz').trim();
+    const subject = (document.getElementById('quizSubject')?.value || 'General').trim();
+    const quizType = document.getElementById('quizTypeSelect')?.value || 'Online Quiz';
+    
+    let classesStr = 'All Classes';
+    if (typeof getSelectedQuizClasses === 'function') {
+        const selected = getSelectedQuizClasses();
+        if (selected && selected.length > 0) {
+            classesStr = selected.join(', ');
+        }
+    }
+
+    // 2. Scrape live blocks directly from quiz editor DOM
+    const blocksElements = document.querySelectorAll('#quizBlocksContainer .quiz-block');
+    const items = [];
+    let gradableQuestionCount = 0;
+    let totalPoints = 0;
+
+    blocksElements.forEach(el => {
+        const type = el.dataset.type || 'mcq';
+        const imgNode = el.querySelector('.blk-img');
+        const imgRaw = imgNode ? imgNode.value.trim() : '';
+        const imgUrl = convertDriveUrl(imgRaw);
+        const imgTitleNode = el.querySelector('.blk-img-title');
+        const imgTitle = imgTitleNode ? imgTitleNode.value.trim() : '';
+
+        const pointsNode = el.querySelector('.blk-points');
+        const points = pointsNode ? (parseInt(pointsNode.value) || 1) : 1;
+
+        if (type === 'header') {
+            const prompt = el.querySelector('.blk-prompt')?.innerText.trim() || 'Section';
+            const desc = el.querySelector('.blk-desc')?.innerText.trim() || '';
+            items.push({ type, text: prompt, description: desc });
+        } else if (type === 'passage') {
+            const prompt = el.querySelector('.blk-prompt')?.innerText.trim() || 'Reading Passage';
+            const desc = el.querySelector('.blk-desc')?.innerText.trim() || '';
+            items.push({ type, title: prompt, prompt: prompt, text: desc, description: desc, imageUrl: imgUrl, imageTitle: imgTitle });
+        } else if (type === 'image') {
+            const prompt = el.querySelector('.blk-prompt')?.innerText.trim() || '';
+            items.push({ type, prompt, imageUrl: imgUrl, imageTitle: imgTitle });
+        } else if (type === 'fileupload') {
+            gradableQuestionCount++;
+            totalPoints += points;
+            const prompt = el.querySelector('.blk-prompt')?.innerText.trim() || '';
+            const uploadModeNode = el.querySelector('.blk-upload-mode');
+            const uploadMode = uploadModeNode ? uploadModeNode.value : 'both';
+            items.push({ type, prompt, imageUrl: imgUrl, imageTitle: imgTitle, points, uploadMode });
+        } else if (type === 'mcq') {
+            gradableQuestionCount++;
+            totalPoints += points;
+            const prompt = el.querySelector('.blk-prompt')?.innerText.trim() || '';
+            const options = [];
+            let correctIndex = 0;
+
+            const optionRows = el.querySelectorAll('.options-container .gform-opt-row');
+            optionRows.forEach((row) => {
+                const optInput = row.querySelector('.gform-opt-input');
+                const radio = row.querySelector('input[type="radio"]');
+                const val = optInput ? optInput.value.trim() : '';
+                if (val !== '') {
+                    options.push(val);
+                    if (radio && radio.checked) {
+                        correctIndex = options.length - 1;
+                    }
+                }
+            });
+
+            items.push({ type, prompt, imageUrl: imgUrl, imageTitle: imgTitle, points, options, correct: correctIndex });
+        } else if (type === 'fill') {
+            gradableQuestionCount++;
+            totalPoints += points;
+            const prompt = el.querySelector('.blk-prompt')?.innerText.trim() || '';
+            const rawAns = el.querySelector('.blk-answer')?.value.trim() || '';
+            const answers = rawAns.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+            items.push({ type, prompt, imageUrl: imgUrl, imageTitle: imgTitle, points, answers, rawAns });
+        } else if (type === 'essay') {
+            gradableQuestionCount++;
+            totalPoints += points;
+            const prompt = el.querySelector('.blk-prompt')?.innerText.trim() || '';
+            items.push({ type, prompt, imageUrl: imgUrl, imageTitle: imgTitle, points });
+        }
+    });
+
+    window._quizPreviewItems = items;
+
+    // 3. Update Modal Header Info
+    const typeBadge = document.getElementById('previewQuizTypeBadge');
+    if (typeBadge) typeBadge.innerText = quizType;
+
+    const titleEl = document.getElementById('previewQuizTitle');
+    if (titleEl) titleEl.innerText = title || 'Untitled Quiz';
+
+    const subjectBadge = document.getElementById('previewQuizSubjectBadge');
+    if (subjectBadge) subjectBadge.innerText = subject || 'General';
+
+    const classesBadge = document.getElementById('previewQuizClassesBadge');
+    if (classesBadge) classesBadge.innerText = classesStr || 'All Classes';
+
+    const qCountStat = document.getElementById('previewStatTotalQuestions');
+    if (qCountStat) qCountStat.innerText = gradableQuestionCount;
+
+    const pCountStat = document.getElementById('previewStatTotalPoints');
+    if (pCountStat) pCountStat.innerText = totalPoints;
+
+    // Hide score banner on open
+    const scoreBanner = document.getElementById('previewScoreBanner');
+    if (scoreBanner) scoreBanner.style.display = 'none';
+
+    // 4. Render Student Question Cards
+    const container = document.getElementById('previewQuestionsContainer');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (items.length === 0) {
+        container.innerHTML = `
+            <div class="preview-student-card" style="text-align: center; padding: 40px 20px; color: #64748b;">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px; display: inline-block;">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <h4 style="margin: 0 0 6px 0; font-size: 16px; font-weight: 700; color: #0f172a;">No Questions Added Yet</h4>
+                <p style="margin: 0; font-size: 13.5px;">Add multiple-choice, fill-in-the-blank, or essay questions in the quiz editor, then preview them here.</p>
+            </div>
+        `;
+        modal.style.display = 'flex';
+        return;
+    }
+
+    let questionNumber = 0;
+
+    items.forEach((item, idx) => {
+        const card = document.createElement('div');
+        card.className = 'preview-student-card';
+        card.id = `preview_card_${idx}`;
+
+        const renderImageHtml = (url, caption) => {
+            if (!url) return '';
+            return `
+                <div style="margin: 14px 0; text-align: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px;">
+                    ${caption ? `<div style="font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 8px;">${escapeHtml(caption)}</div>` : ''}
+                    <img src="${escapeHtml(url)}" alt="Question Illustration" style="max-width: 100%; max-height: 350px; object-fit: contain; border-radius: 8px; border: 1px solid rgba(0,0,0,0.06);">
+                </div>
+            `;
+        };
+
+        if (item.type === 'header') {
+            card.style.borderLeft = '5px solid #2563eb';
+            card.style.background = '#f8fafc';
+            card.innerHTML = `
+                <h3 style="margin: 0 0 6px 0; font-size: 18px; font-weight: 800; color: var(--text-dark, #0f172a);">${escapeHtml(item.text || 'Section')}</h3>
+                ${item.description ? `<p style="margin: 0; font-size: 14px; line-height: 1.55; color: #64748b;">${escapeHtml(item.description)}</p>` : ''}
+            `;
+        } else if (item.type === 'passage') {
+            card.style.borderLeft = '5px solid #10b981';
+            card.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                    <span style="background: rgba(16, 185, 129, 0.1); color: #10b981; font-size: 11.5px; font-weight: 800; padding: 4px 10px; border-radius: 6px; text-transform: uppercase;">Reading Passage</span>
+                </div>
+                <h4 style="margin: 0 0 10px 0; font-size: 17px; font-weight: 800; color: var(--text-dark, #0f172a);">${escapeHtml(item.title || 'Passage')}</h4>
+                <div style="white-space: pre-line; background: #f8fafc; padding: 16px; border-radius: 10px; font-size: 14.5px; line-height: 1.65; border: 1px solid #e2e8f0; color: var(--text-dark, #0f172a);">${escapeHtml(item.text || item.description || '')}</div>
+                ${renderImageHtml(item.imageUrl, item.imageTitle)}
+            `;
+        } else if (item.type === 'image') {
+            card.style.borderLeft = '5px solid #6366f1';
+            card.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="background: rgba(99, 102, 241, 0.1); color: #6366f1; font-size: 11.5px; font-weight: 800; padding: 4px 10px; border-radius: 6px; text-transform: uppercase;">Image Resource</span>
+                </div>
+                ${item.prompt ? `<h4 style="margin: 0 0 10px 0; font-size: 16px; font-weight: 700; color: var(--text-dark, #0f172a);">${escapeHtml(item.prompt)}</h4>` : ''}
+                ${renderImageHtml(item.imageUrl, item.imageTitle)}
+            `;
+        } else if (item.type === 'fileupload') {
+            questionNumber++;
+            const pointsLabel = item.points ? `<span class="preview-q-points-badge">${item.points} pt${item.points > 1 ? 's' : ''}</span>` : '';
+            const showFileInput = item.uploadMode !== 'link_only';
+            const showLinkInput = item.uploadMode !== 'file_only';
+
+            card.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span class="preview-q-num-badge">No. ${questionNumber}</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span id="preview_status_badge_${idx}"></span>
+                        ${pointsLabel}
+                    </div>
+                </div>
+                <div class="preview-question-text">${escapeHtml(item.prompt || 'Upload your file or paste your project link')}</div>
+                ${renderImageHtml(item.imageUrl, item.imageTitle)}
+                <div style="margin-top: 14px; background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 12px; padding: 18px;">
+                    ${showFileInput ? `
+                    <div style="text-align: center; margin-bottom: ${showLinkInput ? '14px' : '0'};">
+                        <div style="display: inline-flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px 20px; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 10px; width: 100%; box-sizing: border-box;">
+                            <div style="width: 42px; height: 42px; border-radius: 50%; background: #e0e7ff; display: flex; align-items: center; justify-content: center; color: #4f46e5;">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="17 8 12 3 7 8"></polyline>
+                                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                                </svg>
+                            </div>
+                            <div>
+                                <strong style="color: #1e1b4b; font-size: 13.5px; display: block;">Student File Upload Dropzone</strong>
+                                <span style="color: #64748b; font-size: 11.5px;">Auto-organizes in Google Drive when submitted by student</span>
+                            </div>
+                        </div>
+                    </div>
+                    ` : ''}
+
+                    ${(showFileInput && showLinkInput) ? `
+                    <div style="display: flex; align-items: center; gap: 10px; margin: 12px 0;">
+                        <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
+                        <span style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">OR PASTE LINK</span>
+                        <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
+                    </div>
+                    ` : ''}
+
+                    ${showLinkInput ? `
+                    <div>
+                        <label style="display: block; font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 5px;">Online Project Link (Google Docs, Canva, Figma, etc.):</label>
+                        <input type="url" id="preview_ans_${idx}" placeholder="https://..." class="preview-input-text" style="font-size: 13px; padding: 10px 14px;">
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+        } else if (item.type === 'mcq') {
+            questionNumber++;
+            const pointsLabel = item.points ? `<span class="preview-q-points-badge">${item.points} pt${item.points > 1 ? 's' : ''}</span>` : '';
+            const options = item.options || [];
+
+            card.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span class="preview-q-num-badge">No. ${questionNumber}</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span id="preview_status_badge_${idx}"></span>
+                        ${pointsLabel}
+                    </div>
+                </div>
+                <div class="preview-question-text">${escapeHtml(item.prompt || 'Untitled Multiple Choice Question')}</div>
+                ${renderImageHtml(item.imageUrl, item.imageTitle)}
+                <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 6px;">
+                    ${options.map((opt, oIdx) => `
+                        <label class="preview-option-label" id="preview_opt_label_${idx}_${oIdx}" onclick="handlePreviewOptionClick(${idx}, ${oIdx})">
+                            <input type="radio" name="preview_choice_${idx}" value="${oIdx}" style="accent-color: #2563eb; width: 17px; height: 17px; cursor: pointer;">
+                            <span style="flex: 1;">${escapeHtml(opt)}</span>
+                        </label>
+                    `).join('')}
+                </div>
+            `;
+        } else if (item.type === 'fill') {
+            questionNumber++;
+            const pointsLabel = item.points ? `<span class="preview-q-points-badge">${item.points} pt${item.points > 1 ? 's' : ''}</span>` : '';
+
+            card.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span class="preview-q-num-badge">No. ${questionNumber}</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span id="preview_status_badge_${idx}"></span>
+                        ${pointsLabel}
+                    </div>
+                </div>
+                <div class="preview-question-text">${escapeHtml(item.prompt || 'Fill in the blank')}</div>
+                ${renderImageHtml(item.imageUrl, item.imageTitle)}
+                <textarea id="preview_ans_${idx}" class="preview-input-text" rows="1" placeholder="Type your answer here..." style="min-height: 48px;"></textarea>
+                <div id="preview_answer_key_hint_${idx}" style="display: none; margin-top: 8px; font-size: 12.5px; font-weight: 600; color: #059669;"></div>
+            `;
+        } else if (item.type === 'essay') {
+            questionNumber++;
+            const pointsLabel = item.points ? `<span class="preview-q-points-badge">${item.points} pt${item.points > 1 ? 's' : ''}</span>` : '';
+
+            card.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span class="preview-q-num-badge">No. ${questionNumber}</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span id="preview_status_badge_${idx}"></span>
+                        ${pointsLabel}
+                    </div>
+                </div>
+                <div class="preview-question-text">${escapeHtml(item.prompt || 'Essay Question')}</div>
+                ${renderImageHtml(item.imageUrl, item.imageTitle)}
+                <textarea id="preview_ans_${idx}" class="preview-input-text" rows="3" placeholder="Write your full response here..." style="min-height: 85px;"></textarea>
+            `;
+        }
+
+        container.appendChild(card);
+    });
+
+    // 5. Open Modal
+    modal.style.display = 'flex';
+};
+
+window.closeQuizPreviewModal = function () {
+    const modal = document.getElementById('quizPreviewModal');
+    if (modal) modal.style.display = 'none';
+};
+
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+        const previewModal = document.getElementById('quizPreviewModal');
+        if (previewModal && previewModal.style.display === 'flex') {
+            closeQuizPreviewModal();
+        }
+    }
+});
+
+window.setPreviewDeviceMode = function (mode) {
+    const modal = document.getElementById('quizPreviewModal');
+    const desktopBtn = document.getElementById('previewDeviceDesktopBtn');
+    const mobileBtn = document.getElementById('previewDeviceMobileBtn');
+    if (!modal) return;
+
+    if (mode === 'mobile') {
+        modal.classList.add('preview-mobile-view');
+        if (mobileBtn) {
+            mobileBtn.style.background = '#ffffff';
+            mobileBtn.style.color = '#0f172a';
+            mobileBtn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+        }
+        if (desktopBtn) {
+            desktopBtn.style.background = 'transparent';
+            desktopBtn.style.color = '#64748b';
+            desktopBtn.style.boxShadow = 'none';
+        }
+    } else {
+        modal.classList.remove('preview-mobile-view');
+        if (desktopBtn) {
+            desktopBtn.style.background = '#ffffff';
+            desktopBtn.style.color = '#0f172a';
+            desktopBtn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+        }
+        if (mobileBtn) {
+            mobileBtn.style.background = 'transparent';
+            mobileBtn.style.color = '#64748b';
+            mobileBtn.style.boxShadow = 'none';
+        }
+    }
+};
+
+window.handlePreviewOptionClick = function (itemIdx, optIdx) {
+    const labels = document.querySelectorAll(`[id^="preview_opt_label_${itemIdx}_"]`);
+    labels.forEach(lbl => lbl.classList.remove('is-selected'));
+    const selected = document.getElementById(`preview_opt_label_${itemIdx}_${optIdx}`);
+    if (selected) selected.classList.add('is-selected');
+};
+
+window.resetPreviewAnswers = function () {
+    const modal = document.getElementById('quizPreviewModal');
+    if (!modal) return;
+
+    // Reset radios
+    modal.querySelectorAll('input[type="radio"]').forEach(r => r.checked = false);
+    // Reset labels
+    modal.querySelectorAll('.preview-option-label').forEach(lbl => {
+        lbl.className = 'preview-option-label';
+    });
+    // Reset textareas and inputs
+    modal.querySelectorAll('textarea, input[type="url"]').forEach(i => i.value = '');
+    // Reset status badges
+    modal.querySelectorAll('[id^="preview_status_badge_"]').forEach(b => b.innerHTML = '');
+    modal.querySelectorAll('[id^="preview_answer_key_hint_"]').forEach(h => {
+        h.style.display = 'none';
+        h.innerText = '';
+    });
+    // Hide score banner
+    const banner = document.getElementById('previewScoreBanner');
+    if (banner) banner.style.display = 'none';
+};
+
+window.testPreviewSubmit = function () {
+    const items = window._quizPreviewItems || [];
+    if (!items.length) return;
+
+    let earnedPoints = 0;
+    let autoGradablePoints = 0;
+    let autoGradableCount = 0;
+
+    items.forEach((item, idx) => {
+        const badge = document.getElementById(`preview_status_badge_${idx}`);
+
+        if (item.type === 'mcq') {
+            autoGradableCount++;
+            const itemPoints = item.points || 1;
+            autoGradablePoints += itemPoints;
+
+            const selectedRadio = document.querySelector(`input[name="preview_choice_${idx}"]:checked`);
+            const selectedVal = selectedRadio ? parseInt(selectedRadio.value) : -1;
+
+            const options = item.options || [];
+            options.forEach((_, oIdx) => {
+                const lbl = document.getElementById(`preview_opt_label_${idx}_${oIdx}`);
+                if (!lbl) return;
+                lbl.classList.remove('is-correct-key', 'is-wrong-pick');
+                if (oIdx === item.correct) {
+                    lbl.classList.add('is-correct-key');
+                } else if (selectedVal === oIdx && selectedVal !== item.correct) {
+                    lbl.classList.add('is-wrong-pick');
+                }
+            });
+
+            if (selectedVal === item.correct) {
+                earnedPoints += itemPoints;
+                if (badge) badge.innerHTML = `<span style="background: rgba(16, 185, 129, 0.15); color: #059669; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px;">✓ Correct (+${itemPoints})</span>`;
+            } else {
+                if (badge) badge.innerHTML = `<span style="background: rgba(239, 68, 68, 0.15); color: #dc2626; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px;">✕ Incorrect</span>`;
+            }
+
+        } else if (item.type === 'fill') {
+            autoGradableCount++;
+            const itemPoints = item.points || 1;
+            autoGradablePoints += itemPoints;
+
+            const input = document.getElementById(`preview_ans_${idx}`);
+            const userVal = input ? input.value.trim().toLowerCase() : '';
+
+            const acceptable = (item.answers || []).map(a => a.toLowerCase().trim());
+            const isMatch = userVal && acceptable.includes(userVal);
+
+            const hintEl = document.getElementById(`preview_answer_key_hint_${idx}`);
+            if (hintEl) {
+                hintEl.style.display = 'block';
+                hintEl.innerText = `Accepted Answer(s): ${item.answers && item.answers.length ? item.answers.join(', ') : '(None configured)'}`;
+            }
+
+            if (isMatch) {
+                earnedPoints += itemPoints;
+                if (badge) badge.innerHTML = `<span style="background: rgba(16, 185, 129, 0.15); color: #059669; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px;">✓ Correct (+${itemPoints})</span>`;
+            } else {
+                if (badge) badge.innerHTML = `<span style="background: rgba(239, 68, 68, 0.15); color: #dc2626; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px;">✕ Incorrect</span>`;
+            }
+
+        } else if (item.type === 'essay' || item.type === 'fileupload') {
+            if (badge) {
+                badge.innerHTML = `<span style="background: rgba(124, 58, 237, 0.12); color: #7c3aed; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px;">📝 Manual Review</span>`;
+            }
+        }
+    });
+
+    // Update Score Banner
+    const banner = document.getElementById('previewScoreBanner');
+    const pointsText = document.getElementById('previewScoreBannerPoints');
+    const descText = document.getElementById('previewScoreBannerDesc');
+
+    if (banner) {
+        banner.style.display = 'block';
+        if (pointsText) pointsText.innerText = `${earnedPoints} / ${autoGradablePoints}`;
+        if (descText) {
+            descText.innerText = `Score evaluated on ${autoGradableCount} auto-gradable questions. Essay and project items require teacher manual grading.`;
+        }
+    }
+
+    // Scroll to top smoothly so teacher sees results immediately
+    const scrollBody = document.getElementById('quizPreviewScrollBody');
+    if (scrollBody) scrollBody.scrollTo({ top: 0, behavior: 'smooth' });
+};
 
 // --- 2. UPDATED QUIZ TABLE RENDERING WITH STATUS BADGE & MENU ---
 // --- TOGGLE QUIZ STATUS (ACTIVE / DEACTIVE) ---
@@ -3974,13 +4834,10 @@ async function loadQuizzesTable(forceRefresh = false) {
                         <div class="kebab-menu">
                             <button class="kebab-btn" onclick="toggleMenu(event, 'quiz-${quiz.id}')">⋮</button>
                             <div id="menu-quiz-${quiz.id}" class="dropdown-menu">
-                                <button class="dropdown-item" style="color: #ef4444; font-weight: 700; display: flex; align-items: center; gap: 6px;" onclick="openLiveQuizMaster('${quiz.id}', '${safeTitle}')">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="2"></circle><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"></path><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"></path></svg>
-                                    Start Live Quiz
-                                </button>
                                 <button class="dropdown-item" onclick="viewQuizResults('${safeTitle}', '${quiz.id}')">View Results</button>
                                 <button class="dropdown-item" onclick="toggleQuizStatus('${quiz.id}', '${status}')">${toggleLabel}</button>
                                 <button class="dropdown-item" onclick="editQuiz('${quiz.id}')">Edit Quiz</button>
+                                <button class="dropdown-item" onclick="duplicateQuiz('${quiz.id}')">Duplicate Quiz</button>
                                 <button class="dropdown-item danger" onclick="deleteQuiz('${quiz.id}', '${safeTitle}')">Delete Quiz</button>
                             </div>
                         </div>
@@ -4095,6 +4952,61 @@ async function loadQuizzesTable(forceRefresh = false) {
 window.loadQuizzesTable = loadQuizzesTable;
 
 
+// --- DUPLICATE QUIZ INTO NEW ONE (AUTO SEQUENTIAL COPY 1, COPY 2, COPY 3) ---
+async function duplicateQuiz(id) {
+    if (!id) return;
+    try {
+        const snap = await getDoc(doc(db, "quizzes", id));
+        if (!snap.exists()) {
+            return alert("Could not find the quiz to duplicate.");
+        }
+        const sourceQuiz = snap.data();
+        const sourceTitle = (sourceQuiz.title || 'Untitled Quiz').trim();
+
+        // 1. Extract base title (removes existing "Copy N" or "(Copy N)" suffix)
+        const baseTitle = sourceTitle.replace(/\s*(\(copy\s*\d+\)|copy\s*\d+)\s*$/i, '').trim() || sourceTitle;
+
+        // 2. Fetch all existing quizzes to determine the next copy sequence number
+        const quizDocs = await getOrFetchQuizzes(true);
+        const existingTitlesLower = new Set(quizDocs.map(q => (q.title || '').trim().toLowerCase()));
+
+        // 3. Find next available copy sequence number: Copy 1, Copy 2, Copy 3...
+        let copyNum = 1;
+        while (existingTitlesLower.has(`${baseTitle} copy ${copyNum}`.toLowerCase()) || 
+               existingTitlesLower.has(`${baseTitle} (copy ${copyNum})`.toLowerCase())) {
+            copyNum++;
+        }
+
+        const newTitle = `${baseTitle} Copy ${copyNum}`;
+
+        // 4. Construct deep-cloned duplicate quiz data
+        const clonedItems = JSON.parse(JSON.stringify(sourceQuiz.items || sourceQuiz.questions || []));
+        const newQuizData = {
+            ...sourceQuiz,
+            title: newTitle,
+            items: clonedItems,
+            status: sourceQuiz.status || 'active',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+        // Clean out any doc id if present in data
+        delete newQuizData.id;
+
+        // 5. Save the duplicate as a new quiz document in Firestore
+        await addDoc(collection(db, "quizzes"), newQuizData);
+
+        // 6. Invalidate caches and refresh quiz table
+        invalidateQuizzesCache();
+        await loadQuizzesTable(true);
+
+        alert(`Quiz duplicated successfully as "${newTitle}"!`);
+    } catch (e) {
+        console.error("Error duplicating quiz:", e);
+        alert("Failed to duplicate quiz: " + (e.message || e));
+    }
+}
+window.duplicateQuiz = duplicateQuiz;
+
 // --- UPDATED EDIT QUIZ ---
 async function editQuiz(id) {
     try {
@@ -4131,17 +5043,49 @@ async function editQuiz(id) {
         (quiz.items || quiz.questions || []).forEach((item, index) => {
             const type = item.type || 'mcq';
             const block = addBlock(type); // addBlock now returns the block element
+            if (!block) return;
+
+            const imgInput = block.querySelector('.blk-img');
+            const titleInput = block.querySelector('.blk-img-title');
+            if (imgInput) imgInput.value = item.imageUrl || item.image || '';
+            if (titleInput) titleInput.value = item.imageTitle || item.caption || '';
+            if (imgInput && typeof handleBlockImageChange === 'function') handleBlockImageChange(imgInput);
 
             if (type === 'header') {
                 const promptNode = block.querySelector('.blk-prompt');
                 const descNode = block.querySelector('.blk-desc');
-                if (promptNode) promptNode.innerText = item.text || '';
+                if (promptNode) promptNode.innerText = item.text || item.prompt || '';
                 if (descNode) descNode.innerText = item.description || '';
+
+            } else if (type === 'passage') {
+                const promptNode = block.querySelector('.blk-prompt');
+                const descNode = block.querySelector('.blk-desc');
+
+                let titleVal = item.title || item.prompt || '';
+                let descVal = item.description || item.passage || '';
+
+                if (!titleVal && item.text && descVal && item.text !== descVal) {
+                    titleVal = item.text;
+                } else if (!descVal && item.text) {
+                    descVal = item.text;
+                }
+
+                if (promptNode) promptNode.innerText = titleVal || 'Reading Passage';
+                if (descNode) descNode.innerText = descVal;
+
+            } else if (type === 'image') {
+                const promptNode = block.querySelector('.blk-prompt');
+                if (promptNode) promptNode.innerText = item.prompt || item.title || '';
+
+            } else if (type === 'fileupload') {
+                const promptNode = block.querySelector('.blk-prompt');
+                if (promptNode) promptNode.innerText = item.prompt || '';
+                if (block.querySelector('.blk-points')) block.querySelector('.blk-points').value = item.points || 1;
+                if (block.querySelector('.blk-upload-mode')) block.querySelector('.blk-upload-mode').value = item.uploadMode || 'both';
 
             } else if (type === 'mcq') {
                 const promptNode = block.querySelector('.blk-prompt');
                 if (promptNode) promptNode.innerText = item.prompt || item.question || '';
-                if (block.querySelector('.blk-img')) block.querySelector('.blk-img').value = item.imageUrl || '';
                 if (block.querySelector('.blk-points')) block.querySelector('.blk-points').value = item.points || 1;
 
                 // Clear the default options and rebuild based on saved data
@@ -4167,14 +5111,12 @@ async function editQuiz(id) {
             } else if (type === 'fill') {
                 const promptNode = block.querySelector('.blk-prompt');
                 if (promptNode) promptNode.innerText = item.prompt || '';
-                if (block.querySelector('.blk-img')) block.querySelector('.blk-img').value = item.imageUrl || '';
                 if (block.querySelector('.blk-points')) block.querySelector('.blk-points').value = item.points || 1;
                 if (item.answers && block.querySelector('.blk-answer')) block.querySelector('.blk-answer').value = item.answers.join(', ');
 
             } else if (type === 'essay') {
                 const promptNode = block.querySelector('.blk-prompt');
                 if (promptNode) promptNode.innerText = item.prompt || '';
-                if (block.querySelector('.blk-img')) block.querySelector('.blk-img').value = item.imageUrl || '';
                 if (block.querySelector('.blk-points')) block.querySelector('.blk-points').value = item.points || 1;
             }
         });
@@ -4298,23 +5240,72 @@ window.viewQuizResults = async function (quizTitle, quizId = null) {
     if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 24px; color:#64748b;">Loading class rosters and submissions...</td></tr>`;
 
     try {
-        // 1. Fetch Quiz Info to get Assigned Classes
-        let quizData = null;
-        if (quizId) {
-            try {
-                const qSnap = await getDoc(doc(db, "quizzes", quizId));
-                if (qSnap.exists()) quizData = qSnap.data();
-            } catch (e) {
-                console.warn("Could not fetch quiz by id:", e);
+        // 1. Fetch Quiz Info (from cache or Firestore)
+        let quizDataPromise;
+        if (window.cachedQuizzesList && Array.isArray(window.cachedQuizzesList)) {
+            const found = window.cachedQuizzesList.find(q => (quizId && q.id === quizId) || q.title === quizTitle);
+            if (found) quizDataPromise = Promise.resolve(found);
+        }
+        if (!quizDataPromise) {
+            if (quizId) {
+                quizDataPromise = getDoc(doc(db, "quizzes", quizId))
+                    .then(s => s.exists() ? s.data() : null)
+                    .catch(e => { console.warn("Could not fetch quiz by id:", e); return null; });
+            } else {
+                quizDataPromise = getDocs(query(collection(db, "quizzes"), where("title", "==", quizTitle)))
+                    .then(s => !s.empty ? s.docs[0].data() : null)
+                    .catch(e => { console.warn("Could not query quiz by title:", e); return null; });
             }
         }
-        if (!quizData) {
-            const qQuery = query(collection(db, "quizzes"), where("title", "==", quizTitle));
-            const qQuerySnap = await getDocs(qQuery);
-            if (!qQuerySnap.empty) {
-                quizData = qQuerySnap.docs[0].data();
-            }
+
+        // 2. Students Promise (use in-memory allStudentsData cache to avoid heavy re-fetches)
+        let studentsPromise;
+        if (Array.isArray(allStudentsData) && allStudentsData.length > 0) {
+            studentsPromise = Promise.resolve(allStudentsData);
+        } else {
+            studentsPromise = getDocs(collection(db, "students"))
+                .then(snap => {
+                    const list = [];
+                    snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+                    allStudentsData = list;
+                    return list;
+                })
+                .catch(err => {
+                    console.warn("Error fetching students:", err);
+                    return [];
+                });
         }
+
+        // 3. Submissions & Scores Queries (all launched concurrently in parallel!)
+        const subPromise = getDocs(query(collection(db, "quiz_results"), where("quizTitle", "==", quizTitle))).catch(err => {
+            console.warn("Error fetching quiz_results:", err);
+            return null;
+        });
+
+        const examScoresPromise = getDocs(query(collection(db, "exam_scores"), where("examName", "==", quizTitle))).catch(err => {
+            console.warn("Error fetching exam_scores (examName):", err);
+            return null;
+        });
+
+        const quizNameScoresPromise = getDocs(query(collection(db, "exam_scores"), where("quizName", "==", quizTitle))).catch(err => {
+            console.warn("Error fetching exam_scores (quizName):", err);
+            return null;
+        });
+
+        const legacyScoresPromise = getDocs(query(collection(db, "scores"), where("quizTitle", "==", quizTitle))).catch(err => {
+            console.warn("Error fetching legacy scores:", err);
+            return null;
+        });
+
+        // Await all parallel requests concurrently!
+        const [quizData, rawStudents, subSnap, examScoresSnap, quizNameSnap, scoresSnap] = await Promise.all([
+            quizDataPromise,
+            studentsPromise,
+            subPromise,
+            examScoresPromise,
+            quizNameScoresPromise,
+            legacyScoresPromise
+        ]);
 
         const subject = quizData?.subject || "General";
         if (subjectTag) subjectTag.innerText = subject;
@@ -4343,22 +5334,19 @@ window.viewQuizResults = async function (quizTitle, quizId = null) {
             targetTag.innerText = isAllClasses ? "Assigned: All Classes" : `Assigned: ${assignedClasses.join(', ')}`;
         }
 
-        // 2. Fetch all students from Firestore
-        const studentsSnap = await getDocs(collection(db, "students"));
+        // Process Students
         let eligibleStudents = [];
-
-        studentsSnap.forEach(docSnap => {
-            const sData = docSnap.data();
+        (rawStudents || []).forEach(sData => {
             const sClass = (sData.studentClass || sData.class || sData.Class || 'N/A').trim();
-            const sCode = sData.code || docSnap.id;
+            const sCode = sData.code || sData.id;
             const sName = sData.studentName || sData.name || 'Unknown Student';
 
             if (isAllClasses) {
-                eligibleStudents.push({ id: docSnap.id, code: sCode, studentName: sName, studentClass: sClass });
+                eligibleStudents.push({ id: sData.id, code: sCode, studentName: sName, studentClass: sClass });
             } else {
                 const match = assignedClasses.some(c => c.toLowerCase() === sClass.toLowerCase());
                 if (match) {
-                    eligibleStudents.push({ id: docSnap.id, code: sCode, studentName: sName, studentClass: sClass });
+                    eligibleStudents.push({ id: sData.id, code: sCode, studentName: sName, studentClass: sClass });
                 }
             }
         });
@@ -4370,32 +5358,21 @@ window.viewQuizResults = async function (quizTitle, quizId = null) {
             return a.studentName.localeCompare(b.studentName);
         });
 
-        // 3. Fetch Quiz Submissions (quiz_results)
+        // Process Quiz Submissions (quiz_results)
         const submissionsMap = {};
-        try {
-            const qResults = query(collection(db, "quiz_results"), where("quizTitle", "==", quizTitle));
-            const subSnap = await getDocs(qResults);
+        if (subSnap && subSnap.forEach) {
             subSnap.forEach(docSnap => {
                 const data = docSnap.data();
                 const sCode = (data.studentCode || '').toString().trim().toLowerCase();
                 const sName = (data.studentName || '').toString().trim().toLowerCase();
-                if (sCode) {
-                    submissionsMap[sCode] = { id: docSnap.id, ...data };
-                }
-                if (sName) {
-                    submissionsMap[`name_${sName}`] = { id: docSnap.id, ...data };
-                }
+                if (sCode) submissionsMap[sCode] = { id: docSnap.id, ...data };
+                if (sName) submissionsMap[`name_${sName}`] = { id: docSnap.id, ...data };
             });
-        } catch (err) {
-            console.warn("Error fetching quiz_results:", err);
         }
 
-        // 4. Fetch Saved Scores (from unified exam_scores and legacy scores)
+        // Process Saved Scores (from unified exam_scores and legacy scores)
         const scoresMap = {};
-        try {
-            // Query unified exam_scores by examName and quizName
-            const examScoresQuery = query(collection(db, "exam_scores"), where("examName", "==", quizTitle));
-            const examScoresSnap = await getDocs(examScoresQuery);
+        if (examScoresSnap && examScoresSnap.forEach) {
             examScoresSnap.forEach(docSnap => {
                 const data = docSnap.data();
                 const code = (data.studentCode || '').toString().trim().toLowerCase();
@@ -4403,9 +5380,9 @@ window.viewQuizResults = async function (quizTitle, quizId = null) {
                 if (code) scoresMap[code] = data.score;
                 if (name) scoresMap[`name_${name}`] = data.score;
             });
+        }
 
-            const quizNameQuery = query(collection(db, "exam_scores"), where("quizName", "==", quizTitle));
-            const quizNameSnap = await getDocs(quizNameQuery);
+        if (quizNameSnap && quizNameSnap.forEach) {
             quizNameSnap.forEach(docSnap => {
                 const data = docSnap.data();
                 const code = (data.studentCode || '').toString().trim().toLowerCase();
@@ -4413,23 +5390,16 @@ window.viewQuizResults = async function (quizTitle, quizId = null) {
                 if (code && scoresMap[code] === undefined) scoresMap[code] = data.score;
                 if (name && scoresMap[`name_${name}`] === undefined) scoresMap[`name_${name}`] = data.score;
             });
+        }
 
-            // Also check legacy scores collection
-            const scoresQuery = query(collection(db, "scores"), where("quizTitle", "==", quizTitle));
-            const scoresSnap = await getDocs(scoresQuery);
+        if (scoresSnap && scoresSnap.forEach) {
             scoresSnap.forEach(docSnap => {
                 const data = docSnap.data();
                 const code = (data.studentCode || docSnap.id || '').toString().trim().toLowerCase();
                 const name = (data.studentName || '').toString().trim().toLowerCase();
-                if (code && scoresMap[code] === undefined) {
-                    scoresMap[code] = data.score;
-                }
-                if (name && scoresMap[`name_${name}`] === undefined) {
-                    scoresMap[`name_${name}`] = data.score;
-                }
+                if (code && scoresMap[code] === undefined) scoresMap[code] = data.score;
+                if (name && scoresMap[`name_${name}`] === undefined) scoresMap[`name_${name}`] = data.score;
             });
-        } catch (err) {
-            console.warn("Error fetching scores:", err);
         }
 
         // 5. Build Distinct Classes List directly from eligible students
@@ -4458,8 +5428,8 @@ window.viewQuizResults = async function (quizTitle, quizId = null) {
             searchKeyword: ''
         };
 
-        // 7. Render Class Selection Pills
-        renderQuizClassPills();
+        // 7. Render Class Selection Dropdown
+        renderQuizClassDropdown();
 
         // 8. Render Results Table
         renderQuizResultsTable();
@@ -4470,62 +5440,50 @@ window.viewQuizResults = async function (quizTitle, quizId = null) {
     }
 };
 
-function renderQuizClassPills() {
+function renderQuizClassDropdown() {
     const state = window.quizResultsCurrentState;
-    const container = document.getElementById("quizClassPillsContainer");
-    if (!container) return;
+    const select = document.getElementById("quizClassSelect");
+    if (!select) return;
 
     const normalize = (str) => (str || '').toString().trim().toLowerCase();
     const totalCount = state.eligibleStudents.length;
 
-    let html = `
-        <button type="button" 
-            data-class="all"
-            class="quiz-class-pill ${state.selectedClass === 'all' ? 'active' : ''}" 
-            onclick="window.setQuizClassFilter('all', this)">
-            All (${totalCount})
-        </button>
-    `;
+    let html = `<option value="all">All Classes (${totalCount})</option>`;
 
     state.distinctClasses.forEach(cls => {
         const countInCls = state.eligibleStudents.filter(s => normalize(s.studentClass) === normalize(cls)).length;
-        const isActive = normalize(state.selectedClass) === normalize(cls);
-        html += `
-            <button type="button" 
-                data-class="${escapeHtml(cls)}"
-                class="quiz-class-pill ${isActive ? 'active' : ''}" 
-                onclick="window.setQuizClassFilter('${cls.replace(/'/g, "\\'")}', this)">
-                ${escapeHtml(cls)} (${countInCls})
-            </button>
-        `;
+        const isSelected = normalize(state.selectedClass) === normalize(cls) ? 'selected' : '';
+        html += `<option value="${escapeHtml(cls)}" ${isSelected}>${escapeHtml(cls)} (${countInCls})</option>`;
     });
 
-    container.innerHTML = html;
+    select.innerHTML = html;
+    select.value = state.selectedClass || 'all';
+
+    const statusSelect = document.getElementById("quizStatusSelect");
+    if (statusSelect) {
+        statusSelect.value = state.statusFilter || 'all';
+    }
 }
 
-window.setQuizClassFilter = function (cls, btn = null) {
+// Backward-compatible alias
+window.renderQuizClassPills = renderQuizClassDropdown;
+
+window.setQuizClassFilter = function (cls) {
+    if (!window.quizResultsCurrentState) return;
     window.quizResultsCurrentState.selectedClass = cls;
 
-    const container = document.getElementById("quizClassPillsContainer");
-    if (container) {
-        const normalize = (str) => (str || '').toString().trim().toLowerCase();
-        container.querySelectorAll(".quiz-class-pill").forEach(p => {
-            const pClass = p.getAttribute("data-class");
-            const isMatch = normalize(pClass) === normalize(cls);
-            p.classList.toggle("active", isMatch);
-        });
-    }
+    const select = document.getElementById("quizClassSelect");
+    if (select && select.value !== cls) select.value = cls;
 
     renderQuizResultsTable();
 };
 
-window.setQuizStatusFilter = function (status, btn = null) {
+window.setQuizStatusFilter = function (status) {
+    if (!window.quizResultsCurrentState) return;
     window.quizResultsCurrentState.statusFilter = status;
 
-    const buttons = document.querySelectorAll(".quiz-status-filter-btn");
-    buttons.forEach(b => {
-        b.classList.toggle("active", b.getAttribute("data-filter") === status);
-    });
+    const select = document.getElementById("quizStatusSelect");
+    if (select && select.value !== status) select.value = status;
 
     renderQuizResultsTable();
 };
@@ -4609,7 +5567,7 @@ function renderQuizResultsTable() {
                         </svg>
                     </div>
                     <div style="font-weight: 600; font-size: 14px; color: var(--text-dark, #334155);">No students match your filter</div>
-                    <div style="font-size: 12px; margin-top: 4px;">Try selecting another class tab or adjusting the search filter.</div>
+                    <div style="font-size: 12px; margin-top: 4px;">Try selecting another class or adjusting the search and status filter.</div>
                 </td>
             </tr>
         `;
@@ -4620,8 +5578,8 @@ function renderQuizResultsTable() {
 
     filtered.forEach(student => {
         const studentCode = student.code || student.id;
-        const studentName = student.studentName;
-        const studentClass = student.studentClass;
+        const studentName = student.studentName || "Unknown Student";
+        const studentClass = student.studentClass || "-";
 
         const normCode = normalize(student.code);
         const normId = normalize(student.id);
@@ -4633,40 +5591,41 @@ function renderQuizResultsTable() {
         const savedScore = state.scoresMap[normCode] ?? state.scoresMap[normId] ?? state.scoresMap[`name_${normName}`] ?? "";
         const hasOfficialScore = savedScore !== "" && savedScore !== undefined && savedScore !== null;
 
-        // Status Badge HTML with visual icon
+        // Compact Avatar initial
+        const initial = studentName.trim().charAt(0).toUpperCase() || "?";
+
+        // Compact Status Badge HTML (horizontal layout)
         let statusBadgeHtml = "";
         if (isSubmittedOnline) {
             const autoScoreTxt = (subData.totalAutoGradable && subData.totalAutoGradable > 0)
-                ? `<small style="display:block; font-size:11px; color:#047857; font-weight:600; margin-top:2px;">Auto: ${subData.score ?? 0}/${subData.totalAutoGradable} pts</small>`
+                ? `<span class="quiz-badge-score-pill" title="Auto-graded score">${subData.score ?? 0}/${subData.totalAutoGradable}</span>`
                 : '';
 
             statusBadgeHtml = `
-                <div style="display:flex; flex-direction:column; align-items:center;">
+                <div style="display:inline-flex; align-items:center; gap:3px; justify-content:center;">
                     <span class="quiz-badge-status-done" title="Submitted Online">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                        Done
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span>Done</span>
                     </span>
                     ${autoScoreTxt}
                 </div>
             `;
         } else if (hasOfficialScore) {
             statusBadgeHtml = `
-                <div style="display:flex; flex-direction:column; align-items:center;">
-                    <span class="quiz-badge-status-done" style="background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe;" title="Graded Offline">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                        Graded
+                <div style="display:inline-flex; align-items:center; gap:3px; justify-content:center;">
+                    <span class="quiz-badge-status-graded" title="Graded Offline">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span>Graded</span>
                     </span>
-                    <small style="display:block; font-size:11px; color:#64748b; margin-top:2px;">Offline Score</small>
                 </div>
             `;
         } else {
             statusBadgeHtml = `
-                <div style="display:flex; flex-direction:column; align-items:center;">
+                <div style="display:inline-flex; align-items:center; gap:3px; justify-content:center;">
                     <span class="quiz-badge-status-pending" title="Not submitted yet">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                        Not Done
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        <span>Pending</span>
                     </span>
-                    <small style="display:block; font-size:11px; color:#94a3b8; margin-top:2px;">Unsubmitted</small>
                 </div>
             `;
         }
@@ -4676,72 +5635,187 @@ function renderQuizResultsTable() {
         const safeQuizTitle = state.quizTitle.replace(/'/g, "\\'");
 
         tbody.innerHTML += `
-            <tr style="border-bottom: 1px solid var(--border-color, #f1f5f9);">
-                <td style="padding: 10px 14px;">
-                    <div style="font-weight: 700; color: var(--text-dark, #1e293b); font-size: 13.5px;">${studentName}</div>
-                    <div style="font-size: 11px; color: #64748b; font-family: monospace; margin-top: 1px;">ID: ${studentCode}</div>
+            <tr class="quiz-result-row">
+                <td style="padding: 6px 14px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span class="student-mini-avatar">${initial}</span>
+                        <span class="student-row-name" title="${studentName}">${studentName}</span>
+                    </div>
                 </td>
-                <td style="padding: 10px 14px;">
+                <td style="padding: 6px 12px;">
                     <span class="quiz-class-tag">${studentClass}</span>
                 </td>
-                <td style="padding: 10px 14px; text-align: center;">
+                <td style="padding: 6px 12px; text-align: center;">
                     ${statusBadgeHtml}
                 </td>
-                <td style="padding: 10px 14px;">
-                    <div style="display:flex; align-items:center; gap:6px;">
+                <td style="padding: 6px 12px; text-align: center;">
+                    <div style="display:inline-flex; align-items:center; gap:4px; justify-content:center;">
                         <input 
                             type="number" 
                             id="score-input-${studentCode}" 
                             class="direct-score-input" 
                             value="${savedScore}" 
-                            placeholder="0 - 100" 
+                            placeholder="0-100" 
                             min="0" 
                             max="100"
-                            style="width: 70px; height: 30px; padding: 0 6px; font-size: 13px; font-weight: 700; text-align: center; border: 1px solid var(--border-color, #cbd5e1); border-radius: 6px; background: var(--bg-card, #ffffff); color: var(--text-dark, #1e293b); margin: 0 !important;"
                         >
                         <span id="score-badge-${studentCode}" style="${savedScore !== '' ? 'display:inline-flex;' : 'display:none;'} align-items:center; color:#10b981;" title="Official score saved">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                         </span>
                     </div>
                 </td>
-                <td style="padding: 10px 14px; text-align: right;">
-                    <div style="display: inline-flex; gap: 6px; align-items: center;">
+                <td style="padding: 6px 14px; text-align: right;">
+                    <div class="quiz-row-options-dropdown">
                         <button 
-                            type="button"
-                            class="btn-quiz-check" 
-                            onclick="viewStudentAnswers('${studentCode}', '${safeStudentName}', '${safeQuizTitle}', '${safeStudentClass}')"
-                            style="background: ${isSubmittedOnline ? '#4f46e5' : '#64748b'}; color: white;"
-                            title="${isSubmittedOnline ? 'Inspect submitted answers' : 'View student details & grade'}"
+                            type="button" 
+                            class="btn-quiz-option" 
+                            onclick="window.toggleQuizRowMenu(event, '${studentCode}')"
+                            title="Options for ${safeStudentName}"
+                            aria-haspopup="true"
                         >
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                            <span>Check</span>
+                            <span>Option</span>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                         </button>
-                        <button 
-                            type="button"
-                            id="save-btn-${studentCode}"
-                            class="btn-quiz-save" 
-                            onclick="saveDirectScore('${studentCode}', '${safeStudentName}', '${safeStudentClass}', '${safeQuizTitle}', this)"
-                            style="background: #2563eb; color: white;"
-                            title="Save score to ledger"
-                        >
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                            <span>Save</span>
-                        </button>
-                        ${isSubmittedOnline ? `
+                        <div id="quiz-menu-${studentCode}" class="quiz-options-menu hidden">
                             <button 
-                                type="button"
-                                class="btn-quiz-check" 
-                                onclick="deleteStudentQuizSubmission('${subData.id}', '${safeStudentName}', '${safeQuizTitle}')"
-                                style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 5px 8px;"
-                                title="Delete this online submission"
+                                type="button" 
+                                class="quiz-option-item" 
+                                onclick="window.handleCheckOption('${studentCode}', '${safeStudentName}', '${safeQuizTitle}', '${safeStudentClass}')"
+                            >
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                <span>Check Result</span>
+                            </button>
+                            <button 
+                                type="button" 
+                                class="quiz-option-item quiz-option-delete" 
+                                onclick="window.handleDeleteOption('${studentCode}', '${subData?.id || ''}', '${safeStudentName}', '${safeQuizTitle}', '${safeStudentClass}')"
+                                ${!isSubmittedOnline && !hasOfficialScore ? 'style="opacity:0.45; pointer-events:none;" title="No result to delete"' : ''}
                             >
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                <span>Delete Result</span>
                             </button>
-                        ` : ''}
+                        </div>
                     </div>
                 </td>
             </tr>
         `;
+    });
+}
+
+window.toggleQuizRowMenu = function (e, studentCode) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    const targetMenu = document.getElementById(`quiz-menu-${studentCode}`);
+    if (!targetMenu) return;
+
+    const isCurrentlyOpen = !targetMenu.classList.contains("hidden");
+
+    // Close all open menus first
+    document.querySelectorAll(".quiz-options-menu").forEach(m => m.classList.add("hidden"));
+
+    if (!isCurrentlyOpen) {
+        targetMenu.classList.remove("hidden");
+
+        // Smart flip upwards if close to bottom of table body
+        const tableBody = document.querySelector(".quiz-results-body");
+        if (tableBody) {
+            const bodyRect = tableBody.getBoundingClientRect();
+            const menuRect = targetMenu.getBoundingClientRect();
+            if (menuRect.bottom > bodyRect.bottom - 10) {
+                targetMenu.style.top = "auto";
+                targetMenu.style.bottom = "100%";
+                targetMenu.style.marginTop = "0";
+                targetMenu.style.marginBottom = "4px";
+            } else {
+                targetMenu.style.top = "100%";
+                targetMenu.style.bottom = "auto";
+                targetMenu.style.marginTop = "4px";
+                targetMenu.style.marginBottom = "0";
+            }
+        }
+    }
+};
+
+window.handleCheckOption = function (studentCode, studentName, quizTitle, studentClass) {
+    document.querySelectorAll(".quiz-options-menu").forEach(m => m.classList.add("hidden"));
+    window.viewStudentAnswers(studentCode, studentName, quizTitle, studentClass);
+};
+
+window.handleDeleteOption = async function (studentCode, submissionId, studentName, quizTitle, studentClass) {
+    document.querySelectorAll(".quiz-options-menu").forEach(m => m.classList.add("hidden"));
+
+    const hasOnline = !!submissionId;
+    const confirmMsg = hasOnline 
+        ? `Are you sure you want to delete the submission & score for ${studentName} on "${quizTitle}"?`
+        : `Are you sure you want to delete the saved score for ${studentName} on "${quizTitle}"?`;
+
+    if (!confirm(confirmMsg)) return;
+
+    try {
+        // 1. Delete online submission from quiz_results if exists
+        if (submissionId) {
+            await deleteDoc(doc(db, "quiz_results", submissionId));
+        }
+
+        // 2. Also delete from exam_scores and legacy scores if saved
+        const state = window.quizResultsCurrentState || {};
+        let subject = state.quizData?.subject || state.subject || "";
+        if (!subject || subject === "General") {
+            const subjectTag = document.getElementById('quizResultsSubjectTag')?.innerText?.trim();
+            if (subjectTag && subjectTag !== "Subject" && subjectTag !== "Loading...") {
+                subject = subjectTag;
+            }
+        }
+        if (!subject) subject = (typeof teacherSubject !== "undefined" && teacherSubject && teacherSubject !== "all") ? teacherSubject : "English";
+
+        const customDocId = `${studentCode}_${subject}_${quizTitle}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+        const scoreDocId = `${studentCode}_${quizTitle.replace(/[^a-zA-Z0-9]/g, "_")}`;
+
+        try {
+            await deleteDoc(doc(db, "exam_scores", customDocId));
+        } catch (_) {}
+        try {
+            await deleteDoc(doc(db, "scores", scoreDocId));
+        } catch (_) {}
+
+        // 3. Clear local state
+        const normCode = (studentCode || '').toString().trim().toLowerCase();
+        const normName = (studentName || '').toString().trim().toLowerCase();
+        if (state.submissionsMap) {
+            delete state.submissionsMap[normCode];
+            delete state.submissionsMap[`name_${normName}`];
+        }
+        if (state.scoresMap) {
+            delete state.scoresMap[normCode];
+            delete state.scoresMap[`name_${normName}`];
+        }
+
+        // 4. Reset input in UI
+        const input = document.getElementById(`score-input-${studentCode}`);
+        if (input) input.value = "";
+        const badge = document.getElementById(`score-badge-${studentCode}`);
+        if (badge) badge.style.display = "none";
+
+        alert(`Result for ${studentName} deleted successfully!`);
+
+        // Re-render table and stats
+        renderQuizResultsTable();
+
+    } catch (err) {
+        console.error("Error deleting result:", err);
+        alert("Error deleting result: " + err.message);
+    }
+};
+
+// Global click handler to close open option menus
+if (!window._quizMenuGlobalDismissAttached) {
+    window._quizMenuGlobalDismissAttached = true;
+    document.addEventListener("click", (e) => {
+        if (!e.target.closest(".quiz-row-options-dropdown")) {
+            document.querySelectorAll(".quiz-options-menu").forEach(m => m.classList.add("hidden"));
+        }
     });
 }
 
@@ -4769,13 +5843,16 @@ window.viewStudentAnswers = async function (studentCode, studentName, quizTitle,
 
     const titleEl = document.getElementById("studentAnswersTitle");
     const subTitleEl = document.getElementById("studentAnswersSubtitle");
+    const avatarEl = document.getElementById("studentAnswersAvatar");
     const autoScoreEl = document.getElementById("autoScoreReference");
     const container = document.getElementById("answersDetailContainer");
     const footerEl = document.getElementById("answersModalFooter");
 
+    const initial = (studentName || "?").trim().charAt(0).toUpperCase() || "?";
+    if (avatarEl) avatarEl.innerText = initial;
     if (titleEl) titleEl.innerText = `${studentName}'s Submission`;
     if (subTitleEl) subTitleEl.innerText = studentClass ? `Class: ${studentClass} • Student ID: ${studentCode}` : `Student ID: ${studentCode}`;
-    if (autoScoreEl) autoScoreEl.innerHTML = `<em>Loading submission details...</em>`;
+    if (autoScoreEl) autoScoreEl.innerHTML = `<div style="font-size:12px; color:#64748b; padding:8px 0;">Loading submission details...</div>`;
     if (container) container.innerHTML = "";
 
     // Pre-fill score in footer
@@ -4786,25 +5863,33 @@ window.viewStudentAnswers = async function (studentCode, studentName, quizTitle,
 
     if (footerEl) {
         footerEl.innerHTML = `
-            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                <label style="font-size:13px; font-weight:700; color:var(--text-dark, #1e293b);">Assign Official Grade (0 - 100):</label>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <label style="font-size:12px; font-weight:700; color:var(--text-dark, #0f172a);">Grade (0 - 100):</label>
                 <input 
                     type="number" 
                     id="modalDirectScoreInput" 
                     value="${currentScore}" 
-                    placeholder="Score" 
+                    placeholder="0-100" 
                     min="0" 
                     max="100" 
-                    style="width:80px; height:32px; padding:0 8px; font-size:13.5px; font-weight:700; text-align:center; border-radius:8px; border:1px solid var(--border-color, #cbd5e1); background:var(--bg-card, #fff); color:var(--text-dark, #1e293b); margin:0 !important;"
+                    class="direct-score-input"
+                    style="width:68px; height:30px; font-size:13px; font-weight:800; border-radius:6px; text-align:center;"
                 >
             </div>
-            <div style="display:flex; gap:8px;">
+            <div style="display:flex; gap:8px; align-items:center;">
+                <button 
+                    type="button" 
+                    onclick="closeAnswersModal()" 
+                    style="height:32px; padding:0 12px; border-radius:7px; border:1px solid #cbd5e1; background:#ffffff; color:#475569; font-size:12px; font-weight:600; cursor:pointer;"
+                >
+                    Cancel
+                </button>
                 <button 
                     type="button" 
                     onclick="saveModalGrade('${studentCode}', '${safeStudentName}', '${safeStudentClass}', '${safeQuizTitle}')" 
-                    style="background:#2563eb; color:white; border:none; padding:8px 16px; border-radius:8px; font-size:12.5px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px; height:34px;"
+                    style="height:32px; padding:0 14px; border-radius:7px; border:none; background:#2563eb; color:#ffffff; font-size:12px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:5px; box-shadow:0 2px 5px rgba(37,99,235,0.25);"
                 >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
                     <span>Save Grade & Close</span>
                 </button>
             </div>
@@ -4822,11 +5907,11 @@ window.viewStudentAnswers = async function (studentCode, studentName, quizTitle,
         if (querySnap.empty) {
             if (autoScoreEl) {
                 autoScoreEl.innerHTML = `
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <div style="display:flex; align-items:center; gap:10px; padding:8px 12px; background:#fef3c7; border:1px solid #fde68a; border-radius:8px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                         <div>
-                            <strong style="color: #f59e0b; font-size:13.5px;">No Online Submission Found</strong>
-                            <div style="color: #64748b; font-size:12px; margin-top:2px;">The student has not submitted this quiz digitally yet. You can still manually enter and save their offline grade below.</div>
+                            <strong style="color: #b45309; font-size:12.5px;">No Online Submission Found</strong>
+                            <div style="color: #92400e; font-size:11px; margin-top:1px;">The student has not submitted this quiz digitally yet. You can still assign and save their offline grade below.</div>
                         </div>
                     </div>
                 `;
@@ -4848,26 +5933,6 @@ window.viewStudentAnswers = async function (studentCode, studentName, quizTitle,
         const responses = subData.responses || [];
         const submittedTime = subData.submittedAt ? new Date(subData.submittedAt).toLocaleString() : "Recently";
 
-        if (autoScoreEl) {
-            autoScoreEl.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                    <div>
-                        <span style="color: #475569; font-size: 12px; font-weight:600;">Auto-Graded Reference:</span><br>
-                        <strong style="font-size: 18px; color: #1e293b;">${score} / ${totalMax} points (${percentage}%)</strong>
-                        <div style="color: #64748b; font-size: 11px; margin-top: 2px;">Submitted: ${submittedTime}</div>
-                    </div>
-                    <button type="button" onclick="document.getElementById('modalDirectScoreInput').value = ${percentage};" style="background:#e0e7ff; color:#4338ca; border:1px solid #c7d2fe; padding:6px 12px; font-size:12px; font-weight:600; border-radius:6px; cursor:pointer;" title="Apply auto-graded % to official score">
-                        Apply ${percentage}% as Grade
-                    </button>
-                </div>
-            `;
-        }
-
-        if (!responses.length) {
-            if (container) container.innerHTML = `<p style="color: #64748b; text-align: center;">No detailed item responses logged for this submission.</p>`;
-            return;
-        }
-
         // Fetch Quiz Definition for accurate Answer Key comparison
         let quizDocData = window.quizResultsCurrentState?.quizData;
         if (!quizDocData || !quizDocData.items) {
@@ -4882,92 +5947,173 @@ window.viewStudentAnswers = async function (studentCode, studentName, quizTitle,
             }
         }
 
-        const gradableQuizItems = (quizDocData?.items || quizDocData?.questions || []).filter(it => it.type !== 'header' && it.type !== 'passage');
+        const gradableQuizItems = (quizDocData?.items || quizDocData?.questions || []).filter(it => it.type !== 'header' && it.type !== 'passage' && it.type !== 'image');
+
+        // Pre-calculate correct, incorrect, and essay counts
+        let correctCount = 0;
+        let incorrectCount = 0;
+        let essayCount = 0;
+
+        const preparedResponses = responses.map((item, index) => {
+            const normStudentResp = (item.response || '').toString().trim().toLowerCase();
+            const originalQuizItem = gradableQuizItems[index] || gradableQuizItems.find(q => (q.prompt || q.question || '').trim().toLowerCase() === (item.prompt || '').trim().toLowerCase());
+
+            let isCorrect = item.isCorrect;
+            let expectedAnswer = item.expected || '';
+            let isEssay = item.isEssay || (originalQuizItem && originalQuizItem.type === 'essay');
+            let isFileUpload = item.isFileUpload || (originalQuizItem && originalQuizItem.type === 'fileupload');
+            let fileUrl = item.fileUrl || '';
+            if (!fileUrl && item.response && (item.response.startsWith('http://') || item.response.startsWith('https://'))) {
+                fileUrl = item.response;
+            }
+            let fileName = item.fileName || '';
+
+            if (isCorrect === undefined && originalQuizItem) {
+                if (originalQuizItem.type === 'fill') {
+                    const acceptable = (originalQuizItem.answers || []).map(a => (a || '').toString().trim().toLowerCase());
+                    isCorrect = acceptable.length > 0 ? acceptable.includes(normStudentResp) : false;
+                    expectedAnswer = (originalQuizItem.answers || []).join(' / ');
+                } else if (originalQuizItem.type === 'mcq' || (!originalQuizItem.type && originalQuizItem.question)) {
+                    const correctIdx = originalQuizItem.correct;
+                    const correctOption = (originalQuizItem.options && correctIdx !== undefined) ? originalQuizItem.options[correctIdx] : '';
+                    isCorrect = correctOption ? (normStudentResp === correctOption.toString().trim().toLowerCase()) : false;
+                    expectedAnswer = correctOption;
+                } else if (originalQuizItem.type === 'matching') {
+                    const totalPairs = (originalQuizItem.lefts || []).length;
+                    isCorrect = totalPairs > 0 ? (normStudentResp.startsWith(`${totalPairs}/${totalPairs}`)) : false;
+                    expectedAnswer = (originalQuizItem.lefts || []).map((l, i) => `${l} → ${(originalQuizItem.rights || [])[i]}`).join(', ');
+                } else if (originalQuizItem.type === 'essay') {
+                    isEssay = true;
+                } else if (originalQuizItem.type === 'fileupload') {
+                    isFileUpload = true;
+                }
+            }
+
+            if (isEssay || isFileUpload) essayCount++;
+            else if (isCorrect === true) correctCount++;
+            else if (isCorrect === false) incorrectCount++;
+
+            return {
+                item,
+                index,
+                isCorrect,
+                expectedAnswer,
+                isEssay,
+                isFileUpload,
+                fileUrl,
+                fileName
+            };
+        });
+
+        if (autoScoreEl) {
+            autoScoreEl.innerHTML = `
+                <div class="quiz-review-summary-card">
+                    <div class="quiz-review-summary-left">
+                        <div class="quiz-review-score-badge">
+                            <span class="quiz-review-score-big">${score}/${totalMax} pts</span>
+                            <span class="quiz-review-pct-pill">${percentage}%</span>
+                        </div>
+                        <div class="quiz-review-meta">
+                            <div class="quiz-review-pills-row">
+                                <span class="review-stat-pill review-stat-correct">
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    ${correctCount} Correct
+                                </span>
+                                <span class="review-stat-pill review-stat-incorrect">
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                    ${incorrectCount} Incorrect
+                                </span>
+                                ${essayCount > 0 ? `
+                                <span class="review-stat-pill review-stat-essay">
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                                    ${essayCount} Review
+                                </span>` : ''}
+                            </div>
+                            <div class="quiz-review-time">Submitted: ${submittedTime}</div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-apply-auto-grade" onclick="document.getElementById('modalDirectScoreInput').value = ${percentage};" title="Apply auto-graded % as official grade">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span>Apply ${percentage}% as Grade</span>
+                    </button>
+                </div>
+            `;
+        }
+
+        if (!responses.length) {
+            if (container) container.innerHTML = `<p style="color: #64748b; text-align: center; padding: 16px;">No detailed item responses logged for this submission.</p>`;
+            return;
+        }
 
         if (container) {
-            container.innerHTML = responses.map((item, index) => {
-                const normStudentResp = (item.response || '').toString().trim().toLowerCase();
-
-                // Find matching question from quiz definition
-                const originalQuizItem = gradableQuizItems[index] || gradableQuizItems.find(q => (q.prompt || q.question || '').trim().toLowerCase() === (item.prompt || '').trim().toLowerCase());
-
-                let isCorrect = item.isCorrect;
-                let expectedAnswer = item.expected || '';
-                let isEssay = item.isEssay || (originalQuizItem && originalQuizItem.type === 'essay');
-
-                if (isCorrect === undefined && originalQuizItem) {
-                    if (originalQuizItem.type === 'fill') {
-                        const acceptable = (originalQuizItem.answers || []).map(a => (a || '').toString().trim().toLowerCase());
-                        isCorrect = acceptable.length > 0 ? acceptable.includes(normStudentResp) : false;
-                        expectedAnswer = (originalQuizItem.answers || []).join(' / ');
-                    } else if (originalQuizItem.type === 'mcq' || (!originalQuizItem.type && originalQuizItem.question)) {
-                        const correctIdx = originalQuizItem.correct;
-                        const correctOption = (originalQuizItem.options && correctIdx !== undefined) ? originalQuizItem.options[correctIdx] : '';
-                        isCorrect = correctOption ? (normStudentResp === correctOption.toString().trim().toLowerCase()) : false;
-                        expectedAnswer = correctOption;
-                    } else if (originalQuizItem.type === 'matching') {
-                        const totalPairs = (originalQuizItem.lefts || []).length;
-                        isCorrect = totalPairs > 0 ? (normStudentResp.startsWith(`${totalPairs}/${totalPairs}`)) : false;
-                        expectedAnswer = (originalQuizItem.lefts || []).map((l, i) => `${l} → ${(originalQuizItem.rights || [])[i]}`).join(', ');
-                    } else if (originalQuizItem.type === 'essay') {
-                        isEssay = true;
-                    }
-                }
-
-                // Render Badge & Card Style
+            container.innerHTML = preparedResponses.map(({ item, index, isCorrect, expectedAnswer, isEssay, isFileUpload, fileUrl, fileName }) => {
                 let statusBadge = '';
-                let borderLeftColor = '#3b82f6';
-                let expectedHtml = '';
-
-                if (isEssay) {
+                const isReview = isEssay || isFileUpload;
+                if (isFileUpload) {
                     statusBadge = `
-                        <span style="display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:14px; font-size:11.5px; font-weight:700; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe;">
+                        <span class="review-stat-pill review-stat-essay" style="background: #e0e7ff; color: #4338ca; border-color: #c7d2fe;">
+                            File Upload
+                        </span>
+                    `;
+                } else if (isEssay) {
+                    statusBadge = `
+                        <span class="review-stat-pill review-stat-essay">
                             Manual Review
                         </span>
                     `;
-                    borderLeftColor = '#3b82f6';
                 } else if (isCorrect === true) {
                     statusBadge = `
-                        <span style="display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:14px; font-size:11.5px; font-weight:700; background:#dcfce7; color:#15803d; border:1px solid #bbf7d0;">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span class="review-stat-pill review-stat-correct">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
                             Correct
                         </span>
                     `;
-                    borderLeftColor = '#10b981';
                 } else if (isCorrect === false) {
                     statusBadge = `
-                        <span style="display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:14px; font-size:11.5px; font-weight:700; background:#fee2e2; color:#b91c1c; border:1px solid #fecaca;">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#b91c1c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        <span class="review-stat-pill review-stat-incorrect">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                             Incorrect
                         </span>
                     `;
-                    borderLeftColor = '#ef4444';
-
-                    if (expectedAnswer) {
-                        expectedHtml = `
-                            <div style="margin-top: 8px; font-size: 12.5px; color: #991b1b; background: #fef2f2; padding: 6px 12px; border-radius: 6px; border: 1px solid #fee2e2; display: flex; align-items: center; gap: 6px;">
-                                <strong style="color: #7f1d1d;">Expected Answer:</strong>
-                                <span>${escapeHtml(expectedAnswer)}</span>
-                            </div>
-                        `;
-                    }
                 }
 
+                const cardTypeClass = isReview ? 'is-review' : (isCorrect === true ? 'is-correct' : 'is-incorrect');
+                const numTypeClass = isReview ? 'num-review' : (isCorrect === true ? 'num-correct' : 'num-incorrect');
+                const chipTypeClass = isReview ? 'chip-review' : (isCorrect === true ? 'chip-correct' : 'chip-incorrect');
+
                 return `
-                    <div style="border: 1px solid var(--border-color, #e2e8f0); padding: 14px 16px; margin-bottom: 12px; border-radius: 10px; background: var(--bg-card-subtle, #f8fafc); border-left: 5px solid ${borderLeftColor};">
-                        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:8px;">
-                            <p style="margin: 0; font-weight: 700; color: var(--text-dark, #1e293b); font-size:14px; line-height: 1.4; flex: 1;">
-                                Q${index + 1}: ${item.prompt || 'Question'}
-                            </p>
-                            <div style="flex-shrink: 0;">
+                    <div class="review-question-card ${cardTypeClass}">
+                        <div class="review-q-header">
+                            <div style="display:flex; align-items:flex-start; gap:7px; flex:1; min-width:0;">
+                                <span class="review-q-num ${numTypeClass}">Q${index + 1}</span>
+                                <span class="review-q-prompt">${escapeHtml(item.prompt || 'Question')}</span>
+                            </div>
+                            <div style="flex-shrink:0;">
                                 ${statusBadge}
                             </div>
                         </div>
-                        <div style="background: var(--bg-card, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px; padding: 10px 14px;">
-                            <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Student Answer:</span>
-                            <div style="color: var(--text-dark, #0f172a); font-weight: 600; font-size: 13.5px; margin-top: 3px; white-space: pre-wrap;">${escapeHtml(item.response || 'No answer')}</div>
-                            ${expectedHtml}
+                        <div class="review-answers-row">
+                            <div class="review-answer-chip ${chipTypeClass}">
+                                <span class="chip-label">Student:</span>
+                                <span class="chip-value">${escapeHtml(item.response || '(No answer)')}</span>
+                            </div>
+                            ${(isCorrect === false && expectedAnswer) ? `
+                            <div class="review-answer-chip chip-expected">
+                                <span class="chip-label">Key:</span>
+                                <span class="chip-value">${escapeHtml(expectedAnswer)}</span>
+                            </div>
+                            ` : ''}
                         </div>
+                        ${fileUrl ? `
+                        <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border-color, #e2e8f0); display: flex; align-items: center; gap: 8px;">
+                            <a href="${escapeHtml(fileUrl)}" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 7px; background: #e0e7ff; color: #3730a3; padding: 6px 14px; border-radius: 8px; font-weight: 700; font-size: 12.5px; text-decoration: none; border: 1.5px solid #c7d2fe; transition: all 0.2s ease;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                                </svg>
+                                <span>Open in Google Drive / View Link ${fileName ? `(${escapeHtml(fileName)})` : ''} ↗</span>
+                            </a>
+                        </div>
+                        ` : ''}
                     </div>
                 `;
             }).join('');
@@ -5994,6 +7140,10 @@ window.loadSystemDatabases = async function () {
                         <input type="checkbox" value="All Classes" onchange="onQuizClassCheckboxChange(this)">
                         <span><strong>All Classes</strong></span>
                     </label>
+                    <label class="multi-select-option-row">
+                        <input type="checkbox" value="No Classes" onchange="onQuizClassCheckboxChange(this)">
+                        <span><strong style="color: #64748b;">No Classes (Live Quiz Only)</strong></span>
+                    </label>
                 `;
                 sortedClasses.forEach(name => {
                     qOptionsHtml += `
@@ -6336,14 +7486,14 @@ function updateManualQuizClassLabel() {
 
 // --- CREATE QUIZ MULTI-SELECT CHECKBOX LOGIC ---
 window.onQuizClassCheckboxChange = function (cb) {
-    if (cb && cb.value === 'All Classes') {
-        const otherCheckboxes = document.querySelectorAll('#quizClassOptions input[type="checkbox"]:not([value="All Classes"])');
+    if (cb && (cb.value === 'All Classes' || cb.value === 'No Classes')) {
         if (cb.checked) {
+            const otherCheckboxes = document.querySelectorAll(`#quizClassOptions input[type="checkbox"]:not([value="${cb.value}"])`);
             otherCheckboxes.forEach(c => c.checked = false);
         }
     } else if (cb && cb.checked) {
-        const allCb = document.querySelector('#quizClassOptions input[type="checkbox"][value="All Classes"]');
-        if (allCb) allCb.checked = false;
+        const specialCheckboxes = document.querySelectorAll('#quizClassOptions input[type="checkbox"][value="All Classes"], #quizClassOptions input[type="checkbox"][value="No Classes"]');
+        specialCheckboxes.forEach(c => c.checked = false);
     }
     updateQuizClassLabel();
 };
@@ -6359,6 +7509,8 @@ function updateQuizClassLabel() {
     const selected = getSelectedQuizClasses();
     if (selected.length === 0) {
         label.innerText = '-- Select Target Class --';
+    } else if (selected.includes('No Classes')) {
+        label.innerText = 'No Classes (Live Quiz Only)';
     } else if (selected.includes('All Classes')) {
         label.innerText = 'All Classes';
     } else if (selected.length === 1) {
@@ -6373,6 +7525,8 @@ function setQuizClasses(classesList) {
     checkboxes.forEach(cb => {
         if (!classesList || classesList.length === 0) {
             cb.checked = false;
+        } else if (classesList.includes('No Classes') || classesList.includes('no classes') || classesList.includes('none') || classesList.includes('None')) {
+            cb.checked = (cb.value === 'No Classes');
         } else if (classesList.includes('All Classes') || classesList.includes('All') || classesList.includes('all')) {
             cb.checked = (cb.value === 'All Classes');
         } else {
@@ -7770,7 +8924,9 @@ async function saveQuiz() {
     const title = document.getElementById('quizTitle').value.trim();
     const quizType = document.getElementById('quizTypeSelect')?.value || 'Quiz';
     const selectedClasses = getSelectedQuizClasses();
-    const targetClassStr = selectedClasses.includes("All Classes") ? "All Classes" : selectedClasses.join(", ");
+    const targetClassStr = selectedClasses.includes("No Classes")
+        ? "No Classes"
+        : (selectedClasses.includes("All Classes") ? "All Classes" : selectedClasses.join(", "));
     const subject = document.getElementById('quizSubject').value.trim();
     const blocksElements = document.querySelectorAll('.quiz-block');
 
@@ -7785,6 +8941,8 @@ async function saveQuiz() {
         const imgNode = el.querySelector('.blk-img');
         const imgRaw = imgNode ? imgNode.value.trim() : '';
         const imgUrl = convertDriveUrl(imgRaw);
+        const imgTitleNode = el.querySelector('.blk-img-title');
+        const imgTitle = imgTitleNode ? imgTitleNode.value.trim() : '';
 
         const pointsNode = el.querySelector('.blk-points');
         const points = pointsNode ? parseInt(pointsNode.value) || 1 : 0;
@@ -7792,7 +8950,48 @@ async function saveQuiz() {
         if (type === 'header') {
             const titleText = el.querySelector('.blk-prompt') ? el.querySelector('.blk-prompt').innerText.trim() : '';
             const descText = el.querySelector('.blk-desc') ? el.querySelector('.blk-desc').innerText.trim() : '';
-            items.push({ type, text: titleText, description: descText });
+            items.push({ 
+                type, 
+                title: titleText || 'Section', 
+                prompt: titleText || 'Section', 
+                text: titleText, 
+                description: descText 
+            });
+
+        } else if (type === 'passage') {
+            const titleText = el.querySelector('.blk-prompt') ? el.querySelector('.blk-prompt').innerText.trim() : '';
+            const descText = el.querySelector('.blk-desc') ? el.querySelector('.blk-desc').innerText.trim() : '';
+            items.push({ 
+                type, 
+                title: titleText || 'Reading Passage',
+                prompt: titleText || 'Reading Passage',
+                text: descText,
+                description: descText,
+                passage: descText,
+                imageUrl: imgUrl,
+                imageTitle: imgTitle
+            });
+
+        } else if (type === 'image') {
+            const titleText = el.querySelector('.blk-prompt') ? el.querySelector('.blk-prompt').innerText.trim() : '';
+            items.push({
+                type: 'image',
+                prompt: titleText,
+                imageUrl: imgUrl,
+                imageTitle: imgTitle
+            });
+
+        } else if (type === 'fileupload') {
+            const uploadModeNode = el.querySelector('.blk-upload-mode');
+            const uploadMode = uploadModeNode ? uploadModeNode.value : 'both';
+            items.push({
+                type: 'fileupload',
+                prompt: el.querySelector('.blk-prompt') ? el.querySelector('.blk-prompt').innerText.trim() : '',
+                imageUrl: imgUrl,
+                imageTitle: imgTitle,
+                points: points,
+                uploadMode: uploadMode
+            });
 
         } else if (type === 'mcq') {
             const options = [];
@@ -7816,17 +9015,18 @@ async function saveQuiz() {
                 type,
                 prompt: el.querySelector('.blk-prompt').innerText.trim(),
                 imageUrl: imgUrl,
+                imageTitle: imgTitle,
                 points: points,
                 options: options,
                 correct: selectedCorrectIndex
             });
-
 
         } else if (type === 'fill') {
             items.push({
                 type,
                 prompt: el.querySelector('.blk-prompt').innerText.trim(),
                 imageUrl: imgUrl,
+                imageTitle: imgTitle,
                 points: points,
                 answers: el.querySelector('.blk-answer').value.trim().toLowerCase().split(',').map(a => a.trim())
             });
@@ -7836,6 +9036,7 @@ async function saveQuiz() {
                 type,
                 prompt: el.querySelector('.blk-prompt').innerText.trim(),
                 imageUrl: imgUrl,
+                imageTitle: imgTitle,
                 points: points
             });
         }
@@ -8616,6 +9817,7 @@ window.deleteQuiz = deleteQuiz;
 window.viewQuizResults = viewQuizResults;
 window.closeResultsModal = closeResultsModal;
 window.editQuiz = editQuiz;
+window.duplicateQuiz = duplicateQuiz;
 
 
 window.deleteQuiz = deleteQuiz;

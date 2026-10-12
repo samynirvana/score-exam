@@ -209,6 +209,7 @@ async function initStudentQuizDashboard(code) {
         // Sequentially load recent quizzes first so recentQuizResults is ready for completion checks
         await loadRecentQuizzes(code);
         await loadAvailableQuizzes(studentClass);
+        setupLiveQuizLobbyListener(studentClass);
 
     } catch (err) {
         console.error("Dashboard initialization error:", err);
@@ -478,6 +479,12 @@ async function loadAvailableQuizzes(studentClass) {
             const targetClass = (q.targetClass || '').toLowerCase().trim();
             const targetClassesList = Array.isArray(q.targetClassesList) ? q.targetClassesList.map(c => c.toLowerCase().trim()) : [];
 
+            // Quizzes marked as "No Classes" / "none" are reserved for live sessions only and must not show in any class list
+            if (targetClass === 'no classes' || targetClass === 'none' || 
+                targetClassesList.includes('no classes') || targetClassesList.includes('none')) {
+                return;
+            }
+
             const isMatch = targetClass === 'all' || 
                             targetClass === 'all classes' || 
                             targetClass === normalizedStudentClass ||
@@ -657,6 +664,165 @@ let liveAnswerSyncTimeout = null;
 let liveWarningCount = 0;
 let liveStudentTimerInterval = null;
 let livePresenceInterval = null;
+let activeLiveParticipantsUnsubscribe = null;
+let isForcedSubmit = false;
+
+let liveQuizLobbyUnsubscribe = null;
+
+function isClassEligibleForLive(targetClassStr, studentClassStr) {
+    if (!targetClassStr) return true;
+    const target = targetClassStr.trim().toLowerCase();
+    if (target === 'all' || target === 'all classes' || target === '') return true;
+    if (!studentClassStr) return false;
+    const student = studentClassStr.trim().toLowerCase();
+    if (target === student) return true;
+
+    // Check comma-separated lists (e.g. "Primary 1, Primary 2")
+    const parts = target.split(',').map(s => s.trim().toLowerCase());
+    return parts.includes(student) || parts.includes('all') || parts.includes('all classes');
+}
+
+function setupLiveQuizLobbyListener(studentClass) {
+    if (liveQuizLobbyUnsubscribe) {
+        liveQuizLobbyUnsubscribe();
+        liveQuizLobbyUnsubscribe = null;
+    }
+
+    const bannerContainer = document.getElementById('liveLobbyBannerSection');
+    if (!bannerContainer) return;
+
+    // Listen to collection live_quizzes in real-time
+    liveQuizLobbyUnsubscribe = onSnapshot(collection(db, "live_quizzes"), (snapshot) => {
+        let activeLobby = null;
+
+        snapshot.forEach(docSnap => {
+            const data = docSnap.data();
+            const status = (data.status || '').toLowerCase().trim();
+
+            if (status === 'waiting' || status === 'in_progress') {
+                if (isClassEligibleForLive(data.targetClass, studentClass)) {
+                    activeLobby = { quizId: docSnap.id, ...data };
+                }
+            }
+        });
+
+        if (activeLobby) {
+            renderLiveLobbyBanner(activeLobby);
+        } else {
+            bannerContainer.innerHTML = '';
+            bannerContainer.classList.add('hidden');
+        }
+    }, (err) => {
+        console.warn("Live lobby real-time listener error:", err);
+    });
+}
+
+function renderLiveLobbyBanner(liveQuiz) {
+    const bannerContainer = document.getElementById('liveLobbyBannerSection');
+    if (!bannerContainer) return;
+
+    const isWaiting = (liveQuiz.status === 'waiting');
+    const statusText = isWaiting ? 'LIVE QUIZ LOBBY OPEN' : 'LIVE ASSESSMENT IN PROGRESS';
+    const statusBadgeBg = isWaiting ? '#ef4444' : '#10b981';
+    const btnText = isWaiting ? 'Join Live Quiz Lobby' : 'Enter Live Quiz Now';
+    const btnBg = isWaiting
+        ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+        : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+    const subText = isWaiting
+        ? 'Your teacher has created the live lobby! Click below to enter the waiting room before the test begins.'
+        : 'The live quiz is currently in progress! Enter immediately to submit your answers before time runs out.';
+
+    bannerContainer.innerHTML = `
+        <div class="live-lobby-hero-card" style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #312e81 100%); border: 1.5px solid rgba(139, 92, 246, 0.45); border-radius: 20px; padding: 22px 26px; color: #ffffff; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 18px; box-shadow: 0 12px 32px rgba(49, 46, 129, 0.35); position: relative; overflow: hidden;">
+            <div style="position: absolute; top: -40px; right: -40px; width: 140px; height: 140px; background: rgba(168, 85, 247, 0.25); filter: blur(40px); border-radius: 50%; pointer-events: none;"></div>
+            
+            <div style="display: flex; align-items: center; gap: 16px; flex: 1; min-width: 280px; z-index: 1;">
+                <div style="width: 52px; height: 52px; border-radius: 16px; background: rgba(239, 68, 68, 0.2); border: 1.5px solid rgba(239, 68, 68, 0.5); display: flex; align-items: center; justify-content: center; color: #f87171; position: relative; flex-shrink: 0;">
+                    <span style="position: absolute; top: 6px; right: 6px; width: 9px; height: 9px; border-radius: 50%; background: #ef4444; animation: pulse 1.5s infinite;"></span>
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"></path>
+                        <path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"></path>
+                        <circle cx="12" cy="12" r="2"></circle>
+                        <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"></path>
+                        <path d="M19.1 4.9C23 8.8 23 15.2 19.1 19.1"></path>
+                    </svg>
+                </div>
+                <div>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;">
+                        <span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: ${statusBadgeBg}; color: #ffffff; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;">
+                            <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #ffffff; animation: pulse 1s infinite;"></span>
+                            ${statusText}
+                        </span>
+                        <span style="font-size: 12px; color: #cbd5e1; font-weight: 600;">• Class: ${escapeHtml(liveQuiz.targetClass || 'All Classes')}</span>
+                        <span style="font-size: 12px; color: #a5b4fc; font-weight: 600;">• ${liveQuiz.durationMinutes || 30} Mins</span>
+                    </div>
+                    <h3 style="margin: 0 0 4px 0; font-size: 19px; font-weight: 800; color: #ffffff; letter-spacing: -0.3px;">
+                        ${escapeHtml(liveQuiz.title || 'Live Quiz')}
+                    </h3>
+                    <p style="margin: 0; font-size: 13px; color: #c7d2fe; line-height: 1.4;">
+                        ${subText}
+                    </p>
+                </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 10px; z-index: 1;">
+                <button type="button" onclick="joinLiveLobbyDirect('${escapeHtml(liveQuiz.quizId)}')"
+                    style="background: ${btnBg}; color: #ffffff; border: none; padding: 13px 26px; border-radius: 12px; font-size: 15px; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4); transition: transform 0.2s, box-shadow 0.2s;">
+                    <span>${btnText}</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    `;
+
+    bannerContainer.classList.remove('hidden');
+}
+
+window.joinLiveLobbyDirect = async function(quizId) {
+    if (!quizId) return;
+
+    let targetQuiz = availableQuizzesMap[quizId];
+    if (!targetQuiz) {
+        try {
+            const qDocSnap = await getDoc(doc(db, "quizzes", quizId));
+            if (qDocSnap.exists()) {
+                targetQuiz = { id: qDocSnap.id, ...qDocSnap.data() };
+                availableQuizzesMap[quizId] = targetQuiz;
+            } else {
+                alert("Quiz details not found in database.");
+                return;
+            }
+        } catch (e) {
+            console.error("Error fetching quiz for live lobby:", e);
+            alert("Failed to load quiz details: " + e.message);
+            return;
+        }
+    }
+
+    if (isQuizAlreadyCompleted(targetQuiz)) {
+        alert("You've already did the quiz. Each quiz can only be completed once.");
+        return;
+    }
+
+    activeQuiz = targetQuiz;
+
+    try {
+        const liveDocRef = doc(db, "live_quizzes", quizId);
+        const liveSnap = await getDoc(liveDocRef);
+        if (liveSnap.exists()) {
+            const liveData = liveSnap.data();
+            joinLiveQuizSession(quizId, targetQuiz, liveData);
+        } else {
+            alert("The live session is no longer active.");
+        }
+    } catch (e) {
+        console.error("Error joining live quiz lobby:", e);
+        alert("Failed to join live session: " + e.message);
+    }
+};
 
 // --- START SELECTED QUIZ (SUPPORTS LIVE QUIZ & REGULAR QUIZ) ---
 async function startQuizById(quizId) {
@@ -691,10 +857,25 @@ async function startQuizById(quizId) {
     }
 
     // Standard Non-Live Quiz Flow
+    activeLiveQuizData = null;
+    isForcedSubmit = false;
     document.getElementById('studentQuizModal')?.classList.add('hidden');
     document.getElementById('quizDashboardSection')?.classList.add('hidden');
     document.getElementById('liveQuizStudentHeaderBar')?.classList.add('hidden');
     document.getElementById('takeQuizSection')?.classList.remove('hidden');
+
+    // Reset submit button state for standard quiz
+    const stdSubmitBtn = document.getElementById('submitQuizBtn');
+    if (stdSubmitBtn) {
+        stdSubmitBtn.disabled = false;
+        stdSubmitBtn.style.opacity = '1';
+        stdSubmitBtn.style.cursor = 'pointer';
+        stdSubmitBtn.style.background = '#10b981';
+        stdSubmitBtn.innerHTML = 'Submit Assessment';
+    }
+    document.getElementById('liveSubmitLockedNotice')?.classList.add('hidden');
+    const statusBadge = document.getElementById('studentSubmitStatusBadge');
+    if (statusBadge) statusBadge.style.display = 'none';
 
     renderQuizForm(activeQuiz);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -776,10 +957,28 @@ async function joinLiveQuizSession(quizId, targetQuiz, initialLiveData) {
     // If waiting, show Waiting Room
     if (initialLiveData.status === 'waiting') {
         const waitingModal = document.getElementById('liveQuizWaitingModal');
-        document.getElementById('liveWaitingTitle').innerText = targetQuiz.title || "Live Assessment";
-        document.getElementById('liveWaitingSubject').innerText = `Subject: ${targetQuiz.subject || 'General'}`;
+        const titleEl = document.getElementById('liveWaitingTitle');
+        if (titleEl) titleEl.innerText = targetQuiz.title || "Live Assessment";
+        const subjectEl = document.getElementById('liveWaitingSubject');
+        if (subjectEl) subjectEl.innerText = `Subject: ${targetQuiz.subject || 'General'}`;
         document.getElementById('liveStartingCountdownBox')?.classList.add('hidden');
-        waitingModal.classList.remove('hidden');
+        if (waitingModal) waitingModal.classList.remove('hidden');
+
+        // Real-time listener for participant count in waiting room
+        const countEl = document.getElementById('liveWaitingParticipantsCount');
+        if (activeLiveParticipantsUnsubscribe) activeLiveParticipantsUnsubscribe();
+        activeLiveParticipantsUnsubscribe = onSnapshot(collection(db, "live_quizzes", quizId, "participants"), (snap) => {
+            let count = 0;
+            snap.forEach(docSnap => {
+                const p = docSnap.data();
+                if (p && p.connected !== false) {
+                    count++;
+                }
+            });
+            if (countEl) {
+                countEl.innerText = count === 1 ? '1 student joined' : `${count} students joined`;
+            }
+        });
     } else if (initialLiveData.status === 'in_progress') {
         startLiveQuizTaking(targetQuiz, initialLiveData);
     }
@@ -790,6 +989,9 @@ async function joinLiveQuizSession(quizId, targetQuiz, initialLiveData) {
         if (!docSnap.exists()) return;
         const liveState = docSnap.data();
         activeLiveQuizData = liveState;
+
+        // Synchronize student submit permission in real-time
+        updateStudentSubmitPermissionUI(liveState.allowSubmit);
 
         if (liveState.status === 'in_progress') {
             const waitingModal = document.getElementById('liveQuizWaitingModal');
@@ -820,12 +1022,62 @@ async function joinLiveQuizSession(quizId, targetQuiz, initialLiveData) {
             }
         } else if (liveState.status === 'ended') {
             alert("The teacher has ended this Live Quiz session. Your assessment will now submit.");
+            isForcedSubmit = true;
             document.getElementById('submitQuizBtn')?.click();
         }
     });
 }
 
+function updateStudentSubmitPermissionUI(allowSubmit) {
+    const isAllowed = (allowSubmit === true);
+    const submitBtn = document.getElementById('submitQuizBtn');
+    const lockedNotice = document.getElementById('liveSubmitLockedNotice');
+    const badge = document.getElementById('studentSubmitStatusBadge');
+    const badgeText = document.getElementById('studentSubmitStatusBadgeText');
+
+    if (badge) {
+        badge.style.display = 'inline-flex';
+        if (isAllowed) {
+            badge.style.background = '#ecfdf5';
+            badge.style.color = '#059669';
+            if (badgeText) badgeText.innerText = '🔓 Submissions Open';
+        } else {
+            badge.style.background = '#fee2e2';
+            badge.style.color = '#ef4444';
+            if (badgeText) badgeText.innerText = '🔒 Submissions Locked';
+        }
+    }
+
+    if (lockedNotice) {
+        if (isAllowed) {
+            lockedNotice.classList.add('hidden');
+        } else {
+            lockedNotice.classList.remove('hidden');
+        }
+    }
+
+    if (submitBtn) {
+        if (isAllowed) {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = '1';
+            submitBtn.style.cursor = 'pointer';
+            submitBtn.style.background = '#10b981';
+            submitBtn.innerHTML = 'Submit Assessment';
+        } else {
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.65';
+            submitBtn.style.cursor = 'not-allowed';
+            submitBtn.style.background = '#64748b';
+            submitBtn.innerHTML = '🔒 Submissions Locked by Teacher';
+        }
+    }
+}
+
 function startLiveQuizTaking(quiz, liveState) {
+    if (activeLiveParticipantsUnsubscribe) {
+        activeLiveParticipantsUnsubscribe();
+        activeLiveParticipantsUnsubscribe = null;
+    }
     document.getElementById('takeQuizSection')?.classList.remove('hidden');
     const headerBar = document.getElementById('liveQuizStudentHeaderBar');
     if (headerBar) headerBar.classList.remove('hidden');
@@ -837,6 +1089,9 @@ function startLiveQuizTaking(quiz, liveState) {
         countEl.innerText = liveWarningCount;
         badge.style.display = liveWarningCount > 0 ? 'inline-flex' : 'none';
     }
+
+    // Initialize Submit Permission UI
+    updateStudentSubmitPermissionUI(liveState.allowSubmit);
 
     // Setup Timer
     updateStudentLiveTimer(liveState.endsAt);
@@ -868,6 +1123,7 @@ function updateStudentLiveTimer(endsAtStr) {
             timerDisplay.innerText = "00:00";
             clearInterval(liveStudentTimerInterval);
             alert("Time is up! Submitting your answers now.");
+            isForcedSubmit = true;
             document.getElementById('submitQuizBtn')?.click();
         }
     };
@@ -1021,6 +1277,11 @@ document.getElementById('exitLiveWaitingBtn')?.addEventListener('click', async (
     document.getElementById('liveQuizWaitingModal')?.classList.add('hidden');
     document.getElementById('quizDashboardSection')?.classList.remove('hidden');
 
+    if (activeLiveParticipantsUnsubscribe) {
+        activeLiveParticipantsUnsubscribe();
+        activeLiveParticipantsUnsubscribe = null;
+    }
+
     if (activeQuiz && currentStudent) {
         const studentCode = String(currentStudent.code || currentStudent.studentCode || currentStudent.id || '').trim().toUpperCase();
         if (studentCode) {
@@ -1056,6 +1317,8 @@ document.getElementById('cancelQuizBtn')?.addEventListener('click', async () => 
         if (liveStudentTimerInterval) clearInterval(liveStudentTimerInterval);
         if (liveAnswerSyncTimeout) clearTimeout(liveAnswerSyncTimeout);
 
+        activeLiveQuizData = null;
+        isForcedSubmit = false;
         document.getElementById('liveQuizStudentHeaderBar')?.classList.add('hidden');
         document.getElementById('takeQuizSection')?.classList.add('hidden');
         document.getElementById('quizDashboardSection')?.classList.remove('hidden');
@@ -1065,11 +1328,14 @@ document.getElementById('cancelQuizBtn')?.addEventListener('click', async () => 
 
 // Return to Dashboard from Result Screen
 document.getElementById('returnToDashboardBtn')?.addEventListener('click', async () => {
+    activeLiveQuizData = null;
+    isForcedSubmit = false;
     document.getElementById('resultSection')?.classList.add('hidden');
     document.getElementById('quizDashboardSection')?.classList.remove('hidden');
     if (currentStudent && currentStudent.code) {
         await loadRecentQuizzes(currentStudent.code);
         await loadAvailableQuizzes(currentStudent.studentClass || currentStudent.class);
+        setupLiveQuizLobbyListener(currentStudent.studentClass || currentStudent.class);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
 });
@@ -1079,6 +1345,160 @@ window.autoResizeInput = function(el) {
     if (!el) return;
     el.style.height = 'auto';
     el.style.height = Math.max(48, el.scrollHeight) + 'px';
+};
+
+// --- HELPER: CONVERT DRIVE URL & RENDER QUESTION IMAGES ---
+function convertDriveUrl(url) {
+    if (!url) return '';
+    url = url.trim();
+    const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+        return `https://lh3.googleusercontent.com/d/${match[1]}`;
+    }
+    return url;
+}
+
+function renderQuestionImage(imageUrl, imageTitle) {
+    if (!imageUrl) return '';
+    const convertedUrl = convertDriveUrl(imageUrl);
+    return `
+        <div class="quiz-q-image-wrap" style="margin: 12px 0; text-align: center; background: var(--bg-body, #f8fafc); border: 1px solid var(--border-color, #e2e8f0); border-radius: 12px; padding: 12px;">
+            ${imageTitle ? `<div class="quiz-q-image-title" style="font-size: 13.5px; font-weight: 700; color: var(--text-dark, #0f172a); margin-bottom: 8px;">${escapeHtml(imageTitle)}</div>` : ''}
+            <img src="${escapeHtml(convertedUrl)}" alt="${escapeHtml(imageTitle || 'Question illustration')}" style="max-width: 100%; max-height: 380px; object-fit: contain; border-radius: 8px; border: 1px solid rgba(0,0,0,0.06); display: inline-block;">
+        </div>
+    `;
+}
+
+// --- STUDENT FILE UPLOAD HANDLER FOR GOOGLE DRIVE REVIEW SYNC ---
+window.handleStudentFileUpload = async function (fileInput, idx) {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+
+    const statusEl = document.getElementById(`file_status_${idx}`);
+    const fileUrlHidden = document.getElementById(`item_${idx}_fileUrl`);
+    const fileNameHidden = document.getElementById(`item_${idx}_fileName`);
+
+    if (file.size > 25 * 1024 * 1024) {
+        alert("File size exceeds 25MB limit. Please upload a smaller file or paste a Google Drive/Docs share link.");
+        fileInput.value = '';
+        return;
+    }
+
+    if (statusEl) {
+        statusEl.innerHTML = `
+            <div style="display: inline-flex; align-items: center; gap: 8px; background: #eff6ff; color: #1d4ed8; padding: 8px 14px; border-radius: 8px; font-size: 12.5px; font-weight: 600; border: 1px solid #bfdbfe;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite;"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+                <span>Uploading "${escapeHtml(file.name)}" to Google Drive Review folder...</span>
+            </div>
+        `;
+    }
+
+    try {
+        let scriptUrl = localStorage.getItem('reviewDriveScriptUrl') || localStorage.getItem('googleDriveScriptUrl') || '';
+        if (!scriptUrl) {
+            try {
+                let snap = await getDoc(doc(db, "system_settings", "google_drive"));
+                if (!snap.exists()) {
+                    snap = await getDoc(doc(db, "system_settings", "googleDrive"));
+                }
+                if (snap.exists()) {
+                    const data = snap.data();
+                    scriptUrl = data.reviewScriptUrl || data.scriptUrlReview || data.scriptUrl || data.profileScriptUrl || '';
+                    if (scriptUrl) {
+                        localStorage.setItem('reviewDriveScriptUrl', scriptUrl);
+                        localStorage.setItem('googleDriveScriptUrl', scriptUrl);
+                    }
+                }
+            } catch (e) {
+                console.warn(e);
+            }
+        }
+
+        if (!scriptUrl) {
+            throw new Error("Google Drive Upload Script is not configured by teacher yet. You can paste a shared link in the box below.");
+        }
+
+        const base64Data = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const res = reader.result;
+                const base64 = res.split(',')[1] || res;
+                resolve(base64);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+
+        const quizTitle = (activeQuiz?.title || 'Quiz').trim();
+        const studentClass = (currentStudent?.class || currentStudent?.className || 'Class').trim();
+        const studentName = (currentStudent?.studentName || currentStudent?.name || 'Student').trim();
+        const studentCode = (currentStudent?.code || 'STU').trim();
+        const targetFolderId = (localStorage.getItem('reviewDriveFolderId') || '').trim();
+
+        const payload = {
+            action: "uploadQuizFile",
+            folderId: targetFolderId,
+            rootFolder: targetFolderId || "Review",
+            quizTitle: quizTitle,
+            className: studentClass,
+            studentName: studentName,
+            studentCode: studentCode,
+            fileName: file.name,
+            mimeType: file.type || 'application/octet-stream',
+            base64Data: base64Data
+        };
+
+        const res = await fetch(scriptUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(payload)
+        });
+
+        const json = await res.json();
+        if (json.status === 'success' && json.fileUrl) {
+            if (fileUrlHidden) fileUrlHidden.value = json.fileUrl;
+            if (fileNameHidden) fileNameHidden.value = json.fileName || file.name;
+
+            if (statusEl) {
+                statusEl.innerHTML = `
+                    <div style="background: #ecfdf5; border: 1.5px solid #a7f3d0; padding: 10px 14px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                            <span style="color: #065f46; font-size: 13px; font-weight: 700;">Uploaded: ${escapeHtml(json.fileName || file.name)}</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <a href="${escapeHtml(json.fileUrl)}" target="_blank" rel="noopener noreferrer" style="color: #047857; font-weight: 700; text-decoration: underline; font-size: 12.5px;">View in Drive ↗</a>
+                            <button type="button" onclick="window.clearStudentUploadedFile(${idx})" style="background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 700; cursor: pointer;">Replace</button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            syncLiveAnswer(idx, { value: json.fileUrl, text: json.fileName || file.name }, false);
+        } else {
+            throw new Error(json.error || "Upload failed");
+        }
+    } catch (err) {
+        console.error("Student file upload error:", err);
+        if (statusEl) {
+            statusEl.innerHTML = `
+                <div style="background: #fef2f2; border: 1.5px solid #fecaca; padding: 8px 12px; border-radius: 8px; color: #b91c1c; font-size: 12.5px;">
+                    <strong>Upload failed:</strong> ${escapeHtml(err.message)}
+                </div>
+            `;
+        }
+    }
+};
+
+window.clearStudentUploadedFile = function (idx) {
+    const fileInput = document.getElementById(`file_input_${idx}`);
+    const statusEl = document.getElementById(`file_status_${idx}`);
+    const fileUrlHidden = document.getElementById(`item_${idx}_fileUrl`);
+    const fileNameHidden = document.getElementById(`item_${idx}_fileName`);
+    if (fileInput) fileInput.value = '';
+    if (fileUrlHidden) fileUrlHidden.value = '';
+    if (fileNameHidden) fileNameHidden.value = '';
+    if (statusEl) statusEl.innerHTML = '';
 };
 
 // --- RENDER ASSESSMENT FORM ---
@@ -1108,21 +1528,126 @@ function renderQuizForm(quiz) {
         // 2. Reading Passage
         else if (item.type === 'passage') {
             div.style.borderLeft = "5px solid #10b981";
-            let imgHtml = item.imageUrl ? `<img src="${item.imageUrl}" style="max-width:100%; border-radius:10px; margin:14px 0; border: 1px solid var(--border-color);">` : '';
+
+            // Robust resolution of Passage Title vs Article Body
+            let passageTitle = item.title || item.prompt || '';
+            let passageBody = '';
+
+            if (item.description && item.text) {
+                // If text was used to store title and description contains the longer article
+                if (item.text === item.title || item.text === item.prompt || item.description.length > item.text.length) {
+                    passageTitle = item.title || item.prompt || item.text || 'Reading Passage';
+                    passageBody = item.description;
+                } else {
+                    passageTitle = item.title || item.prompt || 'Reading Passage';
+                    passageBody = item.text;
+                }
+            } else if (item.description) {
+                passageTitle = item.title || item.prompt || (item.text && item.text !== item.description ? item.text : 'Reading Passage');
+                passageBody = item.description;
+            } else if (item.passage) {
+                passageTitle = item.title || item.prompt || 'Reading Passage';
+                passageBody = item.passage;
+            } else if (item.text) {
+                if (item.title && item.title !== item.text) {
+                    passageTitle = item.title;
+                    passageBody = item.text;
+                } else {
+                    passageTitle = item.title || item.prompt || 'Reading Passage';
+                    passageBody = item.text;
+                }
+            } else if (item.content) {
+                passageTitle = item.title || item.prompt || 'Reading Passage';
+                passageBody = item.content;
+            }
+
+            if (!passageTitle || passageTitle === passageBody) {
+                passageTitle = 'Reading Passage';
+            }
+
             div.innerHTML = `
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
                     <span style="background: rgba(16, 185, 129, 0.1); color: #10b981; font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 6px; text-transform: uppercase;">Reading Passage</span>
                 </div>
-                <h4 style="margin: 0 0 10px 0; font-size: 16.5px; font-weight: 700; color:var(--text-dark);">${escapeHtml(item.title || 'Passage')}</h4>
-                <div style="white-space: pre-line; background: var(--bg-body, #f8fafc); padding: 16px; border-radius: 10px; font-size: 14.5px; line-height: 1.65; border: 1px solid var(--border-color); color: var(--text-dark);">${escapeHtml(item.text || item.prompt)}</div>
-                ${imgHtml}
+                <h4 style="margin: 0 0 10px 0; font-size: 16.5px; font-weight: 700; color:var(--text-dark);">${escapeHtml(passageTitle)}</h4>
+                <div style="white-space: pre-line; background: var(--bg-body, #f8fafc); padding: 16px; border-radius: 10px; font-size: 14.5px; line-height: 1.65; border: 1px solid var(--border-color); color: var(--text-dark);">${escapeHtml(passageBody)}</div>
+                ${renderQuestionImage(item.imageUrl, item.imageTitle)}
             `;
         } 
-        // 3. Multiple Choice Question
+        // 3. Standalone Image Block
+        else if (item.type === 'image') {
+            div.style.borderLeft = "5px solid #6366f1";
+            div.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="background: rgba(99, 102, 241, 0.1); color: #6366f1; font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 6px; text-transform: uppercase;">Image Resource</span>
+                </div>
+                ${item.prompt ? `<h4 style="margin: 0 0 10px 0; font-size: 16.5px; font-weight: 700; color:var(--text-dark);">${escapeHtml(item.prompt)}</h4>` : ''}
+                ${renderQuestionImage(item.imageUrl, item.imageTitle)}
+            `;
+        }
+        // 4. File Upload / Link Question
+        else if (item.type === 'fileupload') {
+            questionCounter++;
+            const prompt = item.prompt || '';
+            const pointsHtml = item.points ? `<span class="q-points-badge">${item.points} pt${item.points > 1 ? 's' : ''}</span>` : '';
+            const uploadMode = item.uploadMode || 'both';
+            const showFileInput = uploadMode !== 'link_only';
+            const showLinkInput = uploadMode !== 'file_only';
+
+            div.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span class="q-num-badge">No. ${questionCounter}</span>
+                    ${pointsHtml}
+                </div>
+                <div class="quiz-question-text">${escapeHtml(prompt)}</div>
+                ${renderQuestionImage(item.imageUrl, item.imageTitle)}
+
+                <div class="quiz-fileupload-box" style="margin-top: 14px; background: var(--bg-body, #f8fafc); border: 1.5px dashed var(--border-color, #cbd5e1); border-radius: 12px; padding: 16px;">
+                    ${showFileInput ? `
+                    <div class="quiz-file-dropzone" style="text-align: center; margin-bottom: ${showLinkInput ? '14px' : '0'};">
+                        <input type="file" id="file_input_${idx}" class="quiz-file-native-input" style="display: none;" onchange="window.handleStudentFileUpload(this, ${idx})">
+                        <input type="hidden" name="item_${idx}_fileUrl" id="item_${idx}_fileUrl" value="">
+                        <input type="hidden" name="item_${idx}_fileName" id="item_${idx}_fileName" value="">
+
+                        <label for="file_input_${idx}" style="cursor: pointer; display: inline-flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 20px; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 10px; width: 100%; box-sizing: border-box; transition: all 0.2s ease;">
+                            <div style="width: 42px; height: 42px; border-radius: 50%; background: #e0e7ff; display: flex; align-items: center; justify-content: center; color: #4f46e5;">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="17 8 12 3 7 8"></polyline>
+                                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                                </svg>
+                            </div>
+                            <div>
+                                <strong style="color: #1e1b4b; font-size: 13.5px; display: block;">Click to choose file to upload</strong>
+                                <span style="color: #64748b; font-size: 11.5px;">Auto-organizes in Google Drive: Review / Quiz / Class</span>
+                            </div>
+                        </label>
+
+                        <div id="file_status_${idx}" class="fileupload-status-${idx}" style="margin-top: 10px;"></div>
+                    </div>
+                    ` : ''}
+
+                    ${(showFileInput && showLinkInput) ? `
+                    <div style="display: flex; align-items: center; gap: 10px; margin: 12px 0;">
+                        <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
+                        <span style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">OR PASTE LINK</span>
+                        <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
+                    </div>
+                    ` : ''}
+
+                    ${showLinkInput ? `
+                    <div>
+                        <label style="display: block; font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 5px;">Online Project Link (Google Docs, Canva, Figma, etc.):</label>
+                        <input type="url" name="item_${idx}_link" placeholder="https://..." style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 9px 12px; font-size: 13px; box-sizing: border-box; background: #ffffff;">
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+        // 5. Multiple Choice Question
         else if (item.type === 'mcq' || (!item.type && item.question)) {
             questionCounter++;
             const prompt = item.prompt || item.question || '';
-            let imgHtml = item.imageUrl ? `<img src="${item.imageUrl}" style="max-width:100%; border-radius:12px; margin:14px 0; border: 1px solid var(--border-color);">` : '';
             const pointsHtml = item.points ? `<span class="q-points-badge">${item.points} pt${item.points > 1 ? 's' : ''}</span>` : '';
 
             div.innerHTML = `
@@ -1131,7 +1656,7 @@ function renderQuizForm(quiz) {
                     ${pointsHtml}
                 </div>
                 <div class="quiz-question-text">${escapeHtml(prompt)}</div>
-                ${imgHtml}
+                ${renderQuestionImage(item.imageUrl, item.imageTitle)}
                 <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 6px;">
                     ${(item.options || []).map((opt, oIdx) => `
                         <label class="quiz-option-label">
@@ -1142,11 +1667,10 @@ function renderQuizForm(quiz) {
                 </div>
             `;
         } 
-        // 4. Fill in the Blank
+        // 6. Fill in the Blank
         else if (item.type === 'fill') {
             questionCounter++;
             const prompt = item.prompt || '';
-            let imgHtml = item.imageUrl ? `<img src="${item.imageUrl}" style="max-width:100%; border-radius:12px; margin:14px 0; border: 1px solid var(--border-color);">` : '';
             const pointsHtml = item.points ? `<span class="q-points-badge">${item.points} pt${item.points > 1 ? 's' : ''}</span>` : '';
 
             div.innerHTML = `
@@ -1155,15 +1679,14 @@ function renderQuizForm(quiz) {
                     ${pointsHtml}
                 </div>
                 <div class="quiz-question-text">${escapeHtml(prompt)}</div>
-                ${imgHtml}
+                ${renderQuestionImage(item.imageUrl, item.imageTitle)}
                 <textarea name="item_${idx}" class="auto-expand-input" rows="1" placeholder="Type your answer here..." oninput="autoResizeInput(this)"></textarea>
             `;
         } 
-        // 5. Essay Question
+        // 7. Essay Question
         else if (item.type === 'essay') {
             questionCounter++;
             const prompt = item.prompt || '';
-            let imgHtml = item.imageUrl ? `<img src="${item.imageUrl}" style="max-width:100%; border-radius:12px; margin:14px 0; border: 1px solid var(--border-color);">` : '';
             const pointsHtml = item.points ? `<span class="q-points-badge">${item.points} pt${item.points > 1 ? 's' : ''}</span>` : '';
 
             div.innerHTML = `
@@ -1172,11 +1695,11 @@ function renderQuizForm(quiz) {
                     ${pointsHtml}
                 </div>
                 <div class="quiz-question-text">${escapeHtml(prompt)}</div>
-                ${imgHtml}
+                ${renderQuestionImage(item.imageUrl, item.imageTitle)}
                 <textarea name="item_${idx}" class="auto-expand-input" rows="3" placeholder="Write your full response here..." oninput="autoResizeInput(this)" style="min-height: 85px;"></textarea>
             `;
         } 
-        // 6. Matching Question
+        // 8. Matching Question
         else if (item.type === 'matching') {
             questionCounter++;
             const prompt = item.prompt || '';
@@ -1215,8 +1738,19 @@ function renderQuizForm(quiz) {
                 input.addEventListener('input', () => {
                     syncLiveAnswer(idx, { value: input.value.trim(), text: input.value.trim() }, false);
                 });
-                // When student finishes typing and advances/clicks outside, immediately flush pending answers
                 input.addEventListener('blur', () => {
+                    if (liveAnswerSyncTimeout) {
+                        flushPendingLiveAnswerSync();
+                    }
+                });
+            }
+        } else if (item.type === 'fileupload') {
+            const linkInput = div.querySelector(`input[name="item_${idx}_link"]`);
+            if (linkInput) {
+                linkInput.addEventListener('input', () => {
+                    syncLiveAnswer(idx, { value: linkInput.value.trim(), text: linkInput.value.trim() }, false);
+                });
+                linkInput.addEventListener('blur', () => {
                     if (liveAnswerSyncTimeout) {
                         flushPendingLiveAnswerSync();
                     }
@@ -1250,6 +1784,12 @@ document.getElementById('submitQuizBtn')?.addEventListener('click', async (e) =>
     e.preventDefault();
     if (!activeQuiz || !currentStudent) return;
 
+    // Guard: Prevent early submissions if teacher has locked submissions
+    if (activeLiveQuizData && activeLiveQuizData.status === 'in_progress' && activeLiveQuizData.allowSubmit === false && !isForcedSubmit) {
+        alert("Submissions are currently locked by the teacher. Please continue reviewing your answers until the teacher enables submissions.");
+        return;
+    }
+
     const form = document.getElementById('quizForm');
     const items = activeQuiz.items || activeQuiz.questions || [];
     
@@ -1258,7 +1798,7 @@ document.getElementById('submitQuizBtn')?.addEventListener('click', async (e) =>
     const studentResponses = [];
 
     items.forEach((item, idx) => {
-        if (item.type === 'header' || item.type === 'passage') return;
+        if (item.type === 'header' || item.type === 'passage' || item.type === 'image') return;
 
         // Multiple Choice
         if (item.type === 'mcq' || (!item.type && item.question)) {
@@ -1298,7 +1838,26 @@ document.getElementById('submitQuizBtn')?.addEventListener('click', async (e) =>
                 response: textarea ? textarea.value.trim() : "No answer",
                 isEssay: true
             });
-        } 
+        }
+        // File Upload
+        else if (item.type === 'fileupload') {
+            const fileUrlInput = form.querySelector(`input[name="item_${idx}_fileUrl"]`);
+            const fileNameInput = form.querySelector(`input[name="item_${idx}_fileName"]`);
+            const linkInput = form.querySelector(`input[name="item_${idx}_link"]`);
+            const fileUrl = fileUrlInput ? fileUrlInput.value.trim() : "";
+            const fileName = fileNameInput ? fileNameInput.value.trim() : "";
+            const linkVal = linkInput ? linkInput.value.trim() : "";
+            const finalAnswer = fileUrl || linkVal || "No file or link submitted";
+
+            studentResponses.push({ 
+                prompt: item.prompt, 
+                response: finalAnswer,
+                fileUrl: fileUrl || (linkVal && (linkVal.startsWith('http://') || linkVal.startsWith('https://')) ? linkVal : ''),
+                fileName: fileName || (fileUrl ? 'Student File' : (linkVal ? 'Link' : '')),
+                link: linkVal,
+                isFileUpload: true
+            });
+        }
         // Matching
         else if (item.type === 'matching') {
             autoGradableCount++;
@@ -1358,6 +1917,8 @@ document.getElementById('submitQuizBtn')?.addEventListener('click', async (e) =>
         if (livePresenceInterval) clearInterval(livePresenceInterval);
         if (liveStudentTimerInterval) clearInterval(liveStudentTimerInterval);
         if (liveAnswerSyncTimeout) clearTimeout(liveAnswerSyncTimeout);
+        activeLiveQuizData = null;
+        isForcedSubmit = false;
         document.getElementById('liveQuizStudentHeaderBar')?.classList.add('hidden');
 
         document.getElementById('takeQuizSection').classList.add('hidden');
@@ -1373,3 +1934,27 @@ document.getElementById('submitQuizBtn')?.addEventListener('click', async (e) =>
         submitBtn.disabled = false;
     }
 });
+
+// Enforce Chat Room disabled on quiz.html
+function enforceQuizChatDisabled() {
+    const chatBtn = document.getElementById('portalFloatingChatBtn');
+    if (chatBtn) {
+        chatBtn.classList.add('disabled-quiz-chat');
+        chatBtn.disabled = true;
+        chatBtn.setAttribute('disabled', 'true');
+        chatBtn.setAttribute('aria-disabled', 'true');
+        chatBtn.style.pointerEvents = 'none';
+        chatBtn.style.cursor = 'not-allowed';
+        chatBtn.style.background = '#64748b';
+        chatBtn.style.boxShadow = 'none';
+        chatBtn.style.opacity = '0.75';
+        chatBtn.title = 'Chat is disabled';
+        const span = chatBtn.querySelector('span:not(.portal-unread-badge)');
+        if (span) span.innerText = 'Chat is disabled';
+        const badge = chatBtn.querySelector('#portalChatUnreadBadge');
+        if (badge) badge.classList.add('hidden');
+    }
+}
+enforceQuizChatDisabled();
+setTimeout(enforceQuizChatDisabled, 300);
+setTimeout(enforceQuizChatDisabled, 1200);
