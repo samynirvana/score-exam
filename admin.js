@@ -30,8 +30,13 @@ let currentTeacherProfileData = null;
 // --- CENTRALIZED IN-MEMORY CACHE & REQUEST DEDUPLICATION (OPTIMIZED FIRESTORE READS) ---
 let cachedStudentsList = null;
 let studentsFetchPromise = null;
+
 async function getOrFetchStudents(force = false) {
     const isForce = force === true;
+    if (isForce) {
+        cachedStudentsList = null;
+        studentsFetchPromise = null;
+    }
     if (!isForce && cachedStudentsList) return cachedStudentsList;
     if (studentsFetchPromise) return studentsFetchPromise;
     studentsFetchPromise = (async () => {
@@ -120,6 +125,7 @@ let cachedPointsList = null;
 
 function invalidateStudentsCache() {
     cachedStudentsList = null;
+    studentsFetchPromise = null;
 }
 function invalidateQuizzesCache() {
     cachedQuizzesList = null;
@@ -433,9 +439,11 @@ window.generateNewUniqueCode = async function (oldCode) {
 
             alert(`Code updated successfully!\nOld Code: ${oldCode}\nNew Code: ${newCode}`);
 
-            loadStudentsDirectory();
-            renderDbStudentsTable();
-            loadPointsTable();
+            invalidateStudentsCache();
+            await loadStudentsDirectory(true);
+            if (typeof renderDbStudentsTable === 'function') renderDbStudentsTable();
+            if (typeof loadPointsTable === 'function') loadPointsTable();
+            if (typeof window.loadSystemDatabases === 'function') await window.loadSystemDatabases();
         } catch (e) {
             alert("Error regenerating student code: " + e.message);
         }
@@ -1324,22 +1332,62 @@ async function generateUniqueStudentCode() {
 }
 
 async function registerStudent() {
-    const name = document.getElementById('newStudentName').value.trim();
-    const studentClass = document.getElementById('newStudentClass').value.trim();
-    const birthDate = document.getElementById('newStudentBirthDate')?.value || '';
-    const studentEmail = document.getElementById('newStudentEmail')?.value.trim().toLowerCase() || '';
+    const nameInput = document.getElementById('newStudentName');
+    const classInput = document.getElementById('newStudentClass');
+    const birthDateInput = document.getElementById('newStudentBirthDate');
+    const emailInput = document.getElementById('newStudentEmail');
+    const btn = document.getElementById('registerStudentBtn');
+
+    const name = nameInput ? nameInput.value.trim() : '';
+    const studentClass = classInput ? classInput.value.trim() : '';
+    const birthDate = birthDateInput ? birthDateInput.value : '';
+    const studentEmail = emailInput ? emailInput.value.trim().toLowerCase() : '';
 
     if (!name || !studentClass) {
         alert("Please provide both Student Name and Class assignment.");
         return;
     }
 
-    try {
-        const dupQuery = query(collection(db, "students"), where("studentName", "==", name), where("studentClass", "==", studentClass));
-        const dupSnap = await getDocs(dupQuery);
+    const originalBtnText = btn ? btn.innerText : 'Register Student & Generate Code';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerText = "Registering Student...";
+    }
 
-        if (!dupSnap.empty) {
-            alert(`Profile collision! This student is already registered with code: ${dupSnap.docs[0].id}`);
+    try {
+        // Robust duplicate check: search existing student records in cache or firestore
+        let isDuplicate = false;
+        let existingCode = '';
+
+        if (Array.isArray(allStudentsData) && allStudentsData.length > 0) {
+            const match = allStudentsData.find(s => 
+                s.studentName && s.studentName.trim().toLowerCase() === name.toLowerCase() &&
+                s.studentClass && s.studentClass.trim().toLowerCase() === studentClass.toLowerCase()
+            );
+            if (match) {
+                isDuplicate = true;
+                existingCode = match.id || match.studentCode;
+            }
+        }
+
+        if (!isDuplicate) {
+            try {
+                const dupQuery = query(collection(db, "students"), where("studentName", "==", name));
+                const dupSnap = await getDocs(dupQuery);
+                dupSnap.forEach(docSnap => {
+                    const data = docSnap.data();
+                    if (data && data.studentClass && data.studentClass.trim().toLowerCase() === studentClass.toLowerCase()) {
+                        isDuplicate = true;
+                        existingCode = docSnap.id;
+                    }
+                });
+            } catch (queryErr) {
+                console.warn("Direct dup query check failed or skipped, proceeding with registration:", queryErr);
+            }
+        }
+
+        if (isDuplicate) {
+            alert(`Profile collision! This student is already registered in ${studentClass} with code: ${existingCode}`);
             return;
         }
 
@@ -1352,15 +1400,28 @@ async function registerStudent() {
             photoUrl: ""
         });
 
-        alert(`Profile Confirmed!\nName: ${name}\nClass: ${studentClass}\nCode: ${uniqueCode}${studentEmail ? `\nEmail: ${studentEmail}` : ''}`);
-        document.getElementById('newStudentName').value = "";
-        document.getElementById('newStudentClass').value = "";
-        if (document.getElementById('newStudentBirthDate')) document.getElementById('newStudentBirthDate').value = "";
-        if (document.getElementById('newStudentEmail')) document.getElementById('newStudentEmail').value = "";
-        loadStudentsDirectory();
-        loadPointsTable(); // Refresh points table to include new student
+        alert(`✅ Student Registered & Class Created!\n\nName: ${name}\nClass: ${studentClass}\nCode: ${uniqueCode}${studentEmail ? `\nEmail: ${studentEmail}` : ''}\n\nStudent and class are now saved in the database!`);
+
+        if (nameInput) nameInput.value = "";
+        if (classInput) classInput.value = "";
+        if (birthDateInput) birthDateInput.value = "";
+        if (emailInput) emailInput.value = "";
+
+        // Invalidate in-memory caches and re-fetch fresh data from Firestore
+        invalidateStudentsCache();
+        await loadStudentsDirectory(true);
+        if (typeof renderDbStudentsTable === 'function') renderDbStudentsTable();
+        if (typeof loadPointsTable === 'function') loadPointsTable();
+        if (typeof window.loadSystemDatabases === 'function') await window.loadSystemDatabases();
+
     } catch (e) {
+        console.error("Error registering student:", e);
         alert("System error tracking record: " + e.message);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = originalBtnText;
+        }
     }
 }
 
@@ -2356,9 +2417,12 @@ window.saveEditStudentProfile = async function () {
 
         alert("Student profile updated successfully!");
         closeEditStudentModal();
-        loadStudentsDirectory();
+        invalidateStudentsCache();
+        await loadStudentsDirectory(true);
+        if (typeof renderDbStudentsTable === 'function') renderDbStudentsTable();
         loadAdminTable();
         loadPointsTable();
+        if (typeof window.loadSystemDatabases === 'function') await window.loadSystemDatabases();
     } catch (e) {
         alert("Error saving profile: " + e.message);
     }
@@ -2370,8 +2434,11 @@ async function deleteStudentProfile(studentCode) {
         try {
             await deleteDoc(doc(db, "students", studentCode));
             alert("Directory signature removed.");
-            loadStudentsDirectory();
+            invalidateStudentsCache();
+            await loadStudentsDirectory(true);
+            if (typeof renderDbStudentsTable === 'function') renderDbStudentsTable();
             loadPointsTable();
+            if (typeof window.loadSystemDatabases === 'function') await window.loadSystemDatabases();
         } catch (e) {
             alert("Error removing directory entry: " + e.message);
         }
@@ -3924,8 +3991,25 @@ function getBlockInnerHtml(type, blockId) {
             </div>
             ` : ''}
 
-            <!-- Reorder & More Options Actions -->
-            <div style="display: flex; align-items: center; gap: 8px;">
+            <!-- Direct Points & Card Actions Right -->
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                ${showPointsAndImage ? `
+                <div class="card-points-control" title="Set points for this question">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="8" r="6"></circle>
+                        <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"></path>
+                    </svg>
+                    <span class="card-points-label">Point:</span>
+                    <input type="number" class="blk-points" value="1" min="0" max="1000" step="1" 
+                           title="Points for this question"
+                           onclick="event.stopPropagation(); this.select();" 
+                           onchange="updateCardPointsDisplay(this)">
+                    <span class="pts-unit">pts</span>
+                </div>
+                ` : `
+                <input type="hidden" class="blk-points" value="0">
+                `}
+
                 <!-- Quick Reorder Buttons -->
                 <div class="card-reorder-group" title="Change card position">
                     <button type="button" class="btn-card-move" onclick="event.stopPropagation(); moveBlockUp(this)" title="Move card up">
@@ -3939,35 +4023,23 @@ function getBlockInnerHtml(type, blockId) {
                 <!-- More Options Button & Pop-up -->
                 <div class="card-more-options-container" style="position: relative;">
                     <button type="button" class="btn-card-more-options" onclick="event.stopPropagation(); toggleCardMoreMenu(this)" title="More Options">
-                        <span>More Options</span>
+                        <span>More</span>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left: 1px;">
                             <polyline points="6 9 12 15 18 9"></polyline>
                         </svg>
                     </button>
 
-                    <!-- Pop-up dropdown with Move Up, Move Down, Set Point, Duplicate, Delete -->
+                    <!-- Pop-up dropdown with Duplicate, Delete, Move -->
                     <div class="card-more-menu-dropdown" style="display: none;" onclick="event.stopPropagation()">
-                        ${showPointsAndImage ? `
-                        <div class="more-menu-item more-menu-points-item">
+                        <button type="button" class="more-menu-item more-menu-btn-action" onclick="event.stopPropagation(); closeAllCardMoreMenus(); duplicateBlock(this)">
                             <div class="more-menu-item-left">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                                 </svg>
-                                <span>Set Point</span>
+                                <span>Duplicate Question</span>
                             </div>
-                            <div class="more-menu-points-badge">
-                                <span class="pts-label">pts:</span>
-                                <input type="number" class="blk-points" value="1" min="0" 
-                                       title="Points for this question"
-                                       onclick="event.stopPropagation(); this.select();" 
-                                       onchange="updateCardPointsDisplay(this)">
-                            </div>
-                        </div>
-                        <div class="more-menu-divider"></div>
-                        ` : `
-                        <input type="hidden" class="blk-points" value="0">
-                        `}
+                        </button>
 
                         <button type="button" class="more-menu-item more-menu-btn-action" onclick="event.stopPropagation(); closeAllCardMoreMenus(); moveBlockUp(this)" title="Move card up">
                             <div class="more-menu-item-left">
@@ -3987,15 +4059,7 @@ function getBlockInnerHtml(type, blockId) {
                             </div>
                         </button>
 
-                        <button type="button" class="more-menu-item more-menu-btn-action" onclick="event.stopPropagation(); closeAllCardMoreMenus(); duplicateBlock(this)">
-                            <div class="more-menu-item-left">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                                </svg>
-                                <span>Duplicate</span>
-                            </div>
-                        </button>
+                        <div class="more-menu-divider"></div>
 
                         <button type="button" class="more-menu-item more-menu-btn-action more-menu-item-delete" onclick="event.stopPropagation(); closeAllCardMoreMenus(); deleteBlock(this)">
                             <div class="more-menu-item-left">
@@ -4004,7 +4068,7 @@ function getBlockInnerHtml(type, blockId) {
                                     <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
                                     <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
                                 </svg>
-                                <span>Delete</span>
+                                <span>Delete Question</span>
                             </div>
                         </button>
                     </div>
@@ -4478,6 +4542,416 @@ window.switchBlockType = function (selectElement) {
 
 
 
+// ==========================================
+// 30-SECOND QUIZ AUTOSAVE & DRAFT RECOVERY SYSTEM
+// ==========================================
+let _quizAutosaveInterval = null;
+let _lastAutosavedSnapshot = "";
+
+function serializeQuizBuilderData() {
+    const title = (document.getElementById('quizTitle')?.value || '').trim() || 'Untitled Quiz';
+    const quizType = document.getElementById('quizTypeSelect')?.value || 'Quiz';
+    const selectedClasses = typeof getSelectedQuizClasses === 'function' ? getSelectedQuizClasses() : [];
+    const targetClassStr = selectedClasses.includes("No Classes")
+        ? "No Classes"
+        : (selectedClasses.includes("All Classes") ? "All Classes" : selectedClasses.join(", "));
+    const subject = (document.getElementById('quizSubject')?.value || '').trim();
+    const blocksElements = document.querySelectorAll('#quizBlocksContainer .quiz-block');
+
+    const items = [];
+    blocksElements.forEach(el => {
+        const type = el.dataset.type || 'mcq';
+        const imgNode = el.querySelector('.blk-img');
+        const imgRaw = imgNode ? imgNode.value.trim() : '';
+        const imgUrl = typeof convertDriveUrl === 'function' ? convertDriveUrl(imgRaw) : imgRaw;
+        const imgTitleNode = el.querySelector('.blk-img-title');
+        const imgTitle = imgTitleNode ? imgTitleNode.value.trim() : '';
+
+        const pointsNode = el.querySelector('.blk-points');
+        const points = pointsNode ? (parseInt(pointsNode.value) || 1) : 0;
+
+        if (type === 'header') {
+            const titleText = getCleanRichText(el.querySelector('.blk-prompt'));
+            const descText = getCleanRichText(el.querySelector('.blk-desc'));
+            const sectionLabel = el.querySelector('.quiz-section-badge-label')?.innerText?.trim() || '';
+            items.push({ 
+                type, 
+                title: titleText || 'Section', 
+                prompt: titleText || 'Section', 
+                text: titleText, 
+                description: descText,
+                sectionLabel 
+            });
+        } else if (type === 'passage') {
+            const titleText = getCleanRichText(el.querySelector('.blk-prompt'));
+            const descText = getCleanRichText(el.querySelector('.blk-desc'));
+            items.push({ 
+                type, 
+                title: titleText || 'Reading Passage',
+                prompt: titleText || 'Reading Passage',
+                text: descText,
+                description: descText,
+                passage: descText,
+                imageUrl: imgUrl,
+                imageTitle: imgTitle
+            });
+        } else if (type === 'image') {
+            const titleText = getCleanRichText(el.querySelector('.blk-prompt'));
+            items.push({
+                type: 'image',
+                prompt: titleText,
+                imageUrl: imgUrl,
+                imageTitle: imgTitle
+            });
+        } else if (type === 'fileupload') {
+            const uploadModeNode = el.querySelector('.blk-upload-mode');
+            const uploadMode = uploadModeNode ? uploadModeNode.value : 'both';
+            items.push({
+                type: 'fileupload',
+                prompt: getCleanRichText(el.querySelector('.blk-prompt')),
+                imageUrl: imgUrl,
+                imageTitle: imgTitle,
+                points: points,
+                uploadMode: uploadMode
+            });
+        } else if (type === 'mcq') {
+            const options = [];
+            let selectedCorrectIndex = 0;
+            const optionRows = el.querySelectorAll('.options-container .gform-opt-row');
+            optionRows.forEach((row) => {
+                const input = row.querySelector('.gform-opt-input');
+                const radio = row.querySelector('input[type="radio"]');
+                if (input && input.value.trim() !== '') {
+                    options.push(input.value.trim());
+                    if (radio && radio.checked) {
+                        selectedCorrectIndex = options.length - 1;
+                    }
+                }
+            });
+            items.push({
+                type,
+                prompt: getCleanRichText(el.querySelector('.blk-prompt')),
+                imageUrl: imgUrl,
+                imageTitle: imgTitle,
+                points: points,
+                options: options,
+                correct: selectedCorrectIndex
+            });
+        } else if (type === 'fill') {
+            const ansVal = el.querySelector('.blk-answer')?.value?.trim() || '';
+            items.push({
+                type,
+                prompt: getCleanRichText(el.querySelector('.blk-prompt')),
+                imageUrl: imgUrl,
+                imageTitle: imgTitle,
+                points: points,
+                answers: ansVal ? ansVal.toLowerCase().split(',').map(a => a.trim()) : []
+            });
+        } else if (type === 'essay') {
+            items.push({
+                type,
+                prompt: getCleanRichText(el.querySelector('.blk-prompt')),
+                imageUrl: imgUrl,
+                imageTitle: imgTitle,
+                points: points
+            });
+        }
+    });
+
+    return {
+        title,
+        type: quizType,
+        targetClass: targetClassStr,
+        targetClassesList: selectedClasses,
+        subject,
+        items
+    };
+}
+
+function updateAutosaveStatus(statusType, message) {
+    const el = document.getElementById('quizAutosaveStatus');
+    if (!el) return;
+    el.className = 'quiz-autosave-status ' + statusType;
+    const textNode = el.querySelector('.autosave-text');
+    if (textNode) {
+        textNode.innerText = message;
+    }
+}
+
+async function runQuizAutosave() {
+    const builderView = document.getElementById('quiz-builder-view');
+    if (!builderView || builderView.classList.contains('hidden')) {
+        stopQuizAutosave();
+        return;
+    }
+
+    const data = serializeQuizBuilderData();
+    const snapshotStr = JSON.stringify(data);
+
+    // Always update LocalStorage backup
+    try {
+        localStorage.setItem('quiz_builder_autosave', JSON.stringify({
+            currentEditQuizId: currentEditQuizId,
+            data: data,
+            savedAt: Date.now()
+        }));
+    } catch (e) {
+        console.warn("Failed to write to localStorage for autosave:", e);
+    }
+
+    // Check if anything has changed since the last autosave
+    if (snapshotStr === _lastAutosavedSnapshot) {
+        return;
+    }
+
+    const hasMeaningfulContent = (data.title && data.title !== 'Untitled Quiz') || 
+                                (data.items.length > 0 && data.items.some(i => (i.prompt && i.prompt.trim()) || (i.options && i.options.length > 0) || (i.text && i.text.trim())));
+
+    if (!hasMeaningfulContent && !currentEditQuizId) {
+        updateAutosaveStatus('idle', 'Autosave on (30s)');
+        return;
+    }
+
+    updateAutosaveStatus('saving', 'Saving draft...');
+
+    try {
+        const nowIso = new Date().toISOString();
+        if (currentEditQuizId) {
+            // Update the quiz being edited (or existing draft)
+            await updateDoc(doc(db, "quizzes", currentEditQuizId), {
+                title: data.title,
+                type: data.type,
+                targetClass: data.targetClass,
+                targetClassesList: data.targetClassesList,
+                subject: data.subject,
+                items: data.items,
+                updatedAt: nowIso
+            });
+            _lastAutosavedSnapshot = snapshotStr;
+            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            updateAutosaveStatus('saved', `Saved at ${timeStr}`);
+        } else if (hasMeaningfulContent) {
+            // Create a draft document in Firestore
+            const docRef = await addDoc(collection(db, "quizzes"), {
+                title: data.title,
+                type: data.type,
+                targetClass: data.targetClass,
+                targetClassesList: data.targetClassesList,
+                subject: data.subject,
+                items: data.items,
+                status: 'draft',
+                createdAt: nowIso,
+                updatedAt: nowIso
+            });
+            currentEditQuizId = docRef.id;
+            _lastAutosavedSnapshot = snapshotStr;
+            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            updateAutosaveStatus('saved', `Draft saved at ${timeStr}`);
+        }
+    } catch (err) {
+        console.warn("Cloud autosave encountered an issue, saved locally:", err);
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        updateAutosaveStatus('offline', `Saved locally (${timeStr})`);
+    }
+}
+
+function startQuizAutosave() {
+    stopQuizAutosave();
+    _lastAutosavedSnapshot = JSON.stringify(serializeQuizBuilderData());
+    updateAutosaveStatus('idle', 'Autosave on (30s)');
+    _quizAutosaveInterval = setInterval(runQuizAutosave, 30000);
+}
+
+function stopQuizAutosave() {
+    if (_quizAutosaveInterval) {
+        clearInterval(_quizAutosaveInterval);
+        _quizAutosaveInterval = null;
+    }
+}
+
+function checkQuizDraftOnOpen() {
+    const bannerContainer = document.getElementById('quizDraftRestoreContainer');
+    if (!bannerContainer) return;
+    bannerContainer.innerHTML = '';
+    bannerContainer.style.display = 'none';
+
+    try {
+        const raw = localStorage.getItem('quiz_builder_autosave');
+        if (!raw) return;
+        const draft = JSON.parse(raw);
+        if (!draft || !draft.data || !draft.savedAt) return;
+
+        const ageHours = (Date.now() - draft.savedAt) / (1000 * 60 * 60);
+        if (ageHours > 48) return;
+
+        const hasContent = (draft.data.title && draft.data.title !== 'Untitled Quiz') ||
+                           (draft.data.items && draft.data.items.length > 0 && draft.data.items.some(i => (i.prompt && i.prompt.trim()) || (i.options && i.options.length > 0)));
+
+        if (!hasContent) return;
+
+        const dateStr = new Date(draft.savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const safeTitle = escapeHtml(draft.data.title || 'Untitled Quiz');
+
+        bannerContainer.innerHTML = `
+            <div class="quiz-draft-restore-banner">
+                <div class="draft-restore-left">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <span>Unsaved quiz draft found from <strong>${dateStr}</strong> ("${safeTitle}").</span>
+                </div>
+                <div class="draft-restore-actions">
+                    <button type="button" class="btn-restore-draft" onclick="restoreQuizDraft()">Restore Draft</button>
+                    <button type="button" class="btn-discard-draft" onclick="discardQuizDraft()">Discard</button>
+                </div>
+            </div>
+        `;
+        bannerContainer.style.display = 'block';
+    } catch (e) {
+        console.warn("Draft restore check error:", e);
+    }
+}
+
+window.restoreQuizDraft = function () {
+    const bannerContainer = document.getElementById('quizDraftRestoreContainer');
+    try {
+        const raw = localStorage.getItem('quiz_builder_autosave');
+        if (!raw) return;
+        const draft = JSON.parse(raw);
+        if (!draft || !draft.data) return;
+
+        const quiz = draft.data;
+        if (draft.currentEditQuizId) {
+            currentEditQuizId = draft.currentEditQuizId;
+        }
+
+        document.getElementById('quizTitle').value = quiz.title || "Untitled Quiz";
+        const mainTitle = document.getElementById('gform-main-title');
+        if (mainTitle) mainTitle.innerText = quiz.title || "Untitled Quiz";
+        const displayTitle = document.getElementById('displayQuizTitle');
+        if (displayTitle) displayTitle.innerText = quiz.title || "Untitled Quiz";
+
+        if (Array.isArray(quiz.targetClassesList)) {
+            setQuizClasses(quiz.targetClassesList);
+        } else if (quiz.targetClass) {
+            setQuizClasses(quiz.targetClass.split(',').map(s => s.trim()).filter(Boolean));
+        }
+
+        document.getElementById('quizSubject').value = quiz.subject || "";
+        if (document.getElementById('quizTypeSelect')) {
+            document.getElementById('quizTypeSelect').value = quiz.type || "Quiz";
+        }
+
+        const container = document.getElementById('quizBlocksContainer');
+        container.innerHTML = "";
+
+        (quiz.items || []).forEach((item, index) => {
+            const type = item.type || 'mcq';
+            const block = addBlock(type);
+            if (!block) return;
+
+            const imgInput = block.querySelector('.blk-img');
+            const titleInput = block.querySelector('.blk-img-title');
+            if (imgInput) imgInput.value = item.imageUrl || item.image || '';
+            if (titleInput) titleInput.value = item.imageTitle || item.caption || '';
+            if (imgInput && typeof handleBlockImageChange === 'function') handleBlockImageChange(imgInput);
+
+            if (type === 'header') {
+                const promptNode = block.querySelector('.blk-prompt');
+                const descNode = block.querySelector('.blk-desc');
+                const labelNode = block.querySelector('.quiz-section-badge-label');
+                if (promptNode) promptNode.innerHTML = renderRichHtml(item.text || item.prompt || item.title || '');
+                if (descNode) descNode.innerHTML = renderRichHtml(item.description || '');
+                if (labelNode && item.sectionLabel) {
+                    labelNode.innerText = item.sectionLabel;
+                    block.dataset.customSectionLabel = 'true';
+                }
+            } else if (type === 'passage') {
+                const promptNode = block.querySelector('.blk-prompt');
+                const descNode = block.querySelector('.blk-desc');
+                if (promptNode) promptNode.innerHTML = renderRichHtml(item.title || item.prompt || 'Reading Passage');
+                if (descNode) descNode.innerHTML = renderRichHtml(item.text || item.description || '');
+            } else if (type === 'image') {
+                const promptNode = block.querySelector('.blk-prompt');
+                if (promptNode) promptNode.innerHTML = renderRichHtml(item.prompt || item.title || '');
+            } else if (type === 'fileupload') {
+                const promptNode = block.querySelector('.blk-prompt');
+                if (promptNode) promptNode.innerHTML = renderRichHtml(item.prompt || '');
+                if (block.querySelector('.blk-points')) block.querySelector('.blk-points').value = item.points || 1;
+                if (block.querySelector('.blk-upload-mode')) block.querySelector('.blk-upload-mode').value = item.uploadMode || 'both';
+            } else if (type === 'mcq') {
+                const promptNode = block.querySelector('.blk-prompt');
+                if (promptNode) promptNode.innerHTML = renderRichHtml(item.prompt || item.question || '');
+                if (block.querySelector('.blk-points')) block.querySelector('.blk-points').value = item.points || 1;
+
+                const optionsContainer = block.querySelector('.options-container');
+                if (optionsContainer && item.options) {
+                    optionsContainer.innerHTML = '';
+                    item.options.forEach((optText, i) => {
+                        const newRow = document.createElement('div');
+                        newRow.className = 'gform-opt-row';
+                        const isChecked = item.correct == i ? 'checked' : '';
+                        newRow.innerHTML = `
+                            <input type="radio" name="draft_block_${index}_correct" value="${i}" onchange="this.closest('.quiz-block').querySelector('.blk-correct').value = this.value" ${isChecked}>
+                            <input type="text" class="gform-opt-input" value="${escapeHtml(optText)}" required>
+                            <button class="icon-btn delete" title="Remove Option" onclick="this.closest('.gform-opt-row').remove()">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
+                        `;
+                        optionsContainer.appendChild(newRow);
+                    });
+                }
+                if (block.querySelector('.blk-correct')) block.querySelector('.blk-correct').value = item.correct ?? 0;
+            } else if (type === 'fill') {
+                const promptNode = block.querySelector('.blk-prompt');
+                if (promptNode) promptNode.innerHTML = renderRichHtml(item.prompt || '');
+                if (block.querySelector('.blk-points')) block.querySelector('.blk-points').value = item.points || 1;
+                if (item.answers && block.querySelector('.blk-answer')) block.querySelector('.blk-answer').value = Array.isArray(item.answers) ? item.answers.join(', ') : item.answers;
+            } else if (type === 'essay') {
+                const promptNode = block.querySelector('.blk-prompt');
+                if (promptNode) promptNode.innerHTML = renderRichHtml(item.prompt || '');
+                if (block.querySelector('.blk-points')) block.querySelector('.blk-points').value = item.points || 1;
+            }
+        });
+
+        _lastAutosavedSnapshot = JSON.stringify(serializeQuizBuilderData());
+        updateAutosaveStatus('saved', 'Draft restored');
+    } catch (e) {
+        console.error("Error restoring draft:", e);
+    } finally {
+        if (bannerContainer) {
+            bannerContainer.style.display = 'none';
+            bannerContainer.innerHTML = '';
+        }
+    }
+};
+
+window.discardQuizDraft = function () {
+    try {
+        localStorage.removeItem('quiz_builder_autosave');
+    } catch (e) {}
+    const bannerContainer = document.getElementById('quizDraftRestoreContainer');
+    if (bannerContainer) {
+        bannerContainer.style.display = 'none';
+        bannerContainer.innerHTML = '';
+    }
+};
+
+window.addEventListener('beforeunload', function () {
+    const builderView = document.getElementById('quiz-builder-view');
+    if (builderView && !builderView.classList.contains('hidden')) {
+        try {
+            const data = serializeQuizBuilderData();
+            localStorage.setItem('quiz_builder_autosave', JSON.stringify({
+                currentEditQuizId: currentEditQuizId,
+                data: data,
+                savedAt: Date.now()
+            }));
+        } catch (e) {}
+    }
+});
+
 // --- Quiz UI Toggles (Landing vs Builder) ---
 window.openQuizBuilder = function (isNew = true) {
     document.getElementById('quiz-landing-view').classList.add('hidden');
@@ -4500,21 +4974,27 @@ window.openQuizBuilder = function (isNew = true) {
         const saveBtn = document.getElementById('saveQuizBtn');
         if (saveBtn) {
             saveBtn.innerText = "Publish";
+            saveBtn.style.background = "";
         }
 
         // Initialize toolbar position
         const titleCard = document.querySelector('.title-card');
         if (titleCard) activateCard(titleCard);
+
+        checkQuizDraftOnOpen();
     }
-}
+
+    startQuizAutosave();
+};
 
 window.closeQuizBuilder = function () {
+    stopQuizAutosave();
     hideRichTextPopup();
     document.getElementById('quiz-builder-view').classList.add('hidden');
     document.getElementById('quiz-landing-view').classList.remove('hidden');
     invalidateQuizzesCache();
     loadQuizzesTable(true); // Refresh the table when going back
-}
+};
 
 // Dynamically update the header title as you type the quiz name
 document.getElementById('quizTitle')?.addEventListener('input', function (e) {
@@ -5412,6 +5892,8 @@ async function editQuiz(id) {
             saveBtn.style.background = "#ffc107";
         }
         document.getElementById('quizTitle').scrollIntoView({ behavior: 'smooth' });
+        _lastAutosavedSnapshot = JSON.stringify(serializeQuizBuilderData());
+        updateAutosaveStatus('idle', 'Autosave on (30s)');
     } catch (e) { alert("Error loading quiz: " + e.message); }
 }
 
@@ -7392,10 +7874,11 @@ async function processBulkStudents() {
         fileInput.value = "";
 
         // Refresh all student views
-        if (typeof loadStudentsDirectory === "function") loadStudentsDirectory();
+        invalidateStudentsCache();
+        if (typeof loadStudentsDirectory === "function") await loadStudentsDirectory(true);
         if (typeof renderDbStudentsTable === "function") renderDbStudentsTable();
         if (typeof loadPointsTable === "function") loadPointsTable();
-        if (typeof window.loadSystemDatabases === "function") window.loadSystemDatabases();
+        if (typeof window.loadSystemDatabases === "function") await window.loadSystemDatabases();
 
     } catch (err) {
         console.error("Error processing Excel file:", err);
@@ -9444,6 +9927,7 @@ async function saveQuiz() {
                 targetClassesList: selectedClasses,
                 subject,
                 items,
+                status: 'active',
                 updatedAt: new Date().toISOString()
             });
             alert("Quiz updated successfully!");
@@ -9458,10 +9942,16 @@ async function saveQuiz() {
                 subject,
                 items,
                 status: 'active',
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
             });
             alert("Quiz published successfully!");
         }
+
+        stopQuizAutosave();
+        try {
+            localStorage.removeItem('quiz_builder_autosave');
+        } catch (e) {}
 
         closeQuizBuilder();
         document.getElementById('quizBlocksContainer').innerHTML = "";

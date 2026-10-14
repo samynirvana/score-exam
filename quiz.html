@@ -1256,6 +1256,524 @@
                 padding: 16px 12px;
             }
         }
+
+        /* ============================================================
+           CREATIVE & ATTRACTIVE QUIZ SUBMISSION SUCCESS UI / ANIMATIONS
+           ============================================================ */
+        #resultSection.submission-success-card {
+            max-width: 540px;
+            margin: 36px auto;
+            padding: 44px 32px 36px 32px;
+            border-radius: 28px;
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+            background: var(--card-bg, #ffffff);
+            border: 1.5px solid rgba(16, 185, 129, 0.25);
+            box-shadow: 0 24px 50px -12px rgba(16, 185, 129, 0.16), 0 8px 24px -4px rgba(15, 23, 42, 0.05);
+            animation: successCardPop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+            box-sizing: border-box;
+        }
+
+        body.dark-theme #resultSection.submission-success-card {
+            background: linear-gradient(180deg, #111c44 0%, #0d1637 100%);
+            border-color: rgba(16, 185, 129, 0.35);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(16, 185, 129, 0.12);
+        }
+
+        @keyframes successCardPop {
+            0% {
+                opacity: 0;
+                transform: translateY(32px) scale(0.92);
+            }
+            60% {
+                transform: translateY(-6px) scale(1.02);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Ambient Glowing Background Radial */
+        .success-ambient-glow {
+            position: absolute;
+            top: -60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 320px;
+            height: 240px;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.22) 0%, rgba(59, 130, 246, 0.1) 45%, transparent 70%);
+            pointer-events: none;
+            filter: blur(28px);
+            z-index: 0;
+        }
+
+        /* Hero Icon Wrapper */
+        .success-hero-wrapper {
+            position: relative;
+            width: 110px;
+            height: 110px;
+            margin: 0 auto 20px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1;
+            user-select: none;
+        }
+
+        /* Pulsing Halo Rings */
+        .success-halo-ring {
+            position: absolute;
+            border-radius: 50%;
+            border: 2px solid rgba(16, 185, 129, 0.5);
+            pointer-events: none;
+        }
+
+        .halo-ring-1 {
+            width: 86px;
+            height: 86px;
+            animation: haloPulse1 2.4s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+        }
+
+        .halo-ring-2 {
+            width: 86px;
+            height: 86px;
+            animation: haloPulse2 2.4s cubic-bezier(0.25, 1, 0.5, 1) 0.8s infinite;
+        }
+
+        @keyframes haloPulse1 {
+            0% {
+                transform: scale(0.85);
+                opacity: 0.9;
+            }
+            60% {
+                transform: scale(1.45);
+                opacity: 0.35;
+            }
+            100% {
+                transform: scale(1.75);
+                opacity: 0;
+            }
+        }
+
+        @keyframes haloPulse2 {
+            0% {
+                transform: scale(0.85);
+                opacity: 0.8;
+            }
+            60% {
+                transform: scale(1.7);
+                opacity: 0.25;
+            }
+            100% {
+                transform: scale(2.05);
+                opacity: 0;
+            }
+        }
+
+        /* Icon Badge */
+        .success-icon-badge {
+            width: 78px;
+            height: 78px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 25px -4px rgba(16, 185, 129, 0.55), 0 0 0 6px rgba(16, 185, 129, 0.15);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            animation: badgeBounceIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
+        }
+
+        .success-hero-wrapper:hover .success-icon-badge {
+            transform: scale(1.08) rotate(4deg);
+        }
+
+        @keyframes badgeBounceIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.3) rotate(-20deg);
+            }
+            70% {
+                transform: scale(1.12) rotate(6deg);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) rotate(0deg);
+            }
+        }
+
+        /* SVG Checkmark Animations */
+        .success-checkmark-svg {
+            width: 44px;
+            height: 44px;
+            display: block;
+        }
+
+        .success-checkmark-circle {
+            stroke-dasharray: 160;
+            stroke-dashoffset: 160;
+            stroke-width: 3.5;
+            stroke: rgba(255, 255, 255, 0.35);
+            fill: none;
+            animation: strokeCircleDraw 0.6s cubic-bezier(0.65, 0, 0.45, 1) 0.2s forwards;
+        }
+
+        .success-checkmark-check {
+            transform-origin: 50% 50%;
+            stroke-dasharray: 48;
+            stroke-dashoffset: 48;
+            stroke-width: 4.5;
+            stroke: #ffffff;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
+            animation: strokeCheckDraw 0.4s cubic-bezier(0.65, 0, 0.45, 1) 0.5s forwards;
+        }
+
+        @keyframes strokeCircleDraw {
+            100% {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        @keyframes strokeCheckDraw {
+            100% {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        /* Orbiting Floating Sparkles */
+        .orbit-sparkle {
+            position: absolute;
+            font-size: 16px;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .sparkle-1 {
+            top: 2px;
+            right: 12px;
+            color: #f59e0b;
+            animation: sparkleOrbit1 3s ease-in-out infinite;
+        }
+
+        .sparkle-2 {
+            bottom: 8px;
+            left: 10px;
+            color: #38bdf8;
+            animation: sparkleOrbit2 2.7s ease-in-out 0.4s infinite;
+        }
+
+        .sparkle-3 {
+            top: 18px;
+            left: 6px;
+            color: #ec4899;
+            font-size: 13px;
+            animation: sparkleOrbit3 3.3s ease-in-out 0.8s infinite;
+        }
+
+        @keyframes sparkleOrbit1 {
+            0%, 100% { transform: translateY(0) scale(1) rotate(0deg); opacity: 0.9; }
+            50% { transform: translateY(-7px) scale(1.3) rotate(35deg); opacity: 1; }
+        }
+
+        @keyframes sparkleOrbit2 {
+            0%, 100% { transform: translateY(0) scale(1) rotate(0deg); opacity: 0.85; }
+            50% { transform: translateY(6px) scale(1.25) rotate(-25deg); opacity: 1; }
+        }
+
+        @keyframes sparkleOrbit3 {
+            0%, 100% { transform: translate(0, 0) scale(0.9) rotate(0deg); opacity: 0.75; }
+            50% { transform: translate(-4px, -6px) scale(1.2) rotate(45deg); opacity: 1; }
+        }
+
+        /* Typography & Headings */
+        .submission-success-title {
+            margin: 0 0 10px 0;
+            font-size: 26px;
+            font-weight: 800;
+            color: var(--text-dark, #0f172a);
+            letter-spacing: -0.025em;
+            position: relative;
+            z-index: 1;
+            animation: successTextFadeUp 0.5s ease-out 0.25s both;
+        }
+
+        @keyframes successTextFadeUp {
+            0% {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Status Pill Badge */
+        .submission-status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            border-radius: 9999px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.28);
+            color: #059669;
+            font-size: 13px;
+            font-weight: 700;
+            margin: 0 auto 16px auto;
+            position: relative;
+            z-index: 1;
+            animation: successTextFadeUp 0.5s ease-out 0.35s both;
+        }
+
+        body.dark-theme .submission-status-pill {
+            background: rgba(16, 185, 129, 0.16);
+            border-color: rgba(16, 185, 129, 0.4);
+            color: #34d399;
+        }
+
+        .status-pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            display: inline-block;
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            animation: statusDotPulse 2s infinite;
+        }
+
+        @keyframes statusDotPulse {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            }
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+            }
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+            }
+        }
+
+        /* Description text */
+        .submission-success-desc {
+            font-size: 14.5px;
+            color: var(--text-gray, #64748b);
+            line-height: 1.6;
+            max-width: 440px;
+            margin: 0 auto 24px auto;
+            position: relative;
+            z-index: 1;
+            animation: successTextFadeUp 0.5s ease-out 0.4s both;
+        }
+
+        body.dark-theme .submission-success-desc {
+            color: #94a3b8;
+        }
+
+        /* Submission Mini Receipt */
+        .submission-receipt-card {
+            background: rgba(248, 250, 252, 0.9);
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            border-radius: 18px;
+            padding: 14px 20px;
+            margin: 0 auto 26px auto;
+            max-width: 440px;
+            text-align: left;
+            position: relative;
+            z-index: 1;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+            animation: successTextFadeUp 0.5s ease-out 0.45s both;
+        }
+
+        body.dark-theme .submission-receipt-card {
+            background: rgba(17, 28, 68, 0.65);
+            border-color: rgba(255, 255, 255, 0.08);
+            box-shadow: none;
+        }
+
+        .receipt-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 7px 0;
+            font-size: 13.5px;
+        }
+
+        .receipt-row:not(:last-child) {
+            border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+        }
+
+        body.dark-theme .receipt-row:not(:last-child) {
+            border-bottom-color: rgba(255, 255, 255, 0.06);
+        }
+
+        .receipt-label {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            color: var(--text-gray, #64748b);
+            font-weight: 500;
+        }
+
+        body.dark-theme .receipt-label {
+            color: #94a3b8;
+        }
+
+        .receipt-value {
+            font-weight: 700;
+            color: var(--text-dark, #0f172a);
+            max-width: 220px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        body.dark-theme .receipt-value {
+            color: #f1f5f9;
+        }
+
+        .receipt-badge-delivered {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 700;
+            font-size: 12.5px;
+            color: #059669;
+            background: rgba(16, 185, 129, 0.12);
+            padding: 3px 9px;
+            border-radius: 6px;
+        }
+
+        body.dark-theme .receipt-badge-delivered {
+            color: #34d399;
+            background: rgba(16, 185, 129, 0.2);
+        }
+
+        .mini-check {
+            font-weight: 800;
+        }
+
+        /* Action Buttons */
+        .submission-actions-row {
+            display: flex;
+            gap: 14px;
+            justify-content: center;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
+            animation: successTextFadeUp 0.5s ease-out 0.5s both;
+        }
+
+        .btn-success-primary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 13px 28px;
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: #ffffff !important;
+            border: none;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 14.5px;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+            transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .btn-success-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 22px rgba(37, 99, 235, 0.45);
+        }
+
+        .btn-success-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-success-secondary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 13px 26px;
+            background: transparent;
+            color: var(--text-dark, #1e293b) !important;
+            border: 1.5px solid var(--border-color, #e2e8f0);
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 14.5px;
+            cursor: pointer;
+            transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        body.dark-theme .btn-success-secondary {
+            color: #f1f5f9 !important;
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-success-secondary:hover {
+            transform: translateY(-2px);
+            background: rgba(0, 0, 0, 0.04);
+            border-color: rgba(37, 99, 235, 0.3);
+        }
+
+        body.dark-theme .btn-success-secondary:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(96, 165, 250, 0.4);
+        }
+
+        /* Celebration Sparkle Particles */
+        .celebration-sparkle {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 99999;
+            animation: celebrateSparkleAnim 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes celebrateSparkleAnim {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0) scale(1) rotate(0deg);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(var(--dx), var(--dy)) scale(0.2) rotate(220deg);
+            }
+        }
+
+        /* Floating Confetti Ribbon / Bits */
+        .festive-confetti-particle {
+            position: fixed;
+            pointer-events: none;
+            z-index: 99999;
+            will-change: transform, opacity;
+            animation: festiveConfettiFall var(--fall-duration, 2.8s) cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+
+        @keyframes festiveConfettiFall {
+            0% {
+                opacity: 1;
+                transform: translate3d(var(--start-x, 0), var(--start-y, 0), 0) rotate(0deg) scale(1);
+            }
+            75% {
+                opacity: 0.9;
+            }
+            100% {
+                opacity: 0;
+                transform: translate3d(var(--end-x, 0), var(--end-y, 80vh), 0) rotate(var(--rot, 540deg)) scale(0.6);
+            }
+        }
     </style>
 </head>
 
@@ -1672,23 +2190,88 @@
             </div>
 
             <!-- STEP 6: RESULT SECTION -->
-            <div id="resultSection" class="box hidden"
-                style="margin-top: 20px; text-align: center; padding: 40px 20px;">
-                <div
-                    style="width: 64px; height: 64px; background: #ecfdf5; color: #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 16px auto;">
-                    ✓
+            <div id="resultSection" class="box hidden submission-success-card">
+                <!-- Ambient Celebration Glow Behind -->
+                <div class="success-ambient-glow" aria-hidden="true"></div>
+
+                <!-- Animated Hero Icon Container -->
+                <div class="success-hero-wrapper" onclick="if (typeof triggerCelebration === 'function') triggerCelebration(event.clientX, event.clientY, 30)">
+                    <div class="success-halo-ring halo-ring-1"></div>
+                    <div class="success-halo-ring halo-ring-2"></div>
+
+                    <div class="success-icon-badge">
+                        <svg class="success-checkmark-svg" viewBox="0 0 52 52">
+                            <circle class="success-checkmark-circle" cx="26" cy="26" r="23" />
+                            <path class="success-checkmark-check" d="M14.5 26.5l7.5 7.5 15.5-15.5" />
+                        </svg>
+                    </div>
+
+                    <!-- Floating Orbiting Sparkles -->
+                    <span class="orbit-sparkle sparkle-1">✦</span>
+                    <span class="orbit-sparkle sparkle-2">✨</span>
+                    <span class="orbit-sparkle sparkle-3">✦</span>
                 </div>
-                <h2 style="margin: 0 0 8px 0; color: var(--text-dark);">Quiz Submitted Successfully!</h2>
-                <p id="scoreSummary"
-                    style="font-size: 18px; font-weight: 700; color: var(--primary-blue); margin-bottom: 24px;"></p>
-                <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-                    <button id="returnToDashboardBtn"
-                        style="width: auto; padding: 12px 28px; background: var(--primary-blue); color: #ffffff; border: none; border-radius: 10px; font-weight: 700; cursor: pointer;">
-                        Back to Quiz Hub
+
+                <!-- Title & Header -->
+                <h2 class="submission-success-title">Quiz Submitted Successfully!</h2>
+
+                <!-- Status Pill Badge -->
+                <div class="submission-status-pill">
+                    <span class="status-pulse-dot"></span>
+                    <span>Recorded • Pending Teacher Review</span>
+                </div>
+
+                <!-- Reassuring Message -->
+                <p class="submission-success-desc">
+                    Awesome job! Your responses have been safely submitted and stored.
+                    Your teacher will review your quiz and release scores once grading is complete.
+                </p>
+
+                <!-- Submission Mini Receipt -->
+                <div class="submission-receipt-card">
+                    <div class="receipt-row">
+                        <span class="receipt-label">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            Assessment
+                        </span>
+                        <span id="submittedQuizTitle" class="receipt-value">Online Assessment</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="receipt-label">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            Submitted At
+                        </span>
+                        <span id="submittedTimestamp" class="receipt-value">Just now</span>
+                    </div>
+                    <div class="receipt-row">
+                        <span class="receipt-label">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                            Delivery Status
+                        </span>
+                        <span class="receipt-badge-delivered">
+                            <span class="mini-check">✓</span> Securely Saved
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Hidden scoreSummary container preserved for script safety without premature score display -->
+                <p id="scoreSummary" style="display: none;" aria-hidden="true"></p>
+
+                <!-- Interactive Navigation Actions -->
+                <div class="submission-actions-row">
+                    <button id="returnToDashboardBtn" class="btn-success-primary">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                        </svg>
+                        <span>Back to Quiz Hub</span>
                     </button>
-                    <button onclick="window.location.href='index.html'"
-                        style="width: auto; padding: 12px 28px; background: transparent; border: 1px solid var(--border-color); color: var(--text-dark); border-radius: 10px; font-weight: 600; cursor: pointer;">
-                        Return to Portal
+                    <button onclick="window.location.href='index.html'" class="btn-success-secondary">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="19" y1="12" x2="5" y2="12"></line>
+                            <polyline points="12 19 5 12 12 5"></polyline>
+                        </svg>
+                        <span>Return to Portal</span>
                     </button>
                 </div>
             </div>
@@ -1696,7 +2279,7 @@
         </main>
     </div>
 
-    <script type="module" src="quiz.js?v=429"></script>
+    <script type="module" src="quiz.js?v=431"></script>
     <script type="module" src="studentNav.js?v=470"></script>
 </body>
 

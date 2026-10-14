@@ -2069,8 +2069,9 @@
                                                 style="display: block; text-align: left; font-size: 13px; font-weight: 700; color: var(--text-dark); margin-bottom: 6px;">Class
                                                 Room</label>
                                             <input type="text" id="newStudentClass"
-                                                placeholder="Class Room (e.g., Grade 7A)"
+                                                placeholder="Class Room (e.g., Grade 9D, Grade 7A)"
                                                 style="width: 100%; height: 44px; font-size: 13.5px; border-radius: 10px; margin: 0; padding: 0 14px; box-sizing: border-box;">
+                                            <span style="font-size: 11.5px; color: var(--text-gray, #64748b); margin-top: 4px; display: block;">Enter any existing or new class name. New classes are created automatically when registered.</span>
                                         </div>
                                         <div class="form-group" style="margin: 0; width: 100%;">
                                             <label for="newStudentBirthDate"
@@ -2090,8 +2091,7 @@
                                         <div
                                             style="display: flex; justify-content: center; align-items: center; margin-top: 5px; width: 100%;">
                                             <button id="registerStudentBtn" class="btn-primary-red"
-                                                style="height: 44px; padding: 0 28px; font-size: 14px; font-weight: 700;">Generate
-                                                Student Code</button>
+                                                style="height: 44px; padding: 0 28px; font-size: 14px; font-weight: 700;">Register Student & Generate Code</button>
                                         </div>
                                     </div>
                                 </div>
@@ -3487,7 +3487,10 @@
                                 </button>
                                 <input type="text" id="quizTitle" class="gform-title-input" placeholder="Untitled Quiz"
                                     value="Untitled Quiz">
-                                <!-- Removed "All changes saved" -->
+                                <div id="quizAutosaveStatus" class="quiz-autosave-status" title="Autosaves every 30 seconds">
+                                    <span class="autosave-dot"></span>
+                                    <span class="autosave-text">Autosave on (30s)</span>
+                                </div>
                             </div>
                             <div class="gform-header-center">
                                 <button class="gform-tab active">Questions</button>
@@ -3523,6 +3526,7 @@
 
                         <!-- Main Body -->
                         <div class="gform-body">
+                            <div id="quizDraftRestoreContainer" style="display: none; padding: 10px 24px 0 24px;"></div>
                             <div class="gform-content-wrapper">
                                 <div id="floatingToolbar" class="gform-floating-toolbar">
                                     <!-- Button to add MCQ -->

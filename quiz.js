@@ -206,9 +206,14 @@ async function initStudentQuizDashboard(code) {
         document.getElementById('takeQuizSection')?.classList.add('hidden');
         document.getElementById('resultSection')?.classList.add('hidden');
 
-        // Sequentially load recent quizzes first so recentQuizResults is ready for completion checks
-        await loadRecentQuizzes(code);
-        await loadAvailableQuizzes(studentClass);
+        // Parallelize data fetching to eliminate cascading waterfall latency
+        const [recentSnap, quizzesSnap] = await Promise.all([
+            getDocs(query(collection(db, "quiz_results"), where("studentCode", "==", code))),
+            getDocs(collection(db, "quizzes"))
+        ]);
+
+        await loadRecentQuizzes(code, recentSnap);
+        await loadAvailableQuizzes(studentClass, quizzesSnap);
         setupLiveQuizLobbyListener(studentClass);
 
     } catch (err) {
@@ -217,7 +222,7 @@ async function initStudentQuizDashboard(code) {
 }
 
 // --- LOAD RECENT QUIZZES (ONLINE QUIZZES CREATED ON WEBSITE ONLY) ---
-async function loadRecentQuizzes(studentCode) {
+async function loadRecentQuizzes(studentCode, preloadedSnap = null) {
     const container = document.getElementById('recentQuizzesContainer');
     const badge = document.getElementById('recentQuizCountBadge');
     if (!container) return;
@@ -240,7 +245,7 @@ async function loadRecentQuizzes(studentCode) {
         // Query only online quiz results submitted via the website (quiz_results collection)
         // Does NOT query exam_scores (offline or classroom exams)
         try {
-            const qSnap = await getDocs(query(collection(db, "quiz_results"), where("studentCode", "==", studentCode)));
+            const qSnap = preloadedSnap || await getDocs(query(collection(db, "quiz_results"), where("studentCode", "==", studentCode)));
             qSnap.forEach(docSnap => {
                 const d = docSnap.data();
                 const key = (d.quizId || d.quizTitle || docSnap.id).trim().toLowerCase();
@@ -458,7 +463,7 @@ function isQuizAlreadyCompleted(quiz) {
 }
 
 // --- LOAD AVAILABLE QUIZZES FOR CLASS ---
-async function loadAvailableQuizzes(studentClass) {
+async function loadAvailableQuizzes(studentClass, preloadedSnap = null) {
     const listContainer = document.getElementById('availableQuizzesList');
     const ctaCount = document.getElementById('ctaAvailableQuizzesCount');
     if (!listContainer) return;
@@ -466,7 +471,7 @@ async function loadAvailableQuizzes(studentClass) {
     availableQuizzesMap = {};
 
     try {
-        const snap = await getDocs(collection(db, "quizzes"));
+        const snap = preloadedSnap || await getDocs(collection(db, "quizzes"));
         let count = 0;
         const normalizedStudentClass = (studentClass || '').toLowerCase().trim();
 
@@ -1333,9 +1338,14 @@ document.getElementById('returnToDashboardBtn')?.addEventListener('click', async
     document.getElementById('resultSection')?.classList.add('hidden');
     document.getElementById('quizDashboardSection')?.classList.remove('hidden');
     if (currentStudent && currentStudent.code) {
-        await loadRecentQuizzes(currentStudent.code);
-        await loadAvailableQuizzes(currentStudent.studentClass || currentStudent.class);
-        setupLiveQuizLobbyListener(currentStudent.studentClass || currentStudent.class);
+        const sClass = currentStudent.studentClass || currentStudent.class;
+        const [recentSnap, quizzesSnap] = await Promise.all([
+            getDocs(query(collection(db, "quiz_results"), where("studentCode", "==", currentStudent.code))),
+            getDocs(collection(db, "quizzes"))
+        ]);
+        await loadRecentQuizzes(currentStudent.code, recentSnap);
+        await loadAvailableQuizzes(sClass, quizzesSnap);
+        setupLiveQuizLobbyListener(sClass);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
 });
@@ -1364,7 +1374,7 @@ function renderQuestionImage(imageUrl, imageTitle) {
     return `
         <div class="quiz-q-image-wrap" style="margin: 12px 0; text-align: center; background: var(--bg-body, #f8fafc); border: 1px solid var(--border-color, #e2e8f0); border-radius: 12px; padding: 12px;">
             ${imageTitle ? `<div class="quiz-q-image-title" style="font-size: 13.5px; font-weight: 700; color: var(--text-dark, #0f172a); margin-bottom: 8px;">${escapeHtml(imageTitle)}</div>` : ''}
-            <img src="${escapeHtml(convertedUrl)}" alt="${escapeHtml(imageTitle || 'Question illustration')}" style="max-width: 100%; max-height: 380px; object-fit: contain; border-radius: 8px; border: 1px solid rgba(0,0,0,0.06); display: inline-block;">
+            <img src="${escapeHtml(convertedUrl)}" alt="${escapeHtml(imageTitle || 'Question illustration')}" loading="lazy" decoding="async" style="max-width: 100%; max-height: 380px; object-fit: contain; border-radius: 8px; border: 1px solid rgba(0,0,0,0.06); display: inline-block;">
         </div>
     `;
 }
@@ -1941,9 +1951,31 @@ document.getElementById('submitQuizBtn')?.addEventListener('click', async (e) =>
         document.getElementById('liveQuizStudentHeaderBar')?.classList.add('hidden');
 
         document.getElementById('takeQuizSection').classList.add('hidden');
-        document.getElementById('scoreSummary').innerText = `You scored ${score} out of ${autoGradableCount} points!`;
-        document.getElementById('resultSection').classList.remove('hidden');
-        triggerCelebration();
+
+        // Populate receipt metadata
+        const titleEl = document.getElementById('submittedQuizTitle');
+        if (titleEl) {
+            titleEl.innerText = activeQuiz?.title || 'Online Assessment';
+        }
+        const timeEl = document.getElementById('submittedTimestamp');
+        if (timeEl) {
+            const now = new Date();
+            timeEl.innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ', ' + now.toLocaleDateString([], { month: 'short', day: 'numeric' });
+        }
+
+        // Clear and hide scoreSummary (removes "You scored X out of Y points")
+        const scoreSummaryEl = document.getElementById('scoreSummary');
+        if (scoreSummaryEl) {
+            scoreSummaryEl.innerText = '';
+            scoreSummaryEl.style.display = 'none';
+        }
+
+        const resultSec = document.getElementById('resultSection');
+        if (resultSec) {
+            resultSec.classList.remove('hidden');
+        }
+
+        launchFestiveCelebration();
         attachRippleEffect('button, .action-btn');
 
     } catch (err) {
@@ -1953,6 +1985,72 @@ document.getElementById('submitQuizBtn')?.addEventListener('click', async (e) =>
         submitBtn.disabled = false;
     }
 });
+
+// Festive Celebration with Confetti and Sparkles
+function launchFestiveCelebration() {
+    try {
+        if (typeof triggerCelebration === 'function') {
+            triggerCelebration(window.innerWidth / 2, window.innerHeight * 0.35, 36);
+            setTimeout(() => {
+                triggerCelebration(window.innerWidth * 0.32, window.innerHeight * 0.40, 24);
+                triggerCelebration(window.innerWidth * 0.68, window.innerHeight * 0.40, 24);
+            }, 250);
+        }
+    } catch (e) {
+        console.warn("Celebration sparkle error:", e);
+    }
+
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        return;
+    }
+
+    const confettiCount = 50;
+    const colors = ['#2563eb', '#3b82f6', '#10b981', '#059669', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4'];
+    const shapes = ['rect', 'circle', 'ribbon'];
+
+    for (let i = 0; i < confettiCount; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'festive-confetti-particle';
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const shape = shapes[Math.floor(Math.random() * shapes.length)];
+        const size = Math.floor(Math.random() * 8) + 8;
+
+        confetti.style.backgroundColor = color;
+        if (shape === 'circle') {
+            confetti.style.width = `${size}px`;
+            confetti.style.height = `${size}px`;
+            confetti.style.borderRadius = '50%';
+        } else if (shape === 'ribbon') {
+            confetti.style.width = `${Math.max(4, Math.floor(size * 0.4))}px`;
+            confetti.style.height = `${Math.floor(size * 1.8)}px`;
+            confetti.style.borderRadius = '3px';
+        } else {
+            confetti.style.width = `${size}px`;
+            confetti.style.height = `${Math.floor(size * 0.75)}px`;
+            confetti.style.borderRadius = '2px';
+        }
+
+        const startX = (window.innerWidth * 0.5) + (Math.random() * 320 - 160);
+        const startY = (window.innerHeight * 0.28) + (Math.random() * 80 - 40);
+        const endX = startX + (Math.random() * 440 - 220);
+        const endY = window.innerHeight * (0.65 + Math.random() * 0.35);
+        const duration = (2.2 + Math.random() * 1.4).toFixed(2);
+        const rot = Math.floor(Math.random() * 720 - 360) + 'deg';
+
+        confetti.style.left = '0px';
+        confetti.style.top = '0px';
+        confetti.style.setProperty('--start-x', `${startX}px`);
+        confetti.style.setProperty('--start-y', `${startY}px`);
+        confetti.style.setProperty('--end-x', `${endX}px`);
+        confetti.style.setProperty('--end-y', `${endY}px`);
+        confetti.style.setProperty('--rot', rot);
+        confetti.style.setProperty('--fall-duration', `${duration}s`);
+
+        document.body.appendChild(confetti);
+        setTimeout(() => confetti.remove(), parseFloat(duration) * 1000 + 100);
+    }
+}
+window.launchFestiveCelebration = launchFestiveCelebration;
 
 // Enforce Chat Room disabled on quiz.html
 function enforceQuizChatDisabled() {
