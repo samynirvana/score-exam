@@ -2081,13 +2081,18 @@ body.dark-theme #quizPreviewModal .preview-q-points-badge {
 
 #quizPreviewModal .preview-question-text {
     font-size: 16px;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--text-dark, #0f172a);
     line-height: 1.65;
     letter-spacing: -0.01em;
     margin-top: 14px;
     margin-bottom: 18px;
     word-break: break-word;
+}
+
+#quizPreviewModal .preview-question-text b,
+#quizPreviewModal .preview-question-text strong {
+    font-weight: 800;
 }
 
 body.dark-theme #quizPreviewModal .preview-question-text {
@@ -2439,6 +2444,41 @@ body.dark-theme #quizPreviewModal .preview-input-text {
    CARD FOOTER: MORE OPTIONS MENU (SET POINT, DUPLICATE, DELETE)
    ========================================================================== */
 
+.card-reorder-group {
+    display: inline-flex;
+    align-items: center;
+    background: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    height: 34px;
+    box-sizing: border-box;
+}
+
+.btn-card-move {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 100%;
+    padding: 0;
+    background: transparent;
+    border: none;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-card-move:hover {
+    background: #f1f5f9;
+    color: #1e5eff;
+}
+
+.btn-card-move:first-child {
+    border-right: 1px solid #e2e8f0;
+}
+
 .card-more-options-container {
     position: relative;
     display: inline-block;
@@ -2602,7 +2642,25 @@ body.dark-theme #quizPreviewModal .preview-input-text {
     margin: 4px 6px;
 }
 
-/* Dark theme for More Options */
+/* Dark theme for Reorder Buttons & More Options */
+body.dark-theme .card-reorder-group {
+    background: #1e293b;
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+body.dark-theme .btn-card-move {
+    color: #cbd5e1;
+}
+
+body.dark-theme .btn-card-move:hover {
+    background: #334155;
+    color: #60a5fa;
+}
+
+body.dark-theme .btn-card-move:first-child {
+    border-right-color: rgba(255, 255, 255, 0.1);
+}
+
 body.dark-theme .btn-card-more-options {
     background: #1e293b;
     border-color: rgba(255, 255, 255, 0.15);

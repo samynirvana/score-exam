@@ -1,6 +1,6 @@
 import { doc, getDoc, getDocs, collection, addDoc, deleteDoc, updateDoc, setDoc, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { db } from "./firebase.js";
-import { escapeHtml, triggerCelebration, attachRippleEffect } from "./utils.js";
+import { escapeHtml, triggerCelebration, attachRippleEffect, renderRichHtml } from "./utils.js";
 
 let currentStudent = null;
 let activeQuiz = null;
@@ -410,7 +410,7 @@ function openQuizReviewModal(resultItem) {
                     <span style="font-size: 13px; font-weight: 800; color: var(--primary-blue);">Question ${qIdx + 1}</span>
                     ${statusTag}
                 </div>
-                <div style="font-size: 14.5px; font-weight: 600; color: var(--text-dark); line-height: 1.5;">${escapeHtml(resp.prompt || '')}</div>
+                <div style="font-size: 14.5px; font-weight: 600; color: var(--text-dark); line-height: 1.5;">${renderRichHtml(resp.prompt || '')}</div>
                 <div style="font-size: 13.5px; margin-top: 4px; padding: 10px 12px; border-radius: 8px; background: rgba(15, 23, 42, 0.03); border: 1px solid var(--border-color);">
                     <span style="font-weight: 700; color: var(--text-gray);">Your Answer:</span>
                     <span style="font-weight: 600; color: ${resp.isCorrect ? '#10b981' : (resp.isEssay ? 'var(--text-dark)' : '#ef4444')}; margin-left: 6px;">
@@ -1539,8 +1539,8 @@ function renderQuizForm(quiz) {
                         </span>
                         <span class="divider-line-wing"></span>
                     </div>
-                    ${(item.text || item.title) ? `<h3 class="preview-section-title">${escapeHtml(item.text || item.title)}</h3>` : ''}
-                    ${item.description ? `<p class="preview-section-desc">${escapeHtml(item.description)}</p>` : ''}
+                    ${(item.text || item.title) ? `<h3 class="preview-section-title">${renderRichHtml(item.text || item.title)}</h3>` : ''}
+                    ${item.description ? `<p class="preview-section-desc">${renderRichHtml(item.description)}</p>` : ''}
                 </div>
             `;
         } 
@@ -1588,8 +1588,8 @@ function renderQuizForm(quiz) {
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
                     <span style="background: rgba(16, 185, 129, 0.1); color: #10b981; font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 6px; text-transform: uppercase;">Reading Passage</span>
                 </div>
-                <h4 style="margin: 0 0 10px 0; font-size: 16.5px; font-weight: 700; color:var(--text-dark);">${escapeHtml(passageTitle)}</h4>
-                <div style="white-space: pre-line; background: var(--bg-body, #f8fafc); padding: 16px; border-radius: 10px; font-size: 14.5px; line-height: 1.65; border: 1px solid var(--border-color); color: var(--text-dark);">${escapeHtml(passageBody)}</div>
+                <h4 style="margin: 0 0 10px 0; font-size: 16.5px; font-weight: 700; color:var(--text-dark);">${renderRichHtml(passageTitle)}</h4>
+                <div style="background: var(--bg-body, #f8fafc); padding: 16px; border-radius: 10px; font-size: 14.5px; line-height: 1.65; border: 1px solid var(--border-color); color: var(--text-dark); word-break: break-word;">${renderRichHtml(passageBody)}</div>
                 ${renderQuestionImage(item.imageUrl, item.imageTitle)}
             `;
         } 
@@ -1600,7 +1600,7 @@ function renderQuizForm(quiz) {
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
                     <span style="background: rgba(99, 102, 241, 0.1); color: #6366f1; font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 6px; text-transform: uppercase;">Image Resource</span>
                 </div>
-                ${item.prompt ? `<h4 style="margin: 0 0 10px 0; font-size: 16.5px; font-weight: 700; color:var(--text-dark);">${escapeHtml(item.prompt)}</h4>` : ''}
+                ${item.prompt ? `<h4 style="margin: 0 0 10px 0; font-size: 16.5px; font-weight: 700; color:var(--text-dark);">${renderRichHtml(item.prompt)}</h4>` : ''}
                 ${renderQuestionImage(item.imageUrl, item.imageTitle)}
             `;
         }
@@ -1618,7 +1618,7 @@ function renderQuizForm(quiz) {
                     <span class="q-num-badge">No. ${questionCounter}</span>
                     ${pointsHtml}
                 </div>
-                <div class="quiz-question-text">${escapeHtml(prompt)}</div>
+                <div class="quiz-question-text">${renderRichHtml(prompt)}</div>
                 ${renderQuestionImage(item.imageUrl, item.imageTitle)}
 
                 <div class="quiz-fileupload-box" style="margin-top: 14px; background: var(--bg-body, #f8fafc); border: 1.5px dashed var(--border-color, #cbd5e1); border-radius: 12px; padding: 16px;">
@@ -1674,13 +1674,13 @@ function renderQuizForm(quiz) {
                     <span class="q-num-badge">No. ${questionCounter}</span>
                     ${pointsHtml}
                 </div>
-                <div class="quiz-question-text">${escapeHtml(prompt)}</div>
+                <div class="quiz-question-text">${renderRichHtml(prompt)}</div>
                 ${renderQuestionImage(item.imageUrl, item.imageTitle)}
                 <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 6px;">
                     ${(item.options || []).map((opt, oIdx) => `
                         <label class="quiz-option-label">
                             <input type="radio" name="item_${idx}" value="${oIdx}">
-                            <span>${escapeHtml(opt)}</span>
+                            <span>${renderRichHtml(opt)}</span>
                         </label>
                     `).join('')}
                 </div>
@@ -1697,7 +1697,7 @@ function renderQuizForm(quiz) {
                     <span class="q-num-badge">No. ${questionCounter}</span>
                     ${pointsHtml}
                 </div>
-                <div class="quiz-question-text">${escapeHtml(prompt)}</div>
+                <div class="quiz-question-text">${renderRichHtml(prompt)}</div>
                 ${renderQuestionImage(item.imageUrl, item.imageTitle)}
                 <textarea name="item_${idx}" class="auto-expand-input" rows="1" placeholder="Type your answer here..." oninput="autoResizeInput(this)"></textarea>
             `;
@@ -1713,7 +1713,7 @@ function renderQuizForm(quiz) {
                     <span class="q-num-badge">No. ${questionCounter}</span>
                     ${pointsHtml}
                 </div>
-                <div class="quiz-question-text">${escapeHtml(prompt)}</div>
+                <div class="quiz-question-text">${renderRichHtml(prompt)}</div>
                 ${renderQuestionImage(item.imageUrl, item.imageTitle)}
                 <textarea name="item_${idx}" class="auto-expand-input" rows="3" placeholder="Write your full response here..." oninput="autoResizeInput(this)" style="min-height: 85px;"></textarea>
             `;
@@ -1727,7 +1727,7 @@ function renderQuizForm(quiz) {
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
                     <span class="q-num-badge">No. ${questionCounter}</span>
                 </div>
-                <div class="quiz-question-text">${escapeHtml(prompt)}</div>
+                <div class="quiz-question-text">${renderRichHtml(prompt)}</div>
                 ${(item.lefts || []).map((left, lIdx) => `
                     <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin:10px 0; background: var(--bg-body, #f8fafc); padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border-color);">
                         <span style="font-size:14.5px; font-weight: 600; color: var(--text-dark);">${escapeHtml(left)}</span>

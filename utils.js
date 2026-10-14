@@ -17,6 +17,120 @@ export function escapeHtml(str) {
 }
 
 /**
+ * Strips all HTML tags and returns clean plain text.
+ * Useful for attribute titles, tooltips, and logs.
+ * @param {string} html 
+ * @returns {string}
+ */
+export function stripHtml(html) {
+    if (html === null || html === undefined) return '';
+    try {
+        const doc = new DOMParser().parseFromString(String(html), 'text/html');
+        return (doc.body.textContent || doc.body.innerText || '').trim();
+    } catch (e) {
+        return String(html).replace(/<[^>]*>/g, '').trim();
+    }
+}
+
+/**
+ * Sanitizes rich text HTML, allowing safe formatting tags
+ * (bold, italic, underline, font-size, font-family, colors, lists, etc.)
+ * while removing dangerous scripts and event handlers.
+ * @param {string} html
+ * @returns {string}
+ */
+export function sanitizeRichHtml(html) {
+    if (!html) return '';
+    try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(String(html), 'text/html');
+        const allowedTags = new Set([
+            'B', 'STRONG', 'I', 'EM', 'U', 'S', 'STRIKE', 'SPAN', 'FONT', 
+            'P', 'DIV', 'BR', 'SUB', 'SUP', 'MARK', 'UL', 'OL', 'LI', 
+            'A', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE', 'PRE', 'CODE',
+            'TABLE', 'THEAD', 'TBODY', 'TR', 'TH', 'TD', 'HR', 'IMG'
+        ]);
+
+        function cleanNode(node) {
+            const children = Array.from(node.childNodes);
+            for (const child of children) {
+                if (child.nodeType === Node.ELEMENT_NODE) {
+                    const tagName = child.tagName.toUpperCase();
+                    if (!allowedTags.has(tagName)) {
+                        if (['SCRIPT', 'IFRAME', 'OBJECT', 'EMBED', 'STYLE', 'LINK'].includes(tagName)) {
+                            child.remove();
+                            continue;
+                        } else {
+                            while (child.firstChild) {
+                                node.insertBefore(child.firstChild, child);
+                            }
+                            child.remove();
+                            continue;
+                        }
+                    }
+
+                    // Clean attributes
+                    const attrs = Array.from(child.attributes);
+                    for (const attr of attrs) {
+                        const name = attr.name.toLowerCase();
+                        const val = attr.value;
+                        if (name.startsWith('on')) {
+                            child.removeAttribute(attr.name);
+                            continue;
+                        }
+                        if ((name === 'href' || name === 'src') && val.toLowerCase().replace(/\s+/g, '').startsWith('javascript:')) {
+                            child.removeAttribute(attr.name);
+                            continue;
+                        }
+                        const safeAttrs = ['style', 'class', 'face', 'color', 'size', 'href', 'target', 'src', 'alt', 'title', 'width', 'height'];
+                        if (!safeAttrs.includes(name)) {
+                            child.removeAttribute(attr.name);
+                        }
+                    }
+
+                    // Guard against CSS expression attacks
+                    if (child.hasAttribute('style')) {
+                        const styleVal = child.getAttribute('style');
+                        if (/behavior|expression|-moz-binding/i.test(styleVal)) {
+                            child.removeAttribute('style');
+                        }
+                    }
+
+                    cleanNode(child);
+                }
+            }
+        }
+
+        cleanNode(doc.body);
+        return doc.body.innerHTML;
+    } catch (e) {
+        console.warn("HTML sanitization fallback:", e);
+        return String(html);
+    }
+}
+
+/**
+ * Renders rich text or plain text into safe HTML for display.
+ * If the input contains formatting HTML tags, it is safely sanitized.
+ * If the input is plain text, special characters are escaped and newlines are converted to <br>.
+ * @param {string} content 
+ * @returns {string}
+ */
+export function renderRichHtml(content) {
+    if (content === null || content === undefined) return '';
+    const str = String(content).trim();
+    if (!str) return '';
+
+    // Check if the content already contains HTML formatting tags
+    const hasHtmlTags = /<\/?[a-z][\s\S]*>/i.test(str);
+    if (!hasHtmlTags) {
+        return escapeHtml(str).replace(/\r?\n/g, '<br>');
+    }
+
+    return sanitizeRichHtml(str);
+}
+
+/**
  * Converts an ISO timestamp string into a clean relative time string (e.g. 5m, 2h, 3d)
  * @param {string|Date} timestamp 
  * @returns {string}
@@ -159,6 +273,10 @@ export function initStaggeredReveals() {
 
 // Make available globally on window for non-module script contexts
 if (typeof window !== 'undefined') {
+    window.escapeHtml = escapeHtml;
+    window.stripHtml = stripHtml;
+    window.sanitizeRichHtml = sanitizeRichHtml;
+    window.renderRichHtml = renderRichHtml;
     window.triggerCelebration = triggerCelebration;
     window.attachRippleEffect = attachRippleEffect;
     window.initStaggeredReveals = initStaggeredReveals;

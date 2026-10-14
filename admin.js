@@ -8,7 +8,7 @@ import { setupAssignmentReminderContext, initAssignmentReminderTab, populateAssi
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword, sendPasswordResetEmail, updateProfile, updateEmail, updatePassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, query, where, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { app, db, auth, secondaryAuth } from "./firebase.js";
-import { escapeHtml, formatDate } from "./utils.js";
+import { escapeHtml, formatDate, stripHtml, sanitizeRichHtml, renderRichHtml } from "./utils.js";
 import * as GClassSync from "./classroomSync.js";
 import { initAdminDailyMission, loadDailyMissionTab } from "./js/admin/adminDailyMission.js";
 window.loadDailyMissionTab = loadDailyMissionTab;
@@ -3924,64 +3924,90 @@ function getBlockInnerHtml(type, blockId) {
             </div>
             ` : ''}
 
-            <!-- More Options Button & Pop-up -->
-            <div class="card-more-options-container" style="position: relative;">
-                <button type="button" class="btn-card-more-options" onclick="event.stopPropagation(); toggleCardMoreMenu(this)" title="More Options">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                        <circle cx="12" cy="5" r="2"></circle>
-                        <circle cx="12" cy="12" r="2"></circle>
-                        <circle cx="12" cy="19" r="2"></circle>
-                    </svg>
-                    <span>More Options</span>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left: 1px;">
-                        <polyline points="6 9 12 15 18 9"></polyline>
-                    </svg>
-                </button>
+            <!-- Reorder & More Options Actions -->
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <!-- Quick Reorder Buttons -->
+                <div class="card-reorder-group" title="Change card position">
+                    <button type="button" class="btn-card-move" onclick="event.stopPropagation(); moveBlockUp(this)" title="Move card up">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                    </button>
+                    <button type="button" class="btn-card-move" onclick="event.stopPropagation(); moveBlockDown(this)" title="Move card down">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                </div>
 
-                <!-- Pop-up dropdown with Set Point, Duplicate, Delete -->
-                <div class="card-more-menu-dropdown" style="display: none;" onclick="event.stopPropagation()">
-                    ${showPointsAndImage ? `
-                    <div class="more-menu-item more-menu-points-item">
-                        <div class="more-menu-item-left">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <polyline points="12 6 12 12 16 14"></polyline>
-                            </svg>
-                            <span>Set Point</span>
+                <!-- More Options Button & Pop-up -->
+                <div class="card-more-options-container" style="position: relative;">
+                    <button type="button" class="btn-card-more-options" onclick="event.stopPropagation(); toggleCardMoreMenu(this)" title="More Options">
+                        <span>More Options</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left: 1px;">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+
+                    <!-- Pop-up dropdown with Move Up, Move Down, Set Point, Duplicate, Delete -->
+                    <div class="card-more-menu-dropdown" style="display: none;" onclick="event.stopPropagation()">
+                        ${showPointsAndImage ? `
+                        <div class="more-menu-item more-menu-points-item">
+                            <div class="more-menu-item-left">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                                <span>Set Point</span>
+                            </div>
+                            <div class="more-menu-points-badge">
+                                <span class="pts-label">pts:</span>
+                                <input type="number" class="blk-points" value="1" min="0" 
+                                       title="Points for this question"
+                                       onclick="event.stopPropagation(); this.select();" 
+                                       onchange="updateCardPointsDisplay(this)">
+                            </div>
                         </div>
-                        <div class="more-menu-points-badge">
-                            <span class="pts-label">pts:</span>
-                            <input type="number" class="blk-points" value="1" min="0" 
-                                   title="Points for this question"
-                                   onclick="event.stopPropagation(); this.select();" 
-                                   onchange="updateCardPointsDisplay(this)">
-                        </div>
+                        <div class="more-menu-divider"></div>
+                        ` : `
+                        <input type="hidden" class="blk-points" value="0">
+                        `}
+
+                        <button type="button" class="more-menu-item more-menu-btn-action" onclick="event.stopPropagation(); closeAllCardMoreMenus(); moveBlockUp(this)" title="Move card up">
+                            <div class="more-menu-item-left">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="18 15 12 9 6 15"></polyline>
+                                </svg>
+                                <span>Move Up</span>
+                            </div>
+                        </button>
+
+                        <button type="button" class="more-menu-item more-menu-btn-action" onclick="event.stopPropagation(); closeAllCardMoreMenus(); moveBlockDown(this)" title="Move card down">
+                            <div class="more-menu-item-left">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                                <span>Move Down</span>
+                            </div>
+                        </button>
+
+                        <button type="button" class="more-menu-item more-menu-btn-action" onclick="event.stopPropagation(); closeAllCardMoreMenus(); duplicateBlock(this)">
+                            <div class="more-menu-item-left">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                                <span>Duplicate</span>
+                            </div>
+                        </button>
+
+                        <button type="button" class="more-menu-item more-menu-btn-action more-menu-item-delete" onclick="event.stopPropagation(); closeAllCardMoreMenus(); deleteBlock(this)">
+                            <div class="more-menu-item-left">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M3 6h18"></path>
+                                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                </svg>
+                                <span>Delete</span>
+                            </div>
+                        </button>
                     </div>
-                    <div class="more-menu-divider"></div>
-                    ` : `
-                    <input type="hidden" class="blk-points" value="0">
-                    `}
-
-                    <button type="button" class="more-menu-item more-menu-btn-action" onclick="event.stopPropagation(); closeAllCardMoreMenus(); duplicateBlock(this)">
-                        <div class="more-menu-item-left">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                            </svg>
-                            <span>Duplicate</span>
-                        </div>
-                    </button>
-
-                    <button type="button" class="more-menu-item more-menu-btn-action more-menu-item-delete" onclick="event.stopPropagation(); closeAllCardMoreMenus(); deleteBlock(this)">
-                        <div class="more-menu-item-left">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M3 6h18"></path>
-                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                            </svg>
-                            <span>Delete</span>
-                        </div>
-                    </button>
                 </div>
             </div>
         </div>
@@ -4318,6 +4344,53 @@ window.duplicateBlock = function (btnElement) {
     clonedDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 };
 
+// --- MOVE BLOCK UP & DOWN HANDLERS ---
+window.moveBlockUp = function (btnElement) {
+    const card = btnElement.closest('.quiz-block');
+    if (!card) return;
+
+    const prevCard = card.previousElementSibling;
+    if (prevCard && prevCard.classList.contains('quiz-block')) {
+        card.parentNode.insertBefore(card, prevCard);
+        if (typeof updateSectionDividerNumbers === 'function') {
+            updateSectionDividerNumbers();
+        }
+        if (typeof activateCard === 'function') {
+            activateCard(card);
+        }
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+        card.style.transition = 'transform 0.2s ease, box-shadow 0.2s ease';
+        card.style.transform = 'translateY(-4px)';
+        setTimeout(() => {
+            card.style.transform = '';
+        }, 220);
+    }
+};
+
+window.moveBlockDown = function (btnElement) {
+    const card = btnElement.closest('.quiz-block');
+    if (!card) return;
+
+    const nextCard = card.nextElementSibling;
+    if (nextCard && nextCard.classList.contains('quiz-block')) {
+        card.parentNode.insertBefore(card, nextCard.nextElementSibling);
+        if (typeof updateSectionDividerNumbers === 'function') {
+            updateSectionDividerNumbers();
+        }
+        if (typeof activateCard === 'function') {
+            activateCard(card);
+        }
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+        card.style.transition = 'transform 0.2s ease, box-shadow 0.2s ease';
+        card.style.transform = 'translateY(4px)';
+        setTimeout(() => {
+            card.style.transform = '';
+        }, 220);
+    }
+};
+
 window.deleteBlock = function (btnElement) {
     const card = btnElement.closest('.gform-card');
     if (!card) return;
@@ -4358,7 +4431,7 @@ window.switchBlockType = function (selectElement) {
 
     // Save current user-typed values before switching layout
     const promptNode = blockDiv.querySelector('.blk-prompt');
-    const savedPrompt = promptNode ? promptNode.innerText : '';
+    const savedPrompt = promptNode ? promptNode.innerHTML : '';
 
     const imgNode = blockDiv.querySelector('.blk-img');
     const savedImg = imgNode ? imgNode.value : '';
@@ -4384,7 +4457,7 @@ window.switchBlockType = function (selectElement) {
 
     // Restore saved question text, image URL, image title, and points
     const newPromptNode = blockDiv.querySelector('.blk-prompt');
-    if (newPromptNode) newPromptNode.innerText = savedPrompt;
+    if (newPromptNode) newPromptNode.innerHTML = savedPrompt;
 
     const newImgNode = blockDiv.querySelector('.blk-img');
     if (newImgNode) newImgNode.value = savedImg;
@@ -4458,6 +4531,16 @@ window.addBlock = addBlock;
 // ==========================================
 window._quizPreviewItems = [];
 
+function getCleanRichText(el) {
+    if (!el) return '';
+    const textContent = (el.textContent || '').trim();
+    const hasMedia = el.querySelector('img, svg, audio, video');
+    if (!textContent && !hasMedia) return '';
+    const html = el.innerHTML.trim();
+    if (html === '<br>' || html === '<div><br></div>' || html === '<p><br></p>') return '';
+    return sanitizeRichHtml(html);
+}
+
 window.openQuizPreviewModal = function () {
     const modal = document.getElementById('quizPreviewModal');
     if (!modal) return;
@@ -4493,8 +4576,8 @@ window.openQuizPreviewModal = function () {
         const points = pointsNode ? (parseInt(pointsNode.value) || 1) : 1;
 
         if (type === 'header') {
-            const prompt = el.querySelector('.blk-prompt')?.innerText.trim() || '';
-            const desc = el.querySelector('.blk-desc')?.innerText.trim() || '';
+            const prompt = getCleanRichText(el.querySelector('.blk-prompt'));
+            const desc = getCleanRichText(el.querySelector('.blk-desc'));
             const sectionLabel = el.querySelector('.quiz-section-badge-label')?.innerText.trim() || '';
             items.push({ 
                 type, 
@@ -4505,23 +4588,23 @@ window.openQuizPreviewModal = function () {
                 sectionLabel 
             });
         } else if (type === 'passage') {
-            const prompt = el.querySelector('.blk-prompt')?.innerText.trim() || 'Reading Passage';
-            const desc = el.querySelector('.blk-desc')?.innerText.trim() || '';
+            const prompt = getCleanRichText(el.querySelector('.blk-prompt')) || 'Reading Passage';
+            const desc = getCleanRichText(el.querySelector('.blk-desc'));
             items.push({ type, title: prompt, prompt: prompt, text: desc, description: desc, imageUrl: imgUrl, imageTitle: imgTitle });
         } else if (type === 'image') {
-            const prompt = el.querySelector('.blk-prompt')?.innerText.trim() || '';
+            const prompt = getCleanRichText(el.querySelector('.blk-prompt'));
             items.push({ type, prompt, imageUrl: imgUrl, imageTitle: imgTitle });
         } else if (type === 'fileupload') {
             gradableQuestionCount++;
             totalPoints += points;
-            const prompt = el.querySelector('.blk-prompt')?.innerText.trim() || '';
+            const prompt = getCleanRichText(el.querySelector('.blk-prompt'));
             const uploadModeNode = el.querySelector('.blk-upload-mode');
             const uploadMode = uploadModeNode ? uploadModeNode.value : 'both';
             items.push({ type, prompt, imageUrl: imgUrl, imageTitle: imgTitle, points, uploadMode });
         } else if (type === 'mcq') {
             gradableQuestionCount++;
             totalPoints += points;
-            const prompt = el.querySelector('.blk-prompt')?.innerText.trim() || '';
+            const prompt = getCleanRichText(el.querySelector('.blk-prompt'));
             const options = [];
             let correctIndex = 0;
 
@@ -4542,14 +4625,14 @@ window.openQuizPreviewModal = function () {
         } else if (type === 'fill') {
             gradableQuestionCount++;
             totalPoints += points;
-            const prompt = el.querySelector('.blk-prompt')?.innerText.trim() || '';
+            const prompt = getCleanRichText(el.querySelector('.blk-prompt'));
             const rawAns = el.querySelector('.blk-answer')?.value.trim() || '';
             const answers = rawAns.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
             items.push({ type, prompt, imageUrl: imgUrl, imageTitle: imgTitle, points, answers, rawAns });
         } else if (type === 'essay') {
             gradableQuestionCount++;
             totalPoints += points;
-            const prompt = el.querySelector('.blk-prompt')?.innerText.trim() || '';
+            const prompt = getCleanRichText(el.querySelector('.blk-prompt'));
             items.push({ type, prompt, imageUrl: imgUrl, imageTitle: imgTitle, points });
         }
     });
@@ -4639,8 +4722,8 @@ window.openQuizPreviewModal = function () {
                         </span>
                         <span class="divider-line-wing"></span>
                     </div>
-                    ${(item.text || item.title) ? `<h3 class="preview-section-title">${escapeHtml(item.text || item.title)}</h3>` : ''}
-                    ${item.description ? `<p class="preview-section-desc">${escapeHtml(item.description)}</p>` : ''}
+                    ${(item.text || item.title) ? `<h3 class="preview-section-title">${renderRichHtml(item.text || item.title)}</h3>` : ''}
+                    ${item.description ? `<p class="preview-section-desc">${renderRichHtml(item.description)}</p>` : ''}
                 </div>
             `;
         } else if (item.type === 'passage') {
@@ -4649,8 +4732,8 @@ window.openQuizPreviewModal = function () {
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
                     <span style="background: rgba(16, 185, 129, 0.1); color: #10b981; font-size: 11.5px; font-weight: 800; padding: 4px 10px; border-radius: 6px; text-transform: uppercase;">Reading Passage</span>
                 </div>
-                <h4 style="margin: 0 0 10px 0; font-size: 17px; font-weight: 800; color: var(--text-dark, #0f172a);">${escapeHtml(item.title || 'Passage')}</h4>
-                <div style="white-space: pre-line; background: #f8fafc; padding: 16px; border-radius: 10px; font-size: 14.5px; line-height: 1.65; border: 1px solid #e2e8f0; color: var(--text-dark, #0f172a);">${escapeHtml(item.text || item.description || '')}</div>
+                <h4 style="margin: 0 0 10px 0; font-size: 17px; font-weight: 800; color: var(--text-dark, #0f172a);">${renderRichHtml(item.title || 'Passage')}</h4>
+                <div style="background: #f8fafc; padding: 16px; border-radius: 10px; font-size: 14.5px; line-height: 1.65; border: 1px solid #e2e8f0; color: var(--text-dark, #0f172a); word-break: break-word;">${renderRichHtml(item.text || item.description || '')}</div>
                 ${renderImageHtml(item.imageUrl, item.imageTitle)}
             `;
         } else if (item.type === 'image') {
@@ -4659,7 +4742,7 @@ window.openQuizPreviewModal = function () {
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
                     <span style="background: rgba(99, 102, 241, 0.1); color: #6366f1; font-size: 11.5px; font-weight: 800; padding: 4px 10px; border-radius: 6px; text-transform: uppercase;">Image Resource</span>
                 </div>
-                ${item.prompt ? `<h4 style="margin: 0 0 10px 0; font-size: 16px; font-weight: 700; color: var(--text-dark, #0f172a);">${escapeHtml(item.prompt)}</h4>` : ''}
+                ${item.prompt ? `<h4 style="margin: 0 0 10px 0; font-size: 16px; font-weight: 700; color: var(--text-dark, #0f172a);">${renderRichHtml(item.prompt)}</h4>` : ''}
                 ${renderImageHtml(item.imageUrl, item.imageTitle)}
             `;
         } else if (item.type === 'fileupload') {
@@ -4676,7 +4759,7 @@ window.openQuizPreviewModal = function () {
                         ${pointsLabel}
                     </div>
                 </div>
-                <div class="preview-question-text">${escapeHtml(item.prompt || 'Upload your file or paste your project link')}</div>
+                <div class="preview-question-text">${renderRichHtml(item.prompt || 'Upload your file or paste your project link')}</div>
                 ${renderImageHtml(item.imageUrl, item.imageTitle)}
                 <div style="margin-top: 14px; background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 12px; padding: 18px;">
                     ${showFileInput ? `
@@ -4726,13 +4809,13 @@ window.openQuizPreviewModal = function () {
                         ${pointsLabel}
                     </div>
                 </div>
-                <div class="preview-question-text">${escapeHtml(item.prompt || 'Untitled Multiple Choice Question')}</div>
+                <div class="preview-question-text">${renderRichHtml(item.prompt || 'Untitled Multiple Choice Question')}</div>
                 ${renderImageHtml(item.imageUrl, item.imageTitle)}
                 <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 6px;">
                     ${options.map((opt, oIdx) => `
                         <label class="preview-option-label" id="preview_opt_label_${idx}_${oIdx}" onclick="handlePreviewOptionClick(${idx}, ${oIdx})">
                             <input type="radio" name="preview_choice_${idx}" value="${oIdx}" style="accent-color: #2563eb; width: 17px; height: 17px; cursor: pointer;">
-                            <span style="flex: 1;">${escapeHtml(opt)}</span>
+                            <span style="flex: 1;">${renderRichHtml(opt)}</span>
                         </label>
                     `).join('')}
                 </div>
@@ -4749,7 +4832,7 @@ window.openQuizPreviewModal = function () {
                         ${pointsLabel}
                     </div>
                 </div>
-                <div class="preview-question-text">${escapeHtml(item.prompt || 'Fill in the blank')}</div>
+                <div class="preview-question-text">${renderRichHtml(item.prompt || 'Fill in the blank')}</div>
                 ${renderImageHtml(item.imageUrl, item.imageTitle)}
                 <textarea id="preview_ans_${idx}" class="preview-input-text" rows="1" placeholder="Type your answer here..." style="min-height: 48px;"></textarea>
                 <div id="preview_answer_key_hint_${idx}" style="display: none; margin-top: 8px; font-size: 12.5px; font-weight: 600; color: #059669;"></div>
@@ -4766,7 +4849,7 @@ window.openQuizPreviewModal = function () {
                         ${pointsLabel}
                     </div>
                 </div>
-                <div class="preview-question-text">${escapeHtml(item.prompt || 'Essay Question')}</div>
+                <div class="preview-question-text">${renderRichHtml(item.prompt || 'Essay Question')}</div>
                 ${renderImageHtml(item.imageUrl, item.imageTitle)}
                 <textarea id="preview_ans_${idx}" class="preview-input-text" rows="3" placeholder="Write your full response here..." style="min-height: 85px;"></textarea>
             `;
@@ -5015,6 +5098,9 @@ async function loadQuizzesTable(forceRefresh = false) {
                         <div class="kebab-menu">
                             <button class="kebab-btn" onclick="toggleMenu(event, 'quiz-${quiz.id}')">⋮</button>
                             <div id="menu-quiz-${quiz.id}" class="dropdown-menu">
+                                <button class="dropdown-item" onclick="openQuizAnalyzerClassModal('${quiz.id}', '${safeTitle}', '${escapeHtml(quiz.targetClass || '')}')">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px; vertical-align:-1px;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>Quiz Analyzer
+                                </button>
                                 <button class="dropdown-item" onclick="viewQuizResults('${safeTitle}', '${quiz.id}')">View Results</button>
                                 <button class="dropdown-item" onclick="toggleQuizStatus('${quiz.id}', '${status}')">${toggleLabel}</button>
                                 <button class="dropdown-item" onclick="editQuiz('${quiz.id}')">Edit Quiz</button>
@@ -5096,6 +5182,16 @@ async function loadQuizzesTable(forceRefresh = false) {
                         </td>
                         <td>
                             <div style="display: flex; align-items: center; gap: 6px;">
+                                <button 
+                                    type="button" 
+                                    class="icon-btn" 
+                                    style="padding: 6px 12px; background: rgba(30, 94, 255, 0.08); color: #1e5eff; border: 1px solid rgba(30, 94, 255, 0.2); border-radius: 6px; font-size: 12.5px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;"
+                                    onclick="openQuizAnalyzerClassModal('', '${safeTitle}', '')"
+                                    title="Open Quiz Analyzer"
+                                >
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                                    <span>Analyzer</span>
+                                </button>
                                 <button 
                                     type="button" 
                                     class="icon-btn" 
@@ -5236,8 +5332,8 @@ async function editQuiz(id) {
                 const promptNode = block.querySelector('.blk-prompt');
                 const descNode = block.querySelector('.blk-desc');
                 const labelNode = block.querySelector('.quiz-section-badge-label');
-                if (promptNode) promptNode.innerText = item.text || item.prompt || item.title || '';
-                if (descNode) descNode.innerText = item.description || '';
+                if (promptNode) promptNode.innerHTML = renderRichHtml(item.text || item.prompt || item.title || '');
+                if (descNode) descNode.innerHTML = renderRichHtml(item.description || '');
                 if (labelNode && item.sectionLabel) {
                     labelNode.innerText = item.sectionLabel;
                     block.dataset.customSectionLabel = 'true';
@@ -5255,22 +5351,22 @@ async function editQuiz(id) {
                     descVal = item.text;
                 }
 
-                if (promptNode) promptNode.innerText = titleVal || 'Reading Passage';
-                if (descNode) descNode.innerText = descVal;
+                if (promptNode) promptNode.innerHTML = renderRichHtml(titleVal || 'Reading Passage');
+                if (descNode) descNode.innerHTML = renderRichHtml(descVal || '');
 
             } else if (type === 'image') {
                 const promptNode = block.querySelector('.blk-prompt');
-                if (promptNode) promptNode.innerText = item.prompt || item.title || '';
+                if (promptNode) promptNode.innerHTML = renderRichHtml(item.prompt || item.title || '');
 
             } else if (type === 'fileupload') {
                 const promptNode = block.querySelector('.blk-prompt');
-                if (promptNode) promptNode.innerText = item.prompt || '';
+                if (promptNode) promptNode.innerHTML = renderRichHtml(item.prompt || '');
                 if (block.querySelector('.blk-points')) block.querySelector('.blk-points').value = item.points || 1;
                 if (block.querySelector('.blk-upload-mode')) block.querySelector('.blk-upload-mode').value = item.uploadMode || 'both';
 
             } else if (type === 'mcq') {
                 const promptNode = block.querySelector('.blk-prompt');
-                if (promptNode) promptNode.innerText = item.prompt || item.question || '';
+                if (promptNode) promptNode.innerHTML = renderRichHtml(item.prompt || item.question || '');
                 if (block.querySelector('.blk-points')) block.querySelector('.blk-points').value = item.points || 1;
 
                 // Clear the default options and rebuild based on saved data
@@ -5283,7 +5379,7 @@ async function editQuiz(id) {
                         const isChecked = item.correct == i ? 'checked' : '';
                         newRow.innerHTML = `
                             <input type="radio" name="edit_block_${index}_correct" value="${i}" onchange="this.closest('.quiz-block').querySelector('.blk-correct').value = this.value" ${isChecked}>
-                            <input type="text" class="gform-opt-input" value="${optText}" required>
+                            <input type="text" class="gform-opt-input" value="${escapeHtml(optText)}" required>
                             <button class="icon-btn delete" title="Remove Option" onclick="this.closest('.gform-opt-row').remove()">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                             </button>
@@ -5295,13 +5391,13 @@ async function editQuiz(id) {
 
             } else if (type === 'fill') {
                 const promptNode = block.querySelector('.blk-prompt');
-                if (promptNode) promptNode.innerText = item.prompt || '';
+                if (promptNode) promptNode.innerHTML = renderRichHtml(item.prompt || '');
                 if (block.querySelector('.blk-points')) block.querySelector('.blk-points').value = item.points || 1;
                 if (item.answers && block.querySelector('.blk-answer')) block.querySelector('.blk-answer').value = item.answers.join(', ');
 
             } else if (type === 'essay') {
                 const promptNode = block.querySelector('.blk-prompt');
-                if (promptNode) promptNode.innerText = item.prompt || '';
+                if (promptNode) promptNode.innerHTML = renderRichHtml(item.prompt || '');
                 if (block.querySelector('.blk-points')) block.querySelector('.blk-points').value = item.points || 1;
             }
         });
@@ -5389,9 +5485,115 @@ async function deleteQuiz(id, title = '') {
 window.deleteQuiz = deleteQuiz;
 
 
-// --- LIVE QUIZ COMMAND CENTER & MONITORING MOVED TO ./js/admin/adminLiveQuiz.js ---
+// --- QUIZ ANALYZER CLASS SELECTOR MODAL ---
+window.quizAnalyzerModalState = {
+    quizId: '',
+    quizTitle: '',
+    targetClassStr: '',
+    classes: []
+};
 
+window.openQuizAnalyzerClassModal = async function(quizId, quizTitle, targetClassStr = '') {
+    window.quizAnalyzerModalState.quizId = quizId || '';
+    window.quizAnalyzerModalState.quizTitle = quizTitle || '';
+    window.quizAnalyzerModalState.targetClassStr = targetClassStr || '';
 
+    const modal = document.getElementById("quizAnalyzerClassModal");
+    if (!modal) return;
+
+    const titleEl = document.getElementById("analyzerModalQuizTitle");
+    if (titleEl) titleEl.innerText = quizTitle ? `Select Classes: ${quizTitle}` : "Select Classes to Analyze";
+
+    const container = document.getElementById("analyzerClassesCheckboxContainer");
+    if (container) {
+        container.innerHTML = '<div style="color:#64748b; font-size:13px; grid-column:1/-1; padding:8px 0;">Detecting classes...</div>';
+    }
+
+    modal.classList.remove('hidden');
+    modal.style.display = "flex";
+
+    // Determine available classes
+    let classesToOffer = [];
+
+    // 1. From quiz cached object
+    if (window.cachedQuizzesList && Array.isArray(window.cachedQuizzesList)) {
+        const found = window.cachedQuizzesList.find(q => (quizId && q.id === quizId) || (quizTitle && q.title === quizTitle));
+        if (found) {
+            if (Array.isArray(found.targetClassesList) && found.targetClassesList.length > 0) {
+                classesToOffer = found.targetClassesList.map(c => c.trim()).filter(Boolean);
+            } else if (found.targetClass && !found.targetClass.toLowerCase().includes('all')) {
+                classesToOffer = found.targetClass.split(',').map(c => c.trim()).filter(Boolean);
+            }
+        }
+    }
+
+    // 2. From targetClassStr passed in
+    if (classesToOffer.length === 0 && targetClassStr) {
+        if (!targetClassStr.toLowerCase().includes('all class') && targetClassStr.toLowerCase() !== 'all') {
+            classesToOffer = targetClassStr.split(',').map(c => c.trim()).filter(Boolean);
+        }
+    }
+
+    // 3. If target is 'all' or empty, fetch classes from students or use default list
+    const standardSchoolClasses = ["Grade 9A", "Grade 9B", "Grade 9C", "Grade 7A", "Grade 7B", "Grade 8A", "Grade 8B", "Grade 10A", "Grade 10B", "Grade 11A", "Grade 12"];
+
+    if (classesToOffer.length === 0) {
+        if (Array.isArray(window.allStudentsData) && window.allStudentsData.length > 0) {
+            classesToOffer = [...new Set(window.allStudentsData.map(s => (s.studentClass || s.class || s.Class || '').trim()))]
+                .filter(c => c && c !== 'N/A')
+                .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        }
+        if (classesToOffer.length === 0) {
+            classesToOffer = standardSchoolClasses;
+        }
+    }
+
+    window.quizAnalyzerModalState.classes = classesToOffer;
+
+    if (container) {
+        container.innerHTML = classesToOffer.map((cls, idx) => `
+            <label style="display:flex; align-items:center; gap:8px; padding:8px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; cursor:pointer; font-size:13px; font-weight:600; color:#1e293b; user-select:none; transition:all 0.15s ease;">
+                <input type="checkbox" class="analyzer-class-cb" value="${cls}" checked style="width:16px; height:16px; accent-color:#1e5eff; cursor:pointer;">
+                <span>${cls}</span>
+            </label>
+        `).join('');
+    }
+};
+
+window.closeQuizAnalyzerModal = function() {
+    const modal = document.getElementById("quizAnalyzerClassModal");
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = "none";
+    }
+};
+
+window.toggleSelectAllAnalyzerClasses = function() {
+    const cbs = document.querySelectorAll(".analyzer-class-cb");
+    const anyUnchecked = Array.from(cbs).some(cb => !cb.checked);
+    cbs.forEach(cb => cb.checked = anyUnchecked);
+    const btn = document.getElementById("analyzerSelectAllBtn");
+    if (btn) btn.innerText = anyUnchecked ? "Deselect All" : "Select All";
+};
+
+window.launchQuizAnalyzerFromModal = function() {
+    const cbs = document.querySelectorAll(".analyzer-class-cb:checked");
+    const selectedClasses = Array.from(cbs).map(cb => cb.value.trim()).filter(Boolean);
+    if (selectedClasses.length === 0) {
+        alert("Please select at least one class to analyze.");
+        return;
+    }
+
+    const { quizId, quizTitle } = window.quizAnalyzerModalState;
+    const params = new URLSearchParams();
+    if (quizId) params.set("quizId", quizId);
+    if (quizTitle) params.set("title", quizTitle);
+    params.set("classes", selectedClasses.join(","));
+
+    const url = `quizAnalyzer.html?${params.toString()}`;
+    window.open(url, "_blank");
+    window.closeQuizAnalyzerModal();
+};
 
 // --- QUIZ RESULTS & SCORE SUBMISSION (RESPONSIVE CLASS FILTERING & STATUS ICONS) ---
 window.quizResultsCurrentState = {
@@ -9137,8 +9339,8 @@ async function saveQuiz() {
         const points = pointsNode ? parseInt(pointsNode.value) || 1 : 0;
 
         if (type === 'header') {
-            const titleText = el.querySelector('.blk-prompt') ? el.querySelector('.blk-prompt').innerText.trim() : '';
-            const descText = el.querySelector('.blk-desc') ? el.querySelector('.blk-desc').innerText.trim() : '';
+            const titleText = getCleanRichText(el.querySelector('.blk-prompt'));
+            const descText = getCleanRichText(el.querySelector('.blk-desc'));
             const sectionLabel = el.querySelector('.quiz-section-badge-label') ? el.querySelector('.quiz-section-badge-label').innerText.trim() : '';
             items.push({ 
                 type, 
@@ -9150,8 +9352,8 @@ async function saveQuiz() {
             });
 
         } else if (type === 'passage') {
-            const titleText = el.querySelector('.blk-prompt') ? el.querySelector('.blk-prompt').innerText.trim() : '';
-            const descText = el.querySelector('.blk-desc') ? el.querySelector('.blk-desc').innerText.trim() : '';
+            const titleText = getCleanRichText(el.querySelector('.blk-prompt'));
+            const descText = getCleanRichText(el.querySelector('.blk-desc'));
             items.push({ 
                 type, 
                 title: titleText || 'Reading Passage',
@@ -9164,7 +9366,7 @@ async function saveQuiz() {
             });
 
         } else if (type === 'image') {
-            const titleText = el.querySelector('.blk-prompt') ? el.querySelector('.blk-prompt').innerText.trim() : '';
+            const titleText = getCleanRichText(el.querySelector('.blk-prompt'));
             items.push({
                 type: 'image',
                 prompt: titleText,
@@ -9177,7 +9379,7 @@ async function saveQuiz() {
             const uploadMode = uploadModeNode ? uploadModeNode.value : 'both';
             items.push({
                 type: 'fileupload',
-                prompt: el.querySelector('.blk-prompt') ? el.querySelector('.blk-prompt').innerText.trim() : '',
+                prompt: getCleanRichText(el.querySelector('.blk-prompt')),
                 imageUrl: imgUrl,
                 imageTitle: imgTitle,
                 points: points,
@@ -9204,7 +9406,7 @@ async function saveQuiz() {
 
             items.push({
                 type,
-                prompt: el.querySelector('.blk-prompt').innerText.trim(),
+                prompt: getCleanRichText(el.querySelector('.blk-prompt')),
                 imageUrl: imgUrl,
                 imageTitle: imgTitle,
                 points: points,
@@ -9215,7 +9417,7 @@ async function saveQuiz() {
         } else if (type === 'fill') {
             items.push({
                 type,
-                prompt: el.querySelector('.blk-prompt').innerText.trim(),
+                prompt: getCleanRichText(el.querySelector('.blk-prompt')),
                 imageUrl: imgUrl,
                 imageTitle: imgTitle,
                 points: points,
@@ -9225,7 +9427,7 @@ async function saveQuiz() {
         } else if (type === 'essay') {
             items.push({
                 type,
-                prompt: el.querySelector('.blk-prompt').innerText.trim(),
+                prompt: getCleanRichText(el.querySelector('.blk-prompt')),
                 imageUrl: imgUrl,
                 imageTitle: imgTitle,
                 points: points
