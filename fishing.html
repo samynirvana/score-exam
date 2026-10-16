@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Angler: AFK Clicker Fishing Game | Admin Sandbox</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="fishing.css?v=2">
+</head>
+<body>
+
+    <!-- MASTER GAME WRAPPER -->
+    <div class="game-master-wrapper">
+
+        <!-- GAME CONSOLE FRAME -->
+        <div class="game-console-card" id="gameConsoleCard">
+
+            <!-- 1. HTML5 PIXEL CANVAS (BACKGROUND SIMULATION) -->
+            <div class="canvas-viewport" id="gameCanvasContainer">
+                <canvas id="fishingCanvas"></canvas>
+
+                <!-- ==========================================================
+                     OVERLAY 1: RETRO LOADING SCREEN
+                     ========================================================== -->
+                <div id="gameLoadingScreen" class="game-screen-overlay loading-screen active">
+                    <div class="loading-content">
+                        <div class="loading-logo-box">
+                            <span class="loading-fish-icon">🎣</span>
+                            <h1 class="pixel-title">PIXEL ANGLER</h1>
+                            <p class="pixel-sub">Clicker & AFK Fishing Adventure</p>
+                        </div>
+                        <div class="loading-bar-track">
+                            <div id="loadingBarFill" class="loading-bar-fill"></div>
+                        </div>
+                        <div id="loadingStatusText" class="loading-status-text">Preparing fishing tackle...</div>
+                    </div>
+                </div>
+
+                <!-- ==========================================================
+                     OVERLAY 2: HOME / TITLE SCREEN (New Game vs Continue)
+                     ========================================================== -->
+                <div id="gameHomeScreen" class="game-screen-overlay home-screen" style="display: none;">
+                    <div class="home-content">
+                        <div class="home-badge-pill">Pixel Retro Edition</div>
+                        <h1 class="home-main-title">PIXEL ANGLER</h1>
+                        <p class="home-tagline">Cast your line, reel in legendary fish & build your angling empire</p>
+
+                        <!-- Dynamic Action Buttons (New Game vs Continue) -->
+                        <div class="home-btn-group" id="homeButtonsContainer">
+                            <!-- Injected dynamically by JS based on whether saved progress exists -->
+                        </div>
+
+                        <!-- Top stats preview when save exists -->
+                        <div id="homeSaveSummary" class="home-save-summary" style="display: none;">
+                            <!-- Injected dynamically -->
+                        </div>
+
+                        <div class="home-footer-nav">
+                            <a href="admin.html" class="home-link-back">← Back to Admin Panel</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==========================================================
+                     OVERLAY 3: IN-GAME HUD (TOP BAR) - ALL BUTTONS INSIDE
+                     ========================================================== -->
+                <div id="gameHudTop" class="game-hud-top" style="display: none;">
+                    <!-- Left: Player Profile Pill -->
+                    <div class="hud-player-pill">
+                        <div class="hud-avatar">🤠</div>
+                        <div class="hud-player-meta">
+                            <div class="hud-top-meta-row">
+                                <span id="playerLevel" class="hud-level">Lv. 1</span>
+                                <span id="playerCoins" class="hud-coins">0 🪙</span>
+                            </div>
+                            <div class="hud-exp-track">
+                                <div id="playerExpFill" class="hud-exp-fill" style="width: 0%;"></div>
+                            </div>
+                            <div class="hud-exp-subtext">
+                                <span id="playerExpText">0 / 100 EXP</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: In-Game Action Buttons Cluster -->
+                    <div class="hud-actions-cluster">
+                        <!-- Inventory Button -->
+                        <button type="button" id="openInventoryBtn" class="hud-btn hud-btn-inv" title="Open Tackle Box & Market">
+                            <span class="hud-btn-icon">🎒</span>
+                            <span class="hud-btn-label">Bag</span>
+                            <strong id="inventoryBtnCount" class="hud-badge-count">0/10</strong>
+                        </button>
+
+                        <!-- Area Selector Button -->
+                        <button type="button" id="openAreaBtn" class="hud-btn" title="Select Fishing Area">
+                            <span class="hud-btn-icon">🗺️</span>
+                            <span class="hud-btn-label">Areas</span>
+                        </button>
+
+                        <!-- Sound Toggle Button -->
+                        <button type="button" id="soundToggleBtn" class="hud-btn hud-btn-icon-only" title="Toggle Sound">
+                            <span id="soundIcon">🔊</span>
+                        </button>
+
+                        <!-- Title/Home Screen Return -->
+                        <button type="button" id="hudHomeBtn" class="hud-btn hud-btn-icon-only" title="Return to Title Screen">
+                            <span>🏠</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ==========================================================
+                     OVERLAY 4: BOTTOM-LEFT CONTROLS (CIRCULAR CAST & AUTO-FISH)
+                     ========================================================== -->
+                <div id="gameHudBottomLeft" class="game-hud-bottom-left" style="display: none;">
+                    <div class="hud-cast-control-group">
+                        <!-- Circular Cast Button -->
+                        <button type="button" id="actionButton" class="btn-circular-cast" title="Cast Fishing Line">
+                            <span class="cast-btn-icon">🎣</span>
+                            <span class="cast-btn-label">Cast</span>
+                        </button>
+
+                        <!-- AFK Auto-Fish Toggle (Unlocked via Shop) -->
+                        <div id="autoFishContainer" class="hud-autofish-unlocked" style="display: none;">
+                            <button type="button" id="autoFishToggle" class="btn-autofish-circle" title="Toggle Auto-Fish">
+                                <span class="autofish-icon">🤖</span>
+                                <span id="autoFishIndicator" class="autofish-badge">OFF</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Clean Floating Status Label -->
+                    <div class="hud-status-badge">
+                        <span id="actionStatusText" class="action-status-text">Ready to fish</span>
+                    </div>
+                </div>
+
+                <!-- ==========================================================
+                     OVERLAY 5: 2.0s HOOK ALERT ("FISH ON!")
+                     ========================================================== -->
+                <div id="hookAlertBox" class="hook-alert-box">
+                    <div class="hook-alert-title">FISH ON! ⚡</div>
+                    <p class="hook-alert-sub">Click button, water, or press Space!</p>
+                    <div class="hook-timer-container">
+                        <div id="hookTimerBar" class="hook-timer-bar"></div>
+                    </div>
+                    <button type="button" id="hookActionBtn" class="btn-hook-action">🎣 HOOK NOW!</button>
+                </div>
+
+                <!-- ==========================================================
+                     OVERLAY 6: QTE REEL-IN 10-CLICK MINIGAME
+                     ========================================================== -->
+                <div id="qteContainer" class="qte-container">
+                    <div class="qte-header">
+                        <span>Reel In Minigame (10 Clicks)</span>
+                        <span class="qte-hint">Left [L] / Right [R]</span>
+                    </div>
+                    <div class="qte-timer-track">
+                        <div id="qteTimerBar" class="qte-timer-fill"></div>
+                    </div>
+                    <div id="qteStepsContainer" class="qte-steps-row">
+                        <!-- Injected dynamically by JS -->
+                    </div>
+                    <div class="qte-touch-buttons">
+                        <button type="button" id="qteLeftBtn" class="btn-qte-action">
+                            <span>🖱️ [L] Left Click</span>
+                        </button>
+                        <button type="button" id="qteRightBtn" class="btn-qte-action">
+                            <span>[R] Right Click 🖱️</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div> <!-- /canvas-viewport -->
+
+        </div> <!-- /game-console-card -->
+
+    </div> <!-- /game-master-wrapper -->
+
+    <!-- ==========================================================================
+         MODALS (ALL POPUPS LAYERED INSIDE THE GAME EXPERIENCE)
+         ========================================================================== -->
+
+    <!-- 1. CATCH CELEBRATION MODAL -->
+    <div id="catchModal" class="game-modal-backdrop">
+        <div class="game-modal-card catch-celebration-card">
+            <div class="catch-title-eyebrow">NEW CATCH!</div>
+            <div id="catchFishIcon" class="catch-fish-sprite">🐟</div>
+            <h3 id="catchFishName" class="catch-fish-name">Pond Catfish</h3>
+            <div>
+                <span id="catchFishRarity" class="catch-rarity-pill">Common</span>
+            </div>
+
+            <div class="catch-stats-row">
+                <div class="catch-stat-box">
+                    <small>Weight</small>
+                    <strong id="catchFishWeight">4.20 kg</strong>
+                </div>
+                <div class="catch-stat-box">
+                    <small>Value</small>
+                    <strong id="catchFishPrice" style="color: #facc15;">18 🪙</strong>
+                </div>
+                <div class="catch-stat-box">
+                    <small>EXP</small>
+                    <strong id="catchFishExp" style="color: #a78bfa;">+30 EXP</strong>
+                </div>
+            </div>
+
+            <button type="button" id="closeCatchModalBtn" class="btn-claim-catch">Keep & Continue Fishing ✨</button>
+        </div>
+    </div>
+
+    <!-- 2. INVENTORY MODAL -->
+    <div id="inventoryModal" class="game-modal-backdrop">
+        <div class="game-modal-card" style="max-width: 720px;">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <span>🎒</span> Tackle Box & Fish Market
+                </h3>
+                <button type="button" id="closeInventoryBtn" class="btn-modal-close" aria-label="Close">✕</button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Toolbar -->
+                <div class="inventory-toolbar">
+                    <div class="inv-capacity-indicator">
+                        Capacity: <strong id="inventoryCapacityText" style="color: #38bdf8;">0 / 10</strong>
+                    </div>
+                    <div class="inv-toolbar-actions">
+                        <button type="button" id="upgradeBagBtn" class="btn-inv-upgrade">
+                            <span>🎒 Upgrade (+5 Slots)</span>
+                            <strong id="upgradeCostText">50 🪙</strong>
+                        </button>
+                        <button type="button" id="sellAllBtn" class="btn-inv-sell-all">Sell All</button>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div id="emptyInventoryNotice" class="empty-inventory-notice">
+                    <span class="empty-icon">🪣</span>
+                    <p>Your tackle box is currently empty!</p>
+                    <small style="color: #64748b;">Cast your line into the water to catch some fish.</small>
+                </div>
+
+                <!-- Fish Cards Grid -->
+                <div id="inventoryGrid" class="inventory-grid">
+                    <!-- Populated via JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. AREA SELECTOR MODAL (Flows directly from Continue / New Game or HUD) -->
+    <div id="areaModal" class="game-modal-backdrop">
+        <div class="game-modal-card">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <span>🗺️</span> Select Fishing Area
+                </h3>
+                <button type="button" id="closeAreaBtn" class="btn-modal-close" aria-label="Close">✕</button>
+            </div>
+
+            <div class="modal-body">
+                <p style="font-size: 13px; color: #94a3b8; margin-bottom: 14px;">
+                    Select your fishing destination. Each area has unique fish pools, rarities, and EXP multipliers.
+                </p>
+                <div id="areaListContainer" class="area-list">
+                    <!-- Injected via JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. FISH CAMP & SHOP MODAL (Captain Barnaby's Trading Post) -->
+    <div id="shopModal" class="game-modal-backdrop">
+        <div class="game-modal-card shop-modal-card" style="max-width: 780px;">
+            <div class="modal-header">
+                <div class="shop-header-title">
+                    <span class="shop-header-icon">🏪</span>
+                    <div>
+                        <h3 class="modal-title">Captain Barnaby's Camp & Market</h3>
+                        <small class="shop-subtitle">Trade fresh catch, buy advanced rods, lures & tackle</small>
+                    </div>
+                </div>
+                <div class="shop-wallet-badge">
+                    <span class="shop-wallet-label">Balance:</span>
+                    <strong id="shopModalCoins" class="shop-wallet-amount">0 🪙</strong>
+                </div>
+                <button type="button" id="closeShopBtn" class="btn-modal-close" aria-label="Close">✕</button>
+            </div>
+
+            <!-- Shop Navigation Tabs (Sell Catch vs Buy Gear) -->
+            <div class="shop-tabs-bar">
+                <button type="button" id="shopTabSell" class="shop-tab-btn active">
+                    <span>💰 Sell Fish Catch</span>
+                    <span id="shopSellCountBadge" class="shop-pill-badge">0</span>
+                </button>
+                <button type="button" id="shopTabBuy" class="shop-tab-btn">
+                    <span>🛒 Buy Gear & Bait</span>
+                </button>
+            </div>
+
+            <div class="modal-body shop-modal-body">
+                <!-- ==============================================
+                     TAB 1: SELL FISH CATCH
+                     ============================================== -->
+                <div id="shopSectionSell" class="shop-section-content active">
+                    <div class="shop-sell-toolbar">
+                        <div class="shop-sell-info">
+                            <span>Tackle Box:</span>
+                            <strong id="shopSellTackleCount" style="color: #38bdf8;">0 / 10</strong>
+                            <span class="shop-sell-total-val">Total Value: <strong id="shopSellTotalVal" style="color: #facc15;">0 🪙</strong></span>
+                        </div>
+                        <button type="button" id="shopSellAllBtn" class="btn-inv-sell-all">💰 Sell All Fish</button>
+                    </div>
+
+                    <div id="shopSellEmptyNotice" class="empty-inventory-notice">
+                        <span class="empty-icon">🪣</span>
+                        <p>No fish in your tackle box to sell!</p>
+                        <small style="color: #64748b;">Cast your line into the water or turn on AFK Auto-Fish to reel in catch.</small>
+                    </div>
+
+                    <div id="shopSellGrid" class="inventory-grid">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+                </div>
+
+                <!-- ==============================================
+                     TAB 2: BUY SUPPLIES, RODS & BAIT
+                     ============================================== -->
+                <div id="shopSectionBuy" class="shop-section-content" style="display: none;">
+                    
+                    <!-- 1. Fishing Rod Upgrades -->
+                    <div class="shop-category-header">
+                        <span>🎣 Upgraded Fishing Rods</span>
+                        <small>Shortens waiting time for fish bites & boosts rare catch chances</small>
+                    </div>
+                    <div id="shopRodsGrid" class="shop-items-grid">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+
+                    <!-- 2. Baits & Boosters -->
+                    <div class="shop-category-header" style="margin-top: 18px;">
+                        <span>🪱 Baits & Boosters (5x Uses)</span>
+                        <small>Supercharge bite speed, luck, and reward multipliers</small>
+                    </div>
+                    <div id="shopBaitsGrid" class="shop-items-grid">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+
+                    <!-- 3. Tackle Box Capacity & Cosmetics -->
+                    <div class="shop-category-header" style="margin-top: 18px;">
+                        <span>👑 Angler Cosmetics & Tackle Box</span>
+                        <small>Expand storage slots and style your pixel angler sprite</small>
+                    </div>
+                    <div id="shopHatsGrid" class="shop-items-grid">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+
+                    <!-- 4. Automation & Modules (Unlock AFK Auto-Fish) -->
+                    <div class="shop-category-header" style="margin-top: 18px;">
+                        <span>🤖 Automation & Modules</span>
+                        <small>Unlock hands-free AFK automatic fishing technology</small>
+                    </div>
+                    <div id="shopModulesGrid" class="shop-items-grid">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Scripts -->
+    <script type="module" src="js/fishing/fishing-game.js"></script>
+</body>
+</html>

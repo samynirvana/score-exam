@@ -50,6 +50,14 @@ let selectedDay = null;
 let weekMissions = [];
 let studentSubmissions = [];
 let capturedPhotoData = null;
+let capturedAudioData = null;
+let mediaRecorder = null;
+let audioChunks = [];
+let recordingTimer = null;
+let recordingSeconds = 0;
+let isDrawing = false;
+let drawColor = '#0f172a';
+let drawBrushSize = 4;
 let bonusAwardedCallback = null;
 let isUiSetup = false;
 let missionUnsubscribe = null;
@@ -389,6 +397,9 @@ function renderActiveMissionWorkspace() {
         photo: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Taking a Picture',
         opinion: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Giving an Opinion / Reflection',
         question: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Answering Questions',
+        audio: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>Voice / Audio Recording',
+        link: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Link / Showcase Submission',
+        drawing: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>Draw & Sketch Pad',
         general: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>Task Submission'
     };
     const typeLabel = typeIcons[mission.taskType] || '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Daily Task';
@@ -443,10 +454,24 @@ function renderActiveMissionWorkspace() {
                 </label>
                 
                 <div id="dmDropzoneArea" class="dm-dropzone" style="${currentPhoto ? 'display:none;' : ''}">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--dm-primary)" stroke-width="2" style="margin-bottom: 8px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                    <div style="font-weight: 700; font-size: 14px; color: var(--text-dark);">Click to upload or take a picture</div>
-                    <div style="font-size: 12px; color: var(--text-gray); margin-top: 3px;">Supports PNG, JPG, or device camera (Saved to Drive picsdb)</div>
-                    <input type="file" id="dmPhotoFileInput" accept="image/*" capture="environment" style="display: none;">
+                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--dm-primary)" stroke-width="2" style="margin-bottom: 8px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                    <div style="font-weight: 800; font-size: 14.5px; color: var(--text-dark); margin-bottom: 3px;">Upload Image File or Snap Photo</div>
+                    <div style="font-size: 12px; color: var(--text-gray); margin-bottom: 12px;">Choose a picture from your device gallery/files, or use camera</div>
+                    
+                    <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+                        <button type="button" id="dmUploadFileBtn" class="dm-upload-action-btn" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 15px; border-radius: 999px; background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; font-size: 12.5px; font-weight: 700; cursor: pointer;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            Choose File / Gallery
+                        </button>
+                        <button type="button" id="dmTakePhotoBtn" class="dm-upload-action-btn" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 15px; border-radius: 999px; background: #fce7f3; color: #be185d; border: 1px solid #fbcfe8; font-size: 12.5px; font-weight: 700; cursor: pointer;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                            Open Camera
+                        </button>
+                    </div>
+
+                    <!-- Hidden inputs: one standard file picker (no capture), one camera direct (capture=environment) -->
+                    <input type="file" id="dmPhotoFileInput" accept="image/*" style="display: none;">
+                    <input type="file" id="dmCameraFileInput" accept="image/*" capture="environment" style="display: none;">
                 </div>
 
                 <div id="dmPhotoPreviewArea" class="dm-preview-container" style="${currentPhoto ? '' : 'display:none;'}">
@@ -484,6 +509,109 @@ function renderActiveMissionWorkspace() {
                     Your Answer:
                 </label>
                 <textarea id="dmStudentTextResponse" class="dm-textarea" placeholder="Type your answer here..." ${formDisabled ? 'disabled' : ''}>${escapeHtml(sub?.textResponse || '')}</textarea>
+            </div>
+        `;
+    } else if (mission.taskType === 'audio') {
+        const currentAudio = capturedAudioData || (sub ? sub.audioUrl : null);
+        inputFieldsHtml = `
+            <div style="margin-bottom: 16px;">
+                <label class="dm-input-label">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 4px;"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                    Record Voice Memo or Upload Audio:
+                </label>
+
+                <div class="dm-audio-recorder-box">
+                    <div id="dmAudioControlArea" style="${currentAudio ? 'display:none;' : ''}">
+                        <button type="button" id="dmRecordAudioBtn" class="dm-record-pulse-btn" title="Tap to start recording" ${formDisabled ? 'disabled' : ''}>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                        </button>
+                        <div id="dmRecordStatusText" style="margin-top: 10px; font-weight: 700; font-size: 14px; color: var(--text-dark);">Tap microphone to start recording</div>
+                        <div id="dmRecordTimerText" style="font-size: 13px; font-weight: 800; color: #ef4444; margin-top: 4px; display: none;">00:00</div>
+
+                        <div style="margin-top: 14px; display: flex; justify-content: center; gap: 8px;">
+                            <label for="dmAudioFileInput" style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; background: #fef3c7; color: #b45309; border: 1px solid #fde68a; font-size: 12px; font-weight: 700;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                Or Upload Audio File (.mp3, .m4a, .wav)
+                            </label>
+                            <input type="file" id="dmAudioFileInput" accept="audio/*" style="display: none;" ${formDisabled ? 'disabled' : ''}>
+                        </div>
+                    </div>
+
+                    <div id="dmAudioPlaybackArea" style="${currentAudio ? '' : 'display:none;'}">
+                        <div style="font-size: 13px; font-weight: 700; color: #059669; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                            Audio Ready! Listen below:
+                        </div>
+                        <audio id="dmAudioPlayer" controls src="${currentAudio || ''}" style="width: 100%; max-width: 440px; margin: 0 auto; display: block;"></audio>
+                        ${!formDisabled ? `
+                            <button type="button" id="dmReRecordAudioBtn" style="margin-top: 10px; display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 8px; background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; font-size: 12px; font-weight: 700; cursor: pointer;">
+                                ↺ Record Again / Discard
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+
+                <label class="dm-input-label" style="margin-top: 12px;">Notes or Caption (Optional):</label>
+                <textarea id="dmStudentTextResponse" class="dm-textarea" placeholder="Add any notes about your recording..." ${formDisabled ? 'disabled' : ''}>${escapeHtml(sub?.textResponse || '')}</textarea>
+            </div>
+        `;
+    } else if (mission.taskType === 'link') {
+        const currentLink = sub?.linkUrl || '';
+        inputFieldsHtml = `
+            <div style="margin-bottom: 16px;">
+                <label class="dm-input-label">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 4px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    Submission URL / Link:
+                </label>
+                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                    <input type="url" id="dmStudentLinkInput" class="dm-textarea" style="min-height: unset; height: 44px; padding: 0 14px; font-size: 13.5px; flex: 1;" placeholder="https://canva.com/..., https://docs.google.com/..., https://scratch.mit.edu/..." value="${escapeHtml(currentLink)}" ${formDisabled ? 'disabled' : ''}>
+                    <button type="button" id="dmTestLinkBtn" style="padding: 0 14px; height: 44px; border-radius: 10px; background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; font-weight: 700; font-size: 12.5px; cursor: pointer; white-space: nowrap;">Test Link ↗</button>
+                </div>
+
+                <label class="dm-input-label">Project Summary / Reflection:</label>
+                <textarea id="dmStudentTextResponse" class="dm-textarea" style="min-height: 100px;" placeholder="Briefly describe what you created or why you chose this link..." ${formDisabled ? 'disabled' : ''}>${escapeHtml(sub?.textResponse || '')}</textarea>
+            </div>
+        `;
+    } else if (mission.taskType === 'drawing') {
+        const currentPhoto = capturedPhotoData || (sub ? sub.photoUrl : null);
+        inputFieldsHtml = `
+            <div style="margin-bottom: 16px;">
+                <label class="dm-input-label">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 4px;"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
+                    Draw on Sketchpad:
+                </label>
+
+                ${!formDisabled ? `
+                    <div class="dm-drawing-canvas-wrapper">
+                        <div class="dm-drawing-toolbar">
+                            <span style="font-size: 12px; font-weight: 800; color: var(--text-dark);">Color:</span>
+                            <div style="display: flex; gap: 6px;">
+                                <div class="dm-color-choice selected" data-color="#0f172a" style="background: #0f172a;"></div>
+                                <div class="dm-color-choice" data-color="#2563eb" style="background: #2563eb;"></div>
+                                <div class="dm-color-choice" data-color="#dc2626" style="background: #dc2626;"></div>
+                                <div class="dm-color-choice" data-color="#16a34a" style="background: #16a34a;"></div>
+                                <div class="dm-color-choice" data-color="#9333ea" style="background: #9333ea;"></div>
+                                <div class="dm-color-choice" data-color="#ea580c" style="background: #ea580c;"></div>
+                            </div>
+                            <span style="font-size: 12px; font-weight: 800; color: var(--text-dark); margin-left: 8px;">Size:</span>
+                            <select id="dmBrushSizeSelect" style="padding: 3px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 12px;">
+                                <option value="2">Thin</option>
+                                <option value="4" selected>Medium</option>
+                                <option value="8">Thick</option>
+                            </select>
+                            <button type="button" id="dmEraserBtn" style="padding: 3px 10px; border-radius: 6px; background: #ffffff; border: 1px solid #cbd5e1; font-size: 12px; font-weight: 700; cursor: pointer;">🧹 Eraser</button>
+                            <button type="button" id="dmClearCanvasBtn" style="padding: 3px 10px; border-radius: 6px; background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; font-size: 12px; font-weight: 700; cursor: pointer; margin-left: auto;">✕ Clear</button>
+                        </div>
+                        <canvas id="dmDrawingCanvas" width="640" height="320" style="width: 100%; height: 260px; touch-action: none; background: #ffffff; cursor: crosshair;"></canvas>
+                    </div>
+                ` : `
+                    <div class="dm-preview-container">
+                        <img src="${currentPhoto || ''}" alt="Student Drawing" class="dm-preview-img">
+                    </div>
+                `}
+
+                <label class="dm-input-label" style="margin-top: 12px;">Description or Title of Your Drawing:</label>
+                <textarea id="dmStudentTextResponse" class="dm-textarea" placeholder="Explain your drawing or sketch..." ${formDisabled ? 'disabled' : ''}>${escapeHtml(sub?.textResponse || '')}</textarea>
             </div>
         `;
     } else {
@@ -550,13 +678,64 @@ function renderActiveMissionWorkspace() {
 function bindActiveWorkspaceEvents() {
     const dropzone = document.getElementById('dmDropzoneArea');
     const fileInput = document.getElementById('dmPhotoFileInput');
+    const cameraInput = document.getElementById('dmCameraFileInput');
+    const uploadBtn = document.getElementById('dmUploadFileBtn');
+    const cameraBtn = document.getElementById('dmTakePhotoBtn');
     const removeBtn = document.getElementById('dmRemovePhotoBtn');
 
+    if (uploadBtn && fileInput) {
+        uploadBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            fileInput.click();
+        });
+    }
+
+    if (cameraBtn && cameraInput) {
+        cameraBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            cameraInput.click();
+        });
+    }
+
     if (dropzone && fileInput) {
-        dropzone.addEventListener('click', () => fileInput.click());
+        dropzone.addEventListener('click', (e) => {
+            if (e.target.closest('#dmTakePhotoBtn')) return;
+            fileInput.click();
+        });
+
+        // Drag and drop support
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.style.borderColor = 'var(--dm-primary, #6366f1)';
+            dropzone.style.background = 'var(--dm-primary-light, #eef2ff)';
+        });
+        dropzone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropzone.style.borderColor = '';
+            dropzone.style.background = '';
+        });
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.style.borderColor = '';
+            dropzone.style.background = '';
+            const file = e.dataTransfer?.files?.[0];
+            if (file) handlePhotoSelected(file);
+        });
+    }
+
+    if (fileInput) {
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) handlePhotoSelected(file);
+            fileInput.value = '';
+        });
+    }
+
+    if (cameraInput) {
+        cameraInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) handlePhotoSelected(file);
+            cameraInput.value = '';
         });
     }
 
@@ -567,9 +746,233 @@ function bindActiveWorkspaceEvents() {
         });
     }
 
+    // --- Audio Recording Events ---
+    const recordBtn = document.getElementById('dmRecordAudioBtn');
+    const audioFileInput = document.getElementById('dmAudioFileInput');
+    const reRecordBtn = document.getElementById('dmReRecordAudioBtn');
+
+    if (recordBtn) {
+        recordBtn.addEventListener('click', toggleAudioRecording);
+    }
+
+    if (audioFileInput) {
+        audioFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) handleAudioFileSelected(file);
+        });
+    }
+
+    if (reRecordBtn) {
+        reRecordBtn.addEventListener('click', () => {
+            capturedAudioData = null;
+            renderActiveMissionWorkspace();
+        });
+    }
+
+    // --- Link Testing Event ---
+    const testLinkBtn = document.getElementById('dmTestLinkBtn');
+    if (testLinkBtn) {
+        testLinkBtn.addEventListener('click', () => {
+            let url = document.getElementById('dmStudentLinkInput')?.value.trim();
+            if (!url) {
+                alert("Please enter a URL first.");
+                return;
+            }
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                url = 'https://' + url;
+                const input = document.getElementById('dmStudentLinkInput');
+                if (input) input.value = url;
+            }
+            window.open(url, '_blank', 'noopener,noreferrer');
+        });
+    }
+
+    // --- Drawing Canvas Setup ---
+    setupDrawingCanvasEvents();
+
     const submitBtn = document.getElementById('dmSubmitMissionBtn');
     if (submitBtn) {
         submitBtn.addEventListener('click', submitStudentMission);
+    }
+}
+
+// Audio Recording Logic using MediaRecorder API
+async function toggleAudioRecording() {
+    const recordBtn = document.getElementById('dmRecordAudioBtn');
+    const statusText = document.getElementById('dmRecordStatusText');
+    const timerText = document.getElementById('dmRecordTimerText');
+
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+        // Stop recording
+        mediaRecorder.stop();
+        if (recordBtn) recordBtn.classList.remove('recording');
+        if (recordingTimer) clearInterval(recordingTimer);
+        if (statusText) statusText.innerText = "Processing recording...";
+        return;
+    }
+
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioChunks = [];
+        mediaRecorder = new MediaRecorder(stream);
+
+        mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) audioChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                capturedAudioData = reader.result;
+                renderActiveMissionWorkspace();
+            };
+            reader.readAsDataURL(audioBlob);
+
+            // Stop all audio tracks
+            stream.getTracks().forEach(track => track.stop());
+        };
+
+        mediaRecorder.start();
+        recordingSeconds = 0;
+        if (recordBtn) recordBtn.classList.add('recording');
+        if (statusText) statusText.innerText = "Recording in progress... Tap to Stop";
+        if (timerText) {
+            timerText.style.display = 'block';
+            timerText.innerText = '00:00';
+            recordingTimer = setInterval(() => {
+                recordingSeconds++;
+                const mins = String(Math.floor(recordingSeconds / 60)).padStart(2, '0');
+                const secs = String(recordingSeconds % 60).padStart(2, '0');
+                timerText.innerText = `${mins}:${secs}`;
+            }, 1000);
+        }
+    } catch (err) {
+        console.error("Microphone access error:", err);
+        alert("Could not access microphone: " + (err.message || "Please grant microphone permissions in your browser."));
+    }
+}
+
+function handleAudioFileSelected(file) {
+    if (!file.type.startsWith('audio/')) {
+        alert("Please select a valid audio file (.mp3, .m4a, .wav).");
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        capturedAudioData = e.target.result;
+        renderActiveMissionWorkspace();
+    };
+    reader.readAsDataURL(file);
+}
+
+// Drawing Canvas Interaction Logic
+function setupDrawingCanvasEvents() {
+    const canvas = document.getElementById('dmDrawingCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    let lastX = 0;
+    let lastY = 0;
+    let isEraser = false;
+
+    const startDraw = (x, y) => {
+        isDrawing = true;
+        lastX = x;
+        lastY = y;
+    };
+
+    const draw = (x, y) => {
+        if (!isDrawing) return;
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(x, y);
+        ctx.strokeStyle = isEraser ? '#ffffff' : drawColor;
+        ctx.lineWidth = isEraser ? drawBrushSize * 3 : drawBrushSize;
+        ctx.stroke();
+        lastX = x;
+        lastY = y;
+    };
+
+    const stopDraw = () => {
+        isDrawing = false;
+    };
+
+    const getPos = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return {
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY
+        };
+    };
+
+    canvas.addEventListener('mousedown', (e) => {
+        const p = getPos(e);
+        startDraw(p.x, p.y);
+    });
+    canvas.addEventListener('mousemove', (e) => {
+        const p = getPos(e);
+        draw(p.x, p.y);
+    });
+    canvas.addEventListener('mouseup', stopDraw);
+    canvas.addEventListener('mouseleave', stopDraw);
+
+    // Touch events for mobile/tablet
+    canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const p = getPos(e);
+        startDraw(p.x, p.y);
+    }, { passive: false });
+    canvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        const p = getPos(e);
+        draw(p.x, p.y);
+    }, { passive: false });
+    canvas.addEventListener('touchend', stopDraw);
+
+    // Color buttons
+    document.querySelectorAll('.dm-color-choice').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.dm-color-choice').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            drawColor = btn.getAttribute('data-color') || '#0f172a';
+            isEraser = false;
+            const eraserBtn = document.getElementById('dmEraserBtn');
+            if (eraserBtn) eraserBtn.style.background = '#ffffff';
+        });
+    });
+
+    // Brush size
+    const brushSelect = document.getElementById('dmBrushSizeSelect');
+    if (brushSelect) {
+        brushSelect.addEventListener('change', (e) => {
+            drawBrushSize = parseInt(e.target.value, 10) || 4;
+        });
+    }
+
+    // Eraser
+    const eraserBtn = document.getElementById('dmEraserBtn');
+    if (eraserBtn) {
+        eraserBtn.addEventListener('click', () => {
+            isEraser = !isEraser;
+            eraserBtn.style.background = isEraser ? '#e2e8f0' : '#ffffff';
+        });
+    }
+
+    // Clear
+    const clearBtn = document.getElementById('dmClearCanvasBtn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            if (confirm("Clear entire sketchpad?")) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        });
     }
 }
 
@@ -711,6 +1114,28 @@ async function submitStudentMission() {
             alert("Please take or upload a photo for this mission.");
             return;
         }
+    } else if (mission.taskType === 'audio') {
+        const audio = capturedAudioData || studentSubmissions.find(s => (s.day || '').trim().toLowerCase() === selectedDay.trim().toLowerCase())?.audioUrl;
+        if (!audio) {
+            alert("Please record or upload your audio memo before submitting.");
+            return;
+        }
+    } else if (mission.taskType === 'link') {
+        const link = document.getElementById('dmStudentLinkInput')?.value.trim();
+        if (!link) {
+            alert("Please provide the submission link URL.");
+            return;
+        }
+    } else if (mission.taskType === 'drawing') {
+        const canvas = document.getElementById('dmDrawingCanvas');
+        if (canvas) {
+            capturedPhotoData = canvas.toDataURL('image/png');
+        }
+        const hasDrawing = capturedPhotoData || studentSubmissions.find(s => (s.day || '').trim().toLowerCase() === selectedDay.trim().toLowerCase())?.photoUrl;
+        if (!hasDrawing) {
+            alert("Please draw your sketch on the pad before submitting.");
+            return;
+        }
     } else if (mission.taskType === 'opinion') {
         if (!textResponse) {
             alert("Please write your opinion before submitting.");
@@ -722,7 +1147,7 @@ async function submitStudentMission() {
             return;
         }
     } else {
-        if (!textResponse && !capturedPhotoData) {
+        if (!textResponse && !capturedPhotoData && !capturedAudioData) {
             alert("Please provide a response before submitting.");
             return;
         }
@@ -754,6 +1179,14 @@ async function submitStudentMission() {
             return;
         }
 
+        let linkUrl = '';
+        if (mission.taskType === 'link') {
+            linkUrl = document.getElementById('dmStudentLinkInput')?.value.trim() || '';
+            if (linkUrl && !linkUrl.startsWith('http://') && !linkUrl.startsWith('https://')) {
+                linkUrl = 'https://' + linkUrl;
+            }
+        }
+
         const payload = {
             missionId: mission.id,
             weekKey: weekKey,
@@ -771,6 +1204,14 @@ async function submitStudentMission() {
         if (finalPhotoUrl) {
             payload.photoUrl = finalPhotoUrl;
             payload.driveFolder = "picsdb";
+        }
+
+        if (mission.taskType === 'audio') {
+            payload.audioUrl = capturedAudioData || existingSub?.audioUrl || null;
+        }
+
+        if (mission.taskType === 'link' && linkUrl) {
+            payload.linkUrl = linkUrl;
         }
 
         if (existingSub) {
@@ -870,7 +1311,7 @@ export async function updateClaimBonusButtonState() {
     }
 }
 
-// Award weekly streak bonus (+1.5 points) when claimed by student
+// Award weekly streak bonus (+2 points) when claimed by student
 async function executeClaimWeeklyBonus(weekKey) {
     if (!currentStudent || !currentStudent.code) return;
     const studentCode = currentStudent.code.toUpperCase().trim();
@@ -885,21 +1326,21 @@ async function executeClaimWeeklyBonus(weekKey) {
             studentClass: studentClass,
             weekKey: weekKey,
             awardedAt: new Date(),
-            points: 1.5,
+            points: 2,
             type: "weekly_streak_bonus"
         });
 
-        // 2. Automatically add 1.5 behavior points into student_points
+        // 2. Automatically add 2 behavior points into student_points
         await addDoc(collection(db, "student_points"), {
             studentCode: studentCode,
             studentName: studentName,
             studentClass: studentClass,
             reason: `Daily Mission 5-Day Streak Bonus (Mon-Fri 5/5) - Weekly Bonus`,
-            points: 1.5,
+            points: 2,
             timestamp: new Date()
         });
 
-        alert("Congratulations! 1.5 Behavior Points have been added to your profile! 🌟");
+        alert("Congratulations! 2 Behavior Points have been added to your profile! 🌟");
 
         // 3. Trigger profile / behavior point update in main dashboard
         if (typeof bonusAwardedCallback === 'function') {

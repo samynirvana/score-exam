@@ -3,6 +3,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { db, auth } from "../../firebase.js";
 import { escapeHtml } from "../../utils.js";
+import { openTemplatePicker } from "../dailyMissionTemplates.js";
 
 // Days of the school week
 export const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
@@ -328,6 +329,33 @@ function setupFormButtons() {
     document.getElementById('dmSaveMissionBtn')?.addEventListener('click', saveDailyMission);
     document.getElementById('dmResetMissionBtn')?.addEventListener('click', resetMissionForm);
     document.getElementById('dmCloseMissionFormBtn')?.addEventListener('click', hideMissionForm);
+    document.getElementById('dmOpenTemplatePickerBtn')?.addEventListener('click', () => {
+        openTemplatePicker(applyMissionTemplate);
+    });
+}
+
+function applyMissionTemplate(template) {
+    if (!template) return;
+    const titleInput = document.getElementById('dmMissionTitle');
+    const descInput = document.getElementById('dmMissionDesc');
+    const qInput = document.getElementById('dmQuestionPromptInput');
+    const formWrapper = document.getElementById('dmMissionFormWrapper');
+
+    if (titleInput) titleInput.value = template.title || '';
+    if (descInput) descInput.value = template.description || '';
+    if (qInput) qInput.value = template.questionPrompt || '';
+
+    selectedTaskType = template.taskType || 'photo';
+    document.querySelectorAll('.dm-type-card').forEach(card => {
+        card.classList.toggle('selected', card.getAttribute('data-type') === selectedTaskType);
+    });
+    updateTaskTypeFields();
+
+    if (formWrapper) {
+        formWrapper.classList.remove('dm-form-highlighted');
+        void formWrapper.offsetWidth;
+        formWrapper.classList.add('dm-form-highlighted');
+    }
 }
 
 function setupFilterListeners() {
@@ -486,10 +514,21 @@ function renderWeeklyOverviewList() {
                 photo: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>',
                 opinion: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
                 question: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+                audio: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>',
+                link: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
+                drawing: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>',
                 general: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>'
             };
             const typeLabel = iconMap[mission.taskType] || '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
-            const typeName = { photo: 'Photo mission', opinion: 'Opinion or reflection', question: 'Questions and answers', general: 'General task' }[mission.taskType] || 'Mission';
+            const typeName = { 
+                photo: 'Photo mission', 
+                opinion: 'Opinion or reflection', 
+                question: 'Questions and answers', 
+                audio: 'Voice / Audio memo',
+                link: 'Link / Showcase',
+                drawing: 'Draw & Sketch',
+                general: 'General task' 
+            }[mission.taskType] || 'Mission';
             const accessState = getMissionAccessState(mission, day, selectedWeekMonday);
 
             const accessAction = !accessState.isAccessible
@@ -845,6 +884,28 @@ function renderSubmissions() {
                 </div>
             `;
         }
+        if (sub.audioUrl) {
+            contentHtml += `
+                <div style="margin-bottom: 12px; padding: 12px 14px; background: rgba(245, 158, 11, 0.08); border-radius: 12px; border: 1px solid rgba(245, 158, 11, 0.25);">
+                    <div style="font-size: 12px; font-weight: 800; color: #d97706; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                        Voice Recording:
+                    </div>
+                    <audio controls src="${sub.audioUrl}" style="width: 100%; max-width: 420px; height: 38px;"></audio>
+                </div>
+            `;
+        }
+        if (sub.linkUrl) {
+            contentHtml += `
+                <div style="margin-bottom: 12px; padding: 10px 14px; background: rgba(6, 182, 212, 0.08); border-radius: 12px; border: 1px solid rgba(6, 182, 212, 0.25); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="2.2" style="flex-shrink: 0;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                        <a href="${escapeHtml(sub.linkUrl)}" target="_blank" rel="noopener noreferrer" style="font-size: 13.5px; font-weight: 700; color: #0284c7; text-decoration: underline; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 380px;">${escapeHtml(sub.linkUrl)}</a>
+                    </div>
+                    <a href="${escapeHtml(sub.linkUrl)}" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px; border-radius: 8px; background: #0284c7; color: #ffffff; text-decoration: none; font-size: 12px; font-weight: 700;">Open Link ↗</a>
+                </div>
+            `;
+        }
         if (sub.textResponse) {
             contentHtml += `
                 <div style="white-space: pre-wrap; font-size: 13.5px; line-height: 1.5; color: var(--text-dark);">
@@ -1092,11 +1153,17 @@ export async function loadStudentProgress(resetPage = true) {
             where("weekKey", "==", weekKey)
         ));
         const rewardedSet = new Set();
+        const rewardedPointsMap = new Map();
         rewardSnap.forEach(d => {
             const data = d.data();
             const sc = (data.studentCode || d.id.split('_')[0] || '').toUpperCase().trim();
-            if (sc) rewardedSet.add(sc);
+            const pts = data.points ?? 2;
+            if (sc) {
+                rewardedSet.add(sc);
+                rewardedPointsMap.set(sc, pts);
+            }
             rewardedSet.add(d.id);
+            rewardedPointsMap.set(d.id, pts);
         });
 
         // 4. Build student progress records
@@ -1126,6 +1193,7 @@ export async function loadStudentProgress(resetPage = true) {
             });
 
             const isClaimed = rewardedSet.has(code) || rewardedSet.has(`${code}_${weekKey}`);
+            const claimedPoints = rewardedPointsMap.get(code) ?? rewardedPointsMap.get(`${code}_${weekKey}`) ?? 2;
 
             return {
                 id: student.id,
@@ -1134,7 +1202,8 @@ export async function loadStudentProgress(resetPage = true) {
                 studentClass,
                 daysStatus,
                 streak: completedCount, // 0 to 5
-                isClaimed
+                isClaimed,
+                claimedPoints
             };
         });
 
@@ -1330,7 +1399,8 @@ export function renderStudentProgress() {
         // Weekly Bonus status
         let bonusBadgeHtml = '';
         if (student.isClaimed) {
-            bonusBadgeHtml = `<span class="dm-bonus-badge dm-bonus-claimed"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>Claimed (+1.5)</span>`;
+            const pts = student.claimedPoints ?? 2;
+            bonusBadgeHtml = `<span class="dm-bonus-badge dm-bonus-claimed"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>Claimed (+${pts})</span>`;
         } else if (student.streak === 5) {
             bonusBadgeHtml = `<span class="dm-bonus-badge dm-bonus-eligible"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>Ready to Claim</span>`;
         } else {
